@@ -2368,7 +2368,7 @@ class FrontController extends Controller
             $store = Store::withoutGlobalScopes()->with('galleries')->where('slug', $slug)->first();
         }
         if (!$store) {
-            abort(404);
+            abort(404); 
         }
         return view('front-views.store_gallery', compact('store'));
     }

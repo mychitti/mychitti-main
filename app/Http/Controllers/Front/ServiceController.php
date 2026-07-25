@@ -108,6 +108,15 @@ class ServiceController extends Controller
                     'status' => 'User Confirmed',
                     'created_at' => date('Y-m-d H:i:s')
                 ]);
+
+                // Hospital enquiries become real appointments on confirmation. Best-effort: a
+                // failure here must not undo a confirmation the customer already paid for.
+                try {
+                    \App\Services\LeadAppointmentService::provision((int) $request->service_id, (int) $acceptedReq->vendor_id);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Appointment provisioning skipped for lead ' . $request->service_id . ': ' . $e->getMessage());
+                }
+
                 $html = view('front-views.partials.dashboard._service-actions-element', compact('acceptedReq'))->render();
                 return response()->json(['status' => true, 'message' => 'Confirmed Successfully', 'html' => $html]);
             } else {

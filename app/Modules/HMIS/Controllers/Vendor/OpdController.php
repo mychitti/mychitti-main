@@ -40,9 +40,36 @@ class OpdController extends Controller
         }
     }
 
+    // Diagnosis/treatment are recorded on the visit itself after registration, and the dropdown
+    // they are picked from is per-store. Both are provisioned here so no migration is needed.
+    private function ensureClinicalSchema(): void
+    {
+        if (Schema::hasTable('opd_visits')) {
+            foreach (['diagnosis', 'treatment'] as $column) {
+                if (!Schema::hasColumn('opd_visits', $column)) {
+                    DB::statement("ALTER TABLE `opd_visits` ADD COLUMN `{$column}` TEXT NULL AFTER `chief_complaint`");
+                }
+            }
+        }
+
+        if (!Schema::hasTable('opd_clinical_terms')) {
+            DB::statement("CREATE TABLE `opd_clinical_terms` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT UNSIGNED NULL,
+                `type` VARCHAR(20) NOT NULL,
+                `name` VARCHAR(150) NOT NULL,
+                `created_at` TIMESTAMP NULL, `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `oct_store_type_name` (`store_id`, `type`, `name`),
+                KEY `oct_store_type_idx` (`store_id`, `type`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+    }
+
     public function index(Request $request)
     {
         $this->ensureOpdPermissions();
+        $this->ensureClinicalSchema();
         $preset = request('date_range') ?? 'today';
         $custom = request('custom_date_range') ?? null;
         $range = Helpers::calculatePresetDates($preset, $custom);
@@ -106,7 +133,7 @@ class OpdController extends Controller
             ->orderBy('token_number')
             ->get();
 
-        $headings = ['Token', 'Visit Date', 'Patient', 'MUID', 'Doctor', 'Chief Complaint', 'BP', 'Temperature', 'Weight', 'Status'];
+        $headings = ['Token', 'Visit Date', 'Patient', 'MUID', 'Doctor', 'Chief Complaint', 'Diagnosis', 'Treatment', 'BP', 'Temperature', 'Weight', 'Status'];
         $data = $visits->map(fn($v) => [
             $v->token_number,
             $v->visit_date,
@@ -114,6 +141,8 @@ class OpdController extends Controller
             $v->patient?->patient_uid,
             'Dr. ' . trim(($v->doctorProfile?->employee?->f_name ?? '') . ' ' . ($v->doctorProfile?->employee?->l_name ?? '')),
             $v->chief_complaint,
+            $v->diagnosis,
+            $v->treatment,
             $v->bp,
             $v->temperature,
             $v->weight,
@@ -246,6 +275,17 @@ class OpdController extends Controller
             'notes'            => 'nullable|string',
         ]);
 
+        // Link the visit to the appointment provisioned when the lead was confirmed, so the
+        // appointment, its token and the OPD record stay one chain instead of three orphans.
+        $appointmentId = $request->appointment_id ?: null;
+        if (!$appointmentId && $request->booking_mode === 'booked' && isset($sr)) {
+            try {
+                $appointmentId = \App\Services\LeadAppointmentService::provision((int) $sr->id, (int) $store_id)?->id;
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('OPD appointment link skipped for lead ' . $sr->id . ': ' . $e->getMessage());
+            }
+        }
+
         $nextToken = (OpdVisit::where('store_id', $store_id)
             ->whereDate('visit_date', $visitDate)
             ->max('token_number') ?? 0) + 1;
@@ -254,7 +294,7 @@ class OpdController extends Controller
             'store_id'            => $store_id,
             'patient_id'          => $patientId,
             'doctor_profile_id'   => $doctorProfileId,
-            'appointment_id'      => $request->appointment_id ?: null,
+            'appointment_id'      => $appointmentId,
             'service_request_id'  => $request->booking_mode === 'booked' ? ($sr->id ?? null) : null,
             'visit_date'          => $visitDate,
             'token_number'        => $request->token_number ?? $nextToken,
@@ -300,34 +340,11 @@ class OpdController extends Controller
 
     private function resolvePatientId(ServiceRequest $sr, int $storeId): int
     {
-        $isOther = $sr->patient_for === 'other' && $sr->patient_name;
-        $user    = User::find($sr->user_id);
-
-        if ($isOther) {
-            return Patient::create([
-                'store_id'    => $storeId,
-                'user_id'     => null,
-                'patient_uid' => Patient::generateUid($storeId),
-                'name'        => $sr->patient_name,
-                'phone'       => $sr->patient_phone,
-                'email'       => null,
-                'status'      => 1,
-            ])->id;
-        }
-
-        if ($user) {
-            $patient = Patient::where('user_id', $user->id)->where('store_id', $storeId)->first();
-            if ($patient) return $patient->id;
-
-            return Patient::create([
-                'store_id'    => $storeId,
-                'user_id'     => $user->id,
-                'patient_uid' => Patient::generateUid($storeId),
-                'name'        => trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) ?: ($user->name ?? 'Patient'),
-                'phone'       => $user->phone,
-                'email'       => $user->email,
-                'status'      => 1,
-            ])->id;
+        // Shared find-then-create, so a repeat booking reuses the existing patient instead of
+        // fragmenting the history across duplicate rows.
+        $patient = \App\Services\LeadAppointmentService::resolvePatient($sr, $storeId);
+        if ($patient) {
+            return $patient->id;
         }
 
         return Patient::create([
@@ -344,6 +361,7 @@ class OpdController extends Controller
     public function show($id)
     {
         if (!auth('vendor')->check() && !hasPermission('opd_register', 'view')) abort(403);
+        $this->ensureClinicalSchema();
         $store_id = Helpers::get_store_id();
         $visit    = OpdVisit::where('store_id', $store_id)
             ->with(['patient.documents', 'patient.medicalHistory', 'doctorProfile.employee', 'recorder'])
@@ -410,33 +428,62 @@ class OpdController extends Controller
                 ->orderByDesc('created_at')->get()
             : collect();
 
+        $diagnosisOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS);
+        $treatmentOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_TREATMENT);
+
         return view('hmis::vendor.opd.show', compact(
             'visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions',
-            'labTests', 'radiologyTests', 'labOrders', 'radiologyStudies'
+            'labTests', 'radiologyTests', 'labOrders', 'radiologyStudies',
+            'diagnosisOptions', 'treatmentOptions'
         ));
     }
 
     public function quickUpdate(Request $request, $id)
     {
+        $this->ensureClinicalSchema();
         $store_id = Helpers::get_store_id();
         $visit    = OpdVisit::where('store_id', $store_id)->findOrFail($id);
 
         $request->validate([
             'chief_complaint' => 'nullable|string|max:500',
             'notes'           => 'nullable|string',
+            'diagnosis'       => 'nullable|array',
+            'diagnosis.*'     => 'string|max:150',
+            'treatment'       => 'nullable|array',
+            'treatment.*'     => 'string|max:150',
         ]);
 
-        // The show page saves chief complaint and consultation notes independently, sending
-        // only the changed field. Update only what was submitted so the other isn't wiped.
+        // The show page saves chief complaint, consultation notes and diagnosis/treatment
+        // independently, sending only the changed field. Update only what was submitted so
+        // the others aren't wiped.
         if ($request->has('chief_complaint')) {
             $visit->chief_complaint = $request->chief_complaint;
         }
         if ($request->has('notes')) {
             $visit->notes = $request->notes;
         }
+
+        $saved = [];
+        foreach (['diagnosis' => \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS,
+                  'treatment' => \App\Models\OpdClinicalTerm::TYPE_TREATMENT] as $field => $type) {
+            if (!$request->has($field)) {
+                continue;
+            }
+            $terms = collect((array) $request->input($field, []))
+                ->map(fn($term) => trim($term))
+                ->filter()
+                ->unique()
+                ->values();
+
+            \App\Models\OpdClinicalTerm::remember($store_id, $type, $terms->all());
+
+            $visit->{$field} = $terms->isEmpty() ? null : $terms->implode(', ');
+            $saved[$field]   = $terms->all();
+        }
+
         $visit->save();
 
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true] + $saved);
     }
 
     public function edit($id)

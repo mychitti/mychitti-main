@@ -11,6 +11,7 @@ class Appointment extends Model
 
     protected $fillable = [
         'store_id',
+        'service_request_id',
         'patient_id',
         'doctor_profile_id',
         'slot_id',
@@ -62,5 +63,15 @@ class Appointment extends Model
     public function rescheduledFrom()
     {
         return $this->belongsTo(Appointment::class, 'rescheduled_from');
+    }
+
+    public function serviceRequest()
+    {
+        return $this->belongsTo(ServiceRequest::class, 'service_request_id');
+    }
+
+    public function opdVisit()
+    {
+        return $this->hasOne(OpdVisit::class, 'appointment_id');
     }
 }

@@ -192,6 +192,9 @@
     @if(hasPermission('leads_manage', 'list'))
     @php
         $statusCounts = ['new' => 0, 'accepted' => 0, 'completed' => 0, 'cancelled' => 0];
+        // Resolved once, not per card — the column is added by a manual ALTER, so older
+        // databases may not have it yet.
+        $hHasApptLink = \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'service_request_id');
     @endphp
     <div class="row g-3">
         @forelse($product as $key => $lead)
@@ -259,6 +262,15 @@
                         ->whereDate('visit_date', $lead->preferred_date)
                         ->first();
                 }
+            }
+
+            // Appointment provisioned when this lead was confirmed — the detail page behind it is
+            // where the token, status flow and Schedule Next Visit form live.
+            $hAppointment = null;
+            if ($hHasApptLink) {
+                $hAppointment = \App\Models\Appointment::where('store_id', $hStoreId)
+                    ->where('service_request_id', $lead->id)
+                    ->first();
             }
 
             // Load full HMIS patient registration for accepted/confirmed appointments
@@ -444,6 +456,14 @@
                             <a href="#" class="btn btn-sm btn-outline-info"
                                 onclick="event.stopPropagation(); $('#patientModal-{{ $lead->id }}').modal('show');">
                                 <i class="tio-user"></i> Patient
+                            </a>
+                        @endif
+                        @if($hAppointment)
+                            <a href="{{ route('vendor.appointment.show', $hAppointment->id) }}"
+                                class="btn btn-sm btn-outline-primary"
+                                onclick="event.stopPropagation()"
+                                title="Token, status flow and next visit">
+                                <i class="tio-calendar"></i> Appointment
                             </a>
                         @endif
                         @if($hOpdVisit)

@@ -247,11 +247,12 @@
                                     <td>
                                         @php
                                             $badgeMap = [
-                                                'confirmed'  => 'success',
-                                                'completed'  => 'primary',
+                                                'scheduled'  => 'warning',
+                                                'checked_in' => 'info',
+                                                'consulting' => 'primary',
+                                                'completed'  => 'success',
                                                 'cancelled'  => 'danger',
                                                 'no_show'    => 'secondary',
-                                                'pending'    => 'warning',
                                             ];
                                         @endphp
                                         <span class="badge badge-soft-{{ $badgeMap[$appt->status] ?? 'secondary' }}">

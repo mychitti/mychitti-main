@@ -336,6 +336,17 @@ class ServiceController extends Controller
         }
 
         if ($acceptance->save() && $serReq->update()) {
+            // Hospital leads auto-confirm above, so materialise the appointment now: that row is
+            // what feeds the patient's Appointments tab, the token queue, the WhatsApp reminder
+            // job and the next-visit flow. Never allowed to break the acceptance itself.
+            if ($appointmentConfirmed) {
+                try {
+                    \App\Services\LeadAppointmentService::provision((int) $serviceRequestId, (int) $store_id);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Appointment provisioning skipped for lead ' . $serviceRequestId . ': ' . $e->getMessage());
+                }
+            }
+
             if ($request->ajax()) return response()->json(['status' => true, 'message' => 'Lead accepted! You can now contact the customer.']);
             Toastr::success('You can now contact customer');
             DB::table('lead_statuses')->insert([

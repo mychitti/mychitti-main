@@ -416,6 +416,43 @@
         font-weight: 600;
     }
 
+    /* ── Diagnosis / Treatment tags ── */
+    .dx-badge, .tx-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        margin: 0 4px 4px 0;
+    }
+    .dx-badge {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+    }
+    .tx-badge {
+        background: #f5f3ff;
+        border: 1px solid #ddd6fe;
+        color: #6d28d9;
+    }
+    #dxEdit .select2-container--default .select2-selection--multiple {
+        border-color: #e7eaf3;
+        min-height: 34px;
+    }
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 1px 6px;
+    }
+    #dxEdit .tx-select2 .select2-selection__choice {
+        background: #f5f3ff;
+        border-color: #ddd6fe;
+        color: #6d28d9;
+    }
+
     /* ── Tab Content Panes ── */
     .tab-pane {
         display: none;
@@ -931,6 +968,76 @@
                     </div>
                 </div>
 
+                {{-- Diagnosis & Treatment --}}
+                @php
+                    $dxCurrent = $visit->diagnosis_list;
+                    $txCurrent = $visit->treatment_list;
+                    $dxChoices = collect($diagnosisOptions ?? [])->merge($dxCurrent)->unique()->sort()->values();
+                    $txChoices = collect($treatmentOptions ?? [])->merge($txCurrent)->unique()->sort()->values();
+                @endphp
+                <div class="card shadow-none border mb-3">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
+                        <h6 class="mb-0 font-weight-bold" style="font-size:13px">Diagnosis &amp; Treatment</h6>
+                        @if (hasPermission('opd_register', 'edit'))
+                            <button class="btn btn-xs btn-soft-secondary" onclick="toggleDxEdit()">
+                                <i class="tio-edit" id="dxEditIcon"></i>
+                            </button>
+                        @endif
+                    </div>
+                    <div class="card-body py-3" id="dxView">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">Diagnosis</div>
+                                <div id="dxBadges">
+                                    @forelse($dxCurrent as $term)
+                                        <span class="dx-badge">{{ $term }}</span>
+                                    @empty
+                                        <span class="text-muted small">Not recorded yet.</span>
+                                    @endforelse
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">Treatment</div>
+                                <div id="txBadges">
+                                    @forelse($txCurrent as $term)
+                                        <span class="tx-badge">{{ $term }}</span>
+                                    @empty
+                                        <span class="text-muted small">Not recorded yet.</span>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @if (hasPermission('opd_register', 'edit'))
+                        <div class="card-body py-3" id="dxEdit" style="display:none;">
+                            <div class="row">
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Diagnosis</label>
+                                    <select id="dxSelect" class="form-control form-control-sm" multiple>
+                                        @foreach($dxChoices as $term)
+                                            <option value="{{ $term }}" @if(in_array($term, $dxCurrent)) selected @endif>{{ $term }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Pick from the list, or type a new one and press Enter.</small>
+                                </div>
+                                <div class="col-md-6 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Treatment</label>
+                                    <select id="txSelect" class="form-control form-control-sm" multiple>
+                                        @foreach($txChoices as $term)
+                                            <option value="{{ $term }}" @if(in_array($term, $txCurrent)) selected @endif>{{ $term }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Pick from the list, or type a new one and press Enter.</small>
+                                </div>
+                            </div>
+                            <div class="mt-2 d-flex gap-2">
+                                <button class="btn btn-sm btn-primary" onclick="saveDxTx(this)">Save</button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleDxEdit()">Cancel</button>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
                 {{-- Full Vitals Grid --}}
                 <div class="card shadow-none border mb-3">
                     <div class="card-header py-2 bg-light"><h6 class="mb-0 font-weight-bold" style="font-size:13px">Patient Vitals Profile</h6></div>
@@ -1083,7 +1190,7 @@
                             <div class="col-md-7">
                                 <div class="form-group">
                                     <label class="input-label">Diagnosis <span class="text-danger">*</span></label>
-                                    <textarea name="diagnosis" class="form-control form-control-sm" rows="2" placeholder="Primary diagnosis..." required>{{ $currentPrescription->diagnosis ?? $visit->chief_complaint }}</textarea>
+                                    <textarea name="diagnosis" class="form-control form-control-sm" rows="2" placeholder="Primary diagnosis..." required>{{ $currentPrescription->diagnosis ?? ($visit->diagnosis ?: $visit->chief_complaint) }}</textarea>
                                 </div>
                                 <div class="form-group">
                                     <label class="input-label">Doctor's Advice / Notes</label>
@@ -1544,6 +1651,22 @@
                             @if($pv->chief_complaint)
                                 <p class="mb-1"><strong>CC:</strong> {{ $pv->chief_complaint }}</p>
                             @endif
+                            @if($pv->diagnosis)
+                                <p class="mb-1">
+                                    <strong>Diagnosis:</strong>
+                                    @foreach($pv->diagnosis_list as $term)
+                                        <span class="dx-badge">{{ $term }}</span>
+                                    @endforeach
+                                </p>
+                            @endif
+                            @if($pv->treatment)
+                                <p class="mb-1">
+                                    <strong>Treatment:</strong>
+                                    @foreach($pv->treatment_list as $term)
+                                        <span class="tx-badge">{{ $term }}</span>
+                                    @endforeach
+                                </p>
+                            @endif
                             @if($pv->notes)
                                 <p class="mb-1"><strong>Notes:</strong> {{ $pv->notes }}</p>
                             @endif
@@ -1813,6 +1936,90 @@
             }
         })
         .catch(() => alert('Save failed.'));
+    }
+
+    // ── Diagnosis & Treatment (Select2 tags: pick from the list or type a new term) ──
+    let dxSelect2Ready = false;
+
+    function initDxSelect2() {
+        if (dxSelect2Ready || typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+        jQuery('#dxSelect').select2({
+            tags: true,
+            width: '100%',
+            tokenSeparators: [','],
+            placeholder: 'Select or type a diagnosis…'
+        });
+        jQuery('#txSelect').select2({
+            tags: true,
+            width: '100%',
+            tokenSeparators: [','],
+            placeholder: 'Select or type a treatment…',
+            containerCssClass: 'tx-select2'
+        });
+        dxSelect2Ready = true;
+    }
+
+    function toggleDxEdit() {
+        const view = document.getElementById('dxView');
+        const edit = document.getElementById('dxEdit');
+        if (!edit) return;
+        const showing = edit.style.display === 'none';
+        view.style.display = showing ? 'none' : '';
+        edit.style.display = showing ? '' : 'none';
+        // Select2 needs a visible container to size itself, so build it on first open.
+        if (showing) initDxSelect2();
+    }
+
+    function selectedTerms(id) {
+        const el = document.getElementById(id);
+        if (!el) return [];
+        return Array.from(el.selectedOptions)
+            .map(o => o.value.trim())
+            .filter(v => v.length);
+    }
+
+    function renderTerms(containerId, terms, cssClass) {
+        const box = document.getElementById(containerId);
+        if (!box) return;
+        box.innerHTML = '';
+        if (!terms.length) {
+            box.innerHTML = '<span class="text-muted small">Not recorded yet.</span>';
+            return;
+        }
+        terms.forEach(term => {
+            const span = document.createElement('span');
+            span.className = cssClass;
+            span.textContent = term;
+            box.appendChild(span);
+        });
+    }
+
+    function saveDxTx(btn) {
+        const diagnosis = selectedTerms('dxSelect');
+        const treatment = selectedTerms('txSelect');
+
+        if (btn) btn.disabled = true;
+
+        fetch(opdQuickUpdateUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ diagnosis: diagnosis, treatment: treatment })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) throw new Error('save failed');
+            renderTerms('dxBadges', diagnosis, 'dx-badge');
+            renderTerms('txBadges', treatment, 'tx-badge');
+            // Carry the diagnosis into the prescription form so the doctor doesn't retype it.
+            const rxDiagnosis = document.querySelector('#customRxForm textarea[name="diagnosis"]');
+            if (rxDiagnosis && !rxDiagnosis.value.trim() && diagnosis.length) {
+                rxDiagnosis.value = diagnosis.join(', ');
+            }
+            toggleDxEdit();
+            updateSaveTime();
+        })
+        .catch(() => alert('Save failed.'))
+        .finally(() => { if (btn) btn.disabled = false; });
     }
 
     // ── Document upload & delete ──

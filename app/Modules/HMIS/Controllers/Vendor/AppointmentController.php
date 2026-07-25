@@ -510,6 +510,15 @@ class AppointmentController extends Controller
             return back();
         }
 
+        // Existing appointment wins — the lead may already have been provisioned at confirmation.
+        $already = Appointment::where('store_id', $store_id)
+            ->where('service_request_id', $sr->id)
+            ->first();
+        if ($already) {
+            Toastr::info('This booking is already registered as an appointment.');
+            return redirect()->route('vendor.appointment.show', $already->id);
+        }
+
         if ($sr->preferred_slot_id) {
             $booked = Appointment::where('slot_id', $sr->preferred_slot_id)
                 ->where('appointment_date', $sr->preferred_date)
@@ -522,65 +531,24 @@ class AppointmentController extends Controller
             }
         }
 
-        $patient = $this->resolvePatientFromLead($sr, $store_id);
+        $appointment = \App\Services\LeadAppointmentService::provision((int) $sr->id, (int) $store_id);
 
-        DB::beginTransaction();
-        try {
-            $appointment = Appointment::create([
-                'store_id'          => $store_id,
-                'patient_id'        => $patient->id,
-                'doctor_profile_id' => $sr->preferred_doctor_id,
-                'slot_id'           => $sr->preferred_slot_id ?: null,
-                'appointment_date'  => $sr->preferred_date,
-                'appointment_time'  => $sr->preferred_time ?: '00:00',
-                'booking_type'      => 'online',
-                'status'            => 'scheduled',
-                'reason'            => $sr->requirements,
-                'booked_by'         => auth('vendor_employee')->id() ?? auth('vendor')->id(),
-            ]);
-
-            $this->generateToken($sr->preferred_doctor_id, $sr->preferred_date, $appointment->id);
-
-            DB::commit();
-            Toastr::success('Appointment registered successfully.');
-            return redirect()->route('vendor.appointment.show', $appointment->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Toastr::error('Failed: ' . $e->getMessage());
+        if (!$appointment) {
+            Toastr::error('Could not register this booking as an appointment. Please register as walk-in.');
             return back();
         }
+
+        Toastr::success('Appointment registered successfully.');
+        return redirect()->route('vendor.appointment.show', $appointment->id);
     }
 
     private function resolvePatientFromLead(ServiceRequest $sr, int $storeId): Patient
     {
-        $isOther = $sr->patient_for === 'other' && $sr->patient_name;
-        $user    = User::find($sr->user_id);
-
-        if ($isOther) {
-            return Patient::create([
-                'store_id'    => $storeId,
-                'user_id'     => null,
-                'patient_uid' => Patient::generateUid($storeId),
-                'name'        => $sr->patient_name,
-                'phone'       => $sr->patient_phone,
-                'email'       => null,
-                'status'      => 1,
-            ]);
-        }
-
-        if ($user) {
-            $patient = Patient::where('user_id', $user->id)->where('store_id', $storeId)->first();
-            if ($patient) return $patient;
-
-            return Patient::create([
-                'store_id'    => $storeId,
-                'user_id'     => $user->id,
-                'patient_uid' => Patient::generateUid($storeId),
-                'name'        => trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) ?: ($user->name ?? 'Patient'),
-                'phone'       => $user->phone,
-                'email'       => $user->email,
-                'status'      => 1,
-            ]);
+        // Shared find-then-create, so a repeat booking reuses the existing patient instead of
+        // fragmenting the history across duplicate rows.
+        $patient = \App\Services\LeadAppointmentService::resolvePatient($sr, $storeId);
+        if ($patient) {
+            return $patient;
         }
 
         return Patient::create([

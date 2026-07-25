@@ -49,6 +49,9 @@ class WhatsAppController extends Controller
         $templates = [];
         $templateError = null;
         $clientCount = 0;
+        $platformUserCount = 0;
+        $nearbyUserCount = 0;
+        $optOutCount = 0;
         if ($connected) {
             $res = WhatsAppService::make($storeId)->listTemplates();
             $templates = $this->bulkTemplateOptions($res['data']);

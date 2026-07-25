@@ -8,7 +8,7 @@ class OpdVisit extends Model
 {
     protected $fillable = [
         'store_id', 'patient_id', 'doctor_profile_id', 'appointment_id', 'service_request_id',
-        'visit_date', 'token_number', 'visit_type', 'chief_complaint',
+        'visit_date', 'token_number', 'visit_type', 'chief_complaint', 'diagnosis', 'treatment',
         'bp_systolic', 'bp_diastolic', 'temperature', 'weight',
         'height', 'spo2', 'pulse_rate', 'respiratory_rate', 'notes', 'recorded_by', 'status',
         'consultation_receipt_id', 'consultation_visit_no',
@@ -32,6 +32,28 @@ class OpdVisit extends Model
         'emergency'=> 'Emergency',
         'review'   => 'Review',
     ];
+
+    // Diagnosis and treatment are stored as a comma-joined string so they stay readable in
+    // exports and receipts; the UI works with them as tag lists.
+    public function getDiagnosisListAttribute(): array
+    {
+        return self::splitTerms($this->diagnosis);
+    }
+
+    public function getTreatmentListAttribute(): array
+    {
+        return self::splitTerms($this->treatment);
+    }
+
+    public static function splitTerms($value): array
+    {
+        return collect(explode(',', (string) $value))
+            ->map(fn($term) => trim($term))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
 
     public function patient()
     {
