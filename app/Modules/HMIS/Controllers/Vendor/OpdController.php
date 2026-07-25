@@ -431,11 +431,71 @@ class OpdController extends Controller
         $diagnosisOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS);
         $treatmentOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_TREATMENT);
 
+        // Follow-ups already on the books for this patient, so the doctor doesn't double-book.
+        $upcomingVisits = \App\Models\Appointment::where('store_id', $store_id)
+            ->where('patient_id', $visit->patient_id)
+            ->where('appointment_date', '>=', today())
+            ->whereIn('status', ['scheduled', 'checked_in'])
+            ->with('doctorProfile.employee', 'token')
+            ->orderBy('appointment_date')
+            ->orderBy('appointment_time')
+            ->get();
+
         return view('hmis::vendor.opd.show', compact(
             'visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions',
             'labTests', 'radiologyTests', 'labOrders', 'radiologyStudies',
-            'diagnosisOptions', 'treatmentOptions'
+            'diagnosisOptions', 'treatmentOptions', 'upcomingVisits'
         ));
+    }
+
+    /**
+     * Schedule the patient's next visit straight from the consultation screen, so the doctor
+     * never has to leave the encounter to book a follow-up.
+     */
+    public function nextVisit(Request $request, $id)
+    {
+        if (!auth('vendor')->check() && !hasPermission('opd_register', 'edit')) abort(403);
+
+        $request->validate([
+            'appointment_date' => 'required|date|after_or_equal:today',
+            'appointment_time' => 'required',
+            'slot_id'          => 'nullable|integer|exists:doctor_slots,id',
+            'reason'           => 'nullable|string|max:500',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+        $visit    = OpdVisit::where('store_id', $store_id)->findOrFail($id);
+
+        if (!$visit->doctor_profile_id) {
+            Toastr::error('This visit has no doctor assigned, so a follow-up cannot be booked.');
+            return back();
+        }
+
+        try {
+            $next = \App\Services\NextVisitService::schedule(
+                (int) $store_id,
+                (int) $visit->patient_id,
+                (int) $visit->doctor_profile_id,
+                $request->appointment_date,
+                $request->appointment_time,
+                $request->slot_id ? (int) $request->slot_id : null,
+                $request->reason,
+                ['from_opd_visit_id' => (int) $visit->id]
+            );
+        } catch (\RuntimeException $e) {
+            Toastr::error($e->getMessage());
+            return back();
+        } catch (\Throwable $e) {
+            Toastr::error('Could not schedule next visit: ' . $e->getMessage());
+            return back();
+        }
+
+        Toastr::success(
+            'Next visit scheduled for ' . \Carbon\Carbon::parse($next->appointment_date)->format('d M Y')
+                . '. The patient will get a WhatsApp reminder before it.'
+        );
+
+        return Redirect::route('vendor.opd.show', $visit->id);
     }
 
     public function quickUpdate(Request $request, $id)

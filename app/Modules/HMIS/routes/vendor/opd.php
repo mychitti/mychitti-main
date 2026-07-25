@@ -17,4 +17,5 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::get('{id}/edit',          [OpdController::class, 'edit'])->name('edit')->middleware('permission:opd_register,edit');
     Route::put('{id}/update',        [OpdController::class, 'update'])->name('update')->middleware('permission:opd_register,edit');
     Route::patch('{id}/quick-update',[OpdController::class, 'quickUpdate'])->name('quick-update')->middleware('permission:opd_register,edit');
+    Route::post('{id}/next-visit',   [OpdController::class, 'nextVisit'])->name('next-visit')->middleware('permission:opd_register,edit');
 });

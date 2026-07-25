@@ -791,6 +791,12 @@
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabSaraAI')" id="btnSaraTab">
             <i class="tio-star"></i> Sara AI <span class="new-indicator ml-1">New</span>
         </button>
+        <button class="consult-tab-btn" onclick="switchTab(this, 'tabNextVisit')">
+            <i class="tio-calendar-note"></i> Next Visit
+            @if($upcomingVisits->count())
+                <span class="count-badge ml-1">{{ $upcomingVisits->count() }}</span>
+            @endif
+        </button>
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabTimeline')">
             <i class="tio-calendar-note"></i> Timeline
         </button>
@@ -1712,6 +1718,82 @@
                 </div>
             </div>
 
+            {{-- TAB: NEXT VISIT --}}
+            <div class="tab-pane" id="tabNextVisit">
+                <h4 class="mb-1 font-weight-bold" style="color:#0f172a">Schedule Next Visit</h4>
+                <p class="small text-muted mb-4">
+                    Books a follow-up for {{ $visit->patient?->name }} with
+                    Dr. {{ trim(($visit->doctorProfile?->employee?->f_name ?? '') . ' ' . ($visit->doctorProfile?->employee?->l_name ?? '')) }}.
+                    The patient gets a WhatsApp confirmation now and an automatic reminder before the visit.
+                </p>
+
+                @if($upcomingVisits->count())
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold mb-2" style="font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280;">
+                            Already scheduled
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+                                <thead class="thead-light">
+                                    <tr><th>Date</th><th>Time</th><th>Doctor</th><th>Token</th><th>Reason</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($upcomingVisits as $up)
+                                    <tr>
+                                        <td>{{ \Carbon\Carbon::parse($up->appointment_date)->format('d M Y') }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($up->appointment_time)->format('h:i A') }}</td>
+                                        <td>Dr. {{ $up->doctorProfile?->employee?->f_name }} {{ $up->doctorProfile?->employee?->l_name }}</td>
+                                        <td>{{ $up->token ? '#' . $up->token->token_number : '—' }}</td>
+                                        <td>{{ \Illuminate\Support\Str::limit($up->reason ?? '—', 40) }}</td>
+                                        <td>
+                                            <a href="{{ route('vendor.appointment.show', $up->id) }}"
+                                               class="btn btn-xs btn-outline-secondary">Open</a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
+                @if(!$visit->doctor_profile_id)
+                    <div class="alert alert-warning mb-0" style="font-size:13px;">
+                        This visit has no doctor assigned, so a follow-up cannot be booked from here.
+                    </div>
+                @else
+                <form action="{{ route('vendor.opd.next-visit', $visit->id) }}" method="POST" style="max-width:620px;">
+                    @csrf
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label class="input-label" style="font-size:12px;">Date <span class="text-danger">*</span></label>
+                            <input type="date" name="appointment_date" id="nvDate" class="form-control"
+                                   min="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label class="input-label" style="font-size:12px;">Time <span class="text-danger">*</span></label>
+                            <input type="time" name="appointment_time" id="nvTime" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label" style="font-size:12px;">Slot</label>
+                        <select name="slot_id" id="nvSlot" class="form-control">
+                            <option value="">-- Select date first --</option>
+                        </select>
+                        <small class="text-muted">Leave blank to enter the time manually.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="input-label" style="font-size:12px;">Reason / Notes</label>
+                        <input type="text" name="reason" class="form-control" maxlength="500"
+                               placeholder="Review, dressing change, report follow-up…">
+                    </div>
+                    <button type="submit" class="btn btn--primary">
+                        <i class="tio-calendar-note"></i> Schedule Next Visit
+                    </button>
+                </form>
+                @endif
+            </div>
+
             {{-- TAB: SECURITY --}}
             <div class="tab-pane" id="tabSecurity">
                 <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Security &amp; Compliance</h4>
@@ -1827,6 +1909,50 @@
             }, 100);
         }
     }
+
+    // ── Next Visit: load this doctor's slots for the chosen date ──
+    (function () {
+        const nvDate = document.getElementById('nvDate');
+        if (!nvDate) return;
+
+        const nvSlotsUrl = "{{ route('vendor.appointment.available-slots') }}";
+        const nvDoctorId = "{{ $visit->doctor_profile_id }}";
+
+        function nvFormatTime(t) {
+            if (!t) return '';
+            const [h, m] = t.split(':');
+            const hour = parseInt(h);
+            return `${hour > 12 ? hour - 12 : (hour || 12)}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+        }
+
+        nvDate.addEventListener('change', function () {
+            const slotSel = document.getElementById('nvSlot');
+            slotSel.innerHTML = '<option value="">Loading...</option>';
+
+            fetch(`${nvSlotsUrl}?doctor_profile_id=${nvDoctorId}&date=${this.value}`)
+                .then(r => r.json())
+                .then(slots => {
+                    if (!slots.length) {
+                        slotSel.innerHTML = '<option value="">No slots for this day — enter time manually</option>';
+                        return;
+                    }
+                    slotSel.innerHTML = '<option value="">-- Manual time --</option>';
+                    slots.forEach(s => {
+                        const label = `${nvFormatTime(s.slot_start)} – ${nvFormatTime(s.slot_end)} | ${s.available}/${s.max_patients} available`;
+                        const disabled = s.available <= 0 ? 'disabled' : '';
+                        slotSel.innerHTML += `<option value="${s.id}" data-start="${s.slot_start}" ${disabled}>${label}</option>`;
+                    });
+                })
+                .catch(() => {
+                    slotSel.innerHTML = '<option value="">Could not load slots — enter time manually</option>';
+                });
+        });
+
+        document.getElementById('nvSlot')?.addEventListener('change', function () {
+            const start = this.options[this.selectedIndex].getAttribute('data-start');
+            if (start) document.getElementById('nvTime').value = start.substring(0, 5);
+        });
+    })();
 
     // ── Edit/Save fields in Sidebar (Allergies, Chronic) ──
     function editSidebarField(field) {

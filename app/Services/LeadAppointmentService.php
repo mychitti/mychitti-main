@@ -103,7 +103,7 @@ class LeadAppointmentService
                 'booked_by'          => auth('vendor_employee')->id() ?? auth('vendor')->id(),
             ]);
 
-            self::generateToken((int) $sr->preferred_doctor_id, (string) $sr->preferred_date, $appointment->id);
+            AppointmentToken::issue((int) $sr->preferred_doctor_id, (string) $sr->preferred_date, $appointment->id);
 
             DB::commit();
         } catch (\Throwable $e) {
@@ -198,21 +198,4 @@ class LeadAppointmentService
         return null;
     }
 
-    private static function generateToken(int $doctorProfileId, string $date, int $appointmentId): int
-    {
-        $last = AppointmentToken::where('doctor_profile_id', $doctorProfileId)
-            ->where('token_date', $date)
-            ->max('token_number');
-
-        $tokenNumber = ($last ?? 0) + 1;
-
-        AppointmentToken::create([
-            'appointment_id'    => $appointmentId,
-            'token_number'      => $tokenNumber,
-            'token_date'        => $date,
-            'doctor_profile_id' => $doctorProfileId,
-        ]);
-
-        return $tokenNumber;
-    }
 }
