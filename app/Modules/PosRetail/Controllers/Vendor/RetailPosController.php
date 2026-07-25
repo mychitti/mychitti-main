@@ -229,7 +229,7 @@ class RetailPosController extends Controller
     }
 
     // Bump this whenever ensureSchema() changes, to force the one-time introspection to re-run.
-    private const SCHEMA_VERSION = 1;
+    private const SCHEMA_VERSION = 2;
 
     private function ensureSchema(): void
     {
@@ -1017,7 +1017,7 @@ class RetailPosController extends Controller
             ->select('ii.inv_id', DB::raw('SUM(ii.qty) as sold'))
             ->groupBy('ii.inv_id')->orderByDesc('sold')->limit(24)->pluck('ii.inv_id')->all();
 
-        $quickItems = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
+        $quickItems = InventoryItem::with('itemunit')->where('store_id', $storeId)->where('item_type', 'product')
             ->when(!empty($topIds), fn($q) => $q->whereIn('id', $topIds)
                 ->orderByRaw('FIELD(id,' . implode(',', $topIds) . ') ')
             , fn($q) => $q->orderByDesc('updated_at'))

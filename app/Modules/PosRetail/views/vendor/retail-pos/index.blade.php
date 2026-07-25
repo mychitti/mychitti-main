@@ -401,7 +401,8 @@
                                             'hsn' => $qi->hsn,
                                             'gst_rate' => (float) ($qi->gst_rate ?? 0),
                                             'gst_status' => $qi->gst_status ?? 'excluding',
-                                            'unit' => $qi->unit,
+                                            'unit' => optional($qi->itemunit)->unit ?? '',
+                                            'sell_loose' => (bool) ($qi->sell_loose ?? false),
                                             'variations' => json_decode($qi->variations, true) ?: [],
                                         ];
                                     @endphp
@@ -697,6 +698,27 @@
         }
 
         function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
+
+        // Loose weighing — a kg / litre item may be keyed in its sub-unit (g / ml). The line's
+        // `qty` is ALWAYS held in the item's stock unit (kg), so stock deducts 0.25 for 250 g;
+        // only the entry box switches. `wunit` is the unit the box is currently showing.
+        const SUB_UNIT = {
+            kg: 'g', kgs: 'g', kilogram: 'g', kilograms: 'g',
+            l: 'ml', ltr: 'ml', litre: 'ml', liter: 'ml', litres: 'ml', liters: 'ml',
+        };
+        function subUnitOf(u) { return SUB_UNIT[String(u || '').trim().toLowerCase()] || null; }
+        function inSubUnit(l) { const s = subUnitOf(l.unit); return !!s && l.wunit === s; }
+        function entryUnit(l) { return l.wunit || l.unit || 'kg'; }
+        // Stock-unit qty → the number shown in the entry box.
+        function entryQty(l) { return inSubUnit(l) ? Math.round(l.qty * 1000) : l.qty; }
+        // Entry-box value → qty in the stock unit.
+        function entryToQty(l, v) { const q = parseFloat(v); return inSubUnit(l) ? q / 1000 : q; }
+        function toggleWUnit(i) {
+            const l = POS.cart[i], sub = subUnitOf(l.unit);
+            if (!sub) return;
+            l.wunit = inSubUnit(l) ? l.unit : sub;
+            renderCart();
+        }
         function posBranch() { const el = document.getElementById('pos-branch'); return el ? (el.value || '') : ''; }
 
         let activeVariations = [];
@@ -737,7 +759,12 @@
                 if (item.low_stock) toastr.warning(item.name + ' is out of stock', 'Stock');
             }
             let line = POS.cart.find(l => l.id == item.id);
-            if (line) { line.qty += 1; }
+            if (line) {
+                // A loose line is weighed, not counted — re-tapping re-weighs it. Adding 1 here
+                // would silently add a whole kg to the sale.
+                if (line.sell_loose) { renderCart(); weighLine(POS.cart.indexOf(line)); return; }
+                line.qty += 1;
+            }
             else {
                 if (POS.cart.length >= 500) { (window.toastr ? toastr.error : alert)('Maximum 500 line items per bill'); return; }
                 POS.cart.push({
@@ -749,6 +776,8 @@
                     // `pieces` is an optional count (e.g. 4 apples) recorded alongside the weight.
                     sell_loose: !!item.sell_loose,
                     pieces: item.sell_loose ? 1 : null,
+                    // Loose kg / litre items are keyed in grams / ml by default (how they are sold).
+                    wunit: item.sell_loose ? (subUnitOf(item.unit) || item.unit || '') : null,
                 });
                 // For a loose item, jump straight to the scale so the weight is captured.
                 if (item.sell_loose) weighLine(POS.cart.length - 1);
@@ -803,11 +832,15 @@
             addToCart(varData);
         }
 
-        // Weighing scale → set this line's qty (in the stock unit) from the connected scale.
+        // Weighing scale → set this line's qty from the connected scale. The agent reports kg,
+        // which is the stock unit. With no scale, focus the weight box so the cashier keys it in.
         function weighLine(i) {
             POSAgent.readScale().then(w => {
-                if (w && w > 0) { POS.cart[i].qty = Math.round(w * 1000) / 1000; renderCart(); }
-                else { (window.toastr ? toastr.error : alert)('Scale not connected — enter weight manually'); }
+                if (w && w > 0) { POS.cart[i].qty = Math.round(w * 1000) / 1000; renderCart(); return; }
+                renderCart();
+                const box = document.querySelector('#cart-body input[data-wq="' + i + '"]');
+                if (box) { box.focus(); box.select(); }
+                if (window.toastr) toastr.info('Scale not connected — enter the weight');
             });
         }
 
@@ -820,7 +853,7 @@
                     <tr>
                         <td>
                             <div class="cart-name">${l.name}</div>
-                            ${l.sell_loose ? `<div class="cart-sub" style="color:#1a7d4f">loose · weighed${l.unit ? ' (' + l.unit + ')' : ''}</div>` : ''}
+                            ${l.sell_loose ? `<div class="cart-sub" style="color:#1a7d4f">loose · weighed${l.unit ? ' · ' + (Math.round(l.qty * 1000) / 1000) + ' ' + l.unit : ''}</div>` : ''}
                             ${l.discount > 0 ? `<div class="cart-sub">− ₹${money(l.discount)} off</div>` : ''}
                         </td>
                         <td>
@@ -833,10 +866,12 @@
                             </div>
                             <div class="qty-stepper">
                                 <button class="qty-btn" onclick="chQty(${i},-1)">−</button>
-                                <input type="number" min="0" step="0.001" value="${l.qty}" title="Weight (from scale)"
+                                <input type="number" min="0" step="${inSubUnit(l) ? 1 : 0.001}" value="${entryQty(l)}"
+                                    data-wq="${i}" title="Weight — tap the unit to switch g / kg"
                                     onkeyup="liveQty(${i}, this.value)" onchange="setQty(${i}, this.value)" onfocus="this.select()"
                                     style="width:56px;text-align:center;border:0;background:transparent;font-weight:700;font-size:13px;-moz-appearance:textfield;">
-                                <span style="font-size:11px;color:var(--muted)">${l.unit || 'kg'}</span>
+                                <span onclick="toggleWUnit(${i})" title="${subUnitOf(l.unit) ? 'Switch ' + subUnitOf(l.unit) + ' / ' + l.unit : ''}"
+                                    style="font-size:11px;color:var(--accent);font-weight:700;${subUnitOf(l.unit) ? 'cursor:pointer;text-decoration:underline dotted;' : ''}">${entryUnit(l)}</span>
                                 <button class="qty-btn" onclick="chQty(${i},1)">+</button>
                                 <button class="qty-btn" title="Weigh on scale" onclick="weighLine(${i})">⚖</button>
                             </div>` : `
@@ -861,7 +896,8 @@
 
         function chQty(i, d) {
             const l = POS.cart[i];
-            const step = l.sell_loose ? 0.1 : 1;
+            // Loose steps in the unit being keyed: 10 g at a time in grams, 0.1 kg in kg.
+            const step = l.sell_loose ? (inSubUnit(l) ? 0.01 : 0.1) : 1;
             const min = l.sell_loose ? 0.001 : 1;
             l.qty = Math.max(min, Math.round((l.qty + d * step) * 1000) / 1000);
             renderCart();
@@ -870,19 +906,19 @@
         // running totals, without re-rendering the cart (which would steal input focus).
         function liveQty(i, v) {
             const l = POS.cart[i];
-            let q = parseFloat(v);
+            let q = entryToQty(l, v);
             if (!(q >= 0)) q = 0; // allow a transient/partial value mid-typing; normalised on blur
             l.qty = q;
             const cell = document.getElementById('ltot-' + i);
             if (cell) cell.textContent = money(l.price * l.qty - l.discount);
             recalc();
         }
-        // Typed quantity / weight — loose lines accept decimals (kg from the scale or by hand),
-        // normal lines stay whole. Price recalculates from the new quantity. Runs on blur/Enter
-        // to normalise (clamp to a minimum) and redraw the row cleanly.
+        // Typed quantity / weight — loose lines accept decimals and may be keyed in g / ml
+        // (converted to the stock unit here), normal lines stay whole. Price recalculates from the
+        // new quantity. Runs on blur/Enter to normalise (clamp to a minimum) and redraw cleanly.
         function setQty(i, v) {
             const l = POS.cart[i];
-            let q = parseFloat(v);
+            let q = entryToQty(l, v);
             if (!(q > 0)) q = l.sell_loose ? 0.001 : 1;
             l.qty = l.sell_loose ? Math.round(q * 1000) / 1000 : Math.max(1, Math.round(q));
             renderCart();
@@ -1503,6 +1539,7 @@
                     gst_rate: parseFloat(l.gst_rate) || 0, gst_status: l.gst_status || 'excluding',
                     unit: l.unit || '', sell_loose: !!l.sell_loose,
                     pieces: l.pieces ? parseInt(l.pieces, 10) : null,
+                    wunit: l.sell_loose ? (l.wunit || subUnitOf(l.unit) || l.unit || '') : null,
                 }));
                 POS.holdId = d.hold_id;
                 document.getElementById('pos-customer').value = d.customer_id || 0;
