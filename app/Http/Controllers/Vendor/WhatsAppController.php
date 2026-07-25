@@ -166,8 +166,8 @@ class WhatsAppController extends Controller
             ->orderByDesc('sent_at')->limit(15)
             ->get(['recipient', 'type', 'body', 'context', 'status', 'error', 'sent_at']);
 
-        // The vendor's own customer book — the audience for bulk sends, and what the Excel
-        // import below fills.
+        // The vendor's own customer book — what the Excel import below fills. The bulk-send
+        // audience is wider than this (see clientQuery()); this stat is about their own data.
         $customerStats = [
             'total'       => DB::table('store_customers')->where('store_id', $storeId)->count(),
             'with_phone'  => DB::table('store_customers')->where('store_id', $storeId)
@@ -479,37 +479,122 @@ class WhatsAppController extends Controller
         return back();
     }
 
-    /** Clients of this store that are actually reachable on WhatsApp. */
+    /**
+     * The shared store-customer pool: every customer the stores in this city have on their
+     * books, plus the orphan rows whose store_id was never saved (NULL or 0), which used to
+     * be reachable by nobody.
+     *
+     * Not scoped to $storeId — the pool is shared, so every store in the same city sees the
+     * same customers: 20 / 70 / 30 across three Tirupati stores is one pool of 120.
+     *
+     * City comes from the store whose book the row sits in, since store_customers has no zone
+     * of its own. Same rule as everywhere else: the store's zone (and every zone nested inside
+     * it), or no zone on record. Rows whose store_id was never saved — NULL or 0, previously
+     * reachable by nobody — count as unknown and stay in.
+     *
+     * Consent is `user_notification_prefs.nearby_offers`, the box the customer ticks on their
+     * own MyChitti account. Most people in these books were typed in or imported by a vendor
+     * and have no account at all, so a missing preference means "not excluded" — the flag only
+     * ever removes someone who has it turned off. The usual STOP opt-outs apply on top.
+     *
+     * Deduped on the last 10 digits of the phone, keeping the lowest id. Without it someone
+     * who appears in three vendors' books receives the same blast three times, which the old
+     * per-store scoping made impossible. The city filter is repeated inside the dedupe
+     * subquery — applied only outside it, the lowest id could belong to an out-of-city store
+     * and drop someone an in-city store also has.
+     */
     private function clientQuery(int $storeId)
     {
-        return $this->excludeOptedOut(
-            DB::table('store_customers')
-                ->where('store_id', $storeId)
-                ->whereNotNull('phone')
-                ->where('phone', '!=', ''),
-            $storeId
+        $phone10 = "RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10)";
+        $localStoreIds = $this->storeIdsInCity($storeId);
+
+        // Resolved to a list of store ids rather than joined to `stores`: that table has its
+        // own `phone` column, which would make the opt-out filter below ambiguous.
+        $reachable = function ($q) use ($localStoreIds) {
+            $q->whereNotNull('phone')
+                ->where('phone', '!=', '')
+                ->where(function ($w) use ($localStoreIds) {
+                    $w->whereNull('store_id')->orWhere('store_id', 0);
+                    if (!empty($localStoreIds)) {
+                        $w->orWhereIn('store_id', $localStoreIds);
+                    }
+                });
+        };
+
+        $query = DB::table('store_customers');
+        $reachable($query);
+
+        $query->whereIn('id', function ($q) use ($reachable, $phone10) {
+            $q->from('store_customers')->selectRaw('MIN(id)');
+            $reachable($q);
+            $q->groupByRaw($phone10);
+        });
+
+        // Phone-matched rather than joined: store_customers has no user_id, and the only thing
+        // tying a vendor's client row to a MyChitti account is the number.
+        $blocked = $this->offersOptedOutPhones();
+        if (!empty($blocked)) {
+            $query->whereNotIn(DB::raw($phone10), $blocked);
+        }
+
+        return $this->excludeOptedOut($query, $storeId);
+    }
+
+    /**
+     * Stores counting as "this store's city" — those sharing its zone or sitting in a zone
+     * nested inside it, plus stores that never set a zone at all.
+     */
+    private function storeIdsInCity(int $storeId): array
+    {
+        $zoneIds = Helpers::zone_with_descendants(
+            DB::table('stores')->where('id', $storeId)->value('zone_id')
         );
+
+        return DB::table('stores')
+            ->where(fn($q) => $this->inZoneOrUnknown($q, 'zone_id', $zoneIds))
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * Last-10-digit forms of numbers whose MyChitti account has nearby offers turned off.
+     * Only accounts with a saved preference row count — never having set one is not a refusal.
+     */
+    private function offersOptedOutPhones(): array
+    {
+        try {
+            UserNotificationPreference::ensureTable();
+            $phones = DB::table('users')
+                ->join('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
+                ->where('p.nearby_offers', 0)
+                ->whereNotNull('users.phone')
+                ->pluck('users.phone');
+        } catch (\Throwable $e) {
+            Log::warning('offers opt-out lookup failed: ' . $e->getMessage());
+            return [];
+        }
+
+        return array_values(array_unique(array_filter($phones
+            ->map(fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10))
+            ->all())));
     }
 
     /** Messages one person may receive from the shared nearby-offers pool per 30 days. */
     const NEARBY_MONTHLY_CAP = 4;
 
     /**
-     * Customers who opted in to hearing from nearby businesses they have no relationship with.
+     * MyChitti accounts that still accept offers from businesses they have no relationship
+     * with — everyone except those who turned it off in their settings or replied STOP.
      *
-     * Distinct from clientQuery(): these people consented to the shared pool, so any vendor in
-     * their zone may reach them. The frequency cap is what keeps the pool alive — without it
-     * the first vendors to find it each blast the same few hundred people, everyone opts out,
-     * and the pool is dead in a month.
+     * Distinct from clientQuery() in what it sends, not who it can reach: this pool carries a
+     * 30-day frequency cap, and the cap is what keeps it alive — without it the first vendors
+     * to find it each blast the same few hundred people, everyone opts out, and the pool is
+     * dead in a month.
      */
     private function nearbyUserQuery(int $storeId)
     {
         $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
         $zoneIds = Helpers::zone_with_descendants($zoneId);
-
-        if (empty($zoneIds)) {
-            return DB::table('users')->whereRaw('1 = 0');
-        }
 
         // ensureTable() rather than a bare hasTable() check: on an environment where the table
         // was created by an earlier deploy it exists but has no nearby_offers column, and the
@@ -527,12 +612,15 @@ class WhatsAppController extends Controller
             return DB::table('users')->whereRaw('1 = 0');
         }
 
+        // leftJoin: nearby offers are on by default, so most customers have no preference row
+        // at all. An inner join would reduce the pool to the handful who happen to have saved
+        // their settings at some point.
         $query = DB::table('users')
-            ->join('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
-            ->where('p.nearby_offers', 1)
-            // A pool opt-in never overrides turning WhatsApp off entirely.
-            ->where('p.whatsapp', 1)
-            ->whereIn('users.zone_id', $zoneIds)
+            ->leftJoin('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
+            ->where(fn($q) => $q->whereNull('p.nearby_offers')->orWhere('p.nearby_offers', 1))
+            // Staying in the pool never overrides turning WhatsApp off entirely.
+            ->where(fn($q) => $q->whereNull('p.whatsapp')->orWhere('p.whatsapp', 1))
+            ->where(fn($q) => $this->inZoneOrUnknown($q, 'users.zone_id', $zoneIds))
             ->whereNotNull('users.phone')
             ->where('users.phone', '!=', '')
             ->select('users.*');
@@ -598,25 +686,57 @@ class WhatsAppController extends Controller
      *
      * Matched against the store's zone AND every zone inside it, because zones nest: a store
      * registered in "India" or "Andhra Pradesh" must reach the Tirupati customers within it,
-     * not just the few tagged with that exact broad zone. A store with no zone gets nobody
-     * rather than everybody.
+     * not just the few tagged with that exact broad zone.
+     *
+     * Users whose zone was never resolved are included too — see inZoneOrUnknown().
+     *
+     * Gated on the same nearby_offers box as clientQuery(): a saved preference of 0 removes
+     * them, no preference row at all does not.
      */
     private function platformUserQuery(int $storeId)
     {
         $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
         $zoneIds = Helpers::zone_with_descendants($zoneId);
 
-        if (empty($zoneIds)) {
-            return DB::table('users')->whereRaw('1 = 0');
+        $query = DB::table('users')
+            ->where(fn($q) => $this->inZoneOrUnknown($q, 'users.zone_id', $zoneIds))
+            ->whereNotNull('users.phone')
+            ->where('users.phone', '!=', '')
+            ->select('users.*');
+
+        // leftJoin, not a phone match: these rows have a real user_id to key on.
+        try {
+            UserNotificationPreference::ensureTable();
+            $query->leftJoin('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
+                ->where(fn($q) => $q->whereNull('p.nearby_offers')->orWhere('p.nearby_offers', 1));
+        } catch (\Throwable $e) {
+            Log::warning('offers preference unavailable: ' . $e->getMessage());
         }
 
-        return $this->excludeOptedOut(
-            DB::table('users')
-                ->whereIn('zone_id', $zoneIds)
-                ->whereNotNull('phone')
-                ->where('phone', '!=', ''),
-            $storeId
-        );
+        return $this->excludeOptedOut($query, $storeId);
+    }
+
+    /**
+     * "Same city, or no city on record."
+     *
+     * users.zone_id is only written when the app actually learns where someone is — signup
+     * with location, an address, a service request, an order. Plenty of accounts never hit
+     * any of those and sit NULL (or 0, from an API path that cast a missing header), and
+     * excluding them made most of the customer base unreachable. They are treated as
+     * potentially local rather than definitely not.
+     *
+     * With no zone list at all — a store that never set its own zone — only the unknowns
+     * qualify, since there is no city to match against.
+     */
+    private function inZoneOrUnknown($query, string $column, array $zoneIds)
+    {
+        $query->whereNull($column)->orWhere($column, 0);
+
+        if (!empty($zoneIds)) {
+            $query->orWhereIn($column, $zoneIds);
+        }
+
+        return $query;
     }
 
     /**

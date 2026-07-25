@@ -201,10 +201,10 @@
                             <h5 class="card-title mb-0"><i class="tio-send"></i> Bulk Message</h5>
                             <div class="d-flex flex-wrap" style="gap:6px;">
                                 <span class="badge badge-soft-info">
-                                    {{ $clientCount }} {{ $clientCount == 1 ? 'client' : 'clients' }}
+                                    {{ $clientCount }} business {{ $clientCount == 1 ? 'customer' : 'customers' }}
                                 </span>
                                 <span class="badge badge-soft-primary">
-                                    {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }} in your zone
+                                    {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }}
                                 </span>
                             </div>
                         </div>
@@ -218,9 +218,9 @@
                             @if (empty($templates))
                                 <p class="text-muted mb-2">
                                     You could reach <b>{{ $clientCount + $platformUserCount }}</b> people —
-                                    {{ $clientCount }} of your own {{ $clientCount == 1 ? 'client' : 'clients' }}
+                                    {{ $clientCount }} business {{ $clientCount == 1 ? 'customer' : 'customers' }}
                                     and {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }}
-                                    in your zone — but you have no approved message templates yet. WhatsApp only allows
+                                    — but you have no approved message templates yet. WhatsApp only allows
                                     business-initiated messages using a template Meta has approved.
                                 </p>
                                 <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-primary">
@@ -255,7 +255,7 @@
                                     <ul class="nav nav-pills mb-3" style="gap:6px;">
                                         <li class="nav-item">
                                             <a href="javascript:;" class="nav-link active wb-mode" data-mode="clients" style="font-size:13px;padding:6px 14px;">
-                                                My clients <span class="badge badge-soft-light ml-1">{{ $clientCount }}</span>
+                                                Business customers <span class="badge badge-soft-light ml-1">{{ $clientCount }}</span>
                                             </a>
                                         </li>
                                         <li class="nav-item">
@@ -271,9 +271,14 @@
                                     </ul>
 
                                     <div id="wb-pane-clients">
+                                        <p class="text-muted mb-2" style="font-size:13px;">
+                                            Customers on record with businesses in your city — yours included.
+                                            Anyone who has turned <b>“offers from businesses near me”</b> off on their
+                                            MyChitti account, or replied STOP, is already excluded.
+                                        </p>
                                         <div class="d-flex mb-2" style="gap:8px;">
                                             <input id="wb-search" type="text" class="form-control form-control-sm"
-                                                   placeholder="Search clients by name or phone…">
+                                                   placeholder="Search customers by name or phone…">
                                             <button id="wb-select-all" type="button" class="btn btn-sm btn-outline-secondary text-nowrap">Select all</button>
                                             <button id="wb-clear" type="button" class="btn btn-sm btn-outline-secondary text-nowrap">Clear</button>
                                         </div>
@@ -313,22 +318,22 @@
                                     <div id="wb-pane-platform" style="display:none;">
                                         <div class="border rounded p-3">
                                             <p class="text-muted mb-2" style="font-size:13px;">
-                                                People who have requested services in your zone on MyChitti. You choose
-                                                how many to reach — their phone numbers stay private and are never
-                                                shown to you.
+                                                MyChitti users in your city, plus those whose city we don't have on
+                                                record. You choose how many to reach — their phone numbers stay
+                                                private and are never shown to you.
                                             </p>
                                             @if ($platformUserCount == 0)
                                                 <div class="alert alert-info mb-0" style="font-size:13px;">
-                                                    No MyChitti users have requested services in your zone yet, so there
-                                                    is nobody to reach here right now. This grows as customers in your
-                                                    area start using MyChitti — your own clients are unaffected.
+                                                    No MyChitti users match your city yet, so there is nobody to reach
+                                                    here right now. This grows as customers in your area start using
+                                                    MyChitti — business customers are unaffected.
                                                 </div>
                                             @else
                                                 <label style="font-size:12px;" class="mb-1">How many users to message</label>
                                                 <input id="wb-platform-count" type="number" class="form-control form-control-sm"
                                                        style="max-width:200px;" min="1" max="{{ $platformUserCount }}"
                                                        value="{{ min(50, $platformUserCount) }}">
-                                                <small class="text-muted d-block mt-1">Maximum {{ $platformUserCount }} in your zone.</small>
+                                                <small class="text-muted d-block mt-1">Maximum {{ $platformUserCount }} available.</small>
                                             @endif
                                         </div>
                                     </div>
@@ -638,10 +643,10 @@
             $send.addEventListener('click', function () {
                 var n = recipientCount();
                 var who = mode === 'clients'
-                    ? 'client(s)'
+                    ? 'business customer(s)'
                     : (mode === 'nearby'
                         ? 'people who opted in to offers from nearby businesses'
-                        : 'MyChitti user(s) in your zone');
+                        : 'MyChitti user(s)');
                 if (!confirm('Send this template to ' + n + ' ' + who + '?')) return;
                 sendBatches();
             });

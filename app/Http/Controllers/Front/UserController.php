@@ -706,7 +706,9 @@ class UserController extends Controller
         // Capture where they signed up from — $this->zone_id is the JSON zone list resolved by
         // _setLocation() in the constructor, and set_user_zone() takes the most specific zone.
         Helpers::set_user_zone($user->id, $this->zone_id);
-        \App\Models\UserNotificationPreference::setNearbyOffersAtSignup($user->id, $request->boolean('nearby_offers'));
+        if ($request->has('nearby_offers')) {
+            \App\Models\UserNotificationPreference::setNearbyOffersAtSignup($user->id, $request->boolean('nearby_offers'));
+        }
 
         $token = $user->createToken('RestaurantCustomerAuth')->accessToken;
 

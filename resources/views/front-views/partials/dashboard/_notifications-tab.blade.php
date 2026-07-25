@@ -42,7 +42,7 @@
                             <input class="form-check-input" type="checkbox" role="switch"
                                    style="width:46px;height:24px;cursor:pointer;"
                                    id="notif-nearby" name="nearby_offers" value="1"
-                                   {{ ($notification_prefs['nearby_offers'] ?? false) ? 'checked' : '' }}>
+                                   {{ ($notification_prefs['nearby_offers'] ?? true) ? 'checked' : '' }}>
                         </div>
                     </div>
                 </div>

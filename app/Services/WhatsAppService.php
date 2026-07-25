@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\CentralLogics\Helpers;
+use App\Models\UserNotificationPreference;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -952,11 +953,12 @@ class WhatsAppService
     }
 
     /**
-     * Record an opt-out. Always scoped to the store whose number was messaged.
+     * Record an opt-out, both for the store whose number was messaged and platform-wide.
      *
-     * When the number is not in that store's own client book we reached them through the
-     * platform user base, so the opt-out is also recorded platform-wide — otherwise the
-     * person would have to reply STOP separately to every vendor we hand their number to.
+     * The platform-wide row is not optional any more. Store customer books are a shared
+     * bulk-send pool now, so an opt-out scoped to one store would leave the person open to
+     * the identical campaign from every other store holding their number — they would have to
+     * reply STOP to each one in turn.
      */
     public static function recordOptOut(?int $storeId, string $phone, string $source = 'reply'): void
     {
@@ -966,25 +968,32 @@ class WhatsAppService
             return;
         }
 
-        $scopes = [$storeId];
-
-        $isOwnClient = $storeId && DB::table('store_customers')
-            ->where('store_id', $storeId)
-            ->whereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ?", ['%' . substr($normalized, -10)])
-            ->exists();
-
-        if (!$isOwnClient) {
-            $scopes[] = null;
-        }
-
-        foreach (array_unique($scopes, SORT_REGULAR) as $scope) {
+        foreach (array_unique([$storeId, null], SORT_REGULAR) as $scope) {
             DB::table('wa_opt_outs')->updateOrInsert(
                 ['store_id' => $scope, 'phone' => $normalized],
                 ['source' => $source, 'updated_at' => now(), 'created_at' => now()]
             );
         }
 
-        Log::info('WA opt-out recorded', ['store_id' => $storeId, 'phone' => $normalized, 'platform_wide' => !$isOwnClient]);
+        // Turn off nearby offers on their MyChitti account, so the same STOP covers the pool
+        // the vendor panel sends from.
+        //
+        // updateOrCreate, not update: nearby offers are on by default and most customers have
+        // no preference row at all, so an UPDATE would match nothing and the person would keep
+        // receiving exactly what they just asked to stop. The row IS the refusal.
+        try {
+            UserNotificationPreference::ensureTable();
+            $userIds = DB::table('users')
+                ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [substr($normalized, -10)])
+                ->pluck('id');
+            foreach ($userIds as $userId) {
+                UserNotificationPreference::updateOrCreate(['user_id' => $userId], ['nearby_offers' => false]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('opt-out offers clear failed: ' . $e->getMessage());
+        }
+
+        Log::info('WA opt-out recorded', ['store_id' => $storeId, 'phone' => $normalized, 'platform_wide' => true]);
     }
 
     /** Undo an opt-out — the customer turning WhatsApp back on in their dashboard. */

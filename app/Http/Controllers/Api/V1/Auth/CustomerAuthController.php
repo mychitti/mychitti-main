@@ -260,7 +260,11 @@ class CustomerAuthController extends Controller
         // The app sends its resolved zone as a header on every request — record it at signup
         // so the account has a location before the customer adds an address.
         Helpers::set_user_zone($user->id, $request->header('zoneId'));
-        \App\Models\UserNotificationPreference::setNearbyOffersAtSignup($user->id, $request->boolean('nearby_offers'));
+        // Only when the client actually sends the field. Nearby offers are on by default, and
+        // an app build that predates the checkbox would otherwise opt every new user out.
+        if ($request->has('nearby_offers')) {
+            \App\Models\UserNotificationPreference::setNearbyOffersAtSignup($user->id, $request->boolean('nearby_offers'));
+        }
 
         _sendSMSToAdmin("A new user registered on MYCHITTI", 'New User Registration');
 

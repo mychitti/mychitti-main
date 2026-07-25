@@ -66,10 +66,12 @@
                             <input type="checkbox" class="form-check-input" id="exampleCheck1">
                             <label class="form-check-label" for="exampleCheck1">Remember Me</label>
                         </div> -->
-                        {{-- Unticked on purpose: consent has to be an affirmative action, and a
-                             pre-ticked box would not be valid opt-in for marketing. --}}
+                        {{-- Ticked by default. Unticking here is recorded as a refusal, and it
+                             can also be turned off later from the account settings or by
+                             replying STOP on WhatsApp. --}}
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="nearbyOffers" name="nearby_offers" value="1">
+                            <input type="hidden" name="nearby_offers" value="0">
+                            <input type="checkbox" class="form-check-input" id="nearbyOffers" name="nearby_offers" value="1" checked>
                             <label class="form-check-label" for="nearbyOffers" style="font-size:13px;">
                                 Send me offers from businesses near me on WhatsApp
                             </label>

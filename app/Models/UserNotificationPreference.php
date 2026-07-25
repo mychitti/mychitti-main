@@ -44,17 +44,15 @@ class UserNotificationPreference extends Model
     ];
 
     /**
-     * Consent to hear from businesses the customer has no relationship with.
+     * Whether businesses the customer has no relationship with may message them.
      *
-     * Defaults to 0 and is only ever set by an affirmative action — a ticked box at signup or
-     * the dashboard toggle. Meta's Business Messaging Policy requires opt-in before marketing
-     * templates, and the DPDP Act 2023 requires consent to be a clear affirmative action, so a
-     * pre-ticked box would give a large pool with no defensible basis and would damage the
-     * sending vendor's number quality rating.
+     * On by default. The customer turns it off from the dashboard, by unticking it at signup,
+     * or by replying STOP on WhatsApp — see WhatsAppService::recordOptOut(), which writes a
+     * preference row even for people who never had one.
      */
     const NEARBY_OFFERS = [
         'label' => 'Offers from businesses near me',
-        'desc'  => 'Let local businesses you have not dealt with before send you offers on WhatsApp. Off unless you turn it on.',
+        'desc'  => 'Let local businesses you have not dealt with before send you offers on WhatsApp. Turn it off any time, here or by replying STOP.',
     ];
 
     public static function ensureTable(): void
@@ -66,7 +64,7 @@ class UserNotificationPreference extends Model
                 sms TINYINT(1) NOT NULL DEFAULT 1,
                 whatsapp TINYINT(1) NOT NULL DEFAULT 1,
                 push TINYINT(1) NOT NULL DEFAULT 1,
-                nearby_offers TINYINT(1) NOT NULL DEFAULT 0,
+                nearby_offers TINYINT(1) NOT NULL DEFAULT 1,
                 created_at TIMESTAMP NULL DEFAULT NULL,
                 updated_at TIMESTAMP NULL DEFAULT NULL,
                 PRIMARY KEY (id),
@@ -78,12 +76,12 @@ class UserNotificationPreference extends Model
 
         if (!Schema::hasColumn('user_notification_prefs', 'nearby_offers')) {
             DB::statement("ALTER TABLE user_notification_prefs
-                ADD COLUMN nearby_offers TINYINT(1) NOT NULL DEFAULT 0,
+                ADD COLUMN nearby_offers TINYINT(1) NOT NULL DEFAULT 1,
                 ADD KEY nearby_idx (nearby_offers)");
         }
     }
 
-    /** Delivery channels are on until the customer says otherwise; nearby offers never are. */
+    /** Everything is on until the customer says otherwise. */
     public static function forUser(int $userId): array
     {
         static::ensureTable();
@@ -93,18 +91,18 @@ class UserNotificationPreference extends Model
             'sms'           => $row ? (bool) $row->sms : true,
             'whatsapp'      => $row ? (bool) $row->whatsapp : true,
             'push'          => $row ? (bool) $row->push : true,
-            'nearby_offers' => $row ? (bool) $row->nearby_offers : false,
+            'nearby_offers' => $row ? (bool) $row->nearby_offers : true,
         ];
     }
 
-    /** Record the signup checkbox. Only ever writes an opt-in, never an opt-out. */
+    /**
+     * Record the signup checkbox. Writes the refusal too — with the box ticked by default,
+     * unticking it is the only signal we get, and dropping it would leave them opted in.
+     */
     public static function setNearbyOffersAtSignup(int $userId, bool $optedIn): void
     {
-        if (!$optedIn) {
-            return;
-        }
         static::ensureTable();
-        static::updateOrCreate(['user_id' => $userId], ['nearby_offers' => true]);
+        static::updateOrCreate(['user_id' => $userId], ['nearby_offers' => $optedIn]);
     }
 
     /** True when this customer still accepts $channel. Unknown users are left alone. */
