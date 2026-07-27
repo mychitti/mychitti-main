@@ -36,11 +36,12 @@ class SendAutoReply implements ShouldQueue
     public int $timeout = 150;
 
     /**
-     * Loop guard: if the other side is also a bot, stop after this many replies per window.
-     * Generous because legitimate booking conversations take 4-6 bot turns each — a real
-     * bot-to-bot loop burns through this in minutes and then goes quiet, which is the point.
+     * How many auto-replies one customer gets from one store per window. Past this the bot
+     * stops answering and the conversation is handed to the vendor (see handle()) — a question
+     * that has taken this many turns is not one the knowledge base is going to close. Doubles
+     * as the loop guard when the other side is also a bot.
      */
-    const MAX_PER_WINDOW = 40;
+    const MAX_PER_WINDOW = 10;
     const WINDOW_HOURS   = 6;
 
     /** How much of the thread the model sees for context. */
@@ -117,7 +118,10 @@ class SendAutoReply implements ShouldQueue
                     ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
                     ->where('sent_at', '>=', now()->subHours(self::WINDOW_HOURS))
             )->count();
+            // Cap reached — hand the conversation to a human instead of going silent. escalate()
+            // is deduped for 30 minutes per customer, so a burst of messages raises one alert.
             if ($sentRecently >= self::MAX_PER_WINDOW) {
+                $this->escalate($key, 'Auto-reply limit reached (' . self::MAX_PER_WINDOW . ' replies in ' . self::WINDOW_HOURS . 'h)');
                 return;
             }
 

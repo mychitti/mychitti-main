@@ -3434,7 +3434,13 @@ class RetailPosController extends Controller
             DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)
                 ->update(['stock' => DB::raw('stock + ' . $qty), 'updated_at' => now()]);
         } else {
-            InventoryItem::where('id', $itemId)->where('store_id', $storeId)->update(['stock' => DB::raw('stock + ' . $qty)]);
+            // Mass update bypasses model events, so the stock_base dual-write would be skipped.
+            // Go through the model instead — one row, and the saving hook keeps both in step.
+            $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
+            if ($item) {
+                $item->stock = (float) $item->stock + $qty;
+                $item->save();
+            }
         }
     }
 

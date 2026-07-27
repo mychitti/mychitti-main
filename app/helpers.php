@@ -1873,6 +1873,168 @@ if (!function_exists('_poTNC')) {
         return $tnc ? $tnc->terms_n_conditons : null;
     }
 }
+if (!function_exists('_unitDimensionSeed')) {
+    /**
+     * Canonical unit table: dimension + how many BASE units one of this unit equals.
+     * Base unit per dimension is the smallest we transact in — gram, millimetre,
+     * millilitre, piece — so every conversion in the app is a single multiplication
+     * and stock can be held as one number regardless of how it was bought or sold.
+     */
+    function _unitDimensionSeed(): array
+    {
+        return [
+            // code      => [dimension, factor to base, display name]
+            'mg'         => ['weight', 0.001,     'Milligram'],
+            'g'          => ['weight', 1,         'Gram'],
+            'gram'       => ['weight', 1,         'Gram'],
+            'kg'         => ['weight', 1000,      'Kilogram'],
+            'kilogram'   => ['weight', 1000,      'Kilogram'],
+            'quintal'    => ['weight', 100000,    'Quintal'],
+            'ton'        => ['weight', 1000000,   'Tonne'],
+            'tonne'      => ['weight', 1000000,   'Tonne'],
+
+            'mm'         => ['length', 1,         'Millimetre'],
+            'cm'         => ['length', 10,        'Centimetre'],
+            'inch'       => ['length', 25.4,      'Inch'],
+            'in'         => ['length', 25.4,      'Inch'],
+            'feet'       => ['length', 304.8,     'Foot'],
+            'ft'         => ['length', 304.8,     'Foot'],
+            'm'          => ['length', 1000,      'Metre'],
+            'meter'      => ['length', 1000,      'Metre'],
+            'metre'      => ['length', 1000,      'Metre'],
+            'km'         => ['length', 1000000,   'Kilometre'],
+
+            'ml'         => ['volume', 1,         'Millilitre'],
+            'l'          => ['volume', 1000,      'Litre'],
+            'ltr'        => ['volume', 1000,      'Litre'],
+            'litre'      => ['volume', 1000,      'Litre'],
+            'liter'      => ['volume', 1000,      'Litre'],
+
+            'pc'         => ['count',  1,         'Piece'],
+            'pcs'        => ['count',  1,         'Piece'],
+            'piece'      => ['count',  1,         'Piece'],
+            'nos'        => ['count',  1,         'Piece'],
+            'unit'       => ['count',  1,         'Piece'],
+            'dozen'      => ['count',  12,        'Dozen'],
+        ];
+    }
+}
+if (!function_exists('_baseUnitForDimension')) {
+    function _baseUnitForDimension(?string $dimension): string
+    {
+        return [
+            'weight' => 'g',
+            'length' => 'mm',
+            'volume' => 'ml',
+            'count'  => 'pc',
+        ][$dimension] ?? 'pc';
+    }
+}
+if (!function_exists('_ensureUnitDimensionColumns')) {
+    /**
+     * Phase 2 of the unit rework: give every unit a dimension and a factor to its base unit,
+     * so conversion stops being a per-item primary/secondary pair. Additive and idempotent —
+     * nothing reads these columns yet.
+     *
+     * Unrecognised units are left dimension NULL / factor 1, which behaves exactly as today.
+     */
+    function _ensureUnitDimensionColumns()
+    {
+        static $done = false;
+        if ($done || !\Illuminate\Support\Facades\Schema::hasTable('units')) {
+            return;
+        }
+        $done = true;
+
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('units', 'dimension')) {
+                DB::statement("ALTER TABLE `units` ADD COLUMN `dimension` VARCHAR(20) NULL AFTER `unit`");
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('units', 'factor')) {
+                DB::statement("ALTER TABLE `units` ADD COLUMN `factor` DECIMAL(20,9) NOT NULL DEFAULT 1 AFTER `dimension`");
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('units', 'code')) {
+                DB::statement("ALTER TABLE `units` ADD COLUMN `code` VARCHAR(20) NULL AFTER `factor`");
+            }
+
+            // Backfill by name. Only fills rows not already classified, so an admin correction
+            // is never overwritten on the next request.
+            $seed = _unitDimensionSeed();
+            foreach (DB::table('units')->whereNull('dimension')->get(['id', 'unit']) as $row) {
+                $key = mb_strtolower(trim((string) $row->unit));
+                if (!isset($seed[$key])) {
+                    continue;
+                }
+                [$dimension, $factor, $label] = $seed[$key];
+                DB::table('units')->where('id', $row->id)->update([
+                    'dimension' => $dimension,
+                    'factor'    => $factor,
+                    'code'      => $key,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('unit dimension provisioning failed: ' . $e->getMessage());
+        }
+    }
+}
+if (!function_exists('_ensureStockBaseColumn')) {
+    /**
+     * Phase 3: stock_base holds the item's stock in its dimension's BASE unit (grams,
+     * millimetres, millilitres, pieces) — one canonical number no matter which unit the
+     * stock was bought or sold in. Written alongside the legacy `stock` column by the
+     * InventoryItem saving hook; nothing reads it until the numbers are proven to agree.
+     */
+    function _ensureStockBaseColumn()
+    {
+        static $done = false;
+        if ($done || !\Illuminate\Support\Facades\Schema::hasTable('inventory_items')) {
+            return;
+        }
+        $done = true;
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'stock_base')) {
+                DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `stock_base` DECIMAL(24,4) NULL AFTER `stock`");
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'base_unit')) {
+                DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `base_unit` VARCHAR(10) NULL AFTER `stock_base`");
+            }
+        } catch (\Throwable $e) {
+            Log::error('stock_base provisioning failed: ' . $e->getMessage());
+        }
+    }
+}
+if (!function_exists('_stockBaseFor')) {
+    /**
+     * Convert an item's legacy `stock` (held in its display unit) to base units.
+     * Returns [stock_base, base_unit_code].
+     */
+    function _stockBaseFor($unitId, $stock): array
+    {
+        $row = $unitId
+            ? DB::table('units')->where('id', $unitId)->first(['dimension', 'factor'])
+            : null;
+        $dimension = $row->dimension ?? null;
+        $factor    = (float) ($row->factor ?? 1);
+        if ($factor <= 0) {
+            $factor = 1.0;
+        }
+        return [round((float) $stock * $factor, 4), _baseUnitForDimension($dimension)];
+    }
+}
+if (!function_exists('_unitFactor')) {
+    /** Factor to the dimension's base unit. Unknown/unclassified units behave as 1:1. */
+    function _unitFactor($unitId): float
+    {
+        static $cache = [];
+        if (!$unitId) {
+            return 1.0;
+        }
+        if (!array_key_exists($unitId, $cache)) {
+            $cache[$unitId] = (float) (DB::table('units')->where('id', $unitId)->value('factor') ?: 1);
+        }
+        return $cache[$unitId] > 0 ? $cache[$unitId] : 1.0;
+    }
+}
 if (!function_exists('_ensureDecimalStockColumns')) {
     // Stock must hold decimals (e.g. 61.6 kg). Widen any legacy integer stock columns
     // to DECIMAL once per request — idempotent, no migration files.
@@ -1905,6 +2067,8 @@ if (!function_exists('_updateInventoryStock')) {
     {
         try {
             _ensureDecimalStockColumns();
+            _ensureUnitDimensionColumns();
+            _ensureStockBaseColumn();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -1957,6 +2121,8 @@ if (!function_exists('_restoreInventoryStock')) {
     {
         try {
             _ensureDecimalStockColumns();
+            _ensureUnitDimensionColumns();
+            _ensureStockBaseColumn();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -2034,6 +2200,8 @@ if (!function_exists('_incrementInventoryStock')) {
     {
         try {
             _ensureDecimalStockColumns();
+            _ensureUnitDimensionColumns();
+            _ensureStockBaseColumn();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -4184,17 +4352,28 @@ if (!function_exists('_saveUnitIfNotExist')) {
                 return Unit::where('id', $inv_unit)->first()->unit;
             }
         } else {
-            $existing = Unit::where('unit', 'like', "%{$unitInput}%")->first();
+            // Exact (case-insensitive) match only. The old LIKE "%input%" matched on substrings,
+            // so entering "g" resolved to "kg" and "m" to whatever contained an m — silently
+            // filing stock against the wrong unit. Match the canonical code too, so "kg" finds
+            // the Kilogram row regardless of how its display name is spelled.
+            $needle = trim((string) $unitInput);
+            if ($needle === '') {
+                return $getField == 'name' ? null : null;
+            }
+            $existing = Unit::whereRaw('LOWER(TRIM(unit)) = ?', [mb_strtolower($needle)])->first();
+            if (!$existing && \Illuminate\Support\Facades\Schema::hasColumn('units', 'code')) {
+                $existing = Unit::whereRaw('LOWER(TRIM(code)) = ?', [mb_strtolower($needle)])->first();
+            }
             if ($existing) {
                 $inv_unit = $existing->id;
             } else {
                 $unit = new Unit();
-                $unit->unit = $unitInput;
+                $unit->unit = $needle;
                 $unit->save();
                 $inv_unit = $unit->id;
             }
             if ($getField == 'name') {
-                return  $unitInput;
+                return  $needle;
             }
         }
 

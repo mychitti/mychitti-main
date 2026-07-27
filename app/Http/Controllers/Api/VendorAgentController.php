@@ -182,6 +182,17 @@ class VendorAgentController extends Controller
                 if (isset($data['sku']))            { $data['sku_id'] = $data['sku']; unset($data['sku']); }
                 $data['updated_at'] = now();
                 DB::table('inventory_items')->where('id', $id)->where('store_id', $storeId)->update($data);
+                // A query-builder update skips model events, so re-derive stock_base explicitly
+                // when this call touched stock or the unit (see InventoryItem::booted).
+                if (array_key_exists('stock', $data) || array_key_exists('unit', $data)) {
+                    $item = \App\Models\InventoryItem::where('id', $id)->where('store_id', $storeId)->first();
+                    if ($item && \Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'stock_base')) {
+                        [$base, $baseUnit] = _stockBaseFor($item->unit, $item->stock);
+                        $item->stock_base = $base;
+                        $item->base_unit  = $baseUnit;
+                        $item->save();
+                    }
+                }
                 return response()->json(['success' => true, 'message' => "Item #{$id} updated."]);
 
             case 'low_stock':

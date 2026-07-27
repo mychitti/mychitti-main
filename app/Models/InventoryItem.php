@@ -41,6 +41,8 @@ class InventoryItem extends Model
         'choice_options',
         'attributes',
         'stock',
+        'stock_base',
+        'base_unit',
         'selling_price',
         'selling_price_basis',
         'show_on_store_page',
@@ -90,6 +92,26 @@ class InventoryItem extends Model
 
     protected static function booted()
     {
+        // Unit rework phase 3 — keep stock_base (the item's stock in its dimension's base unit)
+        // in step with every write to `stock`, wherever it comes from. Hooking the model rather
+        // than the ~17 call sites means no write path can drift. Nothing reads stock_base yet;
+        // it exists so the two numbers can be reconciled before anything depends on it.
+        static::saving(function ($inventoryItem) {
+            $needsRecompute = !$inventoryItem->exists
+                || $inventoryItem->isDirty('stock')
+                || $inventoryItem->isDirty('unit')
+                || $inventoryItem->stock_base === null; // progressive backfill on any save
+            if (!$needsRecompute) {
+                return;
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'stock_base')) {
+                return;
+            }
+            [$base, $baseUnit] = _stockBaseFor($inventoryItem->unit, $inventoryItem->stock);
+            $inventoryItem->stock_base = $base;
+            $inventoryItem->base_unit  = $baseUnit;
+        });
+
         static::saved(function ($inventoryItem) {
             if ($inventoryItem->wasChanged('stock')) {
                 \App\Models\Item::withoutGlobalScopes()
