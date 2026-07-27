@@ -172,12 +172,18 @@
      var unitOptions = `{!! \App\Models\Unit::all()->map(function ($unit) {
              return "<option value='{$unit->id}'>{$unit->unit}</option>";
          })->implode('') !!}`;
-     var allUnits = @json(\App\Models\Unit::select('id', 'unit')->get());
+     var allUnits = {!! \App\Models\Unit::select('id', 'unit', 'dimension', 'factor')->get()->toJson() !!};
 
+     // Any unit of the item's dimension is offered, so a kg item can be bought in tonnes and
+     // sold in grams from the same stock. The server converts by factor ratio on save
+     // (_qtyInItemUnit), so stock storage is unchanged.
+     //
+     // Items whose unit has no dimension yet fall back to the old behaviour: their own unit,
+     // plus any legacy secondary unit.
      function buildUnitOptions(item) {
          let options = `<option value="" selected disabled >-- Unit --</option>`;
 
-         // No item → show all units
+         // No item - show all units
          if (!item) {
              allUnits.forEach(u => {
                  options += `<option value="${u.id}">${u.unit}</option>`;
@@ -185,7 +191,22 @@
              return options;
          }
 
-         // Item has secondary unit → show both
+         const itemUnit = allUnits.find(u => u.id == item.unit);
+         const dimension = itemUnit ? itemUnit.dimension : null;
+
+         // Classified item - every unit sharing its dimension, smallest first.
+         if (dimension) {
+             allUnits
+                 .filter(u => u.dimension === dimension)
+                 .sort((a, b) => parseFloat(a.factor) - parseFloat(b.factor))
+                 .forEach(u => {
+                     options +=
+                         `<option value="${u.id}" ${u.id == item.unit ? 'selected' : ''}>${u.unit}</option>`;
+                 });
+             return options;
+         }
+
+         // Unclassified item with a legacy secondary unit - show both
          if (item.secondary_unit) {
              allUnits.forEach(u => {
                  if (u.id == item.unit || u.id == item.secondary_unit) {
@@ -196,7 +217,7 @@
              return options;
          }
 
-         // Item has only primary unit → show only that
+         // Unclassified item, primary unit only
          allUnits.forEach(u => {
              if (u.id == item.unit) {
                  options += `<option value="${u.id}" selected>${u.unit}</option>`;
@@ -255,7 +276,8 @@
          data-secondary-unit="${item?.secondary_unit ?? ''}"
     data-primary-qty="${item?.primary_qty ?? 0}"
     data-secondary-qty="${item?.secondary_qty ?? 0}"
-    data-primary-price="${item?.selling_price ?? 0}" 
+    data-primary-price="${item?.selling_price ?? 0}"
+    data-item-unit="${item?.unit ?? ''}" 
     data-inventory-stock="${item && item.id ? (item.stock != null && item.stock !== '' ? item.stock : 0) : ''}">
                        <input type="hidden" name="inventory_item_id[]" value="` + item_id +
              `"  class="form-control">
@@ -342,24 +364,30 @@
      }
 
      function updatePriceByUnit($row) {
-         {{-- console.log($row) --}}
          let selectedUnit = $row.find('.unit').val();
 
-         let primaryUnit = $row.data('primary-unit');
          let secondaryUnit = $row.data('secondary-unit');
+         let itemUnit = $row.data('item-unit');
 
          let primaryPrice = parseFloat($row.data('primary-price')) || 0;
          let primaryQty = parseFloat($row.data('primary-qty')) || 0;
          let secondaryQty = parseFloat($row.data('secondary-qty')) || 0;
 
-         {{-- console.log('primaryUnit' + primaryUnit)
-         console.log('secondaryUnit' + secondaryUnit)
-         console.log('primaryPrice' + primaryPrice)
-         console.log('primaryQty' + primaryQty)
-         console.log('secondaryQty' + secondaryQty) --}}
-
          let $priceInput = $row.find('.price');
-         // Secondary unit selected → derive price
+
+         // Price scales with the same factor ratio as quantity: an item priced per kg is
+         // priced x1000 per tonne and /1000 per gram, so the line total stays honest
+         // whichever unit the user picks.
+         let entered = allUnits.find(u => u.id == selectedUnit);
+         let base = allUnits.find(u => u.id == itemUnit);
+         if (entered && base && entered.dimension && base.dimension &&
+             entered.dimension === base.dimension && parseFloat(base.factor) > 0) {
+             let ratio = parseFloat(entered.factor) / parseFloat(base.factor);
+             $priceInput.val((primaryPrice * ratio).toFixed(3));
+             return;
+         }
+
+         // Legacy secondary-unit pair
          if (
              secondaryUnit &&
              selectedUnit == secondaryUnit &&
@@ -367,8 +395,7 @@
              secondaryQty > 0
          ) {
              let conversionRate = primaryQty / secondaryQty;
-             let secondaryPrice = primaryPrice * conversionRate;
-             $priceInput.val(secondaryPrice.toFixed(3));
+             $priceInput.val((primaryPrice * conversionRate).toFixed(3));
          } else {
              $priceInput.val(primaryPrice.toFixed(3));
          }

@@ -160,17 +160,30 @@
                                 $rowId = $loop->iteration;
                                 $lineTaxable = (float) $item->price * (float) $item->qty;
                                 $lineTotal = $lineTaxable + $lineTaxable * ((float) $item->tax / 100);
-                                $allowedUnits = $inv
-                                    ? array_values(array_filter([$inv->unit, $inv->secondary_unit]))
-                                    : $units->pluck('id')->all();
+                                // Offer every unit of the item's dimension, so a kg item can be
+                                // billed in tonnes or grams. Unclassified items keep the old
+                                // behaviour: their own unit plus any legacy secondary.
+                                $itemUnit = $inv ? $units->firstWhere('id', $inv->unit) : null;
+                                $dimension = $itemUnit->dimension ?? null;
+                                if ($dimension) {
+                                    $allowedUnits = $units->where('dimension', $dimension)->pluck('id')->all();
+                                } elseif ($inv) {
+                                    $allowedUnits = array_values(array_filter([$inv->unit, $inv->secondary_unit]));
+                                } else {
+                                    $allowedUnits = $units->pluck('id')->all();
+                                }
                                 if ($item->unit && !in_array($item->unit, $allowedUnits)) {
                                     $allowedUnits[] = $item->unit;
                                 }
+
                                 // updatePriceByUnit() rewrites the price from data-primary-price whenever the
-                                // unit changes. Seed it from the bill's own price (back-converted when the line
-                                // is in the secondary unit) so switching units never clobbers the saved rate.
+                                // unit changes, so seed it as the price in the ITEM's own unit — back-converted
+                                // from whatever unit this line was saved in.
                                 $primaryPrice = (float) $item->price;
-                                if (
+                                $lineUnit = $units->firstWhere('id', $item->unit);
+                                if ($dimension && $lineUnit && ($lineUnit->dimension ?? null) === $dimension && (float) $lineUnit->factor > 0) {
+                                    $primaryPrice = (float) $item->price / ((float) $lineUnit->factor / (float) $itemUnit->factor);
+                                } elseif (
                                     $inv &&
                                     $inv->secondary_unit &&
                                     $item->unit == $inv->secondary_unit &&
@@ -186,6 +199,7 @@
                                 data-primary-qty="{{ $inv->primary_qty ?? 0 }}"
                                 data-secondary-qty="{{ $inv->secondary_qty ?? 0 }}"
                                 data-primary-price="{{ $primaryPrice }}"
+                                data-item-unit="{{ $inv->unit ?? '' }}"
                                 data-inventory-stock="{{ $inv ? $inv->stock ?? 0 : '' }}">
                                 <input type="hidden" name="inventory_item_id[]" value="{{ $item->inv_id }}"
                                     class="form-control">

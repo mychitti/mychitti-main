@@ -1919,6 +1919,72 @@ if (!function_exists('_unitDimensionSeed')) {
         ];
     }
 }
+if (!function_exists('_canonicalUnits')) {
+    /**
+     * The unit ladder every dimension should offer. _unitDimensionSeed() only classifies units
+     * that already exist; this is the set that must EXIST, so a store whose units table only
+     * ever held "kg" can still buy in tonnes and sell in grams.
+     */
+    function _canonicalUnits(): array
+    {
+        return [
+            // code, display name, dimension, factor
+            ['mg',      'mg',      'weight', 0.001],
+            ['g',       'g',       'weight', 1],
+            ['kg',      'kg',      'weight', 1000],
+            ['quintal', 'quintal', 'weight', 100000],
+            ['ton',     'ton',     'weight', 1000000],
+
+            ['mm',      'mm',      'length', 1],
+            ['cm',      'cm',      'length', 10],
+            ['inch',    'inch',    'length', 25.4],
+            ['ft',      'ft',      'length', 304.8],
+            ['m',       'm',       'length', 1000],
+            ['km',      'km',      'length', 1000000],
+
+            ['ml',      'ml',      'volume', 1],
+            ['l',       'l',       'volume', 1000],
+
+            ['pc',      'pc',      'count',  1],
+            ['dozen',   'dozen',   'count',  12],
+        ];
+    }
+}
+if (!function_exists('_ensureCanonicalUnits')) {
+    /**
+     * Create any missing rung of the ladder. Deduped on (dimension, factor) rather than name,
+     * so a store that already calls it "Kilogram" or "KG" is left alone instead of gaining a
+     * second row meaning the same thing.
+     */
+    function _ensureCanonicalUnits(): void
+    {
+        try {
+            $existing = DB::table('units')->whereNotNull('dimension')->get(['dimension', 'factor']);
+            $have = [];
+            foreach ($existing as $row) {
+                $have[$row->dimension . ':' . rtrim(rtrim(number_format((float) $row->factor, 9, '.', ''), '0'), '.')] = true;
+            }
+
+            foreach (_canonicalUnits() as [$code, $name, $dimension, $factor]) {
+                $key = $dimension . ':' . rtrim(rtrim(number_format((float) $factor, 9, '.', ''), '0'), '.');
+                if (isset($have[$key])) {
+                    continue;
+                }
+                DB::table('units')->insert([
+                    'unit'       => $name,
+                    'code'       => $code,
+                    'dimension'  => $dimension,
+                    'factor'     => $factor,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $have[$key] = true;
+            }
+        } catch (\Throwable $e) {
+            Log::error('canonical unit seeding failed: ' . $e->getMessage());
+        }
+    }
+}
 if (!function_exists('_baseUnitForDimension')) {
     function _baseUnitForDimension(?string $dimension): string
     {
@@ -1972,9 +2038,60 @@ if (!function_exists('_ensureUnitDimensionColumns')) {
                     'code'      => $key,
                 ]);
             }
+
+            // Classifying what exists is not enough — a store whose units table only holds "kg"
+            // has no tonne row to pick, so fill in the rest of each ladder.
+            _ensureCanonicalUnits();
         } catch (\Throwable $e) {
             Log::error('unit dimension provisioning failed: ' . $e->getMessage());
         }
+    }
+}
+if (!function_exists('_qtyInItemUnit')) {
+    /**
+     * Convert a quantity entered in $unit into the item's own stock unit.
+     *
+     * Uses the unit factor table, so any unit of the same dimension works — buy in tonnes
+     * against a kg item, sell 150 g from it, all from one pool. Stock storage is unchanged;
+     * only the number being added or removed is converted.
+     *
+     *   item = kg (1000), entered 2 ton (1000000)  →  2 * (1000000/1000) = 2000 kg
+     *   item = kg (1000), entered 150 g (1)        →  150 * (1/1000)     = 0.15 kg
+     *
+     * Falls back to the legacy per-item primary/secondary pair when either unit has no
+     * dimension yet, so unclassified units keep behaving exactly as they do today.
+     */
+    function _qtyInItemUnit($inv_item, $qty, $unit = null)
+    {
+        $qty = (float) $qty;
+        if (!$unit || !$inv_item || $unit == $inv_item->unit) {
+            return $qty;
+        }
+
+        $entered = DB::table('units')->where('id', $unit)->first(['dimension', 'factor']);
+        $target  = DB::table('units')->where('id', $inv_item->unit)->first(['dimension', 'factor']);
+
+        // Both classified and in the same dimension → factor ratio.
+        if (
+            $entered && $target
+            && !empty($entered->dimension) && !empty($target->dimension)
+            && $entered->dimension === $target->dimension
+            && (float) $target->factor > 0
+        ) {
+            return $qty * ((float) $entered->factor / (float) $target->factor);
+        }
+
+        // Legacy fallback: the item's own secondary-unit pair.
+        if (
+            $inv_item->secondary_unit
+            && $unit == $inv_item->secondary_unit
+            && $inv_item->primary_qty > 0
+            && $inv_item->secondary_qty > 0
+        ) {
+            return $qty * ($inv_item->primary_qty / $inv_item->secondary_qty);
+        }
+
+        return $qty;
     }
 }
 if (!function_exists('_ensureStockBaseColumn')) {
@@ -2077,24 +2194,9 @@ if (!function_exists('_updateInventoryStock')) {
                 return;
             }
 
-            $deductQty = $qty;
-
-            // Convert ONLY if:
-            // 1. unit is provided
-            // 2. item has secondary unit
-            // 3. selected unit matches secondary unit
-            // 4. conversion values are valid
-            if (
-                $unit &&
-                $inv_item->secondary_unit &&
-                $unit == $inv_item->secondary_unit &&
-                $inv_item->primary_qty > 0 &&
-                $inv_item->secondary_qty > 0
-            ) {
-                // 1 secondary = primary_qty / secondary_qty
-                $conversionRate = $inv_item->primary_qty / $inv_item->secondary_qty;
-                $deductQty = $qty * $conversionRate;
-            }
+            // Any unit of the item's dimension is accepted and converted into the item's
+            // own stock unit (see _qtyInItemUnit).
+            $deductQty = _qtyInItemUnit($inv_item, $qty, $unit);
 
             // Update stock (always in primary unit)
             $updated_stock = $inv_item->stock - $deductQty;
@@ -2131,17 +2233,7 @@ if (!function_exists('_restoreInventoryStock')) {
                 return;
             }
 
-            $addQty = $qty;
-            if (
-                $unit &&
-                $inv_item->secondary_unit &&
-                $unit == $inv_item->secondary_unit &&
-                $inv_item->primary_qty > 0 &&
-                $inv_item->secondary_qty > 0
-            ) {
-                $conversionRate = $inv_item->primary_qty / $inv_item->secondary_qty;
-                $addQty = $qty * $conversionRate;
-            }
+            $addQty = _qtyInItemUnit($inv_item, $qty, $unit);
 
             $inv_item->stock = (float) $inv_item->stock + $addQty;
             $inv_item->save();
@@ -2210,18 +2302,7 @@ if (!function_exists('_incrementInventoryStock')) {
                 return;
             }
 
-            $addQty = (float) $qty;
-
-            if (
-                $unit &&
-                $inv_item->secondary_unit &&
-                $unit == $inv_item->secondary_unit &&
-                $inv_item->primary_qty > 0 &&
-                $inv_item->secondary_qty > 0
-            ) {
-                $conversionRate = $inv_item->primary_qty / $inv_item->secondary_qty;
-                $addQty = $qty * $conversionRate;
-            }
+            $addQty = _qtyInItemUnit($inv_item, $qty, $unit);
 
             $inv_item->stock = $inv_item->stock + $addQty;
             $inv_item->save();
