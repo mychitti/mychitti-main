@@ -17,7 +17,7 @@
                                  use Illuminate\Support\Str;
                              @endphp
 
-                             @if (!Str::endsWith(request()->route()->getName(), 'vendor.task.add') && !Str::endsWith(request()->route()->getName(), 'vendor.invoice.my-bills') )
+                             @if (!Str::endsWith(request()->route()->getName(), 'vendor.task.add') && !Str::endsWith(request()->route()->getName(), 'vendor.invoice.my-bills') && !Str::endsWith(request()->route()->getName(), 'vendor.invoice.purchase-bill.edit') )
                                  <option value="add_new">&#43; Add New Item</option>
                              @endif
                              @php $inventory_items = _getInventoryItems(); @endphp

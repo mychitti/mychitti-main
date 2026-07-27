@@ -2001,6 +2001,33 @@ if (!function_exists('_ensureRetailPosStoreType')) {
         }
     }
 }
+if (!function_exists('_ensurePurchaseBillEditPermission')) {
+
+    // purchase_bill was only ever seeded with list/add/import/view, so the role grid has no row to
+    // grant the new edit action against — nor the delete action, even though the delete button has
+    // shipped in the bills list for a long time. Self-heal both.
+    function _ensurePurchaseBillEditPermission()
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('features') || !\Illuminate\Support\Facades\Schema::hasTable('feature_permissions')) {
+            return;
+        }
+        $featureId = DB::table('features')->where('name', 'purchase_bill')->value('id');
+        if (!$featureId) {
+            return;
+        }
+        $free = DB::table('feature_permissions')->where('feature_id', $featureId)->where('action', 'add')->value('free') ?? 0;
+        foreach (['update' => 'Update', 'delete' => 'Delete'] as $action => $label) {
+            if (!DB::table('feature_permissions')->where('feature_id', $featureId)->where('action', $action)->exists()) {
+                DB::table('feature_permissions')->insert([
+                    'feature_id' => $featureId,
+                    'action' => $action,
+                    'display_name' => $label,
+                    'free' => $free,
+                ]);
+            }
+        }
+    }
+}
 if (!function_exists('_incrementInventoryStock')) {
 
     function _incrementInventoryStock($inv_item_id, $qty, $unit = null)

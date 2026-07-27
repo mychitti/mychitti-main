@@ -16,6 +16,9 @@ use App\Library\Payment as PaymentInfo;
 use App\Library\Receiver;
 use App\Models\AccountDetail;
 use App\Models\Category as ModelsCategory;
+use App\Models\DayBook;
+use App\Models\InventoryGatepass;
+use App\Models\InventoryGatepassItem;
 use App\Models\InventoryItem;
 use App\Models\InvoiceItem;
 use App\Models\ManualTrial; 
@@ -26,7 +29,10 @@ use App\Models\StoreLedgerEntry;
 use App\Models\StoreSignature;
 use App\Models\StoreTnc;
 use App\Models\StoreVoucher;
+use App\Models\SupplyOrder;
+use App\Models\SupplyOrderItem;
 use App\Models\TaxRate;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorEmployee;
@@ -1469,6 +1475,215 @@ class BillingController extends Controller
     _auditLogs('Deleted Purchase Invoice : ' . $invoice->invoice_id);
     InvoiceItem::where('manual_invoice_id', $invoice->id)->delete();
     return redirect()->back();
+  }
+
+  public function purchase_bill_edit(Request $request, $id)
+  {
+    _ensurePurchaseBillEditPermission();
+
+    $storeId = Helpers::get_store_id();
+    $invoice = ManualInvoice::where('id', $id)->where('bill_to', $storeId)->where('bill_to_type', 'vendor')->first();
+    if (!$invoice) {
+      Toastr::error('Purchase bill not found');
+      return redirect()->route('vendor.invoice.my-bills');
+    }
+
+    $items = InvoiceItem::with('item')->where('manual_invoice_id', $invoice->id)->get();
+    $units = Unit::all();
+    $seller = StoreCustomer::where('id', $invoice->store_vendor_id)->where('store_id', $storeId)->first();
+
+    return view('vendor-views.billing.purchase_bill_edit', compact('invoice', 'items', 'units', 'seller'));
+  }
+
+  // A purchase bill touches stock, the purchase ledger, the day book, the supply order and the
+  // gatepass on creation. Editing has to unwind all of that and lay it down again, otherwise the
+  // bill and everything derived from it drift apart.
+  public function purchase_bill_update(Request $request, $id)
+  {
+
+    $storeId = Helpers::get_store_id();
+    $invoice = ManualInvoice::where('id', $id)->where('bill_to', $storeId)->where('bill_to_type', 'vendor')->first();
+    if (!$invoice) {
+      Toastr::error('Purchase bill not found');
+      return redirect()->route('vendor.invoice.my-bills');
+    }
+
+    if ($request->payment_stts == 'Unpaid') {
+      $request->validate([
+        'payment_date' => 'required',
+        'reminder_date' => 'required',
+      ]);
+    }
+
+    $request->validate([
+      'bill_from' => 'required',
+      'invoice_id' => 'required',
+      'item_name_new' => 'required|array|min:1',
+      'file' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,pdf,doc,docx',
+    ], [
+      'bill_from.required' => 'Seller field is required',
+      'item_name_new.required' => 'Add at least one item',
+    ]);
+
+    $seller = StoreCustomer::where('id', $request->bill_from)->where('store_id', $storeId)->first();
+    if (!$seller) {
+      Toastr::error('Seller not found');
+      return back();
+    }
+
+    $duplicate = ManualInvoice::where('invoice_id', $request->invoice_id)
+      ->where('bill_to', $storeId)
+      ->where('bill_to_type', 'vendor')
+      ->where('id', '!=', $invoice->id)
+      ->exists();
+    if ($duplicate) {
+      Toastr::error('Invoice Id Already Exists');
+      return back();
+    }
+
+    $oldInvoiceNumber = $invoice->invoice_id;
+    $oldPdf = $invoice->pdf;
+
+    // Take back the stock the original lines added before the new lines put their own in.
+    foreach (InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull('inv_id')->get() as $line) {
+      _updateInventoryStock($line->inv_id, (float) $line->qty, $line->unit);
+    }
+    InvoiceItem::where('manual_invoice_id', $invoice->id)->delete();
+
+    $serialPos = strrpos((string) $request->invoice_id, '_');
+
+    $invoice->store_vendor_id = $request->bill_from;
+    $invoice->invoice_id = $request->invoice_id;
+    $invoice->invoice_serial = (int) ($serialPos === false ? $request->invoice_id : substr($request->invoice_id, $serialPos + 1));
+    $invoice->tax_type = $request->tax_type;
+    $invoice->invoice_date = $request->invoice_date;
+    $invoice->payment_status = $request->payment_stts;
+    $invoice->payment_date = $request->payment_date;
+    $invoice->reminder_date = $request->reminder_date;
+    $invoice->reminder_freq = $request->reminder_freq;
+    $invoice->reminder_freq_unit = $request->reminder_freq_unit;
+    if ($request->hasFile('file')) {
+      $extension = $request->file('file')->getClientOriginalExtension();
+      $invoice->reference_file = Helpers::upload('store/docs/', $extension, $request->file('file'));
+    }
+    $invoice->save();
+
+    $totalPrice = 0;
+    $hasInventoryLines = false;
+
+    foreach ($request->item_name_new as $key => $name) {
+      $qty = $request->item_qty_new[$key] ?? 1;
+      $price = $request->item_price_new[$key] ?? 0;
+      $tax = $request->tax_type === 'gst' ? ($request->item_tax_new[$key] ?? 0) : 0;
+      $mrp = $request->item_mrp_new[$key] ?? null;
+      $inventoryItemId = $request->inventory_item_id[$key] ?? null;
+      $unit = $request->item_unit_new[$key] ?? null;
+
+      $item = new InvoiceItem();
+      $item->rand_invoice_id = $invoice->invoice_id;
+      $item->manual_invoice_id = $invoice->id;
+      $item->name = $name;
+      $item->price = $price;
+      $item->mrp = ($mrp !== null && $mrp !== '') ? $mrp : null;
+      $item->qty = $qty;
+      $item->unit = $unit;
+      $item->tax = $tax;
+      $item->hsn = $request->item_hsn_new[$key] ?? '';
+      $item->inv_id = $inventoryItemId ?: null;
+      $item->save();
+
+      $totalPrice += _taxIncludedPrice($price, $tax, 'actual') * $qty;
+
+      if ($inventoryItemId) {
+        $hasInventoryLines = true;
+        _incrementInventoryStock($inventoryItemId, $qty, $unit);
+        if ($mrp !== null && $mrp !== '') {
+          InventoryItem::where('id', $inventoryItemId)->where('store_id', $storeId)
+            ->update(['mrp' => (float) $mrp]);
+        }
+      }
+    }
+
+    $invoice->total_amount = round($totalPrice);
+    $invoice->save();
+
+    // Reprint the bill PDF so the stored copy matches the edited lines.
+    if ($oldPdf && Storage::disk('public')->exists('invoice/' . $oldPdf)) {
+      Storage::disk('public')->delete('invoice/' . $oldPdf);
+    }
+    $pdf = _createBillPdf($invoice, 'store_vendor', null, false, false, 'Reference Purchase Invoice');
+    $invoice->update(['pdf' => $pdf['pdf']]);
+
+    $invoiceNumbers = array_unique([$oldInvoiceNumber, $invoice->invoice_id]);
+
+    // Supply order — drop the old one and rebuild from the saved lines.
+    foreach (SupplyOrder::where('store_id', $storeId)->whereIn('invoice_id', $invoiceNumbers)->get() as $supplyOrder) {
+      SupplyOrderItem::where('order_table_id', $supplyOrder->id)->delete();
+      $supplyOrder->delete();
+    }
+    if ($hasInventoryLines) {
+      Helpers::createSupplyOrder($invoice);
+    }
+
+    // Gatepass — same, the printed pass has to list the edited items.
+    foreach (InventoryGatepass::where('store_id', $storeId)->where('type', 'purchase')->whereIn('invoice_id', $invoiceNumbers)->get() as $gatepass) {
+      InventoryGatepassItem::where('gatepass_id', $gatepass->id)->delete();
+      $gatepass->delete();
+    }
+    Helpers::generateInventoryGatepass($invoice, (object)[], 'purchase');
+
+    // Master ledger — the amount and the seller (credit account) can both have moved, so the two
+    // legs are rebuilt against the original voucher rather than patched.
+    $status = $request->payment_stts == 'Paid' ? 'approved' : 'pending';
+    $debit_account = Helpers::ensurePurchaseAccount('Purchase Bill');
+    $credit_account = Helpers::ensureCustomerLedger($seller);
+
+    $voucher = StoreVoucher::where('store_id', $storeId)
+      ->where('invoice_id', 'manual-' . $invoice->id)
+      ->where('voucher_type', 'Purchase')
+      ->first();
+
+    $entryDate = $voucher?->voucher_date ?? now();
+
+    if ($voucher) {
+      $voucher->total_amount = $totalPrice;
+      $voucher->status = $status;
+      $voucher->completed_at = $status == 'approved' ? $entryDate : null;
+      $voucher->save();
+      StoreLedgerEntry::where('voucher_id', $voucher->id)->where('store_id', $storeId)->delete();
+    }
+
+    $ledgerData = [
+      'date' => $entryDate,
+      'amount' => $totalPrice,
+      'invoice_id' => 'manual-' . $invoice->id,
+      'voucher_type' => 'Purchase',
+      'status' => $status,
+      'description' => 'Purchase Invoice',
+    ];
+    $voucher = _masterLedgerEntry($ledgerData, $credit_account, $debit_account, 'store', 'other', $voucher?->id);
+
+    // Day book carries paid purchases only — add, correct or drop it to match the new status.
+    $dayBook = DayBook::where('store_id', $storeId)
+      ->where('invoice_id', $invoice->id)
+      ->where('particular', 'Purchase Invoice')
+      ->first();
+
+    if ($request->payment_stts == 'Paid') {
+      if ($dayBook) {
+        $dayBook->amount = $totalPrice;
+        $dayBook->voucher_id = $voucher?->voucher_number;
+        $dayBook->save();
+      } else {
+        _saveDayBookEntry($totalPrice, 'debit', $storeId, "Purchase Invoice", $invoice->id, $voucher?->id);
+      }
+    } elseif ($dayBook) {
+      $dayBook->delete();
+    }
+
+    _auditLogs('Updated Purchase Invoice : ' . $invoice->invoice_id);
+    Toastr::success('Purchase bill updated successfully');
+    return redirect()->route('vendor.invoice.my-bills');
   }
   public function view_invoice(Request $request, $id)
   {

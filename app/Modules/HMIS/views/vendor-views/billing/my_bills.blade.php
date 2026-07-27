@@ -136,6 +136,12 @@
                                                         class="tio-visible"></i></a>
                                             @endif
                                         @endif
+                                       @if ($order->bill_to_type == 'vendor' && hasPermission('purchase_bill', 'update'))
+                                            <a class="btn action-btn btn--primary btn-outline-primary"
+                                                href="{{ route('vendor.invoice.purchase-bill.edit', [$order['id']]) }}"
+                                                title="{{ translate('messages.edit') }}"><i class="tio-edit"></i>
+                                            </a>
+                                        @endif
                                        @if (hasPermission('purchase_bill', 'delete'))
                                             <a class="btn action-btn btn--danger btn-outline-danger form-alert"
                                                 href="javascript:" data-id="category-{{ $order['id'] }}"

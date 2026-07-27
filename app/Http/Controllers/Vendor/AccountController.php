@@ -492,6 +492,8 @@ class AccountController extends Controller
     }
     public function my_bills(Request $request)
     {
+        _ensurePurchaseBillEditPermission();
+
         $storephone = Helpers::get_store_data()->phone;
 
         $bills1 = ManualInvoice::where('user_type', 'store_user')
