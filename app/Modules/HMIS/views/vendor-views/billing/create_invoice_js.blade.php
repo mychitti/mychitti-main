@@ -199,7 +199,10 @@
          const itemUnit = allUnits.find(u => u.id == item.unit);
          const dimension = itemUnit ? itemUnit.dimension : null;
 
-         // Classified item - every unit sharing its dimension, smallest first.
+         // Classified item - every unit sharing its dimension, smallest first, plus the item's
+         // own legacy secondary unit. A pack unit like "bag" belongs to no dimension - its size
+         // is the item's own primary/secondary pair - so filtering by dimension alone would drop
+         // the very unit the item was set up to be bought in.
          if (dimension) {
              allUnits
                  .filter(u => u.dimension === dimension)
@@ -208,6 +211,11 @@
                      options +=
                          `<option value="${u.id}" ${u.id == item.unit ? 'selected' : ''}>${u.unit}</option>`;
                  });
+             let secondary = item.secondary_unit ?
+                 allUnits.find(u => u.id == item.secondary_unit && u.dimension !== dimension) : null;
+             if (secondary) {
+                 options += `<option value="${secondary.id}">${secondary.unit}</option>`;
+             }
              return options;
          }
 

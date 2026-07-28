@@ -2155,6 +2155,10 @@ if (!function_exists('_unitFactor')) {
 if (!function_exists('_ensureDecimalStockColumns')) {
     // Stock must hold decimals (e.g. 61.6 kg). Widen any legacy integer stock columns
     // to DECIMAL once per request — idempotent, no migration files.
+    //
+    // The column must also be SIGNED. Reversing a purchase bill subtracts the whole original
+    // quantity before the edited lines add theirs back, so the intermediate value can be negative;
+    // on an UNSIGNED column strict mode rejects that write and the reversal silently does nothing.
     function _ensureDecimalStockColumns()
     {
         static $done = false;
@@ -2165,11 +2169,16 @@ if (!function_exists('_ensureDecimalStockColumns')) {
         foreach ([['inventory_items', 'stock'], ['items', 'stock']] as [$t, $c]) {
             try {
                 $info = DB::selectOne(
-                    "SELECT DATA_TYPE dt FROM information_schema.COLUMNS
+                    "SELECT DATA_TYPE dt, COLUMN_TYPE ct FROM information_schema.COLUMNS
                      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
                     [$t, $c]
                 );
-                if ($info && in_array(strtolower($info->dt), ['int', 'tinyint', 'smallint', 'mediumint', 'bigint'], true)) {
+                if (!$info) {
+                    continue;
+                }
+                $isInteger = in_array(strtolower($info->dt), ['int', 'tinyint', 'smallint', 'mediumint', 'bigint'], true);
+                $isUnsigned = str_contains(strtolower($info->ct ?? ''), 'unsigned');
+                if ($isInteger || $isUnsigned) {
                     DB::statement("ALTER TABLE `$t` MODIFY `$c` DECIMAL(12,3) NOT NULL DEFAULT 0");
                 }
             } catch (\Throwable $e) {
@@ -2305,6 +2314,39 @@ if (!function_exists('_incrementInventoryStock')) {
             $addQty = _qtyInItemUnit($inv_item, $qty, $unit);
 
             $inv_item->stock = $inv_item->stock + $addQty;
+            $inv_item->save();
+        } catch (\Throwable $th) {
+            //  Log::error($th);
+        }
+    }
+}
+if (!function_exists('_decrementInventoryStock')) {
+
+    /**
+     * Exact mirror of _incrementInventoryStock — takes back precisely what an earlier increment
+     * put in, with no floor and no side effects.
+     *
+     * _updateInventoryStock() cannot be used to unwind a purchase: it clamps at zero and fires
+     * the low-stock notification and auto purchase order. Editing a bill of 8 bags against 79.7 kg
+     * of stock would clamp the intermediate -0.3 kg to 0 and the 0.3 kg already sold would come
+     * back from nowhere when the new lines were added. Clamping belongs on a sale, which cannot
+     * take out more than exists; a reversal has to be exact or the arithmetic stops balancing.
+     */
+    function _decrementInventoryStock($inv_item_id, $qty, $unit = null)
+    {
+        try {
+            _ensureDecimalStockColumns();
+            _ensureUnitDimensionColumns();
+            _ensureStockBaseColumn();
+            $inv_item = InventoryItem::where('id', $inv_item_id)
+                ->where('store_id', Helpers::get_store_id())
+                ->first();
+
+            if (!$inv_item || $qty <= 0) {
+                return;
+            }
+
+            $inv_item->stock = (float) $inv_item->stock - _qtyInItemUnit($inv_item, $qty, $unit);
             $inv_item->save();
         } catch (\Throwable $th) {
             //  Log::error($th);

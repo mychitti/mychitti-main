@@ -161,12 +161,18 @@
                                 $lineTaxable = (float) $item->price * (float) $item->qty;
                                 $lineTotal = $lineTaxable + $lineTaxable * ((float) $item->tax / 100);
                                 // Offer every unit of the item's dimension, so a kg item can be
-                                // billed in tonnes or grams. Unclassified items keep the old
-                                // behaviour: their own unit plus any legacy secondary.
+                                // billed in tonnes or grams, plus the item's own legacy secondary —
+                                // a pack unit like "bag" belongs to no dimension, so filtering by
+                                // dimension alone would drop the unit the item is bought in.
+                                // Unclassified items keep the old behaviour: their own unit plus
+                                // any legacy secondary.
                                 $itemUnit = $inv ? $units->firstWhere('id', $inv->unit) : null;
                                 $dimension = $itemUnit->dimension ?? null;
                                 if ($dimension) {
                                     $allowedUnits = $units->where('dimension', $dimension)->pluck('id')->all();
+                                    if ($inv && $inv->secondary_unit && !in_array($inv->secondary_unit, $allowedUnits)) {
+                                        $allowedUnits[] = $inv->secondary_unit;
+                                    }
                                 } elseif ($inv) {
                                     $allowedUnits = array_values(array_filter([$inv->unit, $inv->secondary_unit]));
                                 } else {

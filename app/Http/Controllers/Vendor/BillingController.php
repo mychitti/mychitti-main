@@ -1465,7 +1465,7 @@ class BillingController extends Controller
       }
       // A purchase added stock on creation — remove that same stock before deleting the lines.
       foreach (InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull('inv_id')->get() as $line) {
-        _updateInventoryStock($line->inv_id, (float) $line->qty, $line->unit);
+        _decrementInventoryStock($line->inv_id, (float) $line->qty, $line->unit);
       }
       $invoice->delete();
       Toastr::success('Invoice deleted successfully');
@@ -1545,8 +1545,11 @@ class BillingController extends Controller
     $oldPdf = $invoice->pdf;
 
     // Take back the stock the original lines added before the new lines put their own in.
+    // The exact reversal, not the sale deduction — the intermediate figure can legitimately dip
+    // below zero when some of the purchase has already been sold, and clamping it there would
+    // hand that sold quantity back once the new lines land.
     foreach (InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull('inv_id')->get() as $line) {
-      _updateInventoryStock($line->inv_id, (float) $line->qty, $line->unit);
+      _decrementInventoryStock($line->inv_id, (float) $line->qty, $line->unit);
     }
     InvoiceItem::where('manual_invoice_id', $invoice->id)->delete();
 
