@@ -23,20 +23,20 @@ use Illuminate\Support\Facades\Schema;
 class WhatsAppService
 {
     /** Default approved template for vendor lead notifications (overridden by whatsapp_config.lead_template). */
-    const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert4';
+    const DEFAULT_LEAD_TEMPLATE = 'vendor_lead_alert5';
 
     /** Language of the default lead template (must match the approved template's language exactly). */
     const DEFAULT_LEAD_TEMPLATE_LANG = 'en_US';
 
     /** Template sent to a vendor when a lead is auto-accepted (overridden by whatsapp_config.lead_accepted_template). */
-    const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted2';
+    const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted3';
 
     /**
-     * Template for the vendor's "send test message" button. vendor_test_template is the branded
+     * Template for the vendor's "send test message" button. vendor_test_template2 is the branded
      * one approved on the platform WABA; its body takes one variable — the recipient's name.
      * Override with whatsapp_config.test_template / test_template_lang.
      */
-    const DEFAULT_TEST_TEMPLATE = 'vendor_test_template';
+    const DEFAULT_TEST_TEMPLATE = 'vendor_test_template2';
     const DEFAULT_TEST_TEMPLATE_LANG = 'en_US';
 
     /**
@@ -873,7 +873,7 @@ class WhatsAppService
         $template = !empty($cfg['test_template']) ? $cfg['test_template'] : self::DEFAULT_TEST_TEMPLATE;
         $lang     = !empty($cfg['test_template_lang']) ? $cfg['test_template_lang'] : self::DEFAULT_TEST_TEMPLATE_LANG;
 
-        // vendor_test_template's body is "Hi {{1}}, ..." — {{1}} is the recipient name.
+        // vendor_test_template2's body is "Hi {{1}}, ..." — {{1}} is the recipient name.
         // Sending a body param to a variable-less template (e.g. hello_world override) errors,
         // so only attach it for the default branded template.
         $components = [];
