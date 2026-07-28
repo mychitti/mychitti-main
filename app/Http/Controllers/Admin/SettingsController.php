@@ -481,7 +481,7 @@ class SettingsController extends Controller
         $invoice->vendor_id      = null;
         $invoice->bill_to        = $vendorId;
         $invoice->bill_to_type   = 'vendor';
-        $invoice->module_id      = null;
+        $invoice->module_id      = Store::where('id', $vendorId)->value('module_id');
         $invoice->total_amount   = $totalAmount;
         $invoice->payment_method = 'Online';
         $invoice->tax_type       = $gstPercent > 0 ? 'gst' : 'non-gst';
