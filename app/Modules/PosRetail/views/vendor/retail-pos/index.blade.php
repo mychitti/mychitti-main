@@ -699,6 +699,13 @@
 
         function money(n) { return (Math.round(n * 100) / 100).toFixed(2); }
 
+        // Stock always reads with the unit it is held in — "4.8 kg", not a bare "4.8", which is
+        // ambiguous the moment an item is sold in anything but pieces. Trailing zeros trimmed.
+        function stockLabel(n, unit) {
+            const num = Math.round((parseFloat(n) || 0) * 1000) / 1000;
+            return unit ? `${num} ${unit}` : `${num}`;
+        }
+
         // Loose weighing — a kg / litre item may be keyed in its sub-unit (g / ml). The line's
         // `qty` is ALWAYS held in the item's stock unit (kg), so stock deducts 0.25 for 250 g;
         // only the entry box switches. `wunit` is the unit the box is currently showing.
@@ -734,18 +741,40 @@
                 // Add the Main Product (Default) option as the first choice
                 const mainProductPrice = parseFloat(item.price) || 0;
                 const mainProductStock = parseFloat(item.stock) || 0;
-                let html = `<button type="button" class="var-select-btn " onclick="selectMainProduct()">
-                    <span><b>Main Product (Default)</b></span>
-                    <span class="badge-pill">₹${money(mainProductPrice)} <small class="">(stk ${mainProductStock})</small></span>
-                </button>`; 
+
+                // Once a product has variations the parent is not sellable on its own — the sale
+                // has to say which one, or the stock has no single place to come from. The one
+                // exception is a loose product: a customer asking for 150 g when the packs are
+                // 100 g and 200 g is buying loose, so that stays an explicit choice here rather
+                // than a silent fall-through to the parent.
+                let html = '';
+                if (item.sell_loose) {
+                    html += `<button type="button" class="var-select-btn" onclick="selectMainProduct()">
+                        <span><b>Loose — custom weight</b><br><small class="text-muted">Weigh any quantity</small></span>
+                        <span class="badge-pill">₹${money(mainProductPrice)}/${item.unit || 'unit'} <small class="">(stk ${stockLabel(mainProductStock, item.unit)})</small></span>
+                    </button>`;
+                }
 
                 item.variations.forEach((varItem, idx) => {
                     if (varItem.type) {
                         const price = parseFloat(varItem.price) || parseFloat(item.price) || 0;
-                        const stock = parseFloat(varItem.stock) || 0;
+                        // A pack holds no stock of its own — how many are available is the pool
+                        // divided by one pack, not a counter that stock-in never credited.
+                        const perPack = parseFloat(varItem.pack_in_item_unit) || 0;
+                        const avail = varItem.is_pack && perPack > 0
+                            ? Math.floor(mainProductStock / perPack)
+                            : (parseFloat(varItem.stock) || 0);
+                        const sub = varItem.is_pack
+                            ? `<br><small class="text-muted">${varItem.pack_qty} ${varItem.pack_unit} per pack</small>`
+                            : '';
+                        // Packs are counted as packs; a countable variation is held in the item's
+                        // own unit, so that one reads with the unit.
+                        const availLabel = varItem.is_pack
+                            ? `${avail} pack${avail === 1 ? '' : 's'}`
+                            : stockLabel(avail, item.unit);
                         html += `<button type="button" class="var-select-btn" onclick="selectVarIndex(${idx})">
-                            <span><b>${varItem.type}</b></span>
-                            <span class="badge-pill">₹${money(price)} <small class="">(stk ${stock})</small></span>
+                            <span><b>${varItem.type}</b>${sub}</span>
+                            <span class="badge-pill">₹${money(price)} <small class="">(stk ${availLabel})</small></span>
                         </button>`;
                     }
                 });
@@ -778,6 +807,10 @@
                     pieces: item.sell_loose ? 1 : null,
                     // Loose kg / litre items are keyed in grams / ml by default (how they are sold).
                     wunit: item.sell_loose ? (subUnitOf(item.unit) || item.unit || '') : null,
+                    // Fixed pack (100gm, 500ml) — carried so the line can show what one is worth.
+                    is_pack: !!item.is_pack,
+                    pack_qty: item.pack_qty || null,
+                    pack_unit: item.pack_unit || null,
                 });
                 // For a loose item, jump straight to the scale so the weight is captured.
                 if (item.sell_loose) weighLine(POS.cart.length - 1);
@@ -813,8 +846,12 @@
             
             const price = parseFloat(varItem.price) || parseFloat(activeParentItem.price) || 0;
             const mrp = parseFloat(varItem.mrpprice) || parseFloat(activeParentItem.mrp) || 0;
-            const stock = parseFloat(varItem.stock) || 0;
-            
+            const perPack = parseFloat(varItem.pack_in_item_unit) || 0;
+            const poolStock = parseFloat(activeParentItem.stock) || 0;
+            const stock = varItem.is_pack && perPack > 0
+                ? Math.floor(poolStock / perPack)
+                : (parseFloat(varItem.stock) || 0);
+
             const varData = {
                 id: activeParentItem.id + '-var-' + varItem.type,
                 name: activeParentItem.name + ' (' + varItem.type + ')',
@@ -824,7 +861,14 @@
                 gst_rate: parseFloat(activeParentItem.gst_rate) || 0,
                 gst_status: activeParentItem.gst_status || 'excluding',
                 unit: activeParentItem.unit || '',
-                sell_loose: !!activeParentItem.sell_loose,
+                // A pack is a fixed quantity, not something to weigh. Inheriting the parent's
+                // loose flag put the scale on the line and defaulted it to a whole unit, so
+                // picking a 150gm pack opened at 1000 g. Counting packs is the whole point of
+                // having them — the 150 g is applied server-side when stock comes out.
+                sell_loose: varItem.is_pack ? false : !!activeParentItem.sell_loose,
+                pack_qty: varItem.pack_qty || null,
+                pack_unit: varItem.pack_unit || null,
+                is_pack: !!varItem.is_pack,
                 expiry: activeParentItem.expiry || '',
                 expiry_warn: !!activeParentItem.expiry_warn,
                 low_stock: stock <= 0
@@ -854,6 +898,7 @@
                         <td>
                             <div class="cart-name">${l.name}</div>
                             ${l.sell_loose ? `<div class="cart-sub" style="color:#1a7d4f">loose · weighed${l.unit ? ' · ' + (Math.round(l.qty * 1000) / 1000) + ' ' + l.unit : ''}</div>` : ''}
+                            ${l.is_pack && l.pack_qty ? `<div class="cart-sub" style="color:#1a7d4f">pack · ${l.pack_qty} ${l.pack_unit} each · ${Math.round(l.qty * l.pack_qty * 1000) / 1000} ${l.pack_unit} total</div>` : ''}
                             ${l.discount > 0 ? `<div class="cart-sub">− ₹${money(l.discount)} off</div>` : ''}
                         </td>
                         <td>
@@ -1281,7 +1326,7 @@
                     resultsBox.innerHTML = d.items.map(it =>
                         `<div class="res-row" data-it='${JSON.stringify(it)}'>
                             <span>${it.name} <small class="text-muted">${it.sku || ''}</small></span>
-                            <span>₹${money(it.price)} · stk ${it.stock}</span>
+                            <span>₹${money(it.price)} · stk ${stockLabel(it.stock, it.unit)}</span>
                         </div>`).join('');
                     resultsBox.style.display = 'block';
                     resultsBox.querySelectorAll('.res-row[data-it]').forEach(row => {

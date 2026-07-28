@@ -37,6 +37,18 @@
                 <span class="text-truncate">{{ translate('Auto-Reply Knowledge') }}</span>
             </a>
         </li>
+        <li class="nav-item {{ Request::is('*whatsapp/bot*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.bot') }}" title="{{ translate('Chatbot') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Chatbot') }}</span>
+            </a>
+        </li>
+        <li class="nav-item {{ Request::is('*whatsapp/billing*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.billing') }}" title="{{ translate('Plan & Billing') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Plan & Billing') }}</span>
+            </a>
+        </li>
     </ul>
 </li>
 @endif

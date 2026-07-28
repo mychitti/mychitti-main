@@ -31,6 +31,8 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         \App\Console\Commands\DeductPlatformFee::class,
+        \App\Console\Commands\BillWhatsAppSubscriptions::class,
+        \App\Console\Commands\BackfillVariationStockCommand::class,
     ];
 
     /**
@@ -243,6 +245,15 @@ class Kernel extends ConsoleKernel
             ->dailyAt('03:30')
             ->timezone($tz)
             ->name('data-purge-retention')
+            ->withoutOverlapping();
+
+        // WHATSAPP BUSINESS PLATFORM RENEWALS ==================================
+        // Daily, not monthly: every store renews on its own anniversary, and a store whose
+        // wallet was short is retried the next day inside the grace window.
+        $schedule->command('whatsapp:bill')
+            ->dailyAt('05:00')
+            ->timezone($tz)
+            ->name('whatsapp-billing')
             ->withoutOverlapping();
 
         // PLATFORM FEE MONTHLY DEDUCTION =======================================

@@ -57,6 +57,113 @@ class WhatsAppService
     const DEFAULT_APPT_REMINDER_HOURS = 2;
 
     /**
+     * Named body variables a template may use instead of {{1}}, {{2}}. Meta calls this the
+     * NAMED parameter format: the body carries {{customer_name}} and the send supplies a
+     * parameter_name for each value, so the slot can never drift out of order.
+     *
+     * Everything listed here is filled in automatically per recipient at send time — the
+     * sender is never asked for a value. `example` is the sample Meta's reviewers see.
+     */
+    const TEMPLATE_VARIABLES = [
+        'customer_name'  => ['label' => 'Customer name', 'example' => 'Rahul Sharma'],
+        'customer_phone' => ['label' => 'Customer phone', 'example' => '9876543210'],
+    ];
+
+    /**
+     * Templates driven by automation that still builds its parameters by position
+     * (welcome, appointment reminders, lead alerts). Named variables are refused for these
+     * so a body edit can't silently break a job that has no name to give its values.
+     */
+    const POSITIONAL_ONLY_TEMPLATES = [
+        self::DEFAULT_WELCOME_TEMPLATE,
+        self::DEFAULT_APPT_REMINDER_TEMPLATE,
+        self::DEFAULT_LEAD_TEMPLATE,
+        self::DEFAULT_LEAD_ACCEPTED_TEMPLATE,
+        self::DEFAULT_TEST_TEMPLATE,
+        'staff_forward',
+    ];
+
+    /** Named placeholders a body uses, in first-appearance order and deduped. */
+    public static function namedVariables(string $body): array
+    {
+        preg_match_all('/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/i', $body, $m);
+        return array_values(array_unique(array_map('strtolower', $m[1] ?? [])));
+    }
+
+    /** Highest {{n}} in a body — how many positional values a send must supply. */
+    public static function positionalCount(string $body): int
+    {
+        preg_match_all('/\{\{\s*(\d+)\s*\}\}/', $body, $m);
+        return $m[1] ? max(array_map('intval', $m[1])) : 0;
+    }
+
+    /** Sample value shown to Meta's reviewers for a named variable. */
+    public static function variableExample(string $name): string
+    {
+        return self::TEMPLATE_VARIABLES[$name]['example']
+            ?? ucfirst(str_replace('_', ' ', $name));
+    }
+
+    /**
+     * Why Meta would refuse this template body, or null when it is fine.
+     *
+     * Covers the rejection vendors hit most ("Leading or trailing params not allowed",
+     * error_subcode 2388299) plus the rules that come with named variables: a body is either
+     * named or positional, never both, and only the names the platform knows how to fill are
+     * accepted. $name is the template name, when known — the automation templates have to stay
+     * positional because the jobs behind them supply values by order.
+     */
+    public static function templateBodyProblem(string $body, ?string $name = null): ?string
+    {
+        $body = trim($body);
+        if ($body === '') {
+            return null;
+        }
+        if (preg_match('/^\{\{\s*[a-z0-9_]+\s*\}\}/i', $body)) {
+            return 'The message can’t start with a variable. Put some text before it — e.g. "Hi {{1}}" instead of "{{1}}".';
+        }
+        if (preg_match('/\{\{\s*[a-z0-9_]+\s*\}\}$/i', $body)) {
+            return 'The message can’t end with a variable. Add some text after it — e.g. "{{2}}. See you then!" instead of ending on "{{2}}".';
+        }
+
+        $named = self::namedVariables($body);
+        if (empty($named)) {
+            return null;
+        }
+
+        if (self::positionalCount($body) > 0) {
+            return 'Use either named variables like {{customer_name}} or numbered ones like {{1}} — Meta does not allow both in the same message.';
+        }
+
+        $unknown = array_diff($named, array_keys(self::TEMPLATE_VARIABLES));
+        if (!empty($unknown)) {
+            return 'Unknown variable {{' . reset($unknown) . '}}. The named variables available are '
+                . implode(', ', array_map(fn($v) => '{{' . $v . '}}', array_keys(self::TEMPLATE_VARIABLES)))
+                . ' — use {{1}}, {{2}} for anything else.';
+        }
+
+        if ($name !== null && in_array(strtolower(trim($name)), self::POSITIONAL_ONLY_TEMPLATES, true)) {
+            return 'The "' . trim($name) . '" template is filled in automatically by MyChitti and has to use numbered variables ({{1}}, {{2}}) instead of named ones.';
+        }
+
+        return null;
+    }
+
+    /**
+     * One body parameter for a send. A numeric key is positional (Meta reads the order);
+     * anything else is a named parameter and must carry its name.
+     */
+    public static function bodyParameter(string $key, string $value): array
+    {
+        $param = ['type' => 'text', 'text' => $value];
+        if (!ctype_digit($key)) {
+            // Meta only accepts lowercase letters, digits and underscores as a parameter name.
+            $param['parameter_name'] = preg_replace('/[^a-z0-9_]/', '', strtolower($key)) ?: 'value';
+        }
+        return $param;
+    }
+
+    /**
      * Paid WhatsApp message-receiving add-ons (per vendor, ₹/month).
      * Add a new receiving capability here — no schema change needed.
      */
@@ -327,7 +434,7 @@ class WhatsAppService
             $resp = Http::withToken($this->cfg['token'])->acceptJson()
                 ->get($this->wabaEndpoint('message_templates'), [
                     'limit'  => $limit,
-                    'fields' => 'name,status,category,language,components,id',
+                    'fields' => 'name,status,category,language,components,id,parameter_format',
                 ]);
             if ($resp->successful()) {
                 return ['success' => true, 'error' => null, 'data' => data_get($resp->json(), 'data', [])];
@@ -359,7 +466,15 @@ class WhatsAppService
         }
 
         $body = ['type' => 'BODY', 'text' => $bodyText];
-        if (!empty($example)) {
+        // A named body carries its own examples (one per variable name); the pipe-separated
+        // list the form collects only applies to positional {{1}}, {{2}} bodies.
+        $named = self::namedVariables($bodyText);
+        if (!empty($named)) {
+            $body['example'] = ['body_text_named_params' => array_map(fn($n) => [
+                'param_name' => $n,
+                'example'    => self::variableExample($n),
+            ], $named)];
+        } elseif (!empty($example)) {
             $body['example'] = ['body_text' => [array_values($example)]];
         }
         $components[] = $body;
@@ -388,14 +503,21 @@ class WhatsAppService
         }
         $components = $this->buildComponents($bodyText, $example, $buttons, $header, $footer);
 
+        $payload = [
+            'name'       => $name,
+            'category'   => $category,
+            'language'   => $lang,
+            'components' => $components,
+        ];
+        // Meta defaults a template to POSITIONAL; a body written with {{customer_name}} has to
+        // declare NAMED at creation or the placeholders are rejected as invalid.
+        if (self::namedVariables($bodyText)) {
+            $payload['parameter_format'] = 'NAMED';
+        }
+
         try {
             $resp = Http::withToken($this->cfg['token'])->acceptJson()
-                ->post($this->wabaEndpoint('message_templates'), [
-                    'name'       => $name,
-                    'category'   => $category,
-                    'language'   => $lang,
-                    'components' => $components,
-                ]);
+                ->post($this->wabaEndpoint('message_templates'), $payload);
             if ($resp->successful()) {
                 return ['success' => true, 'error' => null, 'id' => data_get($resp->json(), 'id'), 'response' => $resp->json()];
             }
@@ -423,6 +545,9 @@ class WhatsAppService
         $payload = ['components' => $components];
         if ($category) {
             $payload['category'] = $category;
+        }
+        if (self::namedVariables($bodyText)) {
+            $payload['parameter_format'] = 'NAMED';
         }
 
         try {
@@ -479,6 +604,9 @@ class WhatsAppService
             'wa_business_account_id' => 'VARCHAR(64) NULL',
             'wa_api_version'         => 'VARCHAR(12) NULL',
             'wa_appt_reminder'       => 'VARCHAR(20) NULL',
+            // Which chatbot answers customers: 'knowledge' (knowledge base only) or 'agent'
+            // (lead & appointment management). NULL reads as 'knowledge'.
+            'wa_bot_mode'            => "VARCHAR(20) NULL",
         ];
         foreach ($cols as $name => $def) {
             if (!Schema::hasColumn('stores', $name)) {
@@ -1059,11 +1187,33 @@ class WhatsAppService
                 `status_at` TIMESTAMP NULL,
                 `created_at` TIMESTAMP NULL,
                 `updated_at` TIMESTAMP NULL,
+                `audience` VARCHAR(10) NULL,
                 PRIMARY KEY (`id`),
                 KEY `wam_idx` (`wamid`),
-                KEY `wam_store_idx` (`store_id`)
+                KEY `wam_store_idx` (`store_id`),
+                KEY `wam_billing_idx` (`store_id`, `direction`, `sent_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            return;
         }
+
+        // Whose contact list the message went to — 'own' (₹0.06) or 'platform' (₹0.12).
+        // Rows written before this column existed fall back to the context at billing time.
+        if (!Schema::hasColumn('whatsapp_messages', 'audience')) {
+            DB::statement("ALTER TABLE `whatsapp_messages` ADD COLUMN `audience` VARCHAR(10) NULL");
+            DB::statement("ALTER TABLE `whatsapp_messages` ADD KEY `wam_billing_idx` (`store_id`, `direction`, `sent_at`)");
+        }
+    }
+
+    /**
+     * Send contexts that target MC Vendor Hub's own customer database rather than the vendor's
+     * contact list. These carry the higher per-message data usage charge — add any new
+     * platform-audience send path here or it will be billed at the cheaper own-list rate.
+     */
+    const PLATFORM_AUDIENCE_CONTEXTS = ['nearby'];
+
+    public static function audienceFor(?string $context): string
+    {
+        return in_array((string) $context, self::PLATFORM_AUDIENCE_CONTEXTS, true) ? 'platform' : 'own';
     }
 
     protected function logMessage(array $payload, array $meta, array $result): void
@@ -1078,6 +1228,7 @@ class WhatsAppService
                 'type'      => $payload['type'] ?? null,
                 'body'      => isset($meta['body']) ? mb_substr((string) $meta['body'], 0, 1000) : null,
                 'context'   => $meta['context'] ?? null,
+                'audience'  => static::audienceFor($meta['context'] ?? null),
                 'status'    => $result['success'] ? 'accepted' : 'failed',
                 'error'     => $result['error'] ?? null,
                 'sent_at'   => now(),

@@ -53,6 +53,11 @@ class SendAppointmentRemindersJob implements ShouldQueue
                 if ($hours < 1) {
                     continue;
                 }
+                // "Appointment reminders" is one of the things the vendor chooses to send
+                // customers (WhatsApp → Chatbot). Off = no reminder, whatever the hours say.
+                if (!\App\Services\WhatsAppAgent::shareEnabled((int) $store->id, 'reminder')) {
+                    continue;
+                }
 
                 // Date range first (cheap, indexed), exact time filter in PHP — a large window
                 // (e.g. 48h) legitimately spans multiple days.

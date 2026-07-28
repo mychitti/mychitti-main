@@ -123,8 +123,19 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">{{ translate('Body') }}</label>
-                                <textarea class="form-control" name="body" rows="4" placeholder="Hi @{{1}}, welcome to @{{2}}!" required>{{ old('body') }}</textarea>
-                                <small class="text-muted">{{ translate('Use') }} @{{1}}, @{{2}} {{ translate('for variables. The message must not start or end with a variable.') }}</small>
+                                <textarea class="form-control wa-tpl-body" name="body" rows="4" placeholder="Hi @{{customer_name}}, welcome to @{{1}}!" required>{{ old('body') }}</textarea>
+                                <div class="d-flex flex-wrap align-items-center mt-2" style="gap:6px;">
+                                    <small class="text-muted">{{ translate('Insert') }}:</small>
+                                    @foreach (\App\Services\WhatsAppService::TEMPLATE_VARIABLES as $key => $meta)
+                                        <button type="button" class="btn btn-sm btn-outline-primary wa-var-insert" data-var="{{ $key }}">
+                                            <i class="tio-add"></i> {{ translate($meta['label']) }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    {{ translate('The buttons above insert a variable filled in per recipient when the message is sent — no example value is needed for those. Use') }}
+                                    @{{1}}, @{{2}} {{ translate('for variables the vendor fills in, but do not mix the two styles. The message must not start or end with a variable.') }}
+                                </small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">{{ translate('Footer') }} <small class="text-muted">({{ translate('optional') }})</small></label>
@@ -206,7 +217,15 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">{{ translate('Body') }}</label>
-                            <textarea class="form-control" name="body" id="wapBody" rows="4" required></textarea>
+                            <textarea class="form-control wa-tpl-body" name="body" id="wapBody" rows="4" required></textarea>
+                            <div class="d-flex flex-wrap align-items-center mt-2" style="gap:6px;">
+                                <small class="text-muted">{{ translate('Insert') }}:</small>
+                                @foreach (\App\Services\WhatsAppService::TEMPLATE_VARIABLES as $key => $meta)
+                                    <button type="button" class="btn btn-sm btn-outline-primary wa-var-insert" data-var="{{ $key }}">
+                                        <i class="tio-add"></i> {{ translate($meta['label']) }}
+                                    </button>
+                                @endforeach
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">{{ translate('Footer') }}</label>
@@ -251,6 +270,24 @@
         $('#wapFooter').val(d.footer || ''); $('#wapExample').val(d.example || '');
         $('#wapBtnText').val(d.btntext || ''); $('#wapBtnUrl').val(d.btnurl || '');
         $('#waPresetEditModal').modal('show');
+    });
+
+    // Built by concatenation so Blade never sees a literal double-brace in this script.
+    var OPEN = '{' + '{', CLOSE = '}' + '}';
+
+    $(document).on('click', '.wa-var-insert', function () {
+        var $body = $(this).closest('.form-group').find('.wa-tpl-body');
+        if (!$body.length) return;
+
+        var el = $body[0];
+        var text = el.value || '';
+        var at = typeof el.selectionStart === 'number' ? el.selectionStart : text.length;
+        var end = typeof el.selectionEnd === 'number' ? el.selectionEnd : at;
+        var chunk = OPEN + $(this).data('var') + CLOSE;
+
+        el.value = text.slice(0, at) + chunk + text.slice(end);
+        el.focus();
+        el.selectionStart = el.selectionEnd = at + chunk.length;
     });
 </script>
 @endpush

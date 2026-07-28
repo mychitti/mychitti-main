@@ -2842,6 +2842,11 @@ class BusinessSettingsController extends Controller
             return back();
         }
 
+        if ($bodyError = \App\Services\WhatsAppService::templateBodyProblem((string) $request->tpl_body, $request->tpl_name)) {
+            Toastr::error(translate($bodyError));
+            return back()->withInput();
+        }
+
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
         $buttons = [];
         if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
@@ -2859,7 +2864,7 @@ class BusinessSettingsController extends Controller
         );
 
         if ($res['success']) {
-            Toastr::success(translate('Template submitted to Meta for review (id: ') . ($res['id'] ?? '—') . ').');
+            Toastr::success(translate('Template submitted to Meta for review (id: ') . ($res['id'] ?? 'â€”') . ').');
         } else {
             Toastr::error(translate('Create failed: ') . $res['error']);
         }
@@ -2889,6 +2894,11 @@ class BusinessSettingsController extends Controller
         if (!$wa->hasWaba()) {
             Toastr::error(translate('Save the Business Account ID and enable WhatsApp credentials first.'));
             return back();
+        }
+
+        if ($bodyError = \App\Services\WhatsAppService::templateBodyProblem((string) $request->tpl_body, $request->tpl_name)) {
+            Toastr::error(translate($bodyError));
+            return back()->withInput();
         }
 
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
@@ -2957,18 +2967,18 @@ class BusinessSettingsController extends Controller
         ]);
 
         $body = trim((string) $request->body);
-        if (preg_match('/^\{\{\s*\d+\s*\}\}/', $body) || preg_match('/\{\{\s*\d+\s*\}\}$/', $body)) {
-            Toastr::error(translate('Meta does not allow the message to start or end with a variable — add text on both ends.'));
+        if ($bodyError = \App\Services\WhatsAppService::templateBodyProblem($body, $request->name)) {
+            Toastr::error(translate($bodyError));
             return back()->withInput();
         }
 
-        // Meta requires one example value per {{n}} variable when the vendor submits it —
-        // enforce that here so every preset is submit-ready as stored.
-        preg_match_all('/\{\{\s*(\d+)\s*\}\}/', $body, $m);
-        $varCount = $m[1] ? max(array_map('intval', $m[1])) : 0;
+        // Meta requires one example value per {{n}} variable when the vendor submits it â€”
+        // enforce that here so every preset is submit-ready as stored. Named variables carry
+        // their own examples, so a named body needs nothing typed here.
+        $varCount = \App\Services\WhatsAppService::positionalCount($body);
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->example)), fn($v) => $v !== ''));
         if ($varCount > 0 && count($example) < $varCount) {
-            Toastr::error(translate('Provide a pipe-separated example value for each variable — this template has ') . $varCount . translate(' variable(s).'));
+            Toastr::error(translate('Provide a pipe-separated example value for each variable â€” this template has ') . $varCount . translate(' variable(s).'));
             return back()->withInput();
         }
 
@@ -2997,7 +3007,7 @@ class BusinessSettingsController extends Controller
 
         if ($request->filled('id')) {
             DB::table('wa_template_presets')->where('id', $request->id)->update($data);
-            Toastr::success(translate('Preset updated. Vendors who already submitted it keep their approved version — the change applies to new submissions only.'));
+            Toastr::success(translate('Preset updated. Vendors who already submitted it keep their approved version â€” the change applies to new submissions only.'));
         } else {
             $data['active'] = 1;
             $data['created_at'] = now();
@@ -3094,7 +3104,7 @@ class BusinessSettingsController extends Controller
         }
 
         if ($request->filled('test_template')) {
-            // Body variables are entered pipe-separated ( | ) → {{1}}, {{2}}, ... in order.
+            // Body variables are entered pipe-separated ( | ) â†’ {{1}}, {{2}}, ... in order.
             $vars = array_values(array_filter(array_map('trim', explode('|', (string) $request->test_vars)), fn($v) => $v !== ''));
             $components = [];
             if (!empty($vars)) {
@@ -3110,7 +3120,7 @@ class BusinessSettingsController extends Controller
         }
 
         if ($res['success']) {
-            Toastr::success('Sent (id: ' . ($res['id'] ?? '—') . '). Check the Delivery Report for status.');
+            Toastr::success('Sent (id: ' . ($res['id'] ?? 'â€”') . '). Check the Delivery Report for status.');
         } else {
             Toastr::error('Send failed: ' . $res['error']);
         }
@@ -3196,7 +3206,7 @@ class BusinessSettingsController extends Controller
         $mode = $request->mode ?: 'retail';
 
         if ($mode === 'billing') {
-            // Generate a bill — debit the vendor wallet for one month, as the vendor self-subscribe flow does.
+            // Generate a bill â€” debit the vendor wallet for one month, as the vendor self-subscribe flow does.
             $vendorId = $store->vendor->id ?? null;
             $wallet   = $vendorId ? \App\Models\StoreWallet::where('vendor_id', $vendorId)->first() : null;
             $balance  = $wallet ? ($wallet->total_earning - $wallet->total_withdrawn) : 0;
@@ -3215,7 +3225,7 @@ class BusinessSettingsController extends Controller
             $txn->from_id    = $vendorId;
             $txn->method     = 'wallet';
             $txn->action     = 'debit';
-            $txn->reason     = 'WhatsApp Receiving — ' . $meta['label'] . ' (admin)';
+            $txn->reason     = 'WhatsApp Receiving â€” ' . $meta['label'] . ' (admin)';
             $txn->created_by = 'admin';
             $txn->save();
 
@@ -3231,13 +3241,13 @@ class BusinessSettingsController extends Controller
             return back();
         }
 
-        // Retail — enabled without generating a bill (long validity so it doesn't lapse monthly).
+        // Retail â€” enabled without generating a bill (long validity so it doesn't lapse monthly).
         $activeUntil = now()->addYears(10)->toDateString();
         DB::table('wa_receiving_features')->updateOrInsert(
             ['store_id' => $storeId, 'feature' => 'leads'],
             ['enabled' => 1, 'price' => 0, 'active_until' => $activeUntil, 'updated_at' => now(), 'created_at' => $existing->created_at ?? now()]
         );
-        Toastr::success($meta['label'] . ' enabled for ' . $store->name . ' (Retail — no bill generated).');
+        Toastr::success($meta['label'] . ' enabled for ' . $store->name . ' (Retail â€” no bill generated).');
         return back();
     }
     //Send Mail

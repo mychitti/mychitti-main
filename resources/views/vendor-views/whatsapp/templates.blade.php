@@ -41,10 +41,32 @@
                     </div>
                 @endif
             @endif
+            @if ($quota['used'] >= $quota['allowance'])
+                <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;font-size:13px;">
+                    <div>
+                        <b>Template limit reached — {{ $quota['used'] }} of {{ $quota['allowance'] }} used.</b>
+                        {{ $quota['included'] }} templates are included with your plan. Add an extra slot for
+                        {{ _price($quota['slot_fee']) }} one-time, or delete a template you no longer use.
+                    </div>
+                    {{-- Buying a slot spends the store wallet — owner only, staff just see the limit. --}}
+                    @if (auth('vendor')->check())
+                        <form action="{{ route('vendor.whatsapp.billing.template-slot') }}" method="post" class="mb-0">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn--primary">Add a template slot</button>
+                        </form>
+                    @endif
+                </div>
+            @endif
+
             <div class="row">
                 <div class="col-lg-7">
                     <div class="card">
-                        <div class="card-header"><h5 class="card-title mb-0">Your Templates</h5></div>
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Your Templates</h5>
+                            <span class="badge badge-soft-{{ $quota['used'] >= $quota['allowance'] ? 'danger' : 'secondary' }}">
+                                {{ $quota['used'] }} / {{ $quota['allowance'] }} used
+                            </span>
+                        </div>
                         <div class="card-body">
                             @if ($templateError)
                                 <div class="alert alert-warning" style="font-size:13px;">{{ $templateError }}</div>
@@ -218,8 +240,21 @@
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Body</label>
-                                    <textarea class="form-control wa-tpl-body" name="tpl_body" rows="3" placeholder="Hi @{{1}}, your order @{{2}} is confirmed." required>{{ old('tpl_body') }}</textarea>
-                                    <small class="text-muted">Use @{{1}}, @{{2}} for variables. Meta does not allow the message to start or end with a variable — always have text on both ends.</small>
+                                    <textarea class="form-control wa-tpl-body" name="tpl_body" rows="3" placeholder="Hi @{{customer_name}}, your order @{{1}} is confirmed." required>{{ old('tpl_body') }}</textarea>
+                                    <div class="d-flex flex-wrap align-items-center mt-2" style="gap:6px;">
+                                        <small class="text-muted">Insert:</small>
+                                        @foreach (\App\Services\WhatsAppService::TEMPLATE_VARIABLES as $key => $meta)
+                                            <button type="button" class="btn btn-xs btn-outline-primary wa-var-insert" data-var="{{ $key }}">
+                                                <i class="tio-add"></i> {{ $meta['label'] }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        The buttons above insert a variable MyChitti fills in per recipient — you never
+                                        type a value for those. Use @{{1}}, @{{2}} for your own variables, but don’t mix
+                                        the two styles in one message. Meta does not allow the message to start or end
+                                        with a variable — always have text on both ends.
+                                    </small>
                                     <div class="invalid-feedback wa-tpl-body-error"></div>
                                 </div>
                                 <div class="form-group">
@@ -284,6 +319,7 @@
                 <form action="{{ route('vendor.whatsapp.templates.update') }}" method="post">
                     @csrf
                     <input type="hidden" name="tpl_id" id="waeId">
+                    <input type="hidden" name="tpl_name" id="waeNameInput">
                     <div class="modal-header">
                         <h5 class="modal-title">Edit Template — <span id="waeName"></span></h5>
                         <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -301,9 +337,19 @@
                         <div class="form-group">
                             <label class="form-label">Body</label>
                             <textarea class="form-control wa-tpl-body" name="tpl_body" id="waeBody" rows="4" required></textarea>
-                            <small class="text-muted">Meta does not allow the message to start or end with a variable — always have text on both ends.</small>
+                            <div class="d-flex flex-wrap align-items-center mt-2" style="gap:6px;">
+                                <small class="text-muted">Insert:</small>
+                                @foreach (\App\Services\WhatsAppService::TEMPLATE_VARIABLES as $key => $meta)
+                                    <button type="button" class="btn btn-xs btn-outline-primary wa-var-insert" data-var="{{ $key }}">
+                                        <i class="tio-add"></i> {{ $meta['label'] }}
+                                    </button>
+                                @endforeach
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Filled in per recipient. Use @{{1}}, @{{2}} for your own variables — not both styles in
+                                one message. Meta does not allow the message to start or end with a variable.
+                            </small>
                             <div class="invalid-feedback wa-tpl-body-error"></div>
-                            <small class="text-muted">Use @{{1}}, @{{2}} for variables.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Example Values</label>
@@ -348,23 +394,49 @@
     });
     $(document).on('click', '.wa-tpl-edit', function () {
         var d = $(this).data();
-        $('#waeId').val(d.id); $('#waeName').text(d.name);
+        $('#waeId').val(d.id); $('#waeName').text(d.name); $('#waeNameInput').val(d.name);
         $('#waeCategory').val((d.category || 'UTILITY'));
         $('#waeBody').val(d.body || '');
         $('#waeBtnText').val(d.btntext || ''); $('#waeBtnUrl').val(d.btnurl || '');
         $('#waTplEditModal').modal('show');
     });
 
+    // Built by concatenation so Blade never sees a literal double-brace in this script.
+    var OPEN = '{' + '{', CLOSE = '}' + '}';
+
+    // Drops the named variable in at the cursor. Mirrors the server rule that a body is
+    // either named or numbered — never both.
+    $(document).on('click', '.wa-var-insert', function () {
+        var $body = $(this).closest('.form-group').find('.wa-tpl-body');
+        if (!$body.length) return;
+
+        var el = $body[0];
+        var text = el.value || '';
+        var at = typeof el.selectionStart === 'number' ? el.selectionStart : text.length;
+        var end = typeof el.selectionEnd === 'number' ? el.selectionEnd : at;
+        var chunk = OPEN + $(this).data('var') + CLOSE;
+
+        el.value = text.slice(0, at) + chunk + text.slice(end);
+        el.focus();
+        el.selectionStart = el.selectionEnd = at + chunk.length;
+        $body.trigger('input');
+    });
+
     // Meta rejects a body that starts or ends with a variable (error_subcode 2388299).
     // Block the submit here so the vendor isn't bounced by a raw Graph error.
-    var VAR_LEAD = new RegExp('^\\{\\{\\s*\\d+\\s*\\}\\}');
-    var VAR_TRAIL = new RegExp('\\{\\{\\s*\\d+\\s*\\}\\}$');
+    var VAR_LEAD = new RegExp('^\\{\\{\\s*[a-z0-9_]+\\s*\\}\\}', 'i');
+    var VAR_TRAIL = new RegExp('\\{\\{\\s*[a-z0-9_]+\\s*\\}\\}$', 'i');
+    var VAR_NAMED = new RegExp('\\{\\{\\s*[a-z][a-z0-9_]*\\s*\\}\\}', 'i');
+    var VAR_NUMBER = new RegExp('\\{\\{\\s*\\d+\\s*\\}\\}');
 
     function waBodyError(body) {
         body = $.trim(body);
         if (!body) return null;
         if (VAR_LEAD.test(body)) return 'The message can’t start with a variable. Put some text before it.';
         if (VAR_TRAIL.test(body)) return 'The message can’t end with a variable. Add some text after it.';
+        if (VAR_NAMED.test(body) && VAR_NUMBER.test(body)) {
+            return 'Use either the named variables or numbered ones like ' + OPEN + '1' + CLOSE + ' — Meta does not allow both in one message.';
+        }
         return null;
     }
 

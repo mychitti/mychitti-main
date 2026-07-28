@@ -892,6 +892,18 @@ class InventoryController extends Controller
             'quantity.*' => 'required|numeric|min:0',
         ]);
         $this->ensureDecimalStockColumns();
+
+        // Goods can only come in against a variation once the product has them — the same rule
+        // the counter enforces on the way out. Checked for every line before anything is written,
+        // so a bad line does not leave half a stock-in behind.
+        foreach ($request->item_id as $key => $item_id) {
+            $checkItem = InventoryItem::find($item_id);
+            if ($checkItem && ($varErr = _variationSelectionError($checkItem, $request->variation_type[$key] ?? null))) {
+                Toastr::error($varErr);
+                return back()->withInput();
+            }
+        }
+
         foreach ($request->item_id as $key => $item_id) {
             $inventory_item = InventoryItem::find($item_id);
 
@@ -928,11 +940,17 @@ class InventoryController extends Controller
             $entry->save();
 
             $total_price = ItemEntry::where('item_id', $request->item_id)->where('store_id', Helpers::get_store_id())->sum('total_amount');
-            $old_stock = (float) $inventory_item->stock;
 
-            $inventory_item->stock = $old_stock + $kg_input;
+            // Price first, then stock. _incrementInventoryStock reloads the row and writes it, so
+            // saving this stale copy afterwards would put the old stock figure straight back.
             $inventory_item->selling_price = $selling_price;
             $inventory_item->save();
+
+            // Credit the variation the goods actually arrived as. A countable variation gets its
+            // own count (and the main figure follows as the sum); a measured pack adds its
+            // converted weight to the pool — 1 × 200gm against a kg item is +0.2 kg. Before this,
+            // stock-in only ever credited the main row, so variation counts could never go up.
+            _incrementInventoryStock($item_id, $kg_input, $inventory_item->unit, $entry->variation_type);
 
             \App\Models\Item::withoutGlobalScopes()
                 ->where('inventory_item_id', $inventory_item->id)
@@ -1060,12 +1078,91 @@ class InventoryController extends Controller
         if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'sell_loose')) {
             DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `sell_loose` TINYINT(1) NOT NULL DEFAULT 0");
         }
+        _ensureStockTypeColumn();
     }
 
     private function applyLooseSelling(InventoryItem $item, Request $request): void
     {
         // Loose item — weighed on the scale at POS sale time; billed weight × per-unit price.
         $item->sell_loose = ($request->item_type === 'product' && $request->boolean('sell_loose')) ? 1 : 0;
+
+        // How this product's stock behaves. The vendor picks it on the form; left blank, the
+        // stock helpers fall back to reading the variation labels (see _stockTypeOf), which is
+        // what every row saved before this setting existed relies on.
+        $stockType = (string) $request->input('stock_type', '');
+        if ($stockType !== '' && array_key_exists($stockType, _stockTypes())) {
+            $item->stock_type = $stockType;
+        } elseif ($item->sell_loose) {
+            $item->stock_type = 'loose';
+        }
+
+        // The two settings answer different questions — stock_type is where the stock lives,
+        // sell_loose is whether a quantity may be a weighed decimal — but they are not free to
+        // disagree at the edges. 'loose' IS simple-plus-weighed, and nothing is weighed when the
+        // stock sits on countable variations sold by the piece.
+        if ($item->stock_type === 'loose') {
+            $item->sell_loose = 1;
+        } elseif (in_array($item->stock_type, ['simple', 'countable_variation'], true)) {
+            $item->sell_loose = 0;
+        }
+        // 'measured' deliberately leaves the checkbox free: packs plus an over-the-counter
+        // custom weight is the combination that lets 150 g be sold when the packs are 100/200 g.
+    }
+
+    /**
+     * The item's main stock figure after a save, which depends on what the variations mean.
+     *
+     * Countable variations each hold their own stock, so the main figure is their SUM and the
+     * typed opening stock is ignored — keeping a separate main number next to them is what let
+     * the two drift apart. Measured packs hold no stock of their own, so the typed figure IS the
+     * pool they are drawn from.
+     */
+    private function mainStockFor(InventoryItem $item, array $variations, $openingStock): float
+    {
+        if (empty($variations)) {
+            return (float) $openingStock;
+        }
+
+        $item->variations = json_encode($variations);
+        if (_variationMode($item) === 'measured') {
+            return (float) $openingStock;
+        }
+
+        // Stock-in never credited variations before this change, so on a product that predates it
+        // every variation counter reads 0 while the real goods sit on the main figure. Taking the
+        // SUM there would wipe the stock the moment someone opened the item and pressed Save.
+        // Until the counts have been entered, the existing figure stands — see
+        // inventory:variation-stock --backfill, which distributes it.
+        $sum = _sumCountableVariationStock($variations);
+        if ($sum <= 0 && (float) $item->getOriginal('stock') > 0) {
+            return (float) $item->getOriginal('stock');
+        }
+
+        return $sum;
+    }
+
+    /**
+     * Pack size for one variation of a measured product — what "100gm" is worth in real units.
+     *
+     * The vendor can type it on the item form; left blank it is read off the variation label, so
+     * the usual "100gm" / "500ml" naming needs no extra input and existing items pick it up on
+     * their next save. Stored per variation so renaming the label later cannot silently change
+     * how much stock a sale takes.
+     */
+    private function variationPackFields(Request $request, string $str): array
+    {
+        $suffix = str_replace('.', '_', $str);
+        $qty    = (float) ($request['pack_qty_' . $suffix] ?? 0);
+        $unit   = trim((string) ($request['pack_unit_' . $suffix] ?? ''));
+
+        if ($qty > 0 && $unit !== '') {
+            return ['pack_qty' => $qty, 'pack_unit' => mb_strtolower($unit)];
+        }
+
+        $parsed = _parseVariationPack($str);
+        return $parsed
+            ? ['pack_qty' => $parsed['qty'], 'pack_unit' => $parsed['code']]
+            : ['pack_qty' => null, 'pack_unit' => null];
     }
 
     private function buildDescriptionAttributes(Request $request): array
@@ -1301,6 +1398,7 @@ class InventoryController extends Controller
                 $item['primary_qty'] = $spare_kgs ?? 0;
                 $item['secondary_qty'] = $total_bags ?? 0;
                 $item['variations_table_id'] = $vrDetails->id;
+                $item += $this->variationPackFields($request, $str);
 
                 array_push($variations, $item);
             }
@@ -1308,11 +1406,11 @@ class InventoryController extends Controller
         }
         // variation end ==================================
 
-        $inventory_item->stock =  $total_stock;
+        $inventory_item->stock = $this->mainStockFor($inventory_item, $variations, $total_stock);
         $inventory_item->save();
 
 
-        // add to items table also 
+        // add to items table also
         if ($show_on_store_page) {
             Helpers::_copyToItemTable($inventory_item, true);
         }
@@ -1557,14 +1655,15 @@ class InventoryController extends Controller
                 $item['secondary_qty'] = $total_bags;
                 $item['primary_qty'] = $spare_kgs;
                 $item['variations_table_id'] = $vrDetails->id;
+                $item += $this->variationPackFields($request, $str);
 
                 array_push($variations, $item);
             }
         }
         // prx($total_stock);
         // variation end ==================================
-        $inventory_item->stock =  $total_stock;
         $inventory_item->variations =  json_encode($variations);
+        $inventory_item->stock = $this->mainStockFor($inventory_item, $variations, $total_stock);
         $inventory_item->save();
 
         $category = [];

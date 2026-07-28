@@ -353,8 +353,19 @@
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">{{ translate('Body') }}</label>
-                                            <textarea class="form-control" name="tpl_body" rows="4" placeholder="Hi @{{1}}, your order @{{2}} is confirmed." required></textarea>
-                                            <small class="text-muted">{{ translate('Use') }} @{{1}}, @{{2}} {{ translate('for variables. Emojis and *bold* / _italic_ allowed.') }}</small>
+                                            <textarea class="form-control wa-tpl-body" name="tpl_body" rows="4" placeholder="Hi @{{customer_name}}, your order @{{1}} is confirmed." required></textarea>
+                                            <div class="d-flex flex-wrap align-items-center mt-2" style="gap:6px;">
+                                                <small class="text-muted">{{ translate('Insert') }}:</small>
+                                                @foreach (\App\Services\WhatsAppService::TEMPLATE_VARIABLES as $key => $meta)
+                                                    <button type="button" class="btn btn-sm btn-outline-primary wa-var-insert" data-var="{{ $key }}">
+                                                        <i class="tio-add"></i> {{ translate($meta['label']) }}
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                            <small class="text-muted d-block mt-1">
+                                                {{ translate('The buttons above insert a variable filled in per recipient at send time — no example value needed. Use') }}
+                                                @{{1}}, @{{2}} {{ translate('for your own variables, but do not mix the two styles. Emojis and *bold* / _italic_ allowed.') }}
+                                            </small>
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">{{ translate('Footer') }} <span class="text-muted">({{ translate('optional') }})</span></label>
@@ -433,6 +444,7 @@
                 <form action="{{ env('APP_MODE') != 'demo' ? route('admin.business-settings.third-party.whatsapp-template-update') : 'javascript:' }}" method="post">
                     @csrf
                     <input type="hidden" name="tpl_id" id="waeId">
+                    <input type="hidden" name="tpl_name" id="waeNameInput">
                     <div class="modal-header">
                         <h5 class="modal-title">{{ translate('Edit Template') }} — <span id="waeName"></span></h5>
                         <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -453,8 +465,16 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">{{ translate('Body') }}</label>
-                            <textarea class="form-control" name="tpl_body" id="waeBody" rows="4" required></textarea>
-                            <small class="text-muted">{{ translate('Use') }} @{{1}}, @{{2}} {{ translate('for variables.') }}</small>
+                            <textarea class="form-control wa-tpl-body" name="tpl_body" id="waeBody" rows="4" required></textarea>
+                            <div class="d-flex flex-wrap align-items-center mt-2" style="gap:6px;">
+                                <small class="text-muted">{{ translate('Insert') }}:</small>
+                                @foreach (\App\Services\WhatsAppService::TEMPLATE_VARIABLES as $key => $meta)
+                                    <button type="button" class="btn btn-sm btn-outline-primary wa-var-insert" data-var="{{ $key }}">
+                                        <i class="tio-add"></i> {{ translate($meta['label']) }}
+                                    </button>
+                                @endforeach
+                            </div>
+                            <small class="text-muted d-block mt-1">{{ translate('Use') }} @{{1}}, @{{2}} {{ translate('for variables — do not mix them with the named ones above.') }}</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">{{ translate('Footer') }} <span class="text-muted">({{ translate('optional') }})</span></label>
@@ -505,12 +525,30 @@
     });
     $(document).on('click', '.wa-tpl-edit', function () {
         var d = $(this).data();
-        $('#waeId').val(d.id); $('#waeName').text(d.name);
+        $('#waeId').val(d.id); $('#waeName').text(d.name); $('#waeNameInput').val(d.name);
         $('#waeCategory').val((d.category || 'UTILITY'));
         $('#waeHeader').val(d.header || ''); $('#waeFooter').val(d.footer || '');
         $('#waeBody').val(d.body || '');
         $('#waeBtnText').val(d.btntext || ''); $('#waeBtnUrl').val(d.btnurl || '');
         $('#waTplEditModal').modal('show');
+    });
+
+    // Built by concatenation so Blade never sees a literal double-brace in this script.
+    var OPEN = '{' + '{', CLOSE = '}' + '}';
+
+    $(document).on('click', '.wa-var-insert', function () {
+        var $body = $(this).closest('.form-group').find('.wa-tpl-body');
+        if (!$body.length) return;
+
+        var el = $body[0];
+        var text = el.value || '';
+        var at = typeof el.selectionStart === 'number' ? el.selectionStart : text.length;
+        var end = typeof el.selectionEnd === 'number' ? el.selectionEnd : at;
+        var chunk = OPEN + $(this).data('var') + CLOSE;
+
+        el.value = text.slice(0, at) + chunk + text.slice(end);
+        el.focus();
+        el.selectionStart = el.selectionEnd = at + chunk.length;
     });
 </script>
 @endpush

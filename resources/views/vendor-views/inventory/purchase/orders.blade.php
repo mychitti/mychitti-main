@@ -208,7 +208,7 @@
                                             </td>
                                             <td>
                                                 <span class="badge badge-soft-danger rounded ml-1">
-                                                    {{ $order->stock }}</span>
+                                                    {{ $order->inventoryItem ? _stockLabel($order->inventoryItem) : $order->stock }}</span>
                                             </td>
                                             <td>
                                                 <div class="btn--container justify-content-center">

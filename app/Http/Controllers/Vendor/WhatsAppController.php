@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\AccountTransaction;
 use App\Models\StoreWallet;
 use App\Models\UserNotificationPreference;
+use App\Services\WhatsAppAgent;
+use App\Services\WhatsAppBilling;
 use App\Services\WhatsAppService;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
@@ -23,6 +25,11 @@ class WhatsAppController extends Controller
     /** Recipients accepted per bulk-send call — the browser drives the batches so a long run
      *  never hits max_execution_time and the vendor sees live progress. */
     const BULK_BATCH_LIMIT = 25;
+
+    /** TEMPORARY (testing): list PENDING/REJECTED templates in the bulk composer as well.
+     *  Meta still refuses to deliver them — the send just comes back with its error. Set to
+     *  false to go back to approved-only. */
+    const BULK_SHOW_UNAPPROVED = true;
 
     // Vendor "Connect WhatsApp" screen (Embedded Signup).
     public function connect(Request $request)
@@ -743,15 +750,18 @@ class WhatsAppController extends Controller
 
     /**
      * Reduce Meta's template payload to what the bulk composer needs.
-     * Only APPROVED templates can be sent, and only BODY variables are supported — a template
-     * with a variable header or a dynamic URL button needs parameters this UI doesn't collect,
-     * so it is listed as unsupported instead of failing at send time.
+     * Normally only APPROVED templates are listed (see BULK_SHOW_UNAPPROVED), and only BODY
+     * variables are supported — a template with a variable header or a dynamic URL button needs
+     * parameters this UI doesn't collect, so it is listed as unsupported instead of failing at
+     * send time.
      */
     private function bulkTemplateOptions(array $data): array
     {
         $out = [];
         foreach ($data as $tpl) {
-            if (strtoupper((string) data_get($tpl, 'status')) !== 'APPROVED') {
+            $status = strtoupper((string) data_get($tpl, 'status')) ?: 'UNKNOWN';
+
+            if (!self::BULK_SHOW_UNAPPROVED && $status !== 'APPROVED') {
                 continue;
             }
 
@@ -772,16 +782,37 @@ class WhatsAppController extends Controller
                 }
             }
 
-            preg_match_all('/\{\{\s*(\d+)\s*\}\}/', $body, $m);
-            $varCount = $m[1] ? max(array_map('intval', $m[1])) : 0;
+            // Every slot the body needs, in send order. Named slots the platform knows how to
+            // fill are marked auto — the composer shows them as filled-per-recipient instead of
+            // asking the vendor for a value.
+            $vars = [];
+            foreach (WhatsAppService::namedVariables($body) as $named) {
+                $known = WhatsAppService::TEMPLATE_VARIABLES[$named] ?? null;
+                $vars[] = [
+                    'key'   => $named,
+                    'label' => $known['label'] ?? ucfirst(str_replace('_', ' ', $named)),
+                    'auto'  => $known !== null,
+                ];
+            }
+            if (empty($vars)) {
+                $count = WhatsAppService::positionalCount($body);
+                for ($n = 1; $n <= $count; $n++) {
+                    $vars[] = ['key' => (string) $n, 'label' => 'Variable ' . $n, 'auto' => false];
+                }
+            } elseif (WhatsAppService::positionalCount($body) > 0) {
+                // Meta will not have approved this, but a hand-edited body could still reach us.
+                $unsupported = 'mixes named and numbered variables';
+            }
 
             $out[] = [
                 'name'        => data_get($tpl, 'name'),
                 'language'    => data_get($tpl, 'language', 'en_US'),
                 'category'    => data_get($tpl, 'category'),
                 'body'        => $body,
-                'var_count'   => $varCount,
+                'vars'        => $vars,
+                'var_count'   => count($vars),
                 'unsupported' => $unsupported,
+                'status'      => $status,
             ];
         }
 
@@ -832,6 +863,7 @@ class WhatsAppController extends Controller
             'offset'       => 'required_if:mode,platform|integer|min:0',
             'limit'        => 'required_if:mode,platform|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
             'params'       => 'nullable|array',
+            'params.*.key' => 'nullable|string|max:64',
         ]);
 
         $storeId = Helpers::get_store_id();
@@ -876,16 +908,35 @@ class WhatsAppController extends Controller
 
         foreach ($recipients as $client) {
             $name = trim((string) $client->name) ?: 'Customer';
+            $phone = trim((string) $client->phone);
 
-            // {name} is substituted per recipient; everything else is the literal text the
-            // vendor typed. Meta rejects newlines and runs of 4+ spaces inside a parameter.
-            $params = array_map(
-                fn($v) => $this->sanitizeParam(str_replace('{name}', $name, (string) $v)),
-                $rawParams
-            );
+            // {name} / {phone} are substituted inside whatever the vendor typed; the named
+            // slots ({{customer_name}}, {{customer_phone}}) are filled outright. Either way the
+            // number only ever lands in the message that number receives, so it stays hidden
+            // from the sender even in platform mode.
+            // Meta rejects newlines and runs of 4+ spaces inside a parameter.
+            $auto = ['customer_name' => $name, 'customer_phone' => $phone];
+            $tokens = [
+                '{name}'           => $name,
+                '{customer_name}'  => $name,
+                '{phone}'          => $phone,
+                '{customer_phone}' => $phone,
+            ];
 
-            $components = $params
-                ? [['type' => 'body', 'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => $v], $params)]]
+            $parameters = [];
+            foreach ($rawParams as $i => $raw) {
+                // A slot is {key, value} for named templates; older callers send bare strings,
+                // which are positional in the order they arrive.
+                $key   = trim(is_array($raw) ? (string) ($raw['key'] ?? '') : '') ?: (string) ($i + 1);
+                $value = is_array($raw) ? (string) ($raw['value'] ?? '') : (string) $raw;
+
+                $value = array_key_exists($key, $auto) ? $auto[$key] : strtr($value, $tokens);
+
+                $parameters[] = WhatsAppService::bodyParameter($key, $this->sanitizeParam($value));
+            }
+
+            $components = $parameters
+                ? [['type' => 'body', 'parameters' => $parameters]]
                 : [];
 
             // Context 'nearby' is what nearbyCappedPhones() counts — it must stay distinct
@@ -917,24 +968,9 @@ class WhatsAppController extends Controller
         ]);
     }
 
-    /**
-     * Meta rejects a template body whose first or last character is a variable
-     * ("Leading or trailing params not allowed", error_subcode 2388299). Catch it here so the
-     * vendor gets a fixable message instead of a raw OAuthException from Graph.
-     */
-    private function templateBodyError(string $body): ?string
+    private function templateBodyError(string $body, ?string $name = null): ?string
     {
-        $body = trim($body);
-        if ($body === '') {
-            return null;
-        }
-        if (preg_match('/^\{\{\s*\d+\s*\}\}/', $body)) {
-            return 'The message can’t start with a variable. Put some text before it — e.g. "Hi {{1}}" instead of "{{1}}".';
-        }
-        if (preg_match('/\{\{\s*\d+\s*\}\}$/', $body)) {
-            return 'The message can’t end with a variable. Add some text after it — e.g. "{{2}}. See you then!" instead of ending on "{{2}}".';
-        }
-        return null;
+        return WhatsAppService::templateBodyProblem($body, $name);
     }
 
     private function maskPhone(?string $phone): string
@@ -1029,6 +1065,191 @@ class WhatsAppController extends Controller
 
         Toastr::success($row->enabled ? 'Receiving paused.' : 'Receiving resumed.');
         return back();
+    }
+
+    /**
+     * WhatsApp Business Platform billing — subscription state, AI token balance, template
+     * slots and the charge history, all in one page.
+     */
+    public function billing(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        WhatsAppBilling::ensureTables();
+
+        $subscription = WhatsAppBilling::subscription($storeId);
+        $pricing = [
+            'monthly'          => WhatsAppBilling::monthlyFee(),
+            'monthly_total'    => WhatsAppBilling::withTax(WhatsAppBilling::monthlyFee()),
+            'setup'            => WhatsAppBilling::setupFee(),
+            'setup_total'      => WhatsAppBilling::withTax(WhatsAppBilling::setupFee()),
+            'manager'          => WhatsAppBilling::accountManagerFee(),
+            'manager_total'    => WhatsAppBilling::withTax(WhatsAppBilling::accountManagerFee()),
+            'template_slot'    => WhatsAppBilling::extraTemplateFee(),
+            'template_total'   => WhatsAppBilling::withTax(WhatsAppBilling::extraTemplateFee()),
+            'token_pack'       => WhatsAppBilling::tokenPackPrice(),
+            'token_pack_total' => WhatsAppBilling::withTax(WhatsAppBilling::tokenPackPrice()),
+            'token_pack_usd'   => WhatsAppBilling::TOKEN_PACK_USD,
+            'usd_rate'         => WhatsAppBilling::usdInrRate(),
+            'gst'              => WhatsAppBilling::gstPercent(),
+        ];
+
+        return view('vendor-views.whatsapp.billing', [
+            'subscription'  => $subscription,
+            'active'        => WhatsAppBilling::isActive($storeId),
+            'pricing'       => $pricing,
+            'tokens'        => $this->poolStats($storeId, WhatsAppBilling::POOL_CHATBOT),
+            'agentTokens'   => $this->poolStats($storeId, WhatsAppBilling::POOL_AGENT),
+            'agentPlans'    => WhatsAppBilling::agentPlans(),
+            'agentSub'      => WhatsAppBilling::agentSubscription($storeId),
+            'agentActive'   => WhatsAppBilling::agentActive($storeId),
+            'agentTopup'    => WhatsAppBilling::withTax(WhatsAppBilling::agentTopupPerMillion()),
+            'allowance'     => WhatsAppBilling::templateAllowance($storeId),
+            'included'      => WhatsAppBilling::includedTemplates(),
+            'walletBalance' => WhatsAppBilling::walletBalance($storeId),
+            'invoices'      => WhatsAppBilling::invoices($storeId, 25),
+            'graceDays'     => WhatsAppBilling::GRACE_DAYS,
+            'usage'         => WhatsAppBilling::usageThisMonth($storeId),
+            'feeOwn'        => WhatsAppBilling::messageFeeOwn(),
+            'feePlatform'   => WhatsAppBilling::messageFeePlatform(),
+        ]);
+    }
+
+    /** Balance / granted / used figures for one token pool. */
+    private function poolStats(int $storeId, string $pool): array
+    {
+        $row = WhatsAppBilling::tokenWallet($storeId, $pool);
+
+        return [
+            'balance'    => WhatsAppBilling::tokenBalance($storeId, $pool),
+            'plan'       => (int) ($row->plan_tokens ?? 0),
+            'plan_used'  => (int) ($row->plan_tokens_used ?? 0),
+            'topup'      => (int) ($row->topup_tokens ?? 0),
+            'topup_used' => (int) ($row->topup_tokens_used ?? 0),
+            'this_month' => (int) DB::table('wa_token_usage')->where('store_id', $storeId)
+                ->where('pool', $pool)
+                ->where('created_at', '>=', now()->startOfMonth())->sum('tokens'),
+        ];
+    }
+
+    /** Chatbot settings — which bot answers, and what it may tell customers. */
+    public function bot(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+
+        return view('vendor-views.whatsapp.bot', [
+            'mode'        => WhatsAppAgent::mode($storeId),
+            'agentActive' => WhatsAppBilling::agentActive($storeId),
+            'agentSub'    => WhatsAppBilling::agentSubscription($storeId),
+            'shares'      => WhatsAppAgent::shares($storeId),
+            'shareItems'  => WhatsAppAgent::SHARE_ITEMS,
+            'agentPlans'  => WhatsAppBilling::agentPlans(),
+            'gst'         => WhatsAppBilling::gstPercent(),
+        ]);
+    }
+
+    public function botMode(Request $request)
+    {
+        $request->validate(['mode' => 'required|in:knowledge,agent']);
+        $res = WhatsAppAgent::setMode(Helpers::get_store_id(), $request->mode);
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    public function botShares(Request $request)
+    {
+        WhatsAppAgent::saveShares(Helpers::get_store_id(), (array) $request->input('items', []));
+        Toastr::success('Saved. The AI Agent will only discuss what you have allowed.');
+        return back();
+    }
+
+    // Start / switch an AI Agent plan (lead & appointment management).
+    public function agentSubscribe(Request $request)
+    {
+        $request->validate(['plan' => 'required|in:' . implode(',', array_keys(WhatsAppBilling::AGENT_PLANS))]);
+        $res = WhatsAppBilling::subscribeAgent(Helpers::get_store_id(), $request->plan);
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    public function agentCancel(Request $request)
+    {
+        $res = WhatsAppBilling::cancelAgent(Helpers::get_store_id());
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    // AI Agent token top-up — ₹700 + GST per million.
+    public function buyAgentTokens(Request $request)
+    {
+        $request->validate(['millions' => 'nullable|integer|min:1|max:50']);
+        $res = WhatsAppBilling::buyAgentTokens(Helpers::get_store_id(), (int) ($request->millions ?: 1));
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    // Activate the WhatsApp Business Platform — setup fee (first time) + the first month.
+    public function billingSubscribe(Request $request)
+    {
+        $res = WhatsAppBilling::subscribe(Helpers::get_store_id(), $request->boolean('account_manager'));
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    // Stop auto-renewal; the already-paid period is honoured.
+    public function billingCancel(Request $request)
+    {
+        $res = WhatsAppBilling::cancel(Helpers::get_store_id());
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    public function billingAccountManager(Request $request)
+    {
+        $res = WhatsAppBilling::setAccountManager(Helpers::get_store_id(), $request->boolean('enable'));
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    // One-time purchase of a message-template slot beyond the included quota.
+    public function buyTemplateSlot(Request $request)
+    {
+        $res = WhatsAppBilling::buyTemplateSlot(Helpers::get_store_id());
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    // AI auto-reply token top-up — 1M tokens per pack.
+    public function buyTokens(Request $request)
+    {
+        $request->validate(['packs' => 'nullable|integer|min:1|max:50']);
+        $res = WhatsAppBilling::buyTokenPack(Helpers::get_store_id(), (int) ($request->packs ?: 1));
+        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
+        return back();
+    }
+
+    /**
+     * Template quota gate. Returns an error message when the store already has as many
+     * templates as it has paid for, or null when it may create another.
+     *
+     * A failed listTemplates call never blocks the vendor — we only enforce on a count we
+     * actually read back from Meta.
+     */
+    private function templateQuotaError(WhatsAppService $wa, int $storeId): ?string
+    {
+        $res = $wa->listTemplates();
+        if (!$res['success']) {
+            return null;
+        }
+
+        $allowance = WhatsAppBilling::templateAllowance($storeId);
+        if (count($res['data']) < $allowance) {
+            return null;
+        }
+
+        return 'You have used all ' . $allowance . ' of your message templates ('
+            . WhatsAppBilling::includedTemplates() . ' included with your plan). Add an extra template slot for '
+            . _price(WhatsAppBilling::withTax(WhatsAppBilling::extraTemplateFee()))
+            . ' one-time from WhatsApp → Billing, or delete a template you no longer use.';
     }
 
     // Completes Embedded Signup: exchanges the auth code for a token and saves the vendor's number.
@@ -1126,7 +1347,15 @@ class WhatsAppController extends Controller
         $apptRaw = DB::table('stores')->where('id', $storeId)->value('wa_appt_reminder');
         $apptReminder = ($apptRaw === null || $apptRaw === '') ? WhatsAppService::DEFAULT_APPT_REMINDER_HOURS : (int) $apptRaw;
 
-        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'templateError', 'presets', 'apptReminder'));
+        // Template quota: 4 included with the plan, plus any slots the vendor bought.
+        $quota = [
+            'included'  => WhatsAppBilling::includedTemplates(),
+            'allowance' => WhatsAppBilling::templateAllowance($storeId),
+            'used'      => count($templates),
+            'slot_fee'  => WhatsAppBilling::withTax(WhatsAppBilling::extraTemplateFee()),
+        ];
+
+        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'templateError', 'presets', 'apptReminder', 'quota'));
     }
 
     // Vendor picks how many hours before the appointment the reminder goes out (0 = off).
@@ -1168,6 +1397,11 @@ class WhatsAppController extends Controller
             ->where('id', $request->preset_id)->where('active', 1)->first();
         if (!$preset) {
             Toastr::error('This suggested template is no longer available.');
+            return back();
+        }
+
+        if ($quotaError = $this->templateQuotaError($wa, Helpers::get_store_id())) {
+            Toastr::error($quotaError);
             return back();
         }
 
@@ -1221,8 +1455,13 @@ class WhatsAppController extends Controller
             return back();
         }
 
-        if ($bodyError = $this->templateBodyError((string) $request->tpl_body)) {
+        if ($bodyError = $this->templateBodyError((string) $request->tpl_body, $request->tpl_name)) {
             Toastr::error($bodyError);
+            return back()->withInput();
+        }
+
+        if ($quotaError = $this->templateQuotaError($wa, Helpers::get_store_id())) {
+            Toastr::error($quotaError);
             return back()->withInput();
         }
 
@@ -1269,7 +1508,7 @@ class WhatsAppController extends Controller
             return back();
         }
 
-        if ($bodyError = $this->templateBodyError((string) $request->tpl_body)) {
+        if ($bodyError = $this->templateBodyError((string) $request->tpl_body, $request->tpl_name)) {
             Toastr::error($bodyError);
             return back()->withInput();
         }

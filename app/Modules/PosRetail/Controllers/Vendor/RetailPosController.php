@@ -1261,7 +1261,8 @@ class RetailPosController extends Controller
                 'expiry_warn'=> $i->expiry_date && $i->expiry_date <= now()->addDays(30)->toDateString(),
                 'low_stock'  => $stock <= 0,
                 'sell_loose' => (bool) ($i->sell_loose ?? false),
-                'variations' => json_decode($i->variations, true) ?: [],
+                'stock_type' => _stockTypeOf($i),
+                'variations' => $this->decorateVariations($i),
             ];
         });
 
@@ -1319,20 +1320,30 @@ class RetailPosController extends Controller
             if (!$item) {
                 continue;
             }
+
+            // Once a product has variations the parent is not sellable on its own — the line has
+            // to say which one, or the stock has no single place to come from.
+            if ($varErr = _variationSelectionError($item, $varType)) {
+                return response()->json(['status' => false, 'msg' => $varErr], 422);
+            }
+
             $qty = max(0, (float) ($row['qty'] ?? 1));
-            
+
             $basePrice = (float) ($item->selling_price ?? 0);
             $avail = $billingBranchId ? $this->branchItemStock($billingBranchId, $item->id) : (float) $item->stock;
 
-            if ($varType) {
-                $vars = json_decode($item->variations, true) ?: [];
-                foreach ($vars as $var) {
-                    if (isset($var['type']) && $var['type'] === $varType) {
-                        $basePrice = (float) ($var['price'] ?? $item->selling_price ?? 0);
-                        $varStock = (float) ($var['stock'] ?? 0);
-                        $avail = $billingBranchId ? min($varStock, $avail) : $varStock;
-                        break;
-                    }
+            if ($varType && ($var = _variationRow($item, $varType))) {
+                $basePrice = (float) ($var['price'] ?? $item->selling_price ?? 0);
+
+                if (_variationMode($item) === 'measured') {
+                    // The variation holds no stock of its own — how many 100gm packs are available
+                    // is the pool divided by one pack, not a counter on the variation.
+                    $pack = _variationPack($item, $var);
+                    $perPack = $pack ? _variationQtyInItemUnit($item, $pack, 1) : 0;
+                    $avail = $perPack > 0 ? floor($avail / $perPack) : $avail;
+                } else {
+                    $varStock = (float) ($var['stock'] ?? 0);
+                    $avail = $billingBranchId ? min($varStock, $avail) : $varStock;
                 }
             }
 
@@ -1548,6 +1559,8 @@ class RetailPosController extends Controller
             $this->logAudit('override', $invoice->invoice_id, implode('; ', $auditNotes));
         }
 
+        _ensureInvoiceItemVariationColumn();
+
         foreach ($lines as $line) {
             $ii = new InvoiceItem();
             $ii->rand_invoice_id = $invoice->invoice_id;
@@ -1562,35 +1575,27 @@ class RetailPosController extends Controller
             $ii->tax = $line['rate'];
             $ii->hsn = $line['hsn'];
             $ii->gst_status = $line['gst_status'];
-            $ii->pieces = $line['pieces']; 
+            $ii->pieces = $line['pieces'];
+            if (Schema::hasColumn('invoice_items', 'variation_type')) {
+                $ii->variation_type = $line['var_type'];
+            }
             $ii->save();
 
-            _updateInventoryStock($line['item']->id, $line['qty'], $line['item']->unit);
+            // One call, whatever the item's stock type. The variation decides where the stock
+            // comes from: a measured pack (100gm) draws its converted weight from the main pool,
+            // a countable variation (Red) takes it off its own count and the main figure follows
+            // as the sum. Deducting from both — which is what happened here before — took the
+            // quantity out twice.
+            _updateInventoryStock($line['item']->id, $line['qty'], $line['item']->unit, $line['var_type']);
 
-            // If it is a variation, update the stock of the variation in the JSON array
-            if ($line['var_type']) {
-                $freshItem = InventoryItem::find($line['item']->id);
-                if ($freshItem) {
-                    $vars = json_decode($freshItem->variations, true) ?: [];
-                    $modifiedVars = false;
-                    foreach ($vars as &$var) {
-                        if (isset($var['type']) && $var['type'] === $line['var_type']) {
-                            $var['stock'] = max(0, (float)($var['stock'] ?? 0) - $line['qty']);
-                            $modifiedVars = true;
-                        }
-                    }
-                    if ($modifiedVars) {
-                        $freshItem->variations = json_encode($vars);
-                        $freshItem->save();
-                    }
-                }
-            }
-
-            // Decrement the branch's stock too (availability at the counter's branch).
+            // Decrement the branch's stock too (availability at the counter's branch). Branch
+            // stock is held in the item's own unit, so a measured pack takes its converted
+            // weight — one 100gm pack off a kg item is 0.1, not 1.
             if ($billingBranchId) {
+                $branchQty = _stockQtyForLine($line['item'], $line['qty'], $line['item']->unit, $line['var_type']);
                 DB::table('pos_branch_stock')
                     ->where('branch_id', $billingBranchId)->where('inventory_item_id', $line['item']->id)
-                    ->update(['stock' => DB::raw('GREATEST(stock - ' . (float) $line['qty'] . ', 0)'), 'updated_at' => now()]);
+                    ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
             }
         }
 
@@ -2845,6 +2850,29 @@ class RetailPosController extends Controller
             ->where('inventory_item_id', $itemId)->value('stock');
     }
 
+    /**
+     * Variations as the counter needs them: each one told whether it is a fixed pack and, if so,
+     * how much of the item's stock one of it consumes.
+     *
+     * Without this the cart cannot tell "150gm" (a fixed pack — one tap is 150 g) from "Red"
+     * (a countable SKU sold by the piece), and a pack on a loose item inherits the weight box and
+     * defaults to a full unit.
+     */
+    private function decorateVariations($item): array
+    {
+        $measured = _variationMode($item) === 'measured';
+
+        return array_map(function ($var) use ($item, $measured) {
+            $pack = $measured ? _variationPack($item, $var) : null;
+            $var['is_pack']  = (bool) $pack;
+            $var['pack_qty'] = $pack['qty'] ?? null;
+            $var['pack_unit'] = $pack['code'] ?? null;
+            // What one pack takes out of stock, in the item's own unit — 150gm of a kg item = 0.15.
+            $var['pack_in_item_unit'] = $pack ? _variationQtyInItemUnit($item, $pack, 1) : null;
+            return $var;
+        }, _itemVariations($item));
+    }
+
     // Item IDs (this store) that own a variation whose SKU matches $term. Variation SKUs live in
     // inv_item_variation_details, so this lets a scan/search of a variation SKU surface its parent item.
     private function itemIdsByVariationSku(int $storeId, string $term, bool $like = false): array
@@ -3096,10 +3124,9 @@ class RetailPosController extends Controller
             return back();
         }
 
-        // Validate against main-store stock only. variations[].stock is decrement-only — goods
-        // received credit inventory_items.stock and never the variation (see InventoryController
-        // stock-in), so a variation counter sits at 0 and would block every transfer if it gated
-        // availability. The chosen variation says what is going, not how much is on hand.
+        // Validate against main-store stock. A countable variation is checked against its own
+        // count; a measured pack against what it actually draws from the pool — 3 × 100gm needs
+        // 0.3 kg, not 3 kg, so the raw line quantity is the wrong thing to compare.
         $items = InventoryItem::where('store_id', $storeId)
             ->whereIn('id', array_unique(array_column($lines, 'item_id')))->get()->keyBy('id');
 
@@ -3110,21 +3137,23 @@ class RetailPosController extends Controller
                 return back();
             }
 
-            if ($line['var_type']) {
-                $varFound = false;
-                foreach (json_decode($item->variations, true) ?: [] as $var) {
-                    if (isset($var['type']) && $var['type'] === $line['var_type']) {
-                        $varFound = true;
-                        break;
-                    }
-                }
-                if (!$varFound) {
-                    Toastr::error("Variation \"{$line['var_type']}\" not found for \"{$item->item_name}\"");
-                    return back();
-                }
+            if ($varErr = _variationSelectionError($item, $line['var_type'])) {
+                Toastr::error($varErr);
+                return back();
             }
 
-            if ($line['qty'] > (float) $item->stock) {
+            if (_variationMode($item) === 'countable') {
+                $var = _variationRow($item, $line['var_type']);
+                $have = (float) ($var['stock'] ?? 0);
+                if ($line['qty'] > $have) {
+                    Toastr::error("Insufficient stock for \"{$item->item_name} ({$line['var_type']})\" (have " . rtrim(rtrim(number_format($have, 3), '0'), '.') . ')');
+                    return back();
+                }
+                continue;
+            }
+
+            $needed = _stockQtyForLine($item, $line['qty'], $item->unit, $line['var_type']);
+            if ($needed > (float) $item->stock) {
                 Toastr::error("Insufficient main-store stock for \"{$item->item_name}\" (have " . rtrim(rtrim(number_format((float) $item->stock, 3), '0'), '.') . ')');
                 return back();
             }
@@ -3151,27 +3180,20 @@ class RetailPosController extends Controller
 
                 $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
 
-                // Deduct from main store. When a variation is the chosen pool it takes the hit
-                // too, on top of the umbrella stock — same as selling that variation.
-                if ($varType) {
-                    $vars = json_decode($item->variations, true) ?: [];
-                    foreach ($vars as &$var) {
-                        if (isset($var['type']) && $var['type'] === $varType) {
-                            $var['stock'] = max(0, (float)($var['stock'] ?? 0) - $qty);
-                        }
-                    }
-                    unset($var);
-                    $item->variations = json_encode($vars);
-                }
-                $item->stock = max(0, (float)$item->stock - $qty);
-                $item->save();
+                // Deduct from main store through the shared helper, so a transfer takes exactly
+                // what the same line would take on a sale — one deduction, in the right place for
+                // the item's stock type. Deducting the variation and the umbrella separately, as
+                // this did before, took the quantity out twice.
+                _decrementInventoryStock($itemId, $qty, $item->unit, $varType);
 
-                // …and add to the branch
+                // …and add to the branch. Branch stock is held in the item's own unit, so a
+                // measured pack moves its converted weight, not its pack count.
+                $branchQty = _stockQtyForLine($item, $qty, $item->unit, $varType);
                 $existing = DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)->first();
                 if ($existing) {
-                    DB::table('pos_branch_stock')->where('id', $existing->id)->update(['stock' => DB::raw('stock + ' . $qty), 'updated_at' => now()]);
+                    DB::table('pos_branch_stock')->where('id', $existing->id)->update(['stock' => DB::raw('stock + ' . $branchQty), 'updated_at' => now()]);
                 } else {
-                    DB::table('pos_branch_stock')->insert(['branch_id' => $branchId, 'inventory_item_id' => $itemId, 'store_id' => $storeId, 'stock' => $qty, 'created_at' => now(), 'updated_at' => now()]);
+                    DB::table('pos_branch_stock')->insert(['branch_id' => $branchId, 'inventory_item_id' => $itemId, 'store_id' => $storeId, 'stock' => $branchQty, 'created_at' => now(), 'updated_at' => now()]);
                 }
 
                 DB::table('pos_stock_gatepass_items')->insert([
@@ -3221,26 +3243,18 @@ class RetailPosController extends Controller
                     $itemId = $line->inventory_item_id;
                     $varType = $line->variation_type ?? null;
 
-                    // Return to main store
+                    // Return to main store — the exact mirror of the transfer, through the same
+                    // helper, so what comes back is what went out.
                     $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
                     if ($item) {
-                        if ($varType) {
-                            $vars = json_decode($item->variations, true) ?: [];
-                            foreach ($vars as &$var) {
-                                if (isset($var['type']) && $var['type'] === $varType) {
-                                    $var['stock'] = (float)($var['stock'] ?? 0) + $qty;
-                                }
-                            }
-                            $item->variations = json_encode($vars);
-                        }
-                        $item->stock = (float)$item->stock + $qty;
-                        $item->save();
+                        _incrementInventoryStock($itemId, $qty, $item->unit, $varType);
                     }
 
-                    // …and pull it back out of the branch.
+                    // …and pull it back out of the branch, in the unit the branch holds.
+                    $branchQty = $item ? _stockQtyForLine($item, $qty, $item->unit, $varType) : $qty;
                     DB::table('pos_branch_stock')
                         ->where('branch_id', $gp->branch_id)->where('inventory_item_id', $itemId)
-                        ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)'), 'updated_at' => now()]);
+                        ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
                 }
                 DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->delete();
                 DB::table('pos_stock_gatepass')->where('id', $gp->id)->where('store_id', $storeId)->delete();

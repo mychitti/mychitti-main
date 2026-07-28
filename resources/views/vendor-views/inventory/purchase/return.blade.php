@@ -224,7 +224,7 @@
                                             </td>
                                             <td>
                                                 <span class="badge badge-soft-danger rounded ml-1">
-                                                    {{ $detail->item?->stock }}</span>
+                                                    {{ $detail->item ? _stockLabel($detail->item) : '' }}</span>
                                             </td>
                                             <td>
                                                 {{ $detail->created_at }}

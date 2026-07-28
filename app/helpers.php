@@ -2152,6 +2152,426 @@ if (!function_exists('_unitFactor')) {
         return $cache[$unitId] > 0 ? $cache[$unitId] : 1.0;
     }
 }
+if (!function_exists('_unitDimensionOf')) {
+    /**
+     * Dimension of a unit id ('weight'/'length'/'volume'/'count'), or null if unclassified.
+     *
+     * Reads a column added by _ensureUnitDimensionColumns(). This is called from views and item
+     * saves as well as the stock helpers, so it cannot assume that guard has already run —
+     * an unclassified unit simply means no variation is treated as a measured pack.
+     */
+    function _unitDimensionOf($unitId): ?string
+    {
+        static $cache = [];
+        if (!$unitId) {
+            return null;
+        }
+        if (!array_key_exists($unitId, $cache)) {
+            try {
+                $cache[$unitId] = DB::table('units')->where('id', $unitId)->value('dimension') ?: null;
+            } catch (\Throwable $e) {
+                $cache[$unitId] = null;
+            }
+        }
+        return $cache[$unitId];
+    }
+}
+if (!function_exists('_parseVariationPack')) {
+    /**
+     * Read a pack size out of a variation label: "100gm" → 100 g, "4 cm" → 4 cm, "1 Ltr" → 1 l.
+     *
+     * Variation names are free text from the vendor's own dropdown (AccountDropdownOption
+     * type=item_variation), so this is a best-effort reading used only to seed the explicit
+     * pack_qty/pack_unit fields. A label that does not parse is not a pack — it is a countable
+     * variation like "Red" or "XL".
+     *
+     * Returns [qty, code, dimension, factor] or null.
+     */
+    function _parseVariationPack(?string $label): ?array
+    {
+        $label = trim(mb_strtolower((string) $label));
+        if ($label === '') {
+            return null;
+        }
+
+        // number (optionally decimal) followed by a unit token: "100gm", "2.5 kg", "500 ml"
+        if (!preg_match('/^([0-9]+(?:\.[0-9]+)?)\s*([a-z]+)\.?$/u', $label, $m)) {
+            return null;
+        }
+
+        $qty  = (float) $m[1];
+        $code = $m[2];
+        if ($qty <= 0) {
+            return null;
+        }
+
+        // "gm"/"gms" are the common Indian spellings and are not in the unit seed table.
+        $alias = ['gm' => 'g', 'gms' => 'g', 'grams' => 'g', 'kgs' => 'kg', 'lt' => 'l', 'lts' => 'l',
+                  'ltrs' => 'ltr', 'mtr' => 'm', 'mtrs' => 'm', 'cms' => 'cm', 'mms' => 'mm', 'inches' => 'inch'];
+        $code  = $alias[$code] ?? $code;
+        $seed  = _unitDimensionSeed();
+        if (!isset($seed[$code])) {
+            return null;
+        }
+
+        [$dimension, $factor] = $seed[$code];
+        return ['qty' => $qty, 'code' => $code, 'dimension' => $dimension, 'factor' => (float) $factor];
+    }
+}
+if (!function_exists('_variationPack')) {
+    /**
+     * Resolved pack size for one variation, in the item's dimension. Explicit pack_qty/pack_unit
+     * set by the vendor win; otherwise the label is parsed. Returns null when the variation is
+     * countable (label is not a measurement, or measures a different dimension than the item).
+     */
+    function _variationPack($inv_item, array $var): ?array
+    {
+        $itemDimension = _unitDimensionOf($inv_item->unit ?? null);
+        if (!$itemDimension) {
+            return null;
+        }
+
+        $seed = _unitDimensionSeed();
+        $pack = null;
+
+        $explicitQty  = (float) ($var['pack_qty'] ?? 0);
+        $explicitUnit = mb_strtolower(trim((string) ($var['pack_unit'] ?? '')));
+        if ($explicitQty > 0 && isset($seed[$explicitUnit])) {
+            [$dimension, $factor] = $seed[$explicitUnit];
+            $pack = ['qty' => $explicitQty, 'code' => $explicitUnit, 'dimension' => $dimension, 'factor' => (float) $factor];
+        } else {
+            $pack = _parseVariationPack($var['type'] ?? null);
+        }
+
+        return ($pack && $pack['dimension'] === $itemDimension) ? $pack : null;
+    }
+}
+if (!function_exists('_ensureStockTypeColumn')) {
+    /**
+     * stock_type is the vendor's explicit answer to "how does this product's stock behave",
+     * chosen on the item form. Guessing it from the variation labels was only ever a fallback
+     * for rows saved before the setting existed.
+     */
+    function _ensureStockTypeColumn()
+    {
+        static $done = false;
+        if ($done || !\Illuminate\Support\Facades\Schema::hasTable('inventory_items')) {
+            return;
+        }
+        $done = true;
+        try {
+            // No AFTER clause — sell_loose is added by its own guard and may not exist yet on a
+            // store that has not saved an item since, and a failed ALTER would leave stock_type
+            // missing for good.
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_items', 'stock_type')) {
+                DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `stock_type` VARCHAR(24) NULL");
+            }
+        } catch (\Throwable $e) {
+            Log::error('stock_type provisioning failed: ' . $e->getMessage());
+        }
+    }
+}
+if (!function_exists('_ensureInvoiceItemVariationColumn')) {
+    /**
+     * Which variation a sold line was, as data rather than as text inside the item name.
+     *
+     * The name has always carried it as "Product (100gm)", which reads fine on an invoice but
+     * cannot be parsed back reliably — a product whose own name contains brackets, or a variation
+     * renamed since the sale, and the reversal guesses wrong. Reversing a bill has to return the
+     * stock to exactly where it came from, so the variation is stored alongside the quantity.
+     */
+    function _ensureInvoiceItemVariationColumn()
+    {
+        static $done = false;
+        if ($done || !\Illuminate\Support\Facades\Schema::hasTable('invoice_items')) {
+            return;
+        }
+        $done = true;
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('invoice_items', 'variation_type')) {
+                DB::statement("ALTER TABLE `invoice_items` ADD COLUMN `variation_type` VARCHAR(100) NULL AFTER `inv_id`");
+            }
+        } catch (\Throwable $e) {
+            Log::error('invoice_items.variation_type provisioning failed: ' . $e->getMessage());
+        }
+    }
+}
+if (!function_exists('_stockTypes')) {
+    /** The four ways a product's stock can behave, for the item form's dropdown. */
+    function _stockTypes(): array
+    {
+        return [
+            'simple'              => 'Simple — one stock figure, sold in whole units',
+            'countable_variation' => 'Countable variations — each variation holds its own stock (Red, Blue, XL)',
+            'measured'            => 'Measured packs — variations are pack sizes drawn from one pool (100gm, 500ml)',
+            'loose'               => 'Loose — sold by weight/length/volume, any quantity',
+        ];
+    }
+}
+if (!function_exists('_stockTypeOf')) {
+    /**
+     * The item's stock type. Uses the vendor's explicit setting when present; otherwise infers
+     * one so rows saved before the setting existed keep behaving sensibly:
+     *
+     *   every variation label reads as a pack in the item's dimension → measured
+     *   any variation at all, but not all packs                       → countable_variation
+     *   no variations, sell_loose on                                  → loose
+     *   otherwise                                                     → simple
+     */
+    function _stockTypeOf($inv_item): string
+    {
+        $explicit = mb_strtolower(trim((string) ($inv_item->stock_type ?? '')));
+        if ($explicit !== '' && array_key_exists($explicit, _stockTypes())) {
+            return $explicit;
+        }
+
+        $vars = _itemVariations($inv_item);
+        if (!empty($vars)) {
+            foreach ($vars as $var) {
+                if (!_variationPack($inv_item, $var)) {
+                    return 'countable_variation';
+                }
+            }
+            return 'measured';
+        }
+
+        return ((int) ($inv_item->sell_loose ?? 0) === 1) ? 'loose' : 'simple';
+    }
+}
+if (!function_exists('_variationMode')) {
+    /**
+     * How this item's variations relate to its stock — the part of stock_type the arithmetic
+     * cares about. Decided per ITEM, never per variation: the two modes disagree about which
+     * number is the truth, so mixing them within one item would make the main figure meaningless.
+     *
+     *   'measured'  variations are pack sizes drawn from one pool (100gm, 250gm, 1kg). They hold
+     *               no stock of their own; `stock` is the pool and is the truth.
+     *   'countable' variations are separate SKUs (Red, Blue, XL). Each holds its own stock and
+     *               `stock` is the derived SUM of them.
+     *   'none'      no variations — 'simple' and 'loose' both deduct straight from the pool, and
+     *               differ only in whether the quantity is typed freely at the counter.
+     */
+    function _variationMode($inv_item): string
+    {
+        if (empty(_itemVariations($inv_item))) {
+            return 'none';
+        }
+        return _stockTypeOf($inv_item) === 'measured' ? 'measured' : 'countable';
+    }
+}
+if (!function_exists('_itemVariations')) {
+    /** The item's variations JSON as an array of rows, always a list. */
+    function _itemVariations($inv_item): array
+    {
+        if (!$inv_item) {
+            return [];
+        }
+        $raw = $inv_item->variations ?? null;
+        if (is_array($raw)) {
+            return array_values(array_filter($raw, 'is_array'));
+        }
+        $decoded = json_decode((string) $raw, true);
+        return is_array($decoded) ? array_values(array_filter($decoded, 'is_array')) : [];
+    }
+}
+if (!function_exists('_variationRow')) {
+    /** Find one variation row by its type label (case-insensitive). */
+    function _variationRow($inv_item, ?string $varType): ?array
+    {
+        if ($varType === null || $varType === '') {
+            return null;
+        }
+        foreach (_itemVariations($inv_item) as $var) {
+            if (isset($var['type']) && mb_strtolower(trim($var['type'])) === mb_strtolower(trim($varType))) {
+                return $var;
+            }
+        }
+        return null;
+    }
+}
+if (!function_exists('_variationSelectionError')) {
+    /**
+     * Guard for every place a product is picked: once an item has variations, the parent product
+     * is not sellable/purchasable on its own — the line must name one of them.
+     *
+     * Create paths only. Reversals (bill delete/edit) must never run this: lines written before
+     * variations existed carry no type and still have to unwind exactly.
+     */
+    function _variationSelectionError($inv_item, ?string $varType): ?string
+    {
+        if (!$inv_item || empty(_itemVariations($inv_item))) {
+            return null;
+        }
+        $name = $inv_item->item_name ?? 'item';
+        if ($varType === null || trim($varType) === '') {
+            // A loose product whose variations are packs is the one case where the parent may be
+            // sold on its own: asking for 150 g when the packs are 100 g and 200 g is a loose
+            // sale, not a pack sale. It still comes off the same pool, so the stock stays right.
+            // Countable variations get no such exemption — "which colour" always has an answer.
+            if ((int) ($inv_item->sell_loose ?? 0) === 1 && _variationMode($inv_item) === 'measured') {
+                return null;
+            }
+            return "\"{$name}\" is sold by variation — please choose one.";
+        }
+        if (!_variationRow($inv_item, $varType)) {
+            return "Variation \"{$varType}\" no longer exists for \"{$name}\".";
+        }
+        return null;
+    }
+}
+if (!function_exists('_variationQtyInItemUnit')) {
+    /**
+     * Quantity a measured variation line removes from (or returns to) the item's pool, expressed
+     * in the item's own stock unit.
+     *
+     *   item kg (factor 1000), 3 × "100gm" pack  →  3 * 100 * 1 / 1000 = 0.3 kg
+     *   item m  (factor 1000), 2 × "4 cm"  pack  →  2 * 4 * 10 / 1000  = 0.08 m
+     */
+    function _variationQtyInItemUnit($inv_item, array $pack, $qty): float
+    {
+        $itemFactor = _unitFactor($inv_item->unit ?? null);
+        return (float) $qty * $pack['qty'] * $pack['factor'] / ($itemFactor > 0 ? $itemFactor : 1.0);
+    }
+}
+if (!function_exists('_unitLabelFor')) {
+    /** Display label for a unit id ("kg", "m", "pc"), cached per request. */
+    function _unitLabelFor($unitId): string
+    {
+        static $cache = [];
+        if (!$unitId) {
+            return '';
+        }
+        if (!array_key_exists($unitId, $cache)) {
+            try {
+                $cache[$unitId] = (string) (DB::table('units')->where('id', $unitId)->value('unit') ?: '');
+            } catch (\Throwable $e) {
+                $cache[$unitId] = '';
+            }
+        }
+        return $cache[$unitId];
+    }
+}
+if (!function_exists('_stockNumber')) {
+    /**
+     * The item's stock as a plain number, trimmed of trailing zeros — 4.8 rather than 4.800.
+     *
+     * `stock` is already the whole picture: countable variations keep it as their SUM and
+     * measured packs draw from it, so adding the variation figures on top (as the item list used
+     * to) counts the same goods twice.
+     */
+    function _stockNumber($item, int $decimals = 3): string
+    {
+        $value = (float) ($item->stock ?? 0);
+        $text  = number_format($value, $decimals, '.', '');
+        return str_contains($text, '.') ? rtrim(rtrim($text, '0'), '.') : $text;
+    }
+}
+if (!function_exists('_stockLabel')) {
+    /**
+     * Stock as the vendor should read it, with the unit it is held in — "4.8 kg", not "4.8".
+     * A bare number is ambiguous the moment an item is sold in anything but pieces.
+     */
+    function _stockLabel($item, int $decimals = 3): string
+    {
+        $unit = _unitLabelFor($item->unit ?? null);
+        $num  = _stockNumber($item, $decimals);
+        return $unit !== '' ? $num . ' ' . $unit : $num;
+    }
+}
+if (!function_exists('_stockQtyForLine')) {
+    /**
+     * How much of the item's MAIN stock one line consumes, in the item's own unit — the number
+     * an availability check has to compare against.
+     *
+     * For a measured pack this is not the line quantity: 3 × "100gm" against a kg item is 0.3,
+     * not 3. Comparing the raw 3 to a stock of 0.5 kg would wrongly reject a sale that only
+     * needs 0.3 kg.
+     */
+    function _stockQtyForLine($inv_item, $qty, $unit = null, ?string $varType = null): float
+    {
+        $var = _variationRow($inv_item, $varType);
+        if ($var && _variationMode($inv_item) === 'measured') {
+            $pack = _variationPack($inv_item, $var);
+            if ($pack) {
+                return _variationQtyInItemUnit($inv_item, $pack, $qty);
+            }
+        }
+        return (float) _qtyInItemUnit($inv_item, $qty, $unit);
+    }
+}
+if (!function_exists('_sumCountableVariationStock')) {
+    /** Main stock for a countable item = the sum of its variations. */
+    function _sumCountableVariationStock(array $vars): float
+    {
+        $sum = 0.0;
+        foreach ($vars as $var) {
+            $sum += (float) ($var['stock'] ?? 0);
+        }
+        return round($sum, 4);
+    }
+}
+if (!function_exists('_applyStockDelta')) {
+    /**
+     * The one place inventory stock moves. Every add and every deduct — sale, purchase, stock-in,
+     * transfer, gatepass and all their reversals — resolves to this, so in and out can never
+     * drift apart and no caller has to know which variation mode an item is in.
+     *
+     *   $sign  -1 to take stock out, +1 to put it back.
+     *   $clamp true on a sale (cannot take out more than exists); false on a reversal, which must
+     *          be exact even if it passes through a negative intermediate — see
+     *          _decrementInventoryStock for why.
+     *
+     * Returns the resulting main-stock figure (unclamped, so a caller can spot an oversell).
+     */
+    function _applyStockDelta($inv_item, $qty, $unit, ?string $varType, int $sign, bool $clamp): float
+    {
+        $var  = _variationRow($inv_item, $varType);
+        $mode = _variationMode($inv_item);
+
+        // MEASURED — the variation is a pack drawn from the single pool and holds no stock of
+        // its own. Selling one 100gm pack off 10 kg leaves 9.9 kg; buying one adds 0.1 kg back.
+        //
+        // A variation with no readable pack size in an item marked 'measured' (a label the parser
+        // cannot read and no pack_qty filled in) is treated as one item-unit per line rather than
+        // being skipped, so the stock still moves in the right direction while the vendor fixes it.
+        if ($var && $mode === 'measured') {
+            $pack  = _variationPack($inv_item, $var);
+            $delta = $pack
+                ? _variationQtyInItemUnit($inv_item, $pack, $qty)
+                : _qtyInItemUnit($inv_item, $qty, $unit);
+            $new   = (float) $inv_item->stock + $sign * $delta;
+            $inv_item->stock = $clamp ? max(0, $new) : $new;
+            $inv_item->save();
+            return $new;
+        }
+
+        // COUNTABLE — the variation holds the stock and the main figure is derived from it.
+        // Writing both independently is what let the two numbers drift apart before.
+        if ($var && $mode === 'countable') {
+            $vars  = _itemVariations($inv_item);
+            $delta = _qtyInItemUnit($inv_item, $qty, $unit);
+            $new   = (float) $inv_item->stock;
+            foreach ($vars as $i => $row) {
+                if (!isset($row['type']) || mb_strtolower(trim($row['type'])) !== mb_strtolower(trim($varType))) {
+                    continue;
+                }
+                $line = (float) ($row['stock'] ?? 0) + $sign * $delta;
+                $vars[$i]['stock'] = $clamp ? max(0, $line) : $line;
+            }
+            $inv_item->variations = json_encode($vars);
+            $inv_item->stock = _sumCountableVariationStock($vars);
+            $inv_item->save();
+            return (float) $inv_item->stock;
+        }
+
+        // No variation on the line: straight against the main pool, exactly as before.
+        $delta = _qtyInItemUnit($inv_item, $qty, $unit);
+        $new   = (float) $inv_item->stock + $sign * $delta;
+        $inv_item->stock = $clamp ? max(0, $new) : $new;
+        $inv_item->save();
+        return $new;
+    }
+}
 if (!function_exists('_ensureDecimalStockColumns')) {
     // Stock must hold decimals (e.g. 61.6 kg). Widen any legacy integer stock columns
     // to DECIMAL once per request — idempotent, no migration files.
@@ -2189,12 +2609,17 @@ if (!function_exists('_ensureDecimalStockColumns')) {
 }
 if (!function_exists('_updateInventoryStock')) {
 
-    function _updateInventoryStock($inv_item_id, $qty, $unit = null)
+    // $varType names the variation the line was sold as. When the item has variations this is
+    // required — the parent product is not sellable on its own (see _variationSelectionError).
+    // The variation decides where the stock comes from: a measured pack draws from the main
+    // pool, a countable variation carries its own and the main figure follows as the sum.
+    function _updateInventoryStock($inv_item_id, $qty, $unit = null, $varType = null)
     {
         try {
             _ensureDecimalStockColumns();
             _ensureUnitDimensionColumns();
             _ensureStockBaseColumn();
+            _ensureStockTypeColumn();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -2204,13 +2629,8 @@ if (!function_exists('_updateInventoryStock')) {
             }
 
             // Any unit of the item's dimension is accepted and converted into the item's
-            // own stock unit (see _qtyInItemUnit).
-            $deductQty = _qtyInItemUnit($inv_item, $qty, $unit);
-
-            // Update stock (always in primary unit)
-            $updated_stock = $inv_item->stock - $deductQty;
-            $inv_item->stock = max(0, $updated_stock);
-            $inv_item->save();
+            // own stock unit (see _qtyInItemUnit / _variationQtyInItemUnit).
+            $updated_stock = _applyStockDelta($inv_item, $qty, $unit, $varType, -1, true);
 
             // low stock alert
             if ($updated_stock <= 5) {
@@ -2228,12 +2648,13 @@ if (!function_exists('_restoreInventoryStock')) {
     // Reverse of _updateInventoryStock — adds the quantity back to stock (e.g. when a sale
     // bill is deleted). Mirrors the same secondary→primary unit conversion used on deduction,
     // so the amount returned equals the amount originally taken.
-    function _restoreInventoryStock($inv_item_id, $qty, $unit = null)
+    function _restoreInventoryStock($inv_item_id, $qty, $unit = null, $varType = null)
     {
         try {
             _ensureDecimalStockColumns();
             _ensureUnitDimensionColumns();
             _ensureStockBaseColumn();
+            _ensureStockTypeColumn();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -2242,10 +2663,7 @@ if (!function_exists('_restoreInventoryStock')) {
                 return;
             }
 
-            $addQty = _qtyInItemUnit($inv_item, $qty, $unit);
-
-            $inv_item->stock = (float) $inv_item->stock + $addQty;
-            $inv_item->save();
+            _applyStockDelta($inv_item, $qty, $unit, $varType, 1, false);
         } catch (\Throwable $th) {
             // best-effort; bill deletion must not fail on stock restore
         }
@@ -2297,12 +2715,15 @@ if (!function_exists('_ensurePurchaseBillEditPermission')) {
 }
 if (!function_exists('_incrementInventoryStock')) {
 
-    function _incrementInventoryStock($inv_item_id, $qty, $unit = null)
+    // Inward is the exact mirror of outward: buying a 200gm pack against a kg item adds 0.2 kg
+    // to the pool, the same 0.2 kg a sale of that pack would take out.
+    function _incrementInventoryStock($inv_item_id, $qty, $unit = null, $varType = null)
     {
         try {
             _ensureDecimalStockColumns();
             _ensureUnitDimensionColumns();
             _ensureStockBaseColumn();
+            _ensureStockTypeColumn();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -2311,10 +2732,7 @@ if (!function_exists('_incrementInventoryStock')) {
                 return;
             }
 
-            $addQty = _qtyInItemUnit($inv_item, $qty, $unit);
-
-            $inv_item->stock = $inv_item->stock + $addQty;
-            $inv_item->save();
+            _applyStockDelta($inv_item, $qty, $unit, $varType, 1, false);
         } catch (\Throwable $th) {
             //  Log::error($th);
         }
@@ -2332,12 +2750,13 @@ if (!function_exists('_decrementInventoryStock')) {
      * back from nowhere when the new lines were added. Clamping belongs on a sale, which cannot
      * take out more than exists; a reversal has to be exact or the arithmetic stops balancing.
      */
-    function _decrementInventoryStock($inv_item_id, $qty, $unit = null)
+    function _decrementInventoryStock($inv_item_id, $qty, $unit = null, $varType = null)
     {
         try {
             _ensureDecimalStockColumns();
             _ensureUnitDimensionColumns();
             _ensureStockBaseColumn();
+            _ensureStockTypeColumn();
             $inv_item = InventoryItem::where('id', $inv_item_id)
                 ->where('store_id', Helpers::get_store_id())
                 ->first();
@@ -2346,8 +2765,7 @@ if (!function_exists('_decrementInventoryStock')) {
                 return;
             }
 
-            $inv_item->stock = (float) $inv_item->stock - _qtyInItemUnit($inv_item, $qty, $unit);
-            $inv_item->save();
+            _applyStockDelta($inv_item, $qty, $unit, $varType, -1, false);
         } catch (\Throwable $th) {
             //  Log::error($th);
         }

@@ -82,6 +82,21 @@
     color:#4b5563;
 }
 
+.waba-payment-guide a{
+    color:#1877f2;
+    text-decoration:underline;
+}
+
+.waba-payment-guide a:hover{
+    color:#0f5bd7;
+}
+
+.waba-payment-guide a .tio-open-in-new{
+    font-size:12px;
+    margin-left:2px;
+    vertical-align:baseline;
+}
+
 </style>
     <div class="content container-fluid">
         <div class="page-header">
@@ -164,27 +179,63 @@
     <h4>Steps to Add a Payment Method</h4>
 
     <ol class="waba-payment-guide__steps">
-        <li>Log in to <strong>Meta Business Suite</strong>.</li>
+        <li>Log in to
+            <a href="https://business.facebook.com/" target="_blank" rel="noopener noreferrer">
+                <strong>Meta Business Suite</strong> <i class="tio-open-in-new"></i>
+            </a>.
+        </li>
         <li>Select the <strong>Business Portfolio</strong> that contains your WhatsApp Business Account.</li>
-        <li>Go to <strong>Settings (⚙️)</strong>.</li>
-        <li>Navigate to <strong>Accounts → WhatsApp Accounts</strong>.</li>
-        <li>Select your <strong>WhatsApp Business Account (WABA)</strong>.</li>
-        <li>Open <strong>Payment Settings</strong>.</li>
+        <li>Go to
+            <a href="https://business.facebook.com/settings" target="_blank" rel="noopener noreferrer">
+                <strong>Settings (⚙️)</strong> <i class="tio-open-in-new"></i>
+            </a>.
+        </li>
+        <li>Navigate to
+            <a href="https://business.facebook.com/settings/whatsapp-business-accounts" target="_blank" rel="noopener noreferrer">
+                <strong>Accounts → WhatsApp Accounts</strong> <i class="tio-open-in-new"></i>
+            </a>.
+        </li>
+        <li>Select your <strong>WhatsApp Business Account (WABA)</strong> — you can also open it directly in
+            <a href="https://business.facebook.com/wa/manage/" target="_blank" rel="noopener noreferrer">
+                WhatsApp Manager <i class="tio-open-in-new"></i>
+            </a>.
+        </li>
+        <li>Open
+            <a href="https://business.facebook.com/billing_hub/payment_settings" target="_blank" rel="noopener noreferrer">
+                <strong>Payment Settings</strong> <i class="tio-open-in-new"></i>
+            </a>.
+        </li>
         <li>Click <strong>Add Payment Method</strong>.</li>
         <li>Enter your payment details and complete any bank verification.</li>
         <li>Save the payment method.</li>
     </ol>
 
+    <p class="mb-0">
+        Step-by-step help from Meta:
+        <a href="https://www.facebook.com/business/help/488291839463771" target="_blank" rel="noopener noreferrer">
+            Add a payment method to your WhatsApp Business Account <i class="tio-open-in-new"></i>
+        </a>
+    </p>
+
     <h4>Can't find the option?</h4>
 
     <ul class="waba-payment-guide__checklist">
         <li>You're logged into the correct <strong>Business Portfolio</strong>.</li>
-        <li>You have <strong>Admin</strong> access to the Business Portfolio and WhatsApp Business Account.</li>
+        <li>You have <strong>Admin</strong> access to the
+            <a href="https://business.facebook.com/settings/people" target="_blank" rel="noopener noreferrer">
+                Business Portfolio <i class="tio-open-in-new"></i>
+            </a>
+            and WhatsApp Business Account.
+        </li>
         <li>Your WhatsApp Business Account setup is complete.</li>
     </ul>
 
     <div class="waba-payment-guide__footer">
-        If the option is still unavailable, please contact <strong>Meta Support</strong> or your Meta Business administrator.
+        If the option is still unavailable, please contact
+        <a href="https://www.facebook.com/business/help/support" target="_blank" rel="noopener noreferrer">
+            <strong>Meta Support</strong> <i class="tio-open-in-new"></i>
+        </a>
+        or your Meta Business administrator.
     </div>
 
 </div>
@@ -230,14 +281,22 @@
                                 <div class="form-group">
                                     <label class="font-weight-bold" style="font-size:13px;">Template</label>
                                     <select id="wb-template" class="form-control">
-                                        <option value="">— Select an approved template —</option>
+                                        <option value="">— Select a template —</option>
                                         @foreach ($templates as $i => $t)
                                             <option value="{{ $i }}" @if ($t['unsupported']) disabled @endif>
-                                                {{ $t['name'] }} ({{ $t['language'] }})@if ($t['unsupported']) — not supported here, {{ $t['unsupported'] }} @endif
+                                                {{ $t['name'] }} ({{ $t['language'] }})@if (($t['status'] ?? 'APPROVED') !== 'APPROVED') — {{ $t['status'] }}, Meta will reject the send @elseif ($t['unsupported']) — not supported here, {{ $t['unsupported'] }} @endif
                                             </option>
                                         @endforeach
                                     </select>
                                 </div>
+
+                                @if (\App\Http\Controllers\Vendor\WhatsAppController::BULK_SHOW_UNAPPROVED)
+                                    <div class="alert alert-warning" style="font-size:12px;">
+                                        Testing mode — templates that Meta hasn’t approved yet are listed too.
+                                        Picking one lets you check the composer, but the send itself will come
+                                        back as failed until the template’s status is APPROVED.
+                                    </div>
+                                @endif
 
                                 <div id="wb-preview" class="border rounded p-3 mb-3 bg-light" style="display:none;">
                                     <div class="text-muted mb-1" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;">Message preview</div>
@@ -351,7 +410,6 @@
 
             // Built by concatenation so Blade never sees a literal double-brace in this script.
             var OPEN = '{' + '{', CLOSE = '}' + '}';
-            function token(n) { return OPEN + n + CLOSE; }
 
             var $tpl = document.getElementById('wb-template');
             var $vars = document.getElementById('wb-vars');
@@ -377,42 +435,116 @@
                 return $tpl.value === '' ? null : TEMPLATES[parseInt($tpl.value, 10)];
             }
 
+            // One entry per body slot, in send order: {key, value}. Auto slots carry no value —
+            // the server fills them from the recipient row.
             function paramValues() {
-                return Array.prototype.map.call($vars.querySelectorAll('.wb-var'), function (i) { return i.value; });
+                return Array.prototype.map.call($vars.querySelectorAll('.wb-var'), function (i) {
+                    var auto = i.dataset.auto === '1';
+                    return { key: i.dataset.key, auto: auto, value: auto ? '' : i.value };
+                });
+            }
+
+            function templateVars(t) {
+                if (t && t.vars && t.vars.length) return t.vars;
+                // Older cached payloads only carried a count.
+                var out = [], n = (t && t.var_count) || 0;
+                for (var i = 1; i <= n; i++) out.push({ key: String(i), label: 'Variable ' + i, auto: false });
+                return out;
+            }
+
+            // A real recipient out of the current selection, so the preview reads the way the
+            // first person will actually receive it instead of showing placeholders. Platform
+            // recipients are anonymous to the vendor, so there is nothing to sample there.
+            function sampleClient() {
+                if (mode === 'clients') {
+                    for (var i = 0; i < loaded.length; i++) {
+                        if (selected.has(loaded[i].id)) return loaded[i];
+                    }
+                }
+                return null;
             }
 
             function renderPreview() {
                 var t = currentTemplate();
                 if (!t) { $preview.style.display = 'none'; return; }
+
+                // Auto slots resolve to the {name} / {phone} markers first so the pass below
+                // can bold them, whatever the vendor typed elsewhere.
                 var body = t.body;
-                paramValues().forEach(function (v, i) {
-                    body = body.split(token(i + 1)).join(v || token(i + 1));
+                paramValues().forEach(function (p) {
+                    var slot = OPEN + p.key + CLOSE;
+                    var shown = p.key === 'customer_name' ? '{name}'
+                        : p.key === 'customer_phone' ? '{phone}'
+                        : (p.value || slot);
+                    body = body.split(slot).join(shown);
                 });
-                $previewBody.innerHTML = esc(body).replace(/\{name\}/g, '<b>[client name]</b>');
+                var c = sampleClient();
+                $previewBody.innerHTML = esc(body)
+                    .replace(/\{name\}/g, '<b>' + esc((c && c.f_name) || 'each customer’s name') + '</b>')
+                    .replace(/\{(customer_)?phone\}/g, '<b>' + esc((c && c.phone) || 'each customer’s number') + '</b>');
                 $preview.style.display = 'block';
+            }
+
+            /**
+             * Templates greet with a variable ("Hi" followed by the first token) and label the
+             * contact slot ("Phone: " followed by a token) — prefill those with {name} / {phone}
+             * so the vendor never has to know the tokens exist. The greeting test is anchored to
+             * the start of a line, and the phone test only fires on a label right before the
+             * token, so a variable buried mid-sentence is left alone.
+             */
+            function defaultVarValue(body, key) {
+                var at = String(body || '').indexOf(OPEN + key + CLOSE);
+                if (at < 0) return '';
+                var before = body.slice(0, at);
+
+                if (/(^|\n)\s*(hi+|hey+|hello|dear|namaste|greetings)\b[\s,!:.-]*$/i.test(before)) {
+                    return '{name}';
+                }
+                if (/(phone|mobile|contact|whats\s*app|cell)\s*(number|no\.?|#)?\s*[:\-–]?\s*$/i.test(before)) {
+                    return '{phone}';
+                }
+                return '';
             }
 
             function renderVars() {
                 var t = currentTemplate();
                 $vars.innerHTML = '';
-                if (!t || !t.var_count) { renderPreview(); syncSend(); return; }
+                var vars = templateVars(t);
+                if (!t || !vars.length) { syncSend(); return; }
 
                 var help = document.createElement('small');
                 help.className = 'text-muted d-block mb-2';
-                help.innerHTML = 'Fill each variable. Type <code>{name}</code> to insert the client’s name.';
+                help.innerHTML = 'Fill each variable. <code>{name}</code> and <code>{phone}</code> are replaced ' +
+                    'with each recipient’s own name and number — use them in any variable that should be ' +
+                    'personalised.';
                 $vars.appendChild(help);
 
-                for (var i = 1; i <= t.var_count; i++) {
+                vars.forEach(function (v) {
                     var wrap = document.createElement('div');
                     wrap.className = 'form-group mb-2';
-                    wrap.innerHTML = '<label style="font-size:12px;" class="mb-1">Variable ' + token(i) + '</label>' +
-                        '<input type="text" class="form-control form-control-sm wb-var" placeholder="Value for ' + token(i) + '">';
+
+                    if (v.auto) {
+                        // Filled from the recipient row on the server — showing an editable box
+                        // would only invite a value that gets thrown away.
+                        wrap.innerHTML = '<label style="font-size:12px;" class="mb-1">' + esc(v.label) +
+                            ' <code>' + OPEN + esc(v.key) + CLOSE + '</code></label>' +
+                            '<input type="text" class="form-control form-control-sm wb-var" readonly ' +
+                            'data-key="' + esc(v.key) + '" data-auto="1" ' +
+                            'value="Filled in automatically for each recipient">';
+                    } else {
+                        wrap.innerHTML = '<label style="font-size:12px;" class="mb-1">Variable ' +
+                            OPEN + esc(v.key) + CLOSE + '</label>' +
+                            '<input type="text" class="form-control form-control-sm wb-var" ' +
+                            'data-key="' + esc(v.key) + '" data-auto="0" ' +
+                            'value="' + esc(defaultVarValue(t.body, v.key)) + '" ' +
+                            'placeholder="Value for ' + OPEN + esc(v.key) + CLOSE + '">';
+                    }
                     $vars.appendChild(wrap);
-                }
-                Array.prototype.forEach.call($vars.querySelectorAll('.wb-var'), function (input) {
-                    input.addEventListener('input', function () { renderPreview(); syncSend(); });
                 });
-                renderPreview();
+
+                Array.prototype.forEach.call($vars.querySelectorAll('.wb-var'), function (input) {
+                    input.addEventListener('input', syncSend);
+                });
                 syncSend();
             }
 
@@ -430,8 +562,9 @@
             }
 
             function syncSend() {
+                renderPreview();
                 var t = currentTemplate();
-                var filled = !t || !t.var_count || paramValues().every(function (v) { return v.trim() !== ''; });
+                var filled = !t || paramValues().every(function (p) { return p.auto || p.value.trim() !== ''; });
                 var n = recipientCount();
                 $send.disabled = !t || !filled || n === 0;
                 $count.textContent = mode === 'clients'

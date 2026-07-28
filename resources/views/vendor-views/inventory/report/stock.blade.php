@@ -191,11 +191,11 @@
 
                                      <td>
                                          @if ($item->stock < 1)
-                                             <span class="badge badge-soft-danger">{{ $item->stock }}</span>
+                                             <span class="badge badge-soft-danger">{{ _stockLabel($item) }}</span>
                                          @elseif($item->stock < 5)
-                                             <span class="badge badge-soft-warning">{{ $item->stock }}</span>
+                                             <span class="badge badge-soft-warning">{{ _stockLabel($item) }}</span>
                                          @else
-                                             <span class="badge badge-soft-success">{{ $item->stock }}</span>
+                                             <span class="badge badge-soft-success">{{ _stockLabel($item) }}</span>
                                          @endif
                                      </td>
                                      <td>

@@ -70,6 +70,21 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/bulk/send', 'WhatsAppController@bulkSend')->name('whatsapp.bulk.send');
         Route::post('whatsapp/features/subscribe', 'WhatsAppController@featureSubscribe')->name('whatsapp.features.subscribe');
         Route::post('whatsapp/features/toggle', 'WhatsAppController@featureToggle')->name('whatsapp.features.toggle');
+        // WhatsApp Business Platform billing — recurring platform fee, template slots, AI tokens.
+        Route::get('whatsapp/billing', 'WhatsAppController@billing')->name('whatsapp.billing');
+        Route::post('whatsapp/billing/subscribe', 'WhatsAppController@billingSubscribe')->name('whatsapp.billing.subscribe');
+        Route::post('whatsapp/billing/cancel', 'WhatsAppController@billingCancel')->name('whatsapp.billing.cancel');
+        Route::post('whatsapp/billing/account-manager', 'WhatsAppController@billingAccountManager')->name('whatsapp.billing.account-manager');
+        Route::post('whatsapp/billing/template-slot', 'WhatsAppController@buyTemplateSlot')->name('whatsapp.billing.template-slot');
+        Route::post('whatsapp/billing/tokens', 'WhatsAppController@buyTokens')->name('whatsapp.billing.tokens');
+        // AI Agent — monthly plan for lead & appointment management, plus its token top-up.
+        Route::post('whatsapp/billing/agent/subscribe', 'WhatsAppController@agentSubscribe')->name('whatsapp.billing.agent.subscribe');
+        Route::post('whatsapp/billing/agent/cancel', 'WhatsAppController@agentCancel')->name('whatsapp.billing.agent.cancel');
+        Route::post('whatsapp/billing/agent/tokens', 'WhatsAppController@buyAgentTokens')->name('whatsapp.billing.agent.tokens');
+        // Which chatbot answers customers, and what it may share with them.
+        Route::get('whatsapp/bot', 'WhatsAppController@bot')->name('whatsapp.bot');
+        Route::post('whatsapp/bot/mode', 'WhatsAppController@botMode')->name('whatsapp.bot.mode');
+        Route::post('whatsapp/bot/shares', 'WhatsAppController@botShares')->name('whatsapp.bot.shares');
 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');

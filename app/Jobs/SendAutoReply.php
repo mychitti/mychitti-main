@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\CentralLogics\Helpers;
 use App\Models\StoreKnowledgeDoc;
 use App\Services\NotificationPrefs;
+use App\Services\WhatsAppAgent;
+use App\Services\WhatsAppBilling;
 use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -125,6 +127,20 @@ class SendAutoReply implements ShouldQueue
                 return;
             }
 
+            // Which bot is answering decides which token pool pays for the reply: the AI Agent
+            // spends its plan allowance, the knowledge bot spends chatbot packs.
+            $pool = $this->isPlatform() ? null : WhatsAppAgent::pool($this->storeId);
+
+            // Out of tokens = no auto-reply; the conversation goes to the vendor rather than
+            // going silent. Only metered once the store is on the paid WhatsApp platform.
+            if (!$this->isPlatform()
+                && WhatsAppBilling::aiMeteringApplies($this->storeId)
+                && WhatsAppBilling::tokenBalance($this->storeId, $pool) <= 0) {
+                $label = $pool === WhatsAppBilling::POOL_AGENT ? 'AI Agent' : 'chatbot';
+                $this->escalate($key, $label . ' tokens exhausted — top up in WhatsApp → Plan & Billing to resume automatic replies');
+                return;
+            }
+
             $storeName = $this->isPlatform()
                 ? 'MyChitti'
                 : (DB::table('stores')->where('id', $this->storeId)->value('name') ?: 'our store');
@@ -144,9 +160,11 @@ class SendAutoReply implements ShouldQueue
                 return;
             }
 
-            // Appointment action marker (book / reschedule) — vendor hospital stores only;
-            // platform (scope 0) has no doctors so this never matches.
-            $action = \App\Services\WhatsAppAppointmentBot::tryHandle($reply, $this->scopeId(), $key, $this->from);
+            // Appointment action marker (book / reschedule) — AI Agent stores only. The
+            // knowledge bot is never taught the markers, so this never matches for it.
+            $action = (!$this->isPlatform() && WhatsAppAgent::isAgent($this->storeId))
+                ? \App\Services\WhatsAppAppointmentBot::tryHandle($reply, $this->scopeId(), $key, $this->from)
+                : null;
             if ($action !== null) {
                 if ($action['message'] !== '') {
                     $wa->sendText($this->from, $action['message'], false, 'auto reply');
@@ -322,12 +340,13 @@ class SendAutoReply implements ShouldQueue
             . "- Be warm and professional. Do not say you are an AI unless asked directly.\n"
             . "- Never share information about other customers or vendors.";
 
-        // Hospital stores get live appointment tooling (book / reschedule via markers).
-        $apptSection = \App\Services\WhatsAppAppointmentBot::promptSection($this->scopeId(), $key);
-        if ($apptSection !== '') {
-            $system .= $apptSection;
+        // AI Agent stores get lead & appointment tooling plus this customer's own records for
+        // whatever the vendor allowed. The knowledge bot gets none of it and simply defers.
+        $agentSection = $this->isPlatform() ? '' : WhatsAppAgent::promptSection($this->storeId, $key, $this->from);
+        if ($agentSection !== '') {
+            $system .= $agentSection;
         } else {
-            $system .= "\n- For booking or order requests: share what the knowledge says and tell them the team will confirm shortly.";
+            $system .= "\n- For booking, order or status requests: share what the knowledge says and tell them the team will confirm shortly.";
         }
 
         // Platform assistant can capture sales leads into the Sales & Marketing CRM.
@@ -387,6 +406,21 @@ class SendAutoReply implements ShouldQueue
             return '';
         }
 
-        return trim(mb_substr((string) $resp->json('message'), 0, 1500));
+        $reply = trim(mb_substr((string) $resp->json('message'), 0, 1500));
+
+        // Meter what this reply cost the vendor. The AI service does not return provider usage,
+        // so tokens are estimated from everything that crossed the wire — system prompt,
+        // thread history, the customer's message and the reply.
+        if (!$this->isPlatform() && WhatsAppBilling::aiMeteringApplies($this->storeId)) {
+            $historyText = collect($history)->pluck('content')->implode(' ');
+            WhatsAppBilling::recordTokenUsage(
+                $this->storeId,
+                WhatsAppBilling::estimateTokens($system, $historyText, $this->body, $reply),
+                'auto reply',
+                WhatsAppAgent::pool($this->storeId)
+            );
+        }
+
+        return $reply;
     }
 }
