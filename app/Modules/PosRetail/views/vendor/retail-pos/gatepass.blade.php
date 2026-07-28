@@ -61,6 +61,7 @@
                                     <tr>
                                         <th>Item</th><th>SKU</th>
                                         <th class="text-right">Main store stock</th>
+                                        <th width="200">Deduct from</th>
                                         <th width="160">Transfer qty</th>
                                     </tr>
                                 </thead>
@@ -74,19 +75,36 @@
                                                 {{ optional($it->itemunit)->unit }}
                                             </td>
                                             <td>
+                                                @if (count($it->variations))
+                                                    <select name="source[{{ $it->id }}]" class="rp-input" style="width:190px">
+                                                        <option value="">Main stock</option>
+                                                        @foreach ($it->variations as $v)
+                                                            <option value="{{ $v['type'] }}">{{ $v['type'] }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                @else
+                                                    <span class="text-muted">Main stock</span>
+                                                @endif
+                                            </td>
+                                            <td>
                                                 <input type="number" step="0.001" min="0" max="{{ (float) $it->stock }}"
-                                                    name="qty[{{ $it->id }}]" class="rp-input" style="width:140px"
+                                                    name="qty[{{ $it->id }}]" class="rp-input rp-gp-qty" style="width:140px"
                                                     placeholder="0">
                                             </td>
                                         </tr>
                                     @empty
-                                        <tr><td colspan="4"><div class="rp-empty">No products.</div></td></tr>
+                                        <tr><td colspan="5"><div class="rp-empty">No products.</div></td></tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
                         @if (count($items))
-                            <div class="bd text-right">
+                            <div class="bd d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
+                                <div class="text-muted" style="font-size:12px;">
+                                    The branch receives the main product, and the quantity always comes out of
+                                    main-store stock. On an item with variations, pick which one is going so the
+                                    gatepass records it.
+                                </div>
                                 <button class="rp-btn p" onclick="return confirm('Transfer the entered quantities to the selected branch? This deducts main-store stock.')">
                                     Transfer &amp; Generate Gatepass
                                 </button>

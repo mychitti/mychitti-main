@@ -3031,8 +3031,17 @@ class RetailPosController extends Controller
                 ->when(!empty($varItemIds), fn($ww) => $ww->orWhereIn('id', $varItemIds))))
             ->with('itemunit')->orderBy('item_name')->limit(300)->get(['id', 'item_name', 'sku_id', 'stock', 'unit', 'variations']);
 
+        // One row per product — a branch holds stock per item, not per variation
+        // (pos_branch_stock is unique on branch_id + inventory_item_id), so what moves is always
+        // the main product. Variations ride along only as the pool the qty is deducted from.
         $items = collect();
         foreach ($dbItems as $it) {
+            $vars = [];
+            foreach (json_decode($it->variations, true) ?: [] as $var) {
+                if (!empty($var['type'])) {
+                    $vars[] = ['type' => $var['type'], 'stock' => (float) ($var['stock'] ?? 0)];
+                }
+            }
             $items->push((object)[
                 'id' => (string) $it->id,
                 'item_name' => $it->item_name,
@@ -3040,23 +3049,8 @@ class RetailPosController extends Controller
                 'stock' => $it->stock,
                 'unit' => $it->unit,
                 'itemunit' => $it->itemunit,
-                'variation_type' => null,
+                'variations' => $vars,
             ]);
-
-            $vars = json_decode($it->variations, true) ?: [];
-            foreach ($vars as $var) {
-                if (!empty($var['type'])) {
-                    $items->push((object)[
-                        'id' => $it->id . '-var-' . $var['type'],
-                        'item_name' => $it->item_name . ' (' . $var['type'] . ')',
-                        'sku_id' => $it->sku_id,
-                        'stock' => (float) ($var['stock'] ?? 0),
-                        'unit' => $it->unit,
-                        'itemunit' => $it->itemunit,
-                        'variation_type' => $var['type'],
-                    ]);
-                }
-            }
         }
 
         $gatepasses = DB::table('pos_stock_gatepass as g')
@@ -3079,57 +3073,59 @@ class RetailPosController extends Controller
             return back();
         }
 
+        // The form posts qty[{itemId}] alongside source[{itemId}], which is '' for the main
+        // stock pool or a variation type. The legacy "{itemId}-var-{type}" qty key is still
+        // honoured so a stale open tab keeps working.
+        $sources = (array) $request->input('source', []);
         $lines = [];
         foreach ((array) $request->input('qty', []) as $idStr => $val) {
             $qty = (float) $val;
-            if ($qty > 0) {
-                $lines[$idStr] = $qty;
+            if ($qty <= 0) {
+                continue;
             }
+            $idParts = explode('-var-', (string) $idStr);
+            $varType = $idParts[1] ?? null;
+            if ($varType === null) {
+                $src = trim((string) ($sources[$idStr] ?? ''));
+                $varType = $src !== '' ? $src : null;
+            }
+            $lines[] = ['item_id' => (int) $idParts[0], 'var_type' => $varType, 'qty' => $qty];
         }
         if (empty($lines)) {
             Toastr::error('Enter a transfer quantity for at least one item');
             return back();
         }
 
-        // Validate availability against main-store stock before moving anything.
-        $itemIds = [];
-        foreach (array_keys($lines) as $idStr) {
-            $idParts = explode('-var-', $idStr);
-            $itemIds[] = (int) $idParts[0];
-        }
-        $items = InventoryItem::where('store_id', $storeId)->whereIn('id', array_unique($itemIds))->get()->keyBy('id');
+        // Validate against main-store stock only. variations[].stock is decrement-only — goods
+        // received credit inventory_items.stock and never the variation (see InventoryController
+        // stock-in), so a variation counter sits at 0 and would block every transfer if it gated
+        // availability. The chosen variation says what is going, not how much is on hand.
+        $items = InventoryItem::where('store_id', $storeId)
+            ->whereIn('id', array_unique(array_column($lines, 'item_id')))->get()->keyBy('id');
 
-        foreach ($lines as $idStr => $qty) {
-            $idParts = explode('-var-', $idStr);
-            $itemId = (int) $idParts[0];
-            $varType = $idParts[1] ?? null;
-
-            $item = $items->get($itemId);
+        foreach ($lines as $line) {
+            $item = $items->get($line['item_id']);
             if (!$item) {
                 Toastr::error('Item not found');
                 return back();
             }
 
-            $availStock = (float) $item->stock;
-            if ($varType) {
-                $vars = json_decode($item->variations, true) ?: [];
+            if ($line['var_type']) {
                 $varFound = false;
-                foreach ($vars as $var) {
-                    if (isset($var['type']) && $var['type'] === $varType) {
-                        $availStock = (float) ($var['stock'] ?? 0);
+                foreach (json_decode($item->variations, true) ?: [] as $var) {
+                    if (isset($var['type']) && $var['type'] === $line['var_type']) {
                         $varFound = true;
                         break;
                     }
                 }
                 if (!$varFound) {
-                    Toastr::error("Variation \"{$varType}\" not found for \"{$item->item_name}\"");
+                    Toastr::error("Variation \"{$line['var_type']}\" not found for \"{$item->item_name}\"");
                     return back();
                 }
             }
 
-            if ($qty > $availStock) {
-                $displayName = $varType ? "{$item->item_name} ({$varType})" : $item->item_name;
-                Toastr::error("Insufficient main-store stock for \"{$displayName}\" (have " . rtrim(rtrim(number_format($availStock, 3), '0'), '.') . ')');
+            if ($line['qty'] > (float) $item->stock) {
+                Toastr::error("Insufficient main-store stock for \"{$item->item_name}\" (have " . rtrim(rtrim(number_format((float) $item->stock, 3), '0'), '.') . ')');
                 return back();
             }
         }
@@ -3148,14 +3144,15 @@ class RetailPosController extends Controller
                 'updated_at'  => now(),
             ]);
 
-            foreach ($lines as $idStr => $qty) {
-                $idParts = explode('-var-', $idStr);
-                $itemId = (int) $idParts[0];
-                $varType = $idParts[1] ?? null;
+            foreach ($lines as $line) {
+                $itemId = $line['item_id'];
+                $varType = $line['var_type'];
+                $qty = $line['qty'];
 
                 $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
 
-                // Deduct from main store
+                // Deduct from main store. When a variation is the chosen pool it takes the hit
+                // too, on top of the umbrella stock — same as selling that variation.
                 if ($varType) {
                     $vars = json_decode($item->variations, true) ?: [];
                     foreach ($vars as &$var) {
@@ -3163,6 +3160,7 @@ class RetailPosController extends Controller
                             $var['stock'] = max(0, (float)($var['stock'] ?? 0) - $qty);
                         }
                     }
+                    unset($var);
                     $item->variations = json_encode($vars);
                 }
                 $item->stock = max(0, (float)$item->stock - $qty);
