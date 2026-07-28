@@ -309,7 +309,11 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::get('cart', [FrontController::class, 'cart'])->name('cart'); 
     Route::get('store-reviews/{slug?}', [FrontController::class, 'store_reviews'])->name('store.reviews');
     Route::post('store-removal-request', [FrontController::class, 'store_removal_request'])->name('store.removal-request');
-    Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details')->where('city', '^(?!remove-from-wishlist|delete-address|edit-address|add-new-address|store-reviews|gallery|category|dashboard|cart|contact)[a-z0-9-]+$');
+    // The comma in [a-z0-9,-] is for legacy indexed URLs only: the city segment used to be the
+    // raw Google Places address ("hyderabad,-telangana,-india"), so those URLs stopped matching
+    // this route and hard-404'd in Search Console. Letting them match hands them to
+    // store_details(), which 301s any non-canonical city to the single canonical store URL.
+    Route::get('{city}/store/{slug}', [FrontController::class, 'store_details'])->name('store.details')->where('city', '^(?!remove-from-wishlist|delete-address|edit-address|add-new-address|store-reviews|gallery|category|dashboard|cart|contact)[a-z0-9,-]+$');
     // Programmatic SEO landing pages — city resolved from the URL slug (never the session/default zone).
     // {item} is optional: /{city}/services/{category} = category page, /{city}/services/{category}/{item} = item page.
     Route::get('{city}/services/{category}/{item?}', [\App\Http\Controllers\Front\SeoLandingController::class, 'show'])
