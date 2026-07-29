@@ -611,10 +611,10 @@
                                 <td>
                                     {{-- A measured pack holds no stock of its own — it draws from the item's pool,
                                          so what is worth showing is the pack size, not a counter that stays at 0. --}}
-                                    @if (!empty($vr['pack_qty']) && _variationMode($item) === 'measured')
-                                        <span class="badge badge-soft-info">{{ $vr['pack_qty'] }} {{ $vr['pack_unit'] }} per pack</span>
+                                    @if (!empty($vr->pack_qty) && _variationMode($item) === 'measured')
+                                        <span class="badge badge-soft-info">{{ $vr->pack_qty }} {{ $vr->pack_unit }} per pack</span>
                                     @else
-                                        {{ $vr['stock'] ?? 0 }} {{ $item->itemunit?->unit }}
+                                        {{ $vr->stock ?? 0 }} {{ $item->itemunit?->unit }}
                                     @endif
                                 </td>
                                 <td>

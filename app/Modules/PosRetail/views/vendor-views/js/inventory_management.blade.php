@@ -733,11 +733,17 @@
      function autofillVariationPrices() {
          const mainSell = parseFloat($('[name="main_selling_price"]').val()) || 0;
          const mainMrp = parseFloat($('[name="main_mrp"]').val()) || 0;
+         const mainLanding = parseFloat($('[name="main_landing_price"]').val()) || 0;
          const baseQty = parseFloat($('#primary_qty').val()) || 1;
+         const secQty = parseFloat($('#secondary_qty').val()) || 1;
          const baseUnitName = $('#primary_unit option:selected').text() || '';
          const baseFactor = _unitFactor(baseUnitName);
-         if (!baseFactor || baseQty <= 0 || (mainSell <= 0 && mainMrp <= 0)) return;
-         const baseCanonical = baseQty * baseFactor;
+         if (!baseFactor || baseQty <= 0 || (mainSell <= 0 && mainMrp <= 0 && mainLanding <= 0)) return;
+         // "Prices are per" decides what the entered price covers: one base unit (400 per kg
+         // → 1000), or one alternate unit (400 per bag → primary_qty/secondary_qty base units).
+         // primary_qty on its own is the UOM conversion, not the quantity that was priced.
+         const perAlternate = $('#selling_price_basis').val() === 'secondary';
+         const baseCanonical = (perAlternate ? baseQty / secQty : 1) * baseFactor;
 
          $('#variant_combination input[name^="askingprice_"]').each(function () {
              const str = this.name.replace('askingprice_', '');
@@ -748,19 +754,22 @@
              if (!vFactor || !vQty) return;
              const ratio = (vQty * vFactor) / baseCanonical;
 
+             const key = window.CSS && CSS.escape ? CSS.escape(str) : str;
              const sellEl = this;
-             const mrpEl = document.querySelector('[name="mrpprice_' + (window.CSS && CSS.escape ? CSS.escape(str) : str) + '"]');
+             const mrpEl = document.querySelector('[name="mrpprice_' + key + '"]');
+             const buyEl = document.querySelector('[name="purchaseprice_' + key + '"]');
              if (mainSell > 0 && sellEl.dataset.auto !== '0') sellEl.value = +(mainSell * ratio).toFixed(2);
              if (mrpEl && mainMrp > 0 && mrpEl.dataset.auto !== '0') mrpEl.value = +(mainMrp * ratio).toFixed(2);
+             if (buyEl && mainLanding > 0 && buyEl.dataset.auto !== '0') buyEl.value = +(mainLanding * ratio).toFixed(2);
          });
      }
 
-     $(document).on('keyup change', '[name="main_selling_price"], [name="main_mrp"], #primary_qty', autofillVariationPrices);
-     $(document).on('change', '#primary_unit', autofillVariationPrices);
+     $(document).on('keyup change', '[name="main_selling_price"], [name="main_mrp"], [name="main_landing_price"], #primary_qty, #secondary_qty', autofillVariationPrices);
+     $(document).on('change', '#primary_unit, #selling_price_basis', autofillVariationPrices);
      // Recompute when the Variations tab is opened (so prices fill even if the main price
      // was set after the variants were generated).
      $(document).on('shown.bs.tab', '#variations-tab', autofillVariationPrices);
-     $(document).on('input', '#variant_combination input[name^="askingprice_"], #variant_combination input[name^="mrpprice_"]', function () {
+     $(document).on('input', '#variant_combination input[name^="askingprice_"], #variant_combination input[name^="mrpprice_"], #variant_combination input[name^="purchaseprice_"]', function () {
          this.dataset.auto = '0';
      });
      $("#deliveryCalcInp").on('keyup', function() {
