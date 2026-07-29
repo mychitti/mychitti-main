@@ -46,6 +46,12 @@ class SendAppointmentRemindersJob implements ShouldQueue
 
         foreach ($stores as $store) {
             try {
+                // The number stays linked when a subscription lapses, so the paid-for state has
+                // to be checked here — not just at connect time.
+                if (!\App\Services\WhatsAppBilling::isActive((int) $store->id)) {
+                    continue;
+                }
+
                 // NULL = never chose → the 2-hour default; an explicit '0' = turned off.
                 $hours = ($store->wa_appt_reminder === null || $store->wa_appt_reminder === '')
                     ? WhatsAppService::DEFAULT_APPT_REMINDER_HOURS

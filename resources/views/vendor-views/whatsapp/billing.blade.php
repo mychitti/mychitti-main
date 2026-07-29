@@ -4,7 +4,11 @@
 
 @push('css_or_js')
     <style>
-        .wb-card { border:1px solid #eef0f4; border-radius:14px; background:#fff; height:100%; overflow:hidden; margin-bottom:16px; }
+        .wb-card { border:1px solid #eef0f4; border-radius:14px; background:#fff; overflow:hidden; margin-bottom:16px; }
+        /* Match heights only when a column holds a single card. Two stacked cards each at
+           height:100% made the column twice its own height, so the lower one escaped the row
+           and drew on top of the full-width card below it. */
+        .wb-card:only-child { height:100%; }
         .wb-card-h { padding:16px 20px; border-bottom:1px solid #f1f3f7; font-weight:700; font-size:14px; color:#1e293b; }
         .wb-card-b { padding:20px; }
         .wb-price { font-size:28px; font-weight:800; color:#1e293b; line-height:1.1; }
@@ -35,11 +39,23 @@
             </div>
         </div>
 
-        @if ($subscription && $subscription->status === 'past_due')
+        @if ($subscription && in_array($subscription->mandate_status ?? null, ['pending', 'halted'], true) && $subscription->last_error)
+            <div class="alert alert-danger" style="font-size:13px;">
+                <b>Monthly auto-debit could not be collected.</b> {{ $subscription->last_error }}
+                @if ($subscription->current_period_end)
+                    WhatsApp keeps working for {{ $graceDays }} days after {{ $subscription->current_period_end }}.
+                @endif
+            </div>
+        @elseif ($subscription && $subscription->status === 'past_due')
             <div class="alert alert-danger" style="font-size:13px;">
                 <b>Last renewal could not be charged.</b> {{ $subscription->last_error }}
                 Recharge your wallet — we retry every day, and WhatsApp keeps working for
                 {{ $graceDays }} days after {{ $subscription->current_period_end }}.
+            </div>
+        @elseif ($subscription && $subscription->setup_fee_paid && ($subscription->mandate_status ?? null) === 'pending')
+            <div class="alert alert-warning" style="font-size:13px;">
+                <b>Setup fee received.</b> Authorise the monthly auto-debit to switch WhatsApp on —
+                it starts the moment Razorpay collects the first month.
             </div>
         @endif
 
@@ -51,18 +67,32 @@
                     <div class="wb-card-b">
                         <div class="d-flex justify-content-between align-items-start flex-wrap" style="gap:16px;">
                             <div>
-                                <div class="wb-price">{{ _price($pricing['monthly_total']) }}<span class="wb-sub"> / month</span></div>
-                                <div class="wb-sub">{{ _price($pricing['monthly']) }} + {{ $pricing['gst'] }}% GST, billed from your wallet</div>
+                                <div class="wb-price">{{ _price($pricing['monthly']) }}<span class="wb-sub"> / month</span></div>
+                                <div class="wb-sub">+ {{ $pricing['gst'] }}% GST — {{ _price($pricing['monthly_total']) }} auto-debited from your card / UPI</div>
                             </div>
+                            @php
+                                $setupPaid = $subscription && $subscription->setup_fee_paid;
+                                $mandate   = $subscription->mandate_status ?? null;
+                            @endphp
                             @if (!$active)
-                                <form action="{{ route('vendor.whatsapp.billing.subscribe') }}" method="post" class="mb-0">
+                                {{-- Setup fee first, mandate second: the fee is a one-off checkout, the
+                                     monthly needs an authorisation the vendor gives on Razorpay's page. --}}
+                                <form action="{{ $setupPaid ? route('vendor.whatsapp.billing.authorize-mandate') : route('vendor.whatsapp.billing.subscribe') }}"
+                                    method="post" class="mb-0">
                                     @csrf
                                     <label class="d-block wb-sub mb-2">
-                                        <input type="checkbox" name="account_manager" value="1">
+                                        <input type="checkbox" name="account_manager" value="1"
+                                            {{ $subscription && $subscription->account_manager ? 'checked' : '' }}>
                                         Add dedicated account manager ({{ _price($pricing['manager_total']) }}/month)
                                     </label>
                                     <button type="submit" class="btn btn--primary">
-                                        {{ $subscription && $subscription->setup_fee_paid ? 'Reactivate' : 'Activate' }} WhatsApp
+                                        @if (!$setupPaid)
+                                            Activate WhatsApp
+                                        @elseif ($mandate === 'pending')
+                                            Finish auto-debit setup
+                                        @else
+                                            Set up monthly auto-debit
+                                        @endif
                                     </button>
                                 </form>
                             @endif
@@ -70,7 +100,11 @@
 
                         <div class="mt-3">
                             <div class="wb-row">
-                                <span>One-time setup fee</span>
+                                <span>One-time setup fee
+                                    @if (!($subscription && $subscription->setup_fee_paid))
+                                        <span class="wb-sub">— paid by card / UPI when you activate, not from your wallet</span>
+                                    @endif
+                                </span>
                                 <span>
                                     @if ($subscription && $subscription->setup_fee_paid)
                                         <span class="badge badge-soft-success">Paid</span>
@@ -178,7 +212,7 @@
         <div class="wb-card">
             <div class="wb-card-h">
                 Message Usage — {{ now()->format('F Y') }}
-                <span class="wb-sub float-right">billed at the start of next month</span>
+                <span class="wb-sub float-right">deducted from your wallet at the start of next month</span>
             </div>
             <div class="wb-card-b">
                 <div class="row">
@@ -230,10 +264,10 @@
                                 <div class="col-md-6 mb-3">
                                     <div class="border rounded p-3 h-100" style="{{ $current ? 'border-color:#25d366 !important;background:#f6fffa;' : '' }}">
                                         <div class="wb-price" style="font-size:22px;">
-                                            {{ _price(\App\Services\WhatsAppBilling::withTax($plan['price'])) }}<span class="wb-sub"> / month</span>
+                                            {{ _price($plan['price']) }}<span class="wb-sub"> / month</span>
                                         </div>
                                         <div class="wb-sub mb-2">
-                                            {{ $plan['label'] }} — {{ _price($plan['price']) }} + {{ $pricing['gst'] }}% GST<br>
+                                            {{ $plan['label'] }} — + {{ $pricing['gst'] }}% GST, {{ _price(\App\Services\WhatsAppBilling::withTax($plan['price'])) }} charged<br>
                                             <b>{{ number_format($plan['tokens']) }}</b> tokens per month
                                         </div>
                                         @if ($current)

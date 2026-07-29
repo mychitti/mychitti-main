@@ -755,6 +755,12 @@ class WhatsAppService
                 return;
             }
 
+            // Connected but unpaid stores keep wa_enabled set, so the subscription is what
+            // decides whether a message actually goes out.
+            if (!WhatsAppBilling::isActive($storeId)) {
+                return;
+            }
+
             // One welcome per number per store — re-adding the same person must not re-send.
             static::ensureMessagesTable();
             $normalized = $wa->normalizePhone($phone);

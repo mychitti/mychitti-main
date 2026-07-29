@@ -3374,6 +3374,43 @@ function lead_subscription_fail($data)
     \App\Models\TmpLeadSubscription::where('id', $data->attribute_id)->delete();
 }
 
+/**
+ * Razorpay collected the WhatsApp one-time setup fee. Record it and remember whether the vendor
+ * wanted an account manager; the monthly fee is a separate mandate the vendor authorises next,
+ * so nothing is activated here — subscription.charged is what turns the platform on.
+ *
+ * The setup invoice ref is shared with the wallet path, so this is safe to re-enter: a second
+ * callback for the same store rewrites the same row rather than billing again.
+ */
+function whatsapp_setup_success($data)
+{
+    $tmp = \App\Models\TmpWhatsAppSetup::find($data->attribute_id);
+    if (!$tmp) {
+        return;
+    }
+
+    try {
+        \App\Services\WhatsAppBilling::markSetupPaidViaGateway($tmp->store_id, $data->transaction_id ?? null);
+        \Illuminate\Support\Facades\DB::table('wa_subscriptions')
+            ->where('store_id', $tmp->store_id)
+            ->update(['account_manager' => $tmp->account_manager ? 1 : 0, 'updated_at' => now()]);
+    } catch (\Throwable $e) {
+        // The setup fee is already captured — never bubble out of the payment callback, or the
+        // vendor lands on an error page having paid. The billing screen shows what is still due.
+        \Illuminate\Support\Facades\Log::error('WhatsApp setup recording failed after payment', [
+            'store' => $tmp->store_id,
+            'error' => $e->getMessage(),
+        ]);
+    }
+
+    $tmp->delete();
+}
+
+function whatsapp_setup_fail($data)
+{
+    \App\Models\TmpWhatsAppSetup::where('id', $data->attribute_id)->delete();
+}
+
 function store_data_formatting_limited($data, $multi_data = false)
 {
     $storage = [];

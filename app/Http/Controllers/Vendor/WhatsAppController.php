@@ -4,12 +4,19 @@ namespace App\Http\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Library\Payer;
+use App\Library\Payment as PaymentInfo;
+use App\Library\Receiver;
 use App\Models\AccountTransaction;
+use App\Models\BusinessSetting;
 use App\Models\StoreWallet;
+use App\Models\TmpWhatsAppSetup;
 use App\Models\UserNotificationPreference;
 use App\Services\WhatsAppAgent;
 use App\Services\WhatsAppBilling;
+use App\Services\WhatsAppRecurring;
 use App\Services\WhatsAppService;
+use App\Traits\Payment;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -19,6 +26,8 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppController extends Controller
 {
+    use Payment;
+
     /** How many clients the bulk recipient picker will load at once. */
     const BULK_PICKER_LIMIT = 1000;
 
@@ -50,6 +59,11 @@ class WhatsAppController extends Controller
 
         $connected = (bool) ($store && $store->wa_enabled && $store->wa_phone_number_id);
 
+        // Onboarding is paid for before the number is linked, so the connect button is a
+        // checkout until the fee lands. finish() enforces the same rule server-side.
+        $setupPaid  = WhatsAppBilling::setupFeePaid($storeId);
+        $setupTotal = WhatsAppBilling::withTax(WhatsAppBilling::setupFee());
+
         // Bulk sending is only offered on the vendor's own connected number — Meta bills them
         // directly and a marketing blast must never burn the platform number's quality rating.
         $templates = [];
@@ -70,7 +84,8 @@ class WhatsAppController extends Controller
 
         return view('vendor-views.whatsapp.connect', compact(
             'es', 'store', 'connected', 'templates', 'templateError',
-            'clientCount', 'platformUserCount', 'optOutCount'
+            'clientCount', 'platformUserCount', 'optOutCount',
+            'setupPaid', 'setupTotal'
         ));
     }
 
@@ -876,6 +891,15 @@ class WhatsAppController extends Controller
             ], 422);
         }
 
+        // A cancelled or lapsed subscription keeps its connected number on the store row, so
+        // without this the vendor could go on sending campaigns for free past the grace window.
+        if (!WhatsAppBilling::isActive($storeId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your WhatsApp Business Platform subscription isn’t active. Activate it under WhatsApp → Billing to send messages.',
+            ], 402);
+        }
+
         $mode = $request->input('mode');
         $platform = $mode === 'platform';
 
@@ -1190,15 +1214,118 @@ class WhatsAppController extends Controller
     // Activate the WhatsApp Business Platform — setup fee (first time) + the first month.
     public function billingSubscribe(Request $request)
     {
-        $res = WhatsAppBilling::subscribe(Helpers::get_store_id(), $request->boolean('account_manager'));
-        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
-        return back();
+        $storeId        = Helpers::get_store_id();
+        $accountManager = $request->boolean('account_manager');
+        $sub            = WhatsAppBilling::subscription($storeId);
+
+        // The one-time setup fee is collected by the payment gateway at onboarding, not from the
+        // wallet. Once it is paid the flag sticks, so a reactivation goes straight to subscribe()
+        // and only the monthly is debited.
+        if (!($sub && $sub->setup_fee_paid)) {
+            return $this->redirectToSetupPayment($storeId, $accountManager, $request);
+        }
+
+        // Setup fee is settled — the monthly is a Razorpay mandate, so hand the vendor to the
+        // hosted authorisation page. The platform switches on when subscription.charged lands.
+        return $this->startMandate($storeId, $accountManager);
+    }
+
+    /** Create the Razorpay subscription and send the vendor to authorise the auto-debit. */
+    public function billingAuthorizeMandate(Request $request)
+    {
+        return $this->startMandate(Helpers::get_store_id(), $request->boolean('account_manager'));
+    }
+
+    private function startMandate(int $storeId, bool $accountManager)
+    {
+        $res = WhatsAppRecurring::start($storeId, $accountManager);
+        if (!$res['success']) {
+            Toastr::error($res['message']);
+            return back();
+        }
+        return redirect()->away($res['url']);
+    }
+
+    /**
+     * Pay the one-time onboarding fee from the connect screen, before Embedded Signup runs.
+     * Returns the vendor to connect — the next step there is linking the number, not billing.
+     */
+    public function connectSetupFee(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+
+        if (WhatsAppBilling::setupFeePaid($storeId)) {
+            Toastr::info('Your setup fee is already paid — you can connect your number.');
+            return back();
+        }
+
+        return $this->redirectToSetupPayment($storeId, false, $request, 'whatsapp/connect');
+    }
+
+    /** Hand the vendor to Razorpay for the setup fee; whatsapp_setup_success() resumes activation. */
+    private function redirectToSetupPayment(int $storeId, bool $accountManager, Request $request, string $returnTo = 'whatsapp/billing')
+    {
+        $vendor = \App\Models\Vendor::find(auth('vendor')->id());
+        if (!$vendor) {
+            Toastr::error('Could not identify your vendor account.');
+            return back();
+        }
+
+        $tmp = TmpWhatsAppSetup::create([
+            'store_id'        => $storeId,
+            'account_manager' => $accountManager ? 1 : 0,
+        ]);
+
+        $payer = new Payer(
+            trim($vendor->f_name . ' ' . $vendor->l_name),
+            $vendor->email,
+            $vendor->phone,
+            ''
+        );
+
+        $domain = $request->getHost();
+        $external_redirect_link = \Illuminate\Support\Str::contains($domain, 'staging')
+            ? 'store-panel/' . $returnTo
+            : $returnTo;
+
+        $payment_info = new PaymentInfo(
+            success_hook: 'whatsapp_setup_success',
+            failure_hook: 'whatsapp_setup_fail',
+            currency_code: BusinessSetting::where('key', 'currency')->value('value'),
+            payment_method: 'razor_pay',
+            payment_platform: 'web',
+            payer_id: $storeId,
+            receiver_id: 100,
+            additional_data: [
+                'business_name' => BusinessSetting::where('key', 'business_name')->value('value'),
+                'business_logo' => asset('storage/app/public/business') . '/' . BusinessSetting::where('key', 'logo')->value('value'),
+            ],
+            // Gateway collects the GST-inclusive amount.
+            payment_amount: WhatsAppBilling::withTax(WhatsAppBilling::setupFee()),
+            external_redirect_link: $external_redirect_link,
+            attribute: 'whatsapp_setup',
+            attribute_id: $tmp->id
+        );
+
+        return redirect()->to($this->generate_link($payer, $payment_info, new Receiver('Admin', 'example.png')));
     }
 
     // Stop auto-renewal; the already-paid period is honoured.
     public function billingCancel(Request $request)
     {
-        $res = WhatsAppBilling::cancel(Helpers::get_store_id());
+        $storeId = Helpers::get_store_id();
+
+        // Stop the mandate at Razorpay first — cancelling only on our side would leave the card
+        // being debited every month for a subscription the vendor believes is closed.
+        if (WhatsAppRecurring::isGatewayBilled($storeId)) {
+            $mandate = WhatsAppRecurring::cancel($storeId);
+            if (!$mandate['success']) {
+                Toastr::error($mandate['message']);
+                return back();
+            }
+        }
+
+        $res = WhatsAppBilling::cancel($storeId);
         $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
         return back();
     }
@@ -1262,6 +1389,19 @@ class WhatsAppController extends Controller
         ]);
 
         WhatsAppService::ensureStoreColumns();
+        $storeId = Helpers::get_store_id();
+
+        // The onboarding fee gates the link-up, not the UI. Connecting costs us the Meta
+        // onboarding the moment the WABA is attached, so this is checked here as well as on the
+        // button — the endpoint is callable directly.
+        if (!WhatsAppBilling::setupFeePaid($storeId)) {
+            return response()->json([
+                'success'  => false,
+                'message'  => 'Pay the one-time setup fee before connecting your number.',
+                'pay_url'  => route('vendor.whatsapp.connect'),
+            ], 402);
+        }
+
         $config = Helpers::get_business_settings('whatsapp_config');
         $appId     = $config['es_app_id'] ?? null;
         $appSecret = $config['es_app_secret'] ?? null;
@@ -1298,7 +1438,7 @@ class WhatsAppController extends Controller
             ]);
 
             // 4) Persist on the store — WhatsAppService picks this up automatically.
-            DB::table('stores')->where('id', Helpers::get_store_id())->update([
+            DB::table('stores')->where('id', $storeId)->update([
                 'wa_enabled'             => 1,
                 'wa_phone_number_id'     => $request->phone_number_id,
                 'wa_token'               => $token,

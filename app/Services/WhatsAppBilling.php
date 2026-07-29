@@ -26,10 +26,22 @@ use Illuminate\Support\Facades\Schema;
  *   POOL_AGENT   — the AI Agent. A monthly plan grants an allowance that resets each cycle;
  *                  top-ups are bought per million and carry over.
  *
- * Money always moves the same way as the rest of the vendor panel: debit
- * StoreWallet.total_earning, write an AccountTransaction, and keep a line item in
- * wa_billing_invoices. Every charge carries a `ref` that is unique per store, so a
- * retried renewal can never double-charge.
+ * ── How each charge is collected ───────────────────────────────────────────────
+ *   Per-message usage    → VENDOR WALLET. Metered from whatsapp_messages and debited
+ *                          in arrears for the finished calendar month by `whatsapp:bill`.
+ *   One-time setup fee   → PAYMENT GATEWAY, collected directly at onboarding — it is
+ *                          not a wallet debit and must not depend on wallet balance.
+ *   Monthly platform fee → PAYMENT GATEWAY, prepaid recurring auto-debit, taken at the
+ *                          start of each cycle rather than billed after it.
+ *
+ * Only the wallet route is built. subscribe() and renew() currently push the setup and
+ * monthly fees through charge() as well, so today they debit the wallet like everything
+ * else. Routing those two to the gateway is outstanding work — until it lands, this
+ * class and the vendor billing page both behave as wallet-only.
+ *
+ * Mechanically a charge() debits StoreWallet.total_earning, writes an AccountTransaction,
+ * and keeps a line item in wa_billing_invoices. Every charge carries a `ref` that is
+ * unique per store, so a retried renewal can never double-charge.
  *
  * Prices are the published list prices; an admin can override any of them from the
  * `whatsapp_config` business setting without a deploy (see config()).
@@ -149,6 +161,20 @@ class WhatsAppBilling
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         }
 
+        // Carries the activation choice across the Razorpay redirect — the setup fee is collected
+        // by the gateway, so the store_id is not in session by the time the hook fires.
+        if (!Schema::hasTable('wa_tmp_setup')) {
+            DB::statement("CREATE TABLE `wa_tmp_setup` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NOT NULL,
+                `account_manager` TINYINT(1) NOT NULL DEFAULT 0,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                KEY `wa_tmp_setup_store` (`store_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+
         if (!Schema::hasTable('wa_agent_subscriptions')) {
             DB::statement("CREATE TABLE `wa_agent_subscriptions` (
                 `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -169,6 +195,23 @@ class WhatsAppBilling
                 UNIQUE KEY `wa_agent_store` (`store_id`),
                 KEY `wa_agent_period` (`status`, `current_period_end`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+
+        // Razorpay Subscriptions state. A store with rzp_subscription_id set is billed by
+        // Razorpay on its own schedule — renew() must leave it alone and let the webhook drive
+        // current_period_end, or the vendor pays twice.
+        foreach ([
+            'rzp_subscription_id' => "VARCHAR(64) NULL",
+            'rzp_plan_id'         => "VARCHAR(64) NULL",
+            'mandate_status'      => "VARCHAR(20) NULL",
+        ] as $column => $definition) {
+            if (Schema::hasTable('wa_subscriptions') && !Schema::hasColumn('wa_subscriptions', $column)) {
+                DB::statement("ALTER TABLE `wa_subscriptions` ADD COLUMN `{$column}` {$definition}");
+            }
+        }
+        if (Schema::hasTable('wa_subscriptions') && !Schema::hasColumn('wa_subscriptions', 'rzp_idx_added')) {
+            DB::statement("ALTER TABLE `wa_subscriptions` ADD COLUMN `rzp_idx_added` TINYINT(1) NOT NULL DEFAULT 1");
+            DB::statement("ALTER TABLE `wa_subscriptions` ADD KEY `wa_sub_rzp` (`rzp_subscription_id`)");
         }
 
         // Two rows per store at most — one per token pool. plan_* is the AI Agent's monthly
@@ -298,6 +341,30 @@ class WhatsAppBilling
     }
 
     /**
+     * TEMPORARY (development): store ids the WhatsApp module is visible to while the onboarding
+     * and billing flow is being built. An empty array means everyone, which is where this goes
+     * once the flow is signed off — delete the constant and pilotVisible() together.
+     */
+    const PILOT_STORE_IDS = [320];
+
+    /** Should this store see the WhatsApp module at all? See PILOT_STORE_IDS. */
+    public static function pilotVisible(?int $storeId): bool
+    {
+        return empty(self::PILOT_STORE_IDS) || in_array((int) $storeId, self::PILOT_STORE_IDS, true);
+    }
+
+    /**
+     * Has the store settled the one-time onboarding fee? This is what unlocks Embedded Signup —
+     * connecting a number costs us the Meta onboarding whether or not the vendor ever subscribes,
+     * so the fee is collected before the WABA is linked, not after.
+     */
+    public static function setupFeePaid(int $storeId): bool
+    {
+        $sub = static::subscription($storeId);
+        return (bool) ($sub && $sub->setup_fee_paid);
+    }
+
+    /**
      * Is the store's WhatsApp platform subscription live? A failed renewal keeps working
      * through the grace window so a temporarily empty wallet does not cut service instantly.
      */
@@ -311,8 +378,11 @@ class WhatsAppBilling
     }
 
     /**
-     * Activate the platform for a store: one-time setup fee (first time only) plus the first
-     * month, both debited now. Nothing is activated unless the full amount could be charged.
+     * Activate the platform for a store. The first month is debited from the wallet here; the
+     * one-time setup fee is not — it is collected by Razorpay before this runs, and arrives with
+     * setup_fee_paid already set (see markSetupPaidViaGateway). A store that never went through
+     * the gateway would still be charged the setup fee from its wallet by the block below, which
+     * is the fallback for reactivations and admin-side activation.
      */
     public static function subscribe(int $storeId, bool $accountManager = false): array
     {
@@ -398,6 +468,17 @@ class WhatsAppBilling
         $sub = static::subscription($storeId);
         if (!$sub || $sub->status === 'cancelled') {
             return ['success' => false, 'message' => 'No active WhatsApp subscription.'];
+        }
+
+        // Razorpay owns the schedule for mandate-billed stores and reports each debit through
+        // the webhook. Charging here as well would take the same month twice — once from the
+        // card and once from the wallet.
+        if ($sub->rzp_subscription_id && in_array($sub->mandate_status, ['pending', 'active', 'cancelling'], true)) {
+            return [
+                'success' => true,
+                'skipped' => true,
+                'message' => 'Billed by Razorpay auto-debit — nothing to charge here.',
+            ];
         }
 
         // Renewals never backfill missed months: the new period always starts from the old
@@ -977,6 +1058,116 @@ class WhatsAppBilling
     protected static function walletCovers(int $storeId, float $total): bool
     {
         return static::walletBalance($storeId) >= $total;
+    }
+
+    /**
+     * Record a setup fee that Razorpay already collected. No wallet movement and no
+     * AccountTransaction — the money never passed through the vendor wallet — but the invoice
+     * line is still written so wa_billing_invoices stays the complete ledger.
+     *
+     * Marks setup_fee_paid so the subscribe() that follows skips its own setup charge and only
+     * debits the monthly. Shares the `wa_setup_{store}` ref with the wallet path, so a store can
+     * never be billed the setup fee twice by either route.
+     */
+    public static function markSetupPaidViaGateway(int $storeId, ?string $txnId = null): void
+    {
+        static::ensureTables();
+
+        $base  = static::setupFee();
+        $tax   = static::tax($base);
+        $total = round($base + $tax, 2);
+
+        static::writeInvoice(
+            $storeId,
+            static::vendorId($storeId),
+            'setup',
+            'WhatsApp Business Platform — one-time setup',
+            $base,
+            $tax,
+            $total,
+            'wa_setup_' . $storeId,
+            'paid',
+            'Paid by Razorpay' . ($txnId ? ' — ' . $txnId : ''),
+            null,
+            null
+        );
+
+        $sub = static::subscription($storeId);
+        DB::table('wa_subscriptions')->updateOrInsert(
+            ['store_id' => $storeId],
+            [
+                'setup_fee_paid' => 1,
+                // Activation is subscribe()'s job — leaving current_period_end null keeps
+                // isActive() false until the first month is actually paid.
+                'status'         => $sub->status ?? 'pending',
+                'updated_at'     => now(),
+                'created_at'     => $sub->created_at ?? now(),
+            ]
+        );
+    }
+
+    /**
+     * Record a monthly fee that the Razorpay mandate already collected, and move the store's
+     * period forward. No wallet movement — the debit happened on the vendor's card/UPI.
+     *
+     * $total is what Razorpay actually captured (GST inclusive); the base/tax split is derived
+     * from it rather than recomputed from the price list, so a mid-cycle price change can never
+     * make the invoice disagree with the amount taken.
+     *
+     * Keyed on the Razorpay payment id, so a replayed webhook rewrites the same invoice row
+     * instead of granting a second month.
+     */
+    public static function recordGatewayMonthly(
+        int $storeId,
+        string $paymentId,
+        float $total,
+        ?string $periodStart,
+        ?string $periodEnd
+    ): void {
+        static::ensureTables();
+
+        $ref = 'wa_rzp_' . $paymentId;
+        $alreadyPaid = DB::table('wa_billing_invoices')
+            ->where('store_id', $storeId)->where('ref', $ref)->where('status', 'paid')->exists();
+
+        $base = round($total / (1 + static::gstPercent() / 100), 2);
+        $tax  = round($total - $base, 2);
+
+        static::writeInvoice(
+            $storeId,
+            static::vendorId($storeId),
+            'monthly',
+            'WhatsApp Business Platform — monthly fee (Razorpay auto-debit)',
+            $base,
+            $tax,
+            $total,
+            $ref,
+            'paid',
+            'Razorpay ' . $paymentId,
+            $periodStart,
+            $periodEnd
+        );
+
+        if ($alreadyPaid) {
+            return;
+        }
+
+        $sub = static::subscription($storeId);
+        DB::table('wa_subscriptions')->updateOrInsert(
+            ['store_id' => $storeId],
+            [
+                'status'             => 'active',
+                'mandate_status'     => 'active',
+                'current_period_end' => $periodEnd,
+                'last_charged_on'    => $periodStart ?? now()->toDateString(),
+                'started_at'         => $sub->started_at ?? ($periodStart ?? now()->toDateString()),
+                'last_error'         => null,
+                'retry_count'        => 0,
+                'cancelled_at'       => null,
+                'updated_at'         => now(),
+                'created_at'         => $sub->created_at ?? now(),
+            ]
+        );
     }
 
     /**

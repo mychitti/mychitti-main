@@ -532,6 +532,11 @@ if (!$is_published) {
             Route::get('pay', [RazorPayController::class, 'index']);
             Route::post('payment', [RazorPayController::class, 'payment'])->name('payment')
                 ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+            // Recurring subscription events (mandate auth, monthly debit, failures). Razorpay
+            // signs the raw body — see RazorPayWebhookController.
+            Route::post('webhook', [\App\Http\Controllers\RazorPayWebhookController::class, 'handle'])
+                ->name('webhook')
+                ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
         });
 
         //PAYPAL

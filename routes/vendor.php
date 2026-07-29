@@ -43,6 +43,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('whatsapp/customers/template', 'WhatsAppController@customerTemplate')->name('whatsapp.customers.template');
         Route::get('whatsapp/connect', 'WhatsAppController@connect')->name('whatsapp.connect');
         Route::post('whatsapp/connect/finish', 'WhatsAppController@finish')->name('whatsapp.connect.finish');
+        // One-time onboarding fee, collected before Embedded Signup links the number.
+        Route::post('whatsapp/connect/setup-fee', 'WhatsAppController@connectSetupFee')->name('whatsapp.connect.setup-fee');
         Route::post('whatsapp/disconnect', 'WhatsAppController@disconnect')->name('whatsapp.disconnect');
         Route::get('whatsapp/inbox', 'WhatsAppController@inbox')->name('whatsapp.inbox');
         Route::get('whatsapp/inbox/threads', 'WhatsAppController@inboxThreads')->name('whatsapp.inbox.threads');
@@ -73,6 +75,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // WhatsApp Business Platform billing — recurring platform fee, template slots, AI tokens.
         Route::get('whatsapp/billing', 'WhatsAppController@billing')->name('whatsapp.billing');
         Route::post('whatsapp/billing/subscribe', 'WhatsAppController@billingSubscribe')->name('whatsapp.billing.subscribe');
+        Route::post('whatsapp/billing/authorize-mandate', 'WhatsAppController@billingAuthorizeMandate')->name('whatsapp.billing.authorize-mandate');
         Route::post('whatsapp/billing/cancel', 'WhatsAppController@billingCancel')->name('whatsapp.billing.cancel');
         Route::post('whatsapp/billing/account-manager', 'WhatsAppController@billingAccountManager')->name('whatsapp.billing.account-manager');
         Route::post('whatsapp/billing/template-slot', 'WhatsAppController@buyTemplateSlot')->name('whatsapp.billing.template-slot');

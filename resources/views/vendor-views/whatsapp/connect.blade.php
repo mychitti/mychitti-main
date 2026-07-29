@@ -124,6 +124,27 @@
                             <p>Connect your business WhatsApp number to send invoices, reminders and updates to your customers directly from your own number.</p>
                             @if (!$es['ready'])
                                 <div class="alert alert-warning">WhatsApp onboarding isn’t available yet. Please contact support.</div>
+                            @elseif (!$setupPaid)
+                                {{-- Eligibility first, payment second: a vendor who can't meet these
+                                     shouldn't reach the checkout and then ask for a refund. --}}
+                                <div class="alert alert-info" style="font-size:13px;">
+                                    <b>Before you pay, check you have both:</b>
+                                    <ul class="mb-0 mt-1 pl-3">
+                                        <li>a phone number that is <b>not currently active on the WhatsApp app</b></li>
+                                        <li>access to receive that number’s verification code right now</li>
+                                    </ul>
+                                </div>
+                                <form action="{{ route('vendor.whatsapp.connect.setup-fee') }}" method="post" class="mb-0">
+                                    @csrf
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="tio-chat"></i> Pay {{ _price($setupTotal) }} &amp; Connect
+                                    </button>
+                                </form>
+                                <small class="text-muted d-block mt-2">
+                                    One-time onboarding fee, GST included. It covers setting your number up on the
+                                    WhatsApp Business Platform and is charged once — reconnecting later is free.
+                                    The monthly plan is authorised separately, after your number is linked.
+                                </small>
                             @else
                                 <button id="wa-connect-btn" class="btn btn-success btn-lg">
                                     <i class="tio-chat"></i> Connect WhatsApp
@@ -786,7 +807,9 @@
             el.textContent = msg;
         }
 
-        document.getElementById('wa-connect-btn').addEventListener('click', function () {
+        // Absent until the onboarding fee is paid — the button is a checkout form until then.
+        var $connectBtn = document.getElementById('wa-connect-btn');
+        if ($connectBtn) $connectBtn.addEventListener('click', function () {
             if (typeof FB === 'undefined') { waStatus('Facebook SDK not loaded yet, please retry.', 'error'); return; }
             waStatus('Opening WhatsApp signup…');
             FB.login(function (response) {
