@@ -60,7 +60,7 @@
                         <td>{{ $i + 1 }}</td>
                         <td>{{ $row->variation_type ? $row->item_name . ' (' . $row->variation_type . ')' : $row->item_name }}</td>
                         <td>{{ $row->sku_id }}</td>
-                        <td class="r">{{ rtrim(rtrim(number_format((float) $row->qty, 3), '0'), '.') }} {{ $row->unit_label }}</td>
+                        <td class="r">{{ $row->qty_label ?? (rtrim(rtrim(number_format((float) $row->qty, 3), '0'), '.') . ' ' . $row->unit_label) }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="4" style="text-align:center;">No items</td></tr>

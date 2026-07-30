@@ -76,10 +76,17 @@
                                             </td>
                                             <td>
                                                 @if (count($it->variations))
-                                                    <select name="source[{{ $it->id }}]" class="rp-input" style="width:190px">
-                                                        <option value="">Main stock</option>
+                                                    {{-- Each option carries the ceiling in its own units: picking a
+                                                         100gm pack means the box counts packs, not kilograms. --}}
+                                                    <select name="source[{{ $it->id }}]" class="rp-input rp-gp-source" style="width:190px"
+                                                            data-target="qty-{{ $it->id }}"
+                                                            data-main-max="{{ (float) $it->stock }}"
+                                                            data-main-hint="{{ _unitLabelFor($it->unit) }}">
+                                                        <option value="" data-max="{{ (float) $it->stock }}" data-hint="{{ _unitLabelFor($it->unit) }}">Main stock</option>
                                                         @foreach ($it->variations as $v)
-                                                            <option value="{{ $v['type'] }}">{{ $v['type'] }}</option>
+                                                            <option value="{{ $v['type'] }}"
+                                                                    data-max="{{ $v['max'] }}"
+                                                                    data-hint="{{ $v['hint'] }}">{{ $v['type'] }}</option>
                                                         @endforeach
                                                     </select>
                                                 @else
@@ -88,8 +95,13 @@
                                             </td>
                                             <td>
                                                 <input type="number" step="0.001" min="0" max="{{ (float) $it->stock }}"
+                                                    id="qty-{{ $it->id }}"
                                                     name="qty[{{ $it->id }}]" class="rp-input rp-gp-qty" style="width:140px"
                                                     placeholder="0">
+                                                <small class="text-muted d-block rp-gp-hint" style="font-size:11px;">
+                                                    max {{ rtrim(rtrim(number_format((float) $it->stock, 3), '0'), '.') }}
+                                                    {{ _unitLabelFor($it->unit) }}
+                                                </small>
                                             </td>
                                         </tr>
                                     @empty
@@ -188,6 +200,30 @@
                         if (sel === 0) { return false; }
                         return confirm('Delete ' + sel + ' selected gatepass(es)? This returns the transferred stock to the main store and removes it from the branch.');
                     }
+
+                    // Retarget the quantity ceiling when the source pool changes. The box counts
+                    // whatever the chosen pool is measured in — packs for a measured variation,
+                    // base units for main stock — so a fixed max would reject valid quantities.
+                    (function () {
+                        Array.prototype.forEach.call(document.querySelectorAll('.rp-gp-source'), function (sel) {
+                            var input = document.getElementById(sel.dataset.target);
+                            if (!input) return;
+                            var hint = input.parentNode.querySelector('.rp-gp-hint');
+
+                            sel.addEventListener('change', function () {
+                                var opt = sel.options[sel.selectedIndex];
+                                var max = parseFloat(opt.getAttribute('data-max'));
+                                if (!isNaN(max)) {
+                                    input.max = max;
+                                    if (parseFloat(input.value) > max) input.value = '';
+                                }
+                                if (hint) {
+                                    var label = (opt.getAttribute('data-hint') || '').trim();
+                                    hint.textContent = 'max ' + (isNaN(max) ? '' : max) + (label ? ' ' + label : '');
+                                }
+                            });
+                        });
+                    })();
                 </script>
             @endif
         @endif

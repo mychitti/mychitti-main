@@ -3064,11 +3064,37 @@ class RetailPosController extends Controller
         // the main product. Variations ride along only as the pool the qty is deducted from.
         $items = collect();
         foreach ($dbItems as $it) {
+            $mode = _variationMode($it);
             $vars = [];
             foreach (json_decode($it->variations, true) ?: [] as $var) {
-                if (!empty($var['type'])) {
-                    $vars[] = ['type' => $var['type'], 'stock' => (float) ($var['stock'] ?? 0)];
+                if (empty($var['type'])) {
+                    continue;
                 }
+
+                // What the quantity box means depends on which pool is picked, so each option
+                // carries its own ceiling in ITS OWN units. A measured pack is entered in packs
+                // — 3 × 100gm draws 0.3 kg — so capping the box at the item's kg stock would
+                // refuse quantities the transfer can happily fulfil.
+                $max = (float) ($var['stock'] ?? 0);
+                $label = '';
+                if ($mode === 'measured') {
+                    $pack = _variationPack($it, $var);
+                    $perPack = $pack ? _variationQtyInItemUnit($it, $pack, 1) : 0;
+                    if ($perPack > 0) {
+                        $max = floor((float) $it->stock / $perPack);
+                        $label = 'packs of ' . rtrim(rtrim(number_format($perPack, 3), '0'), '.')
+                            . ' ' . _unitLabelFor($it->unit);
+                    } else {
+                        $max = (float) $it->stock;
+                    }
+                }
+
+                $vars[] = [
+                    'type'  => $var['type'],
+                    'stock' => (float) ($var['stock'] ?? 0),
+                    'max'   => $max,
+                    'hint'  => $label,
+                ];
             }
             $items->push((object)[
                 'id' => (string) $it->id,
@@ -3077,6 +3103,7 @@ class RetailPosController extends Controller
                 'stock' => $it->stock,
                 'unit' => $it->unit,
                 'itemunit' => $it->itemunit,
+                'var_mode' => $mode,
                 'variations' => $vars,
             ]);
         }
@@ -3283,7 +3310,36 @@ class RetailPosController extends Controller
             ->leftJoin('inventory_items as ii', 'ii.id', '=', 'gi.inventory_item_id')
             ->leftJoin('units as u', 'u.id', '=', 'ii.unit')
             ->where('gi.gatepass_id', $id)
-            ->get(['gi.qty', 'gi.variation_type', 'ii.item_name', 'ii.sku_id', 'u.unit as unit_label']);
+            ->get(['gi.inventory_item_id', 'gi.qty', 'gi.variation_type', 'ii.item_name', 'ii.sku_id', 'u.unit as unit_label']);
+
+        // The stored qty is in whatever the line was entered in — pack counts for a measured
+        // variation. Pairing that number with the item's base unit read as "4 kg" for 4 × 100gm,
+        // which is four times what actually moved. Resolve each line to its real quantity here.
+        $lineItems = InventoryItem::whereIn('id', $items->pluck('inventory_item_id')->filter()->unique())
+            ->get()->keyBy('id');
+
+        foreach ($items as $row) {
+            $inv = $lineItems->get($row->inventory_item_id);
+            $row->qty_label = rtrim(rtrim(number_format((float) $row->qty, 3), '0'), '.') . ' ' . $row->unit_label;
+
+            if (!$inv || !$row->variation_type) {
+                continue;
+            }
+
+            if (_variationMode($inv) === 'countable') {
+                // Countable variations are units in their own right, not a weight.
+                $row->qty_label = rtrim(rtrim(number_format((float) $row->qty, 3), '0'), '.') . ' × ' . $row->variation_type;
+                continue;
+            }
+
+            $base = _stockQtyForLine($inv, (float) $row->qty, $inv->unit, $row->variation_type);
+            if (abs($base - (float) $row->qty) > 0.0001) {
+                $row->qty_label = rtrim(rtrim(number_format((float) $row->qty, 3), '0'), '.')
+                    . ' × ' . $row->variation_type
+                    . ' (' . rtrim(rtrim(number_format($base, 3), '0'), '.') . ' ' . $row->unit_label . ')';
+            }
+        }
+
         $store = Helpers::get_store_data();
         return view('posretail::vendor.retail-pos.gatepass-print', compact('gatepass', 'branch', 'items', 'store'));
     }
