@@ -83,6 +83,38 @@ class WhatsAppService
         'staff_forward',
     ];
 
+    /**
+     * Templates the vendor has trashed. The template itself stays at Meta — approved and still
+     * occupying one of their slots — so this is only about hiding it from the working list.
+     * That is what makes Restore instant: nothing was deleted, so nothing needs re-approving.
+     * Permanent delete is the only thing that touches Meta.
+     */
+    public static function ensureTrashTable(): void
+    {
+        if (!Schema::hasTable('wa_trashed_templates')) {
+            DB::statement("CREATE TABLE `wa_trashed_templates` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NOT NULL,
+                `name` VARCHAR(190) NOT NULL,
+                `language` VARCHAR(20) NOT NULL DEFAULT 'en_US',
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `wa_trash_store_tpl` (`store_id`, `name`, `language`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+    }
+
+    /** "name|language" keys of everything this store has trashed. */
+    public static function trashedTemplateKeys(int $storeId): array
+    {
+        static::ensureTrashTable();
+        return DB::table('wa_trashed_templates')->where('store_id', $storeId)
+            ->get(['name', 'language'])
+            ->map(fn($r) => strtolower($r->name . '|' . $r->language))
+            ->all();
+    }
+
     /** Named placeholders a body uses, in first-appearance order and deduped. */
     public static function namedVariables(string $body): array
     {
@@ -303,6 +335,23 @@ class WhatsAppService
         if (!$this->isConfigured()) {
             return ['success' => false, 'error' => 'WhatsApp API not configured', 'id' => null];
         }
+
+        // Per-message charges come out of the wallet at dispatch, so an empty wallet has to stop
+        // the send before it happens — otherwise the vendor keeps messaging on credit we never
+        // agreed to extend. Only their own number is billable; platform-sent alerts are ours.
+        if ($this->storeId && $this->source() === 'vendor') {
+            $audience = static::audienceFor($meta['context'] ?? null, $this->storeId, $payload['to'] ?? null);
+            if (!WhatsAppBilling::canAffordMessage($this->storeId, $audience)) {
+                return [
+                    'success' => false,
+                    'error'   => 'Wallet balance too low to send. Each message costs '
+                        . _price(WhatsAppBilling::messageCost($audience))
+                        . ' — recharge your wallet to keep sending.',
+                    'id'      => null,
+                ];
+            }
+        }
+
         try {
             $resp = Http::withToken($this->cfg['token'])
                 ->acceptJson()
@@ -396,6 +445,20 @@ class WhatsAppService
     }
 
     /**
+     * The store's OWN WABA — never the platform's.
+     *
+     * resolveConfig() falls back to the global/env credentials whenever a store has not
+     * connected a number, so hasWaba() is true for an unconnected vendor and points at
+     * MyChitti's WABA. Anything a vendor drives that writes to Meta — listing, creating,
+     * editing or deleting templates — must gate on this instead, or one vendor's click lands
+     * on the platform account that every other vendor depends on.
+     */
+    public function hasVendorWaba(): bool
+    {
+        return $this->source() === 'vendor' && !empty($this->cfg['business_account_id']);
+    }
+
+    /**
      * Make sure our app is subscribed to this WABA so inbound messages and delivery
      * statuses reach the platform webhook. Idempotent — Meta returns success when already
      * subscribed — so it doubles as a self-heal for stores whose original subscription
@@ -457,11 +520,69 @@ class WhatsAppService
      * Builds the component array shared by create/update.
      * Order required by Meta: HEADER, BODY, FOOTER, BUTTONS.
      */
-    protected function buildComponents(string $bodyText, array $example, array $buttons, ?string $header, ?string $footer): array
+    /**
+     * Upload a file for use as a template's media header.
+     *
+     * Meta will not take the bytes at template-create time — the file goes through the app's
+     * resumable upload endpoint first and comes back as a handle, which is what the template
+     * then references. Returns the handle, or null with the reason logged.
+     */
+    public function uploadHeaderMedia(string $path, string $mime, string $appId, string $appSecret): ?string
+    {
+        $version = $this->cfg['api_version'];
+        $token   = $appId . '|' . $appSecret;   // app access token
+
+        try {
+            $session = Http::post("https://graph.facebook.com/{$version}/{$appId}/uploads", [
+                'file_length' => filesize($path),
+                'file_type'   => $mime,
+                'access_token' => $token,
+            ]);
+            $sessionId = data_get($session->json(), 'id');
+            if (!$sessionId) {
+                Log::warning('WA header upload session failed', ['body' => $session->json()]);
+                return null;
+            }
+
+            // Single-shot upload: offset 0, whole file. Templates cap well below the point
+            // where chunking would matter.
+            $resp = Http::withHeaders([
+                    'Authorization' => 'OAuth ' . $token,
+                    'file_offset'   => '0',
+                    'Content-Type'  => 'application/octet-stream',
+                ])
+                ->withBody(file_get_contents($path), 'application/octet-stream')
+                ->post("https://graph.facebook.com/{$version}/{$sessionId}");
+
+            $handle = data_get($resp->json(), 'h');
+            if (!$handle) {
+                Log::warning('WA header upload failed', ['body' => $resp->json()]);
+                return null;
+            }
+            return $handle;
+        } catch (\Throwable $e) {
+            Log::error('WA header upload exception: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * $header is either a plain string (TEXT header) or
+     * ['format' => 'IMAGE'|'VIDEO'|'DOCUMENT', 'handle' => '...'] for a media header.
+     */
+    protected function buildComponents(string $bodyText, array $example, array $buttons, $header, ?string $footer): array
     {
         $components = [];
 
-        if ($header !== null && trim($header) !== '') {
+        if (is_array($header) && !empty($header['handle']) && !empty($header['format'])) {
+            // Media headers carry the uploaded sample rather than text — Meta shows it to the
+            // reviewer and sends it with every message.
+            $components[] = [
+                'type'    => 'HEADER',
+                'format'  => strtoupper($header['format']),
+                'example' => ['header_handle' => [$header['handle']]],
+            ];
+        } elseif (is_string($header) && trim($header) !== '') {
             $components[] = ['type' => 'HEADER', 'format' => 'TEXT', 'text' => $header];
         }
 
@@ -483,10 +604,20 @@ class WhatsAppService
             $components[] = ['type' => 'FOOTER', 'text' => $footer];
         }
 
+        // Two button shapes: a link that opens a page, and a quick reply whose label comes back
+        // to the vendor as an inbound message. A row with no text is simply an unused slot.
         $btnDefs = [];
         foreach ($buttons as $btn) {
-            if (!empty($btn['text']) && !empty($btn['url'])) {
-                $btnDefs[] = ['type' => 'URL', 'text' => $btn['text'], 'url' => $btn['url']];
+            $text = trim((string) ($btn['text'] ?? ''));
+            if ($text === '') {
+                continue;
+            }
+            $type = strtoupper((string) ($btn['type'] ?? (empty($btn['url']) ? 'QUICK_REPLY' : 'URL')));
+
+            if ($type === 'URL' && !empty($btn['url'])) {
+                $btnDefs[] = ['type' => 'URL', 'text' => $text, 'url' => $btn['url']];
+            } elseif ($type === 'QUICK_REPLY') {
+                $btnDefs[] = ['type' => 'QUICK_REPLY', 'text' => $text];
             }
         }
         if (!empty($btnDefs)) {
@@ -496,7 +627,7 @@ class WhatsAppService
         return $components;
     }
 
-    public function createTemplate(string $name, string $category, string $lang, string $bodyText, array $example = [], array $buttons = [], ?string $header = null, ?string $footer = null): array
+    public function createTemplate(string $name, string $category, string $lang, string $bodyText, array $example = [], array $buttons = [], $header = null, ?string $footer = null): array
     {
         if (!$this->hasWaba()) {
             return ['success' => false, 'error' => 'WhatsApp Business Account ID is required to manage templates.', 'id' => null];
@@ -535,7 +666,7 @@ class WhatsAppService
      * POST /{message_template_id} — name & language are immutable; only category/components.
      * Meta rejects edits while a template is in review (PENDING).
      */
-    public function updateTemplate(string $templateId, ?string $category, string $bodyText, array $example = [], array $buttons = [], ?string $header = null, ?string $footer = null): array
+    public function updateTemplate(string $templateId, ?string $category, string $bodyText, array $example = [], array $buttons = [], $header = null, ?string $footer = null): array
     {
         if (!$this->hasWaba()) {
             return ['success' => false, 'error' => 'WhatsApp Business Account ID is required to manage templates.'];
@@ -604,8 +735,10 @@ class WhatsAppService
             'wa_business_account_id' => 'VARCHAR(64) NULL',
             'wa_api_version'         => 'VARCHAR(12) NULL',
             'wa_appt_reminder'       => 'VARCHAR(20) NULL',
-            // Which chatbot answers customers: 'knowledge' (knowledge base only) or 'agent'
-            // (lead & appointment management). NULL reads as 'knowledge'.
+            // DEAD: used to pick between the knowledge bot and the AI Agent, back when they were
+            // priced differently. The plan decides that now, so nothing reads or writes this.
+            // Kept so the column definition survives a fresh install identically; drop it when
+            // you are happy no reporting still joins on it.
             'wa_bot_mode'            => "VARCHAR(20) NULL",
         ];
         foreach ($cols as $name => $def) {
@@ -1217,13 +1350,53 @@ class WhatsAppService
      */
     const PLATFORM_AUDIENCE_CONTEXTS = ['nearby'];
 
-    public static function audienceFor(?string $context): string
+    /**
+     * Which rate a message is billed at, decided by WHO is being messaged rather than by which
+     * screen sent it.
+     *
+     *   own      — the number is in this store's own customer book (store_customers).
+     *   platform — everyone else, called "MyChitti customers" throughout the vendor UI: the
+     *              MyChitti database, other vendors' customers, and any number the vendor has
+     *              never imported all attract the same Data Usage Charge.
+     *
+     * Membership is the test, not the context, because a context whitelist defaults every new
+     * send path to the cheaper rate — which is how a number the vendor has no relationship with
+     * would end up billed at the own-list price. Matched on the last 10 digits, the same way the
+     * opt-out and outreach queries match, so +91/0 prefixes and spacing never split one person
+     * into two.
+     */
+    public static function audienceFor(?string $context, ?int $storeId = null, ?string $phone = null): string
     {
-        return in_array((string) $context, self::PLATFORM_AUDIENCE_CONTEXTS, true) ? 'platform' : 'own';
+        if (in_array((string) $context, self::PLATFORM_AUDIENCE_CONTEXTS, true)) {
+            return 'platform';
+        }
+        if (!$storeId || !$phone) {
+            return 'platform';
+        }
+
+        $digits = preg_replace('/[^0-9]/', '', $phone) ?? '';
+        if (strlen($digits) < 10) {
+            return 'platform';
+        }
+
+        try {
+            $isOwn = DB::table('store_customers')
+                ->where('store_id', $storeId)
+                ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [substr($digits, -10)])
+                ->exists();
+        } catch (\Throwable $e) {
+            // Never let a lookup failure silently downgrade the rate.
+            Log::warning('WhatsApp audience lookup failed: ' . $e->getMessage());
+            return 'platform';
+        }
+
+        return $isOwn ? 'own' : 'platform';
     }
 
     protected function logMessage(array $payload, array $meta, array $result): void
     {
+        $audience = static::audienceFor($meta['context'] ?? null, $this->storeId, $payload['to'] ?? null);
+
         try {
             static::ensureMessagesTable();
             DB::table('whatsapp_messages')->insert([
@@ -1234,7 +1407,7 @@ class WhatsAppService
                 'type'      => $payload['type'] ?? null,
                 'body'      => isset($meta['body']) ? mb_substr((string) $meta['body'], 0, 1000) : null,
                 'context'   => $meta['context'] ?? null,
-                'audience'  => static::audienceFor($meta['context'] ?? null),
+                'audience'  => $audience,
                 'status'    => $result['success'] ? 'accepted' : 'failed',
                 'error'     => $result['error'] ?? null,
                 'sent_at'   => now(),
@@ -1244,6 +1417,12 @@ class WhatsAppService
             ]);
         } catch (\Throwable $e) {
             Log::error('WhatsApp log insert failed: ' . $e->getMessage());
+        }
+
+        // Billed at dispatch, so a failed send still counts — the message left the platform
+        // either way. Only the vendor's own number is billable; platform-sent alerts are ours.
+        if ($this->storeId && $this->source() === 'vendor') {
+            WhatsAppBilling::chargeMessage($this->storeId, $audience);
         }
     }
 }

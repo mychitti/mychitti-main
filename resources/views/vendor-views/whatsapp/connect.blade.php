@@ -2,6 +2,10 @@
 
 @section('title', 'Connect WhatsApp')
 
+@push('css_or_js')
+    @include('vendor-views.whatsapp.partials._ui')
+@endpush
+
 @section('content')
 <style>
 .waba-payment-guide{
@@ -99,53 +103,156 @@
 
 </style>
     <div class="content container-fluid">
-        <div class="page-header">
-            <h1 class="page-header-title"><i class="tio-chat"></i> Connect WhatsApp</h1>
+        <div class="page-header d-flex align-items-center justify-content-between flex-wrap" style="gap:10px;">
+            <div>
+                <h1 class="page-header-title mb-0"><i class="tio-chat"></i> Connection &amp; Bulk Message</h1>
+                <span class="wa-sub">
+                    {{ $connected ? 'Send a campaign to your customers, or manage your connected number.' : 'Link your business number to send from it.' }}
+                </span>
+            </div>
+            @if ($connected)
+                <span class="wa-chip badge-soft-success"><i class="tio-checkmark-circle"></i> Number connected</span>
+            @endif
         </div>
 
-        <div class="row">
-            <div class="{{ $connected ? 'col-lg-4' : 'col-lg-7' }}">
-                <div class="card">
-                    <div class="card-body">
+        {{-- This page does three separate jobs — sending, managing the audience, and managing the
+             connection. Tabs keep each one whole instead of stacking them into one long scroll.
+             Before the number is linked there is only one job, so the tabs stay out of the way. --}}
+        @if ($connected)
+            <ul class="nav wa-tabs mb-3" role="tablist" style="background:#fff;border:1px solid var(--wa-line);border-radius:14px;">
+                <li class="nav-item">
+                    <a class="nav-link active" data-toggle="tab" href="#waCompose" role="tab">
+                        <i class="tio-send"></i> Send a message
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#waAudience" role="tab">
+                        <i class="tio-user-big-outlined"></i> Your customers
+                        <span class="wa-chip badge-soft-secondary ml-1">{{ number_format($customerStats['with_phone']) }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#waConnection" role="tab">
+                        <i class="tio-settings-outlined"></i> Connection
+                    </a>
+                </li>
+            </ul>
+        @endif
+
+        <div class="tab-content">
+            <div class="tab-pane fade {{ $connected ? '' : 'show active' }}" id="waConnection" role="tabpanel">
+            <div class="row">
+            <div class="col-lg-7">
+                <div class="wa-card">
+                    <div class="wa-card-b">
                         @if ($connected)
-                            <div class="alert alert-success">
-                                <b>✓ Connected.</b> Your WhatsApp number is linked and messages will send from your own number.
+                            <div class="d-flex align-items-center mb-3" style="gap:12px;">
+                                <div class="wa-stat-ico badge-soft-success"><i class="tio-checkmark-circle"></i></div>
+                                <div>
+                                    <div style="font-weight:700;font-size:14px;color:#1e293b;">Your number is linked</div>
+                                    <div class="wa-sub">Everything you send to customers goes out under your own business name.</div>
+                                </div>
                             </div>
-                            <table class="table table-sm">
-                                <tr><td class="text-muted">Phone Number ID</td><td><b>{{ $store->wa_phone_number_id }}</b></td></tr>
-                                <tr><td class="text-muted">Business Account ID</td><td>{{ $store->wa_business_account_id }}</td></tr>
-                            </table>
-                            <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-outline-primary btn-sm mb-2"><i class="tio-receipt"></i> Manage Message Templates</a>
-                            <form method="post" action="{{ route('vendor.whatsapp.disconnect') }}" onsubmit="return confirm('Disconnect WhatsApp? Messages will fall back to the platform number.')">
-                                @csrf
-                                <button class="btn btn-outline-danger btn-sm">Disconnect</button>
-                            </form>
+
+                            <div class="wa-row">
+                                <span class="text-muted">Phone Number ID</span>
+                                <b>{{ $store->wa_phone_number_id }}</b>
+                            </div>
+                            <div class="wa-row">
+                                <span class="text-muted">Business Account ID</span>
+                                <b>{{ $store->wa_business_account_id }}</b>
+                            </div>
+
+                            <div class="d-flex flex-wrap align-items-center mt-3" style="gap:8px;">
+                                <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="tio-receipt"></i> Message templates
+                                </a>
+                                <a href="{{ route('vendor.whatsapp.billing') }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="tio-wallet"></i> Plan &amp; billing
+                                </a>
+                                <form method="post" action="{{ route('vendor.whatsapp.disconnect') }}" class="mb-0 ml-auto"
+                                      onsubmit="return confirm('Disconnect WhatsApp? You will not be able to send anything to your customers until you connect a number again.')">
+                                    @csrf
+                                    <button class="btn btn-outline-danger btn-sm">Disconnect</button>
+                                </form>
+                            </div>
                         @else
                             <p>Connect your business WhatsApp number to send invoices, reminders and updates to your customers directly from your own number.</p>
                             @if (!$es['ready'])
                                 <div class="alert alert-warning">WhatsApp onboarding isn’t available yet. Please contact support.</div>
                             @elseif (!$setupPaid)
-                                {{-- Eligibility first, payment second: a vendor who can't meet these
-                                     shouldn't reach the checkout and then ask for a refund. --}}
-                                <div class="alert alert-info" style="font-size:13px;">
-                                    <b>Before you pay, check you have both:</b>
+                                {{-- Eligibility first, price second, payment last: a vendor who can't
+                                     meet the requirements shouldn't reach the checkout and then ask
+                                     for a refund. --}}
+                                <div class="alert alert-warning" style="font-size:13px;">
+                                    <b>Before you pay, make sure you have both:</b>
                                     <ul class="mb-0 mt-1 pl-3">
-                                        <li>a phone number that is <b>not currently active on the WhatsApp app</b></li>
-                                        <li>access to receive that number’s verification code right now</li>
+                                        <li>a phone number that is <b>not currently active on the WhatsApp app</b> —
+                                            if it is, delete that WhatsApp account first or use a different number</li>
+                                        <li>access to receive that number’s verification code <b>right now</b></li>
                                     </ul>
                                 </div>
+
+                                <div class="border rounded p-3 mb-3" style="background:#f8fafc;">
+                                    <div class="text-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;">
+                                        One-time onboarding fee
+                                    </div>
+                                    <div style="font-size:28px;font-weight:800;color:#1e293b;line-height:1.2;">
+                                        {{ _price($pricing['setup']) }}
+                                    </div>
+                                    <div class="text-muted" style="font-size:12px;">
+                                        + {{ $pricing['gst'] }}% GST — {{ _price($pricing['setup_total']) }} charged once,
+                                        by card / UPI. Not taken from your wallet.
+                                    </div>
+
+                                    <hr class="my-3">
+
+                                    <div class="mb-2" style="font-size:13px;"><b>What the fee covers</b></div>
+                                    <ul class="text-muted mb-3 pl-3" style="font-size:13px;">
+                                        <li>Setting your business number up on the WhatsApp Business Platform (Meta Cloud API)</li>
+                                        <li>Registering it and linking it to MyChitti</li>
+                                        <li>Charged <b>once per store</b> — if you disconnect and reconnect later, you don’t pay it again</li>
+                                    </ul>
+
+                                    <div class="mb-2" style="font-size:13px;"><b>What happens after you pay</b></div>
+                                    <ol class="text-muted mb-0 pl-3" style="font-size:13px;">
+                                        <li>You come straight back to this page.</li>
+                                        <li>A secure Facebook window walks you through linking your number — keep the
+                                            verification code handy.</li>
+                                        <li>You pick a monthly plan and authorise it under
+                                            <b>WhatsApp → Plan &amp; Billing</b> — from
+                                            {{ _price($pricing['monthly']) }} + {{ $pricing['gst'] }}% GST =
+                                            {{ _price($pricing['monthly_total']) }}/month for Basic, with
+                                            AI Agent tiers above it. Messages start sending once that first
+                                            month is collected.</li>
+                                    </ol>
+                                </div>
+
                                 <form action="{{ route('vendor.whatsapp.connect.setup-fee') }}" method="post" class="mb-0">
                                     @csrf
                                     <button type="submit" class="btn btn-success btn-lg">
-                                        <i class="tio-chat"></i> Pay {{ _price($setupTotal) }} &amp; Connect
+                                        <i class="tio-chat"></i> Pay &amp; Connect
                                     </button>
+                                    <small class="text-muted d-block mt-2">
+                                        You’ll be taken to Razorpay and charged {{ _price($pricing['setup_total']) }} now.
+                                        The monthly plan is authorised separately — nothing recurring is set up by this step.
+                                    </small>
                                 </form>
-                                <small class="text-muted d-block mt-2">
-                                    One-time onboarding fee, GST included. It covers setting your number up on the
-                                    WhatsApp Business Platform and is charged once — reconnecting later is free.
-                                    The monthly plan is authorised separately, after your number is linked.
-                                </small>
                             @else
+                                {{-- The fee is settled but the number isn't linked yet — say so, or
+                                     the vendor has no way to tell the payment landed. --}}
+                                <div class="d-flex align-items-start border rounded p-3 mb-3"
+                                     style="background:#f0fdf4;border-color:#bbf7d0 !important;gap:10px;">
+                                    <i class="tio-checkmark-circle" style="color:#16a34a;font-size:20px;line-height:1.2;"></i>
+                                    <div style="font-size:13px;">
+                                        <b class="d-block" style="color:#15803d;">One-time onboarding fee paid</b>
+                                        <span class="text-muted">
+                                            Charged once — you won’t be asked for it again, even if you disconnect and
+                                            reconnect later. Last step is linking your number below; the monthly plan is
+                                            authorised after that under <b>WhatsApp → Plan &amp; Billing</b>.
+                                        </span>
+                                    </div>
+                                </div>
                                 <button id="wa-connect-btn" class="btn btn-success btn-lg">
                                     <i class="tio-chat"></i> Connect WhatsApp
                                 </button>
@@ -158,35 +265,26 @@
                             </small>
                         @endif
 
-                        {{-- Sends from the MyChitti platform number, not the vendor's own, so it
-                             works before they connect and answers "can MyChitti reach me?". --}}
-                        <hr>
-                        <h6 class="mb-1" style="font-size:14px;">Test WhatsApp delivery</h6>
-                        @php
-                            $storePhone = preg_replace('/[^0-9]/', '', (string) ($store->phone ?? ''));
-                        @endphp
-                        <p class="text-muted mb-2" style="font-size:13px;">
-                            Send a test message from MyChitti to any WhatsApp number to confirm delivery of
-                            alerts such as new-lead notifications. Defaults to your registered number.
-                        </p>
-                        <form method="post" action="{{ route('vendor.whatsapp.test-message') }}">
-                            @csrf
-                            <div class="input-group input-group-sm" style="max-width:340px;">
-                                <input type="text" name="test_phone" class="form-control"
-                                       value="{{ $storePhone }}"
-                                       placeholder="e.g. 91XXXXXXXXXX" inputmode="numeric" required>
-                                <div class="input-group-append">
-                                    <button class="btn btn-outline-success" type="submit">
-                                        <i class="tio-send"></i> Send Test
-                                    </button>
-                                </div>
-                            </div>
-                            <small class="text-muted d-block mt-1">Include the country code (91 for India).</small>
-                        </form>
                     </div>
                 </div>
-                
-                <div class="waba-payment-guide mt-3">
+
+                {{-- The "test WhatsApp delivery" card used to live here. It sent from MyChitti's
+                     platform number, which is ours and has no place in the vendor panel. The
+                     route and sendTestMessage() are still there for admin-side use. --}}
+            </div>
+
+            <div class="col-lg-5">
+                {{-- Meta's own billing setup. Long, rarely needed, and not something MyChitti can do
+                     for them — collapsed so it stops dominating a page about sending messages. --}}
+                <div class="wa-card">
+                    <button class="wa-toggle" type="button" data-toggle="collapse" data-target="#waMetaPay"
+                            aria-expanded="false" aria-controls="waMetaPay">
+                        <span>💳 Add a payment method at Meta</span>
+                        <i class="tio-chevron-down"></i>
+                    </button>
+                    <div class="collapse" id="waMetaPay">
+                        <div class="wa-card-b">
+                <div class="waba-payment-guide" style="border:0;padding:0;">
 
     <div class="waba-payment-guide__header">
         <h3>💳 Add a Payment Method</h3>
@@ -260,27 +358,105 @@
     </div>
 
 </div>
-
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
             </div>
 
             @if ($connected)
-                <div class="col-lg-8">
-                    <div class="card">
+            {{-- ── Your customers ─────────────────────────────────────────────── --}}
+            <div class="tab-pane fade" id="waAudience" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-7 wa-col">
+                        <div class="wa-card h-100">
+                            <div class="wa-card-h">
+                                <span>Import customers</span>
+                                <span class="wa-chip badge-soft-primary">{{ number_format($customerStats['with_phone']) }} reachable</span>
+                            </div>
+                            <div class="wa-card-b">
+                                <p class="wa-sub mb-3">
+                                    {{ number_format($customerStats['total']) }} people in your book,
+                                    {{ number_format($customerStats['with_phone']) }} with a phone number — those are the
+                                    ones <b>Send a message</b> can reach.
+                                </p>
+
+                                <form method="post" action="{{ route('vendor.whatsapp.customers.import') }}" enctype="multipart/form-data">
+                                    @csrf
+                                    <label class="wa-eyebrow d-block mb-1">Upload a spreadsheet</label>
+                                    <div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px;">
+                                        <input type="file" name="file" class="form-control form-control-sm"
+                                               style="flex:1 1 220px;min-width:0;" accept=".xlsx,.xls,.csv" required>
+                                        <button class="btn btn--primary btn-sm text-nowrap" type="submit">
+                                            <i class="tio-upload"></i> Import
+                                        </button>
+                                    </div>
+                                    <div class="custom-control custom-checkbox mb-2">
+                                        <input type="checkbox" class="custom-control-input" id="wdSendWelcome" name="send_welcome" value="1">
+                                        <label class="custom-control-label" for="wdSendWelcome" style="font-size:13px;">
+                                            Send a welcome message to newly imported customers
+                                            <small class="text-muted d-block">Goes out in the background from your connected number, using your approved welcome template.</small>
+                                        </label>
+                                    </div>
+                                    <div class="wa-note">
+                                        Columns: <b>Name, Phone, Email, GST, Address</b> — only Name and Phone are required.
+                                        <a href="{{ route('vendor.whatsapp.customers.template') }}">Download a template</a>.
+                                        Duplicates (same phone) are skipped automatically.
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5 wa-col">
+                        <div class="wa-card h-100">
+                            <div class="wa-card-h">Recently added</div>
+                            @if ($recentCustomers->isEmpty())
+                                <div class="wa-empty">
+                                    <i class="tio-user-big-outlined"></i>
+                                    <div class="wa-empty-t">No customers yet</div>
+                                    <div class="wa-empty-s">Import a sheet to build your audience.</div>
+                                </div>
+                            @else
+                                <div class="table-responsive">
+                                    <table class="table wa-table">
+                                        <tbody>
+                                            @foreach ($recentCustomers as $c)
+                                                <tr>
+                                                    <td>{{ $c->f_name ?: '—' }}</td>
+                                                    <td class="text-muted text-right">{{ $c->phone ?: '—' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ── Send a message ─────────────────────────────────────────────── --}}
+            <div class="tab-pane fade show active" id="waCompose" role="tabpanel">
+                <div class="row">
+                <div class="col-lg-9">
+                    <div class="wa-card">
                         {{-- Audience counts live in the header, not the picker below: the picker is
                              hidden until an approved template exists, and the vendor still needs to
                              see who they could reach while deciding whether to make one. --}}
-                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;">
-                            <h5 class="card-title mb-0"><i class="tio-send"></i> Bulk Message</h5>
+                        <div class="wa-card-h">
+                            <span><i class="tio-send"></i> Bulk message</span>
                             <div class="d-flex flex-wrap" style="gap:6px;">
-                                <span class="badge badge-soft-info">
+                                <span class="wa-chip badge-soft-info">
                                     {{ $clientCount }} of your {{ $clientCount == 1 ? 'customer' : 'customers' }}
                                 </span>
-                                <span class="badge badge-soft-primary">
+                                <span class="wa-chip badge-soft-primary">
                                     {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }}
                                 </span>
                             </div>
                         </div>
-                        <div class="card-body">
+                        <div class="wa-card-b">
                             @if ($templateError)
                                 <div class="alert alert-warning" style="font-size:13px;">
                                     Couldn’t load your templates: {{ $templateError }}
@@ -407,6 +583,25 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-lg-3">
+                    <div class="wa-card">
+                        <div class="wa-card-h">Before you send</div>
+                        <div class="wa-card-b">
+                            <ul class="pl-3 mb-0 wa-sub" style="line-height:1.7;">
+                                <li>WhatsApp only allows business-initiated messages from a template Meta has approved.</li>
+                                <li>Anyone who replies <b>STOP</b> is excluded from this and every future send, automatically.</li>
+                                <li>MyChitti users never expose their number to you — results come back masked.</li>
+                                <li>Keeping unwanted messages down protects your number's quality rating.</li>
+                            </ul>
+                            <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-primary btn-block mt-3">
+                                <i class="tio-receipt"></i> Manage templates
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
             @endif
         </div>
     </div>

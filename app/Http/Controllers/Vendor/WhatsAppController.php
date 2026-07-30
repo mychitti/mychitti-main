@@ -46,6 +46,17 @@ class WhatsAppController extends Controller
         WhatsAppService::ensureStoreColumns();
         $config = Helpers::get_business_settings('whatsapp_config');
         $storeId = Helpers::get_store_id();
+
+        // Coming back from the payment gateway, which appends ?flag=…&token=… . Say what
+        // happened, then bounce to the bare URL so a refresh or a shared link can't replay the
+        // message — the fee itself was already recorded by whatsapp_setup_success().
+        if ($request->has('flag')) {
+            $request->query('flag') === 'success'
+                ? Toastr::success('Onboarding fee received. You can connect your WhatsApp number now.')
+                : Toastr::error('That payment didn’t go through, so nothing was charged. You can try again.');
+
+            return redirect()->route('vendor.whatsapp.connect');
+        }
         $store = DB::table('stores')->where('id', $storeId)
             ->select('wa_enabled', 'wa_phone_number_id', 'wa_business_account_id', 'phone')
             ->first();
@@ -61,8 +72,20 @@ class WhatsAppController extends Controller
 
         // Onboarding is paid for before the number is linked, so the connect button is a
         // checkout until the fee lands. finish() enforces the same rule server-side.
-        $setupPaid  = WhatsAppBilling::setupFeePaid($storeId);
-        $setupTotal = WhatsAppBilling::withTax(WhatsAppBilling::setupFee());
+        // Prices are shown GST-exclusive with the tax called out, the same way Plan & Billing
+        // presents the monthly — the vendor should recognise the same number on both screens.
+        $setupPaid = WhatsAppBilling::setupFeePaid($storeId);
+        $plans     = WhatsAppBilling::plans();
+        $pricing = [
+            'setup'         => WhatsAppBilling::setupFee(),
+            'setup_total'   => WhatsAppBilling::withTax(WhatsAppBilling::setupFee()),
+            // The connect screen quotes the entry price — the ladder itself is on Plan & Billing,
+            // where the vendor actually chooses a tier.
+            'monthly'       => $plans[WhatsAppBilling::DEFAULT_PLAN]['price'],
+            'monthly_total' => WhatsAppBilling::withTax($plans[WhatsAppBilling::DEFAULT_PLAN]['price']),
+            'plans'         => $plans,
+            'gst'           => WhatsAppBilling::gstPercent(),
+        ];
 
         // Bulk sending is only offered on the vendor's own connected number — Meta bills them
         // directly and a marketing blast must never burn the platform number's quality rating.
@@ -71,9 +94,31 @@ class WhatsAppController extends Controller
         $clientCount = 0;
         $platformUserCount = 0;
         $optOutCount = 0;
+
+        // The vendor's own customer book — what the Excel import fills, and the audience behind
+        // the composer's "My customers" tab. It lives here rather than on the dashboard because
+        // this is the page where that audience is actually chosen and messaged.
+        $customerStats = [
+            'total'      => DB::table('store_customers')->where('store_id', $storeId)->count(),
+            'with_phone' => DB::table('store_customers')->where('store_id', $storeId)
+                ->whereNotNull('phone')->where('phone', '!=', '')->count(),
+        ];
+        $recentCustomers = DB::table('store_customers')->where('store_id', $storeId)
+            ->orderByDesc('id')->limit(8)->get(['f_name', 'phone']);
+
         if ($connected) {
             $res = WhatsAppService::make($storeId)->listTemplates();
-            $templates = $this->bulkTemplateOptions($res['data']);
+
+            // A trashed template is one the vendor has put away — it must not be offerable here
+            // just because it is still approved at Meta.
+            $trashedKeys = WhatsAppService::trashedTemplateKeys($storeId);
+            $available = array_values(array_filter($res['data'], fn($tpl) => !in_array(
+                strtolower(data_get($tpl, 'name') . '|' . data_get($tpl, 'language', 'en_US')),
+                $trashedKeys,
+                true
+            )));
+
+            $templates = $this->bulkTemplateOptions($available);
             if (!$res['success']) {
                 $templateError = $res['error'];
             }
@@ -85,18 +130,19 @@ class WhatsAppController extends Controller
         return view('vendor-views.whatsapp.connect', compact(
             'es', 'store', 'connected', 'templates', 'templateError',
             'clientCount', 'platformUserCount', 'optOutCount',
-            'setupPaid', 'setupTotal'
+            'setupPaid', 'pricing', 'customerStats', 'recentCustomers'
         ));
     }
 
     /**
      * WhatsApp activity dashboard for the vendor.
      *
-     * "Involving this store" is two things: campaigns the vendor sent from their own connected
-     * number (whatsapp_messages.store_id = this store) and alerts MyChitti sent TO the store
-     * (platform-sent, so store_id is NULL but recipient matches the store phone). Both are
-     * surfaced because a vendor with no bulk activity yet still receives lead notifications,
-     * and an all-zero dashboard would read as broken.
+     * Strictly this store's OWN traffic — messages it sent from its own connected number.
+     * MyChitti's platform number never appears here. It used to: the scope also matched anything
+     * addressed to the store's phone, which pulled in our lead alerts and test messages to the
+     * vendor. That inflated "Messages sent" with messages the vendor did not send and is not
+     * billed for, so the tile could never be reconciled against their wallet — per-message
+     * charges are taken at dispatch, and only store-owned sends are charged.
      */
     public function dashboard(Request $request)
     {
@@ -107,15 +153,9 @@ class WhatsAppController extends Controller
             ->first();
 
         $connected = (bool) ($store && $store->wa_enabled && $store->wa_phone_number_id);
-        $phone10 = substr(preg_replace('/[^0-9]/', '', (string) ($store->phone ?? '')) ?? '', -10);
 
         // One filter reused across every aggregate below.
-        $scope = function ($q) use ($storeId, $phone10) {
-            $q->where('whatsapp_messages.store_id', $storeId);
-            if (strlen($phone10) === 10) {
-                $q->orWhereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phone10]);
-            }
-        };
+        $scope = fn($q) => $q->where('whatsapp_messages.store_id', $storeId);
 
         // Delivery funnel. Meta's webhook advances status accepted → sent → delivered → read
         // (or failed), keyed on wamid, so these update regardless of store_id attribution.
@@ -153,17 +193,15 @@ class WhatsAppController extends Controller
             $counts[] = (int) ($daily[$day] ?? 0);
         }
 
-        // What the traffic is: lead alerts vs campaigns vs tests.
+        // What the traffic is. Only contexts the vendor's own number produces — 'lead notify',
+        // 'lead accepted' and 'test message' are MyChitti talking to the vendor from the platform
+        // number, so they carry no store_id and can no longer reach this page at all.
         $contextLabels = [
-            'lead notify'    => 'Lead alerts',
-            'lead accepted'  => 'Lead accepted alerts',
-            'welcome'        => 'Customer welcome messages',
-            'chat reply'     => 'Chat replies',
-            'auto reply'     => 'AI auto-replies',
-            'inbound'        => 'Customer messages (received)',
-            'bulk'           => 'Bulk campaigns',
-            'nearby'         => 'Nearby-offer campaigns',
-            'test message'   => 'Test messages',
+            'welcome'      => 'Customer welcome messages',
+            'chat reply'   => 'Chat replies',
+            'auto reply'   => 'AI auto-replies',
+            'bulk'         => 'Bulk campaigns',
+            'nearby'       => 'Nearby-offer campaigns',
         ];
         $byContext = DB::table('whatsapp_messages')->where($scope)
             ->where('direction', 'out')
@@ -185,16 +223,6 @@ class WhatsAppController extends Controller
             ->orderByDesc('sent_at')->limit(15)
             ->get(['recipient', 'type', 'body', 'context', 'status', 'error', 'sent_at']);
 
-        // The vendor's own customer book — what the Excel import below fills, and the audience
-        // behind the composer's "My customers" tab.
-        $customerStats = [
-            'total'       => DB::table('store_customers')->where('store_id', $storeId)->count(),
-            'with_phone'  => DB::table('store_customers')->where('store_id', $storeId)
-                ->whereNotNull('phone')->where('phone', '!=', '')->count(),
-        ];
-        $recentCustomers = DB::table('store_customers')->where('store_id', $storeId)
-            ->orderByDesc('id')->limit(8)->get(['f_name', 'phone']);
-
         $chart = [
             'days'          => $days,
             'counts'        => $counts,
@@ -208,8 +236,7 @@ class WhatsAppController extends Controller
         ];
 
         return view('vendor-views.whatsapp.dashboard', compact(
-            'store', 'connected', 'stats', 'chart', 'contextRows', 'recent',
-            'customerStats', 'recentCustomers'
+            'store', 'connected', 'stats', 'chart', 'contextRows', 'recent'
         ));
     }
 
@@ -927,6 +954,21 @@ class WhatsAppController extends Controller
                 ]);
         }
 
+        // Per-message charges leave the wallet at dispatch, so price the whole batch before any
+        // of it goes out — a vendor would rather be told the batch is unaffordable than watch a
+        // campaign stop halfway through. The rate is uniform per mode: 'clients' recipients come
+        // from the store's own book, 'platform' recipients never do.
+        $rate = WhatsAppBilling::messageCost($platform ? 'platform' : 'own');
+        $batchCost = round($rate * $recipients->count(), 2);
+        if ($recipients->count() && WhatsAppBilling::walletBalance($storeId) < $batchCost) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Wallet balance too low for this batch. ' . $recipients->count() . ' message'
+                    . ($recipients->count() === 1 ? '' : 's') . ' × ' . _price($rate) . ' = ' . _price($batchCost)
+                    . ' (GST included). Recharge your wallet and try again.',
+            ], 402);
+        }
+
         $rawParams = array_values((array) $request->input('params', []));
         $results = [];
 
@@ -995,6 +1037,71 @@ class WhatsAppController extends Controller
     private function templateBodyError(string $body, ?string $name = null): ?string
     {
         return WhatsAppService::templateBodyProblem($body, $name);
+    }
+
+    /** Up to two buttons from the create form; blank rows are just unused slots. */
+    private function templateButtons(Request $request): array
+    {
+        $buttons = [];
+        foreach ((array) $request->input('tpl_btn', []) as $row) {
+            $text = trim((string) ($row['text'] ?? ''));
+            $type = strtoupper((string) ($row['type'] ?? ''));
+            if ($text === '' || $type === '') {
+                continue;
+            }
+            $buttons[] = [
+                'type' => $type,
+                'text' => $text,
+                'url'  => trim((string) ($row['url'] ?? '')),
+            ];
+        }
+
+        // Older single-button form fields, still posted by the admin panel.
+        if (!$buttons && $request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
+            $buttons[] = [
+                'type' => 'URL',
+                'text' => trim((string) $request->tpl_btn_text),
+                'url'  => trim((string) $request->tpl_btn_url),
+            ];
+        }
+
+        return $buttons;
+    }
+
+    /**
+     * The template's header: a string for TEXT, or ['format','handle'] once the media file has
+     * been uploaded to Meta. Returns null for no header, or false when the upload failed — the
+     * caller bails in that case rather than submitting a template with a missing image.
+     */
+    private function templateHeader(Request $request, WhatsAppService $wa)
+    {
+        $format = strtoupper((string) $request->input('tpl_header_format', ''));
+
+        if ($format === '' || $format === 'TEXT') {
+            return trim((string) $request->input('tpl_header', '')) ?: null;
+        }
+
+        $file = $request->file('tpl_header_file');
+        if (!$file || !$file->isValid()) {
+            Toastr::error('Choose a file for the ' . strtolower($format) . ' header, or set the header back to None.');
+            return false;
+        }
+
+        $config = Helpers::get_business_settings('whatsapp_config');
+        $appId = $config['es_app_id'] ?? null;
+        $appSecret = $config['es_app_secret'] ?? null;
+        if (!$appId || !$appSecret) {
+            Toastr::error('Media headers need the WhatsApp app credentials. Ask the admin to set them up.');
+            return false;
+        }
+
+        $handle = $wa->uploadHeaderMedia($file->getRealPath(), $file->getMimeType(), $appId, $appSecret);
+        if (!$handle) {
+            Toastr::error('Could not upload that file to Meta. Check the size and format, then try again.');
+            return false;
+        }
+
+        return ['format' => $format, 'handle' => $handle];
     }
 
     private function maskPhone(?string $phone): string
@@ -1100,33 +1207,56 @@ class WhatsAppController extends Controller
         $storeId = Helpers::get_store_id();
         WhatsAppBilling::ensureTables();
 
+        // Back from Razorpay's mandate page, which returns razorpay_subscription_id &co, or from
+        // the one-off gateway with ?flag=. Acknowledge it and drop the query string — the mandate
+        // itself is confirmed by the subscription.activated webhook, not by this redirect, so the
+        // wording promises nothing the page can't back up.
+        if ($request->has('razorpay_subscription_id') || $request->has('flag')) {
+            $request->query('flag') === 'fail'
+                ? Toastr::error('That payment didn’t go through, so nothing was charged. You can try again.')
+                : Toastr::success('Thanks — Razorpay has your authorisation. This page updates the moment the first month is collected.');
+
+            return redirect()->route('vendor.whatsapp.billing');
+        }
+
         $subscription = WhatsAppBilling::subscription($storeId);
+
+        // A mandate can be live at Razorpay while we never heard about it — the webhook was
+        // added after the fact, or a delivery failed and its retries expired. Ask Razorpay
+        // directly whenever the store looks inactive but has a subscription id, so the screen
+        // can correct itself instead of the vendor re-authorising something they already have.
+        if ($subscription && $subscription->rzp_subscription_id && !WhatsAppBilling::isActive($storeId)) {
+            if (WhatsAppRecurring::reconcile($storeId)) {
+                $subscription = WhatsAppBilling::subscription($storeId);
+            }
+        }
+
+        $currentPlan = WhatsAppBilling::storePlan($storeId);
+
         $pricing = [
-            'monthly'          => WhatsAppBilling::monthlyFee(),
-            'monthly_total'    => WhatsAppBilling::withTax(WhatsAppBilling::monthlyFee()),
-            'setup'            => WhatsAppBilling::setupFee(),
-            'setup_total'      => WhatsAppBilling::withTax(WhatsAppBilling::setupFee()),
-            'manager'          => WhatsAppBilling::accountManagerFee(),
-            'manager_total'    => WhatsAppBilling::withTax(WhatsAppBilling::accountManagerFee()),
-            'template_slot'    => WhatsAppBilling::extraTemplateFee(),
-            'template_total'   => WhatsAppBilling::withTax(WhatsAppBilling::extraTemplateFee()),
-            'token_pack'       => WhatsAppBilling::tokenPackPrice(),
-            'token_pack_total' => WhatsAppBilling::withTax(WhatsAppBilling::tokenPackPrice()),
-            'token_pack_usd'   => WhatsAppBilling::TOKEN_PACK_USD,
-            'usd_rate'         => WhatsAppBilling::usdInrRate(),
-            'gst'              => WhatsAppBilling::gstPercent(),
+            'setup'          => WhatsAppBilling::setupFee(),
+            'setup_total'    => WhatsAppBilling::withTax(WhatsAppBilling::setupFee()),
+            'manager'        => WhatsAppBilling::accountManagerFee(),
+            'manager_total'  => WhatsAppBilling::withTax(WhatsAppBilling::accountManagerFee()),
+            'template_slot'  => WhatsAppBilling::extraTemplateFee(),
+            'template_total' => WhatsAppBilling::withTax(WhatsAppBilling::extraTemplateFee()),
+            'topup_in'       => WhatsAppBilling::topupPerMillion(WhatsAppBilling::DIR_IN),
+            'topup_in_total' => WhatsAppBilling::withTax(WhatsAppBilling::topupPerMillion(WhatsAppBilling::DIR_IN)),
+            'topup_out'      => WhatsAppBilling::topupPerMillion(WhatsAppBilling::DIR_OUT),
+            'topup_out_total' => WhatsAppBilling::withTax(WhatsAppBilling::topupPerMillion(WhatsAppBilling::DIR_OUT)),
+            'gst'            => WhatsAppBilling::gstPercent(),
         ];
 
         return view('vendor-views.whatsapp.billing', [
             'subscription'  => $subscription,
             'active'        => WhatsAppBilling::isActive($storeId),
+            'plans'         => WhatsAppBilling::plans(),
+            'currentPlan'   => $currentPlan,
+            'planMeta'      => WhatsAppBilling::plan($currentPlan),
+            'hasPlan'       => WhatsAppBilling::hasPlan($storeId),
+            'botIncluded'   => WhatsAppBilling::botIncluded($storeId),
             'pricing'       => $pricing,
-            'tokens'        => $this->poolStats($storeId, WhatsAppBilling::POOL_CHATBOT),
-            'agentTokens'   => $this->poolStats($storeId, WhatsAppBilling::POOL_AGENT),
-            'agentPlans'    => WhatsAppBilling::agentPlans(),
-            'agentSub'      => WhatsAppBilling::agentSubscription($storeId),
-            'agentActive'   => WhatsAppBilling::agentActive($storeId),
-            'agentTopup'    => WhatsAppBilling::withTax(WhatsAppBilling::agentTopupPerMillion()),
+            'tokens'        => $this->poolStats($storeId, WhatsAppBilling::POOL_PLAN),
             'allowance'     => WhatsAppBilling::templateAllowance($storeId),
             'included'      => WhatsAppBilling::includedTemplates(),
             'walletBalance' => WhatsAppBilling::walletBalance($storeId),
@@ -1138,107 +1268,129 @@ class WhatsAppController extends Controller
         ]);
     }
 
-    /** Balance / granted / used figures for one token pool. */
+    /**
+     * Balance / granted / used figures for one token pool, split by direction. Input and output
+     * are separate buckets, so the page has to show them apart or a vendor stuck on one of them
+     * cannot tell which to top up.
+     */
     private function poolStats(int $storeId, string $pool): array
     {
-        $row = WhatsAppBilling::tokenWallet($storeId, $pool);
+        $row   = WhatsAppBilling::tokenWallet($storeId, $pool);
+        $month = DB::table('wa_token_usage')->where('store_id', $storeId)
+            ->where('pool', $pool)
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->selectRaw('COALESCE(SUM(tokens_in), 0) AS used_in, COALESCE(SUM(tokens_out), 0) AS used_out')
+            ->first();
 
-        return [
-            'balance'    => WhatsAppBilling::tokenBalance($storeId, $pool),
-            'plan'       => (int) ($row->plan_tokens ?? 0),
-            'plan_used'  => (int) ($row->plan_tokens_used ?? 0),
-            'topup'      => (int) ($row->topup_tokens ?? 0),
-            'topup_used' => (int) ($row->topup_tokens_used ?? 0),
-            'this_month' => (int) DB::table('wa_token_usage')->where('store_id', $storeId)
-                ->where('pool', $pool)
-                ->where('created_at', '>=', now()->startOfMonth())->sum('tokens'),
-        ];
+        $stats = [];
+        foreach ([WhatsAppBilling::DIR_IN => 'in', WhatsAppBilling::DIR_OUT => 'out'] as $dir => $d) {
+            $stats[$d] = [
+                'balance'    => WhatsAppBilling::tokenBalance($storeId, $dir, $pool),
+                'plan'       => (int) ($row->{"plan_tokens_{$d}"} ?? 0),
+                'plan_used'  => (int) ($row->{"plan_tokens_{$d}_used"} ?? 0),
+                'topup'      => (int) ($row->{"topup_tokens_{$d}"} ?? 0),
+                'topup_used' => (int) ($row->{"topup_tokens_{$d}_used"} ?? 0),
+                'this_month' => (int) ($month->{"used_{$d}"} ?? 0),
+            ];
+        }
+
+        return $stats;
     }
 
-    /** Chatbot settings — which bot answers, and what it may tell customers. */
+    /** Chatbot settings — what the AI Agent may do and what it may tell customers. */
     public function bot(Request $request)
     {
         $storeId = Helpers::get_store_id();
 
         return view('vendor-views.whatsapp.bot', [
-            'mode'        => WhatsAppAgent::mode($storeId),
-            'agentActive' => WhatsAppBilling::agentActive($storeId),
-            'agentSub'    => WhatsAppBilling::agentSubscription($storeId),
-            'shares'      => WhatsAppAgent::shares($storeId),
-            'shareItems'  => WhatsAppAgent::SHARE_ITEMS,
-            'agentPlans'  => WhatsAppBilling::agentPlans(),
-            'gst'         => WhatsAppBilling::gstPercent(),
+            'botIncluded'  => WhatsAppBilling::botIncluded($storeId),
+            'agentActive'  => WhatsAppBilling::agentActive($storeId),
+            'subscription' => WhatsAppBilling::subscription($storeId),
+            'currentPlan'  => WhatsAppBilling::storePlan($storeId),
+            'hasPlan'      => WhatsAppBilling::hasPlan($storeId),
+            'plans'        => WhatsAppBilling::plans(),
+            'shares'       => WhatsAppAgent::shares($storeId),
+            'shareItems'   => WhatsAppAgent::SHARE_ITEMS,
+            'gst'          => WhatsAppBilling::gstPercent(),
         ]);
-    }
-
-    public function botMode(Request $request)
-    {
-        $request->validate(['mode' => 'required|in:knowledge,agent']);
-        $res = WhatsAppAgent::setMode(Helpers::get_store_id(), $request->mode);
-        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
-        return back();
     }
 
     public function botShares(Request $request)
     {
-        WhatsAppAgent::saveShares(Helpers::get_store_id(), (array) $request->input('items', []));
-        Toastr::success('Saved. The AI Agent will only discuss what you have allowed.');
-        return back();
-    }
+        $storeId = Helpers::get_store_id();
 
-    // Start / switch an AI Agent plan (lead & appointment management).
-    public function agentSubscribe(Request $request)
-    {
-        $request->validate(['plan' => 'required|in:' . implode(',', array_keys(WhatsAppBilling::AGENT_PLANS))]);
-        $res = WhatsAppBilling::subscribeAgent(Helpers::get_store_id(), $request->plan);
-        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
-        return back();
-    }
-
-    public function agentCancel(Request $request)
-    {
-        $res = WhatsAppBilling::cancelAgent(Helpers::get_store_id());
-        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
-        return back();
-    }
-
-    // AI Agent token top-up — ₹700 + GST per million.
-    public function buyAgentTokens(Request $request)
-    {
-        $request->validate(['millions' => 'nullable|integer|min:1|max:50']);
-        $res = WhatsAppBilling::buyAgentTokens(Helpers::get_store_id(), (int) ($request->millions ?: 1));
-        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
-        return back();
-    }
-
-    // Activate the WhatsApp Business Platform — setup fee (first time) + the first month.
-    public function billingSubscribe(Request $request)
-    {
-        $storeId        = Helpers::get_store_id();
-        $accountManager = $request->boolean('account_manager');
-        $sub            = WhatsAppBilling::subscription($storeId);
-
-        // The one-time setup fee is collected by the payment gateway at onboarding, not from the
-        // wallet. Once it is paid the flag sticks, so a reactivation goes straight to subscribe()
-        // and only the monthly is debited.
-        if (!($sub && $sub->setup_fee_paid)) {
-            return $this->redirectToSetupPayment($storeId, $accountManager, $request);
+        if (!WhatsAppBilling::agentActive($storeId)) {
+            Toastr::error('Your plan has no AI Agent. Move to AI Agent Starter or Pro from Plan & Billing first.');
+            return back();
         }
 
-        // Setup fee is settled — the monthly is a Razorpay mandate, so hand the vendor to the
-        // hosted authorisation page. The platform switches on when subscription.charged lands.
-        return $this->startMandate($storeId, $accountManager);
+        WhatsAppAgent::saveShares($storeId, (array) $request->input('items', []));
+        Toastr::success('Saved. The AI Agent will only do and discuss what you have allowed.');
+        return back();
     }
 
-    /** Create the Razorpay subscription and send the vendor to authorise the auto-debit. */
+    /**
+     * Step 1 of activation: the one-time onboarding fee, collected by the payment gateway rather
+     * than the wallet.
+     *
+     * No plan is chosen here on purpose — the vendor picks one at step 2, once the fee has
+     * landed, and billingAuthorizeMandate() takes it from there. The plan recorded against the
+     * store until then is only a placeholder; hasPlan() reports false and the UI says so.
+     */
+    public function billingSubscribe(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        $sub     = WhatsAppBilling::subscription($storeId);
+
+        if ($sub && $sub->setup_fee_paid) {
+            Toastr::info('Your onboarding fee is already paid — choose a plan to switch WhatsApp on.');
+            return back();
+        }
+
+        return $this->redirectToSetupPayment(
+            $storeId,
+            WhatsAppBilling::DEFAULT_PLAN,
+            $request->boolean('account_manager'),
+            $request
+        );
+    }
+
+    /**
+     * Create the Razorpay subscription and hand back the mandate authorisation.
+     *
+     * Asked over AJAX it returns the subscription id, so the page can open Razorpay Checkout
+     * in a modal and keep the vendor on MyChitti — the Subscriptions API has no callback_url,
+     * so a plain redirect to the hosted page strands them on Razorpay once they authorise.
+     * The redirect remains the fallback for a normal form post.
+     */
     public function billingAuthorizeMandate(Request $request)
     {
-        return $this->startMandate(Helpers::get_store_id(), $request->boolean('account_manager'));
+        $request->validate(['plan' => 'required|in:' . implode(',', array_keys(WhatsAppBilling::PLANS))]);
+
+        $storeId = Helpers::get_store_id();
+        $plan    = $request->plan;
+        $accountManager = $request->boolean('account_manager');
+
+        if (!$request->expectsJson()) {
+            return $this->startMandate($storeId, $plan, $accountManager);
+        }
+
+        $res = WhatsAppRecurring::start($storeId, $plan, $accountManager);
+        if (!$res['success']) {
+            return response()->json(['success' => false, 'message' => $res['message']], 422);
+        }
+
+        return response()->json([
+            'success'         => true,
+            'subscription_id' => $res['id'],
+            'key'             => WhatsAppRecurring::publicKey(),
+            'url'             => $res['url'],
+        ]);
     }
 
-    private function startMandate(int $storeId, bool $accountManager)
+    private function startMandate(int $storeId, string $plan, bool $accountManager)
     {
-        $res = WhatsAppRecurring::start($storeId, $accountManager);
+        $res = WhatsAppRecurring::start($storeId, $plan, $accountManager);
         if (!$res['success']) {
             Toastr::error($res['message']);
             return back();
@@ -1259,11 +1411,64 @@ class WhatsAppController extends Controller
             return back();
         }
 
-        return $this->redirectToSetupPayment($storeId, false, $request, 'whatsapp/connect');
+        // Onboarding is charged before a plan is chosen, so the cheapest tier is recorded as the
+        // intent; the vendor picks their plan on Plan & Billing when they authorise the mandate.
+        return $this->redirectToSetupPayment($storeId, WhatsAppBilling::DEFAULT_PLAN, false, $request, 'whatsapp/connect');
+    }
+
+    /**
+     * Hand the vendor to Razorpay for a one-time purchase — AI token top-ups or an extra
+     * template slot. whatsapp_purchase_success() grants the goods once the gateway confirms;
+     * nothing is handed over on our side before the money arrives.
+     */
+    private function redirectToPurchasePayment(int $storeId, string $kind, int $quantity, Request $request)
+    {
+        $vendor = \App\Models\Vendor::find(auth('vendor')->id());
+        if (!$vendor) {
+            Toastr::error('Could not identify your vendor account.');
+            return back();
+        }
+
+        $intent = WhatsAppBilling::createPurchaseIntent($storeId, $kind, $quantity);
+        if (!$intent) {
+            Toastr::error('That purchase is not available.');
+            return back();
+        }
+
+        $payer = new Payer(
+            trim($vendor->f_name . ' ' . $vendor->l_name),
+            $vendor->email,
+            $vendor->phone,
+            ''
+        );
+
+        $external_redirect_link = \Illuminate\Support\Str::contains($request->getHost(), 'staging')
+            ? 'store-panel/whatsapp/billing'
+            : 'whatsapp/billing';
+
+        $payment_info = new PaymentInfo(
+            success_hook: 'whatsapp_purchase_success',
+            failure_hook: 'whatsapp_purchase_fail',
+            currency_code: BusinessSetting::where('key', 'currency')->value('value'),
+            payment_method: 'razor_pay',
+            payment_platform: 'web',
+            payer_id: $storeId,
+            receiver_id: 100,
+            additional_data: [
+                'business_name' => BusinessSetting::where('key', 'business_name')->value('value'),
+                'business_logo' => asset('storage/app/public/business') . '/' . BusinessSetting::where('key', 'logo')->value('value'),
+            ],
+            payment_amount: $intent['total'],
+            external_redirect_link: $external_redirect_link,
+            attribute: 'whatsapp_purchase',
+            attribute_id: $intent['id']
+        );
+
+        return redirect()->to($this->generate_link($payer, $payment_info, new Receiver('Admin', 'example.png')));
     }
 
     /** Hand the vendor to Razorpay for the setup fee; whatsapp_setup_success() resumes activation. */
-    private function redirectToSetupPayment(int $storeId, bool $accountManager, Request $request, string $returnTo = 'whatsapp/billing')
+    private function redirectToSetupPayment(int $storeId, string $plan, bool $accountManager, Request $request, string $returnTo = 'whatsapp/billing')
     {
         $vendor = \App\Models\Vendor::find(auth('vendor')->id());
         if (!$vendor) {
@@ -1273,6 +1478,7 @@ class WhatsAppController extends Controller
 
         $tmp = TmpWhatsAppSetup::create([
             'store_id'        => $storeId,
+            'plan'            => $plan,
             'account_manager' => $accountManager ? 1 : 0,
         ]);
 
@@ -1337,21 +1543,36 @@ class WhatsAppController extends Controller
         return back();
     }
 
-    // One-time purchase of a message-template slot beyond the included quota.
+    // One-time purchase of message-template slots beyond the included quota.
     public function buyTemplateSlot(Request $request)
     {
-        $res = WhatsAppBilling::buyTemplateSlot(Helpers::get_store_id());
-        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
-        return back();
+        $request->validate(['slots' => 'nullable|integer|min:1|max:50']);
+
+        return $this->redirectToPurchasePayment(
+            Helpers::get_store_id(),
+            'template_slot',
+            (int) ($request->slots ?: 1),
+            $request
+        );
     }
 
-    // AI auto-reply token top-up — 1M tokens per pack.
+    /**
+     * AI token top-up, paid by card / UPI. Starter and Pro only, and priced per direction —
+     * input and output are separate buckets that never lend to each other.
+     */
     public function buyTokens(Request $request)
     {
-        $request->validate(['packs' => 'nullable|integer|min:1|max:50']);
-        $res = WhatsAppBilling::buyTokenPack(Helpers::get_store_id(), (int) ($request->packs ?: 1));
-        $res['success'] ? Toastr::success($res['message']) : Toastr::error($res['message']);
-        return back();
+        $request->validate([
+            'direction' => 'required|in:in,out',
+            'millions'  => 'nullable|integer|min:1|max:50',
+        ]);
+
+        return $this->redirectToPurchasePayment(
+            Helpers::get_store_id(),
+            'topup_tokens_' . $request->direction,
+            (int) ($request->millions ?: 1),
+            $request
+        );
     }
 
     /**
@@ -1460,8 +1681,11 @@ class WhatsAppController extends Controller
         $storeId = Helpers::get_store_id();
         $wa = WhatsAppService::make($storeId);
 
-        $connected = $wa->hasWaba();
+        // Vendor's own WABA only — hasWaba() would be true on the platform fallback and list
+        // MyChitti's templates here, with working edit and delete buttons beside them.
+        $connected = $wa->hasVendorWaba();
         $templates = [];
+        $trashed = [];
         $templateError = null;
         $presets = collect();
         if ($connected) {
@@ -1469,6 +1693,18 @@ class WhatsAppController extends Controller
             $templates = $res['data'];
             if (!$res['success']) {
                 $templateError = $res['error'];
+            }
+
+            // Trashed templates are still live at Meta and still hold a slot — they are just
+            // out of the way. Split them off so the working list stays about what's in use.
+            $trashedKeys = WhatsAppService::trashedTemplateKeys($storeId);
+            if ($trashedKeys) {
+                $all = $templates;
+                $templates = [];
+                foreach ($all as $tpl) {
+                    $key = strtolower(data_get($tpl, 'name') . '|' . data_get($tpl, 'language', 'en_US'));
+                    in_array($key, $trashedKeys, true) ? $trashed[] = $tpl : $templates[] = $tpl;
+                }
             }
 
             // Admin-suggested presets, annotated with this vendor's WABA status so a preset
@@ -1487,15 +1723,16 @@ class WhatsAppController extends Controller
         $apptRaw = DB::table('stores')->where('id', $storeId)->value('wa_appt_reminder');
         $apptReminder = ($apptRaw === null || $apptRaw === '') ? WhatsAppService::DEFAULT_APPT_REMINDER_HOURS : (int) $apptRaw;
 
-        // Template quota: 4 included with the plan, plus any slots the vendor bought.
+        // Template quota: the included allowance from the plan, plus any slots the vendor bought.
         $quota = [
             'included'  => WhatsAppBilling::includedTemplates(),
             'allowance' => WhatsAppBilling::templateAllowance($storeId),
-            'used'      => count($templates),
+            // Trashed templates still exist at Meta and still occupy a slot, so they count.
+            'used'      => count($templates) + count($trashed),
             'slot_fee'  => WhatsAppBilling::withTax(WhatsAppBilling::extraTemplateFee()),
         ];
 
-        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'templateError', 'presets', 'apptReminder', 'quota'));
+        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'trashed', 'templateError', 'presets', 'apptReminder', 'quota'));
     }
 
     // Vendor picks how many hours before the appointment the reminder goes out (0 = off).
@@ -1527,8 +1764,8 @@ class WhatsAppController extends Controller
         $request->validate(['preset_id' => 'required|integer']);
 
         $wa = WhatsAppService::make(Helpers::get_store_id());
-        if (!$wa->hasWaba()) {
-            Toastr::error('Connect your WhatsApp number first.');
+        if (!$wa->hasVendorWaba()) {
+            Toastr::error('Connect your own WhatsApp number first — templates are created on your WABA, not MyChitti\'s.');
             return back();
         }
 
@@ -1581,17 +1818,24 @@ class WhatsAppController extends Controller
     public function templateCreate(Request $request)
     {
         $request->validate([
-            'tpl_name'     => 'required|regex:/^[a-z0-9_]+$/',
-            'tpl_category' => 'required',
-            'tpl_lang'     => 'required',
-            'tpl_body'     => 'required',
+            'tpl_name'        => 'required|regex:/^[a-z0-9_]+$/',
+            'tpl_category'    => 'required',
+            'tpl_lang'        => 'required',
+            'tpl_body'        => 'required',
+            'tpl_header_format' => 'nullable|in:TEXT,IMAGE,DOCUMENT,VIDEO',
+            'tpl_header_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:16384',
+            'tpl_btn'         => 'nullable|array|max:2',
+            'tpl_btn.*.type'  => 'nullable|in:URL,QUICK_REPLY',
+            'tpl_btn.*.text'  => 'nullable|string|max:25',
+            'tpl_btn.*.url'   => 'nullable|url|max:2000',
         ], [
             'tpl_name.regex' => 'Template name must be lowercase letters, numbers and underscores only.',
+            'tpl_header_file.max' => 'Header files must be 16 MB or smaller.',
         ]);
 
         $wa = WhatsAppService::make(Helpers::get_store_id());
-        if (!$wa->hasWaba()) {
-            Toastr::error('Connect your WhatsApp number first.');
+        if (!$wa->hasVendorWaba()) {
+            Toastr::error('Connect your own WhatsApp number first — templates are created on your WABA, not MyChitti\'s.');
             return back();
         }
 
@@ -1606,17 +1850,21 @@ class WhatsAppController extends Controller
         }
 
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
-        $buttons = [];
-        if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
-            $buttons[] = ['text' => trim((string) $request->tpl_btn_text), 'url' => trim((string) $request->tpl_btn_url)];
+        $buttons = $this->templateButtons($request);
+
+        $header = $this->templateHeader($request, $wa);
+        if ($header === false) {
+            return back()->withInput();
         }
+
         $res = $wa->createTemplate(
             trim((string) $request->tpl_name),
             $request->tpl_category,
             $request->tpl_lang ?: 'en_US',
             (string) $request->tpl_body,
             $example,
-            $buttons
+            $buttons,
+            $header
         );
 
         if ($res['success']) {
@@ -1643,8 +1891,8 @@ class WhatsAppController extends Controller
         ]);
 
         $wa = WhatsAppService::make(Helpers::get_store_id());
-        if (!$wa->hasWaba()) {
-            Toastr::error('Connect your WhatsApp number first.');
+        if (!$wa->hasVendorWaba()) {
+            Toastr::error('Connect your own WhatsApp number first — templates are created on your WABA, not MyChitti\'s.');
             return back();
         }
 
@@ -1675,13 +1923,70 @@ class WhatsAppController extends Controller
         return back();
     }
 
+    /**
+     * Move a template to the trash. Nothing is deleted at Meta — the template stays approved and
+     * keeps its slot, which is why it still counts against the quota and why Restore is instant.
+     */
+    public function templateTrash(Request $request)
+    {
+        $request->validate(['name' => 'required', 'language' => 'nullable|string|max:20']);
+        $storeId = Helpers::get_store_id();
+
+        WhatsAppService::ensureTrashTable();
+        DB::table('wa_trashed_templates')->updateOrInsert(
+            [
+                'store_id' => $storeId,
+                'name'     => trim((string) $request->name),
+                'language' => trim((string) $request->language) ?: 'en_US',
+            ],
+            ['updated_at' => now(), 'created_at' => now()]
+        );
+
+        Toastr::success('Moved to trash. It still uses one of your template slots until you delete it permanently.');
+        return back();
+    }
+
+    /** Put a trashed template back in the working list. No re-approval — it never left Meta. */
+    public function templateRestore(Request $request)
+    {
+        $request->validate(['name' => 'required', 'language' => 'nullable|string|max:20']);
+
+        WhatsAppService::ensureTrashTable();
+        DB::table('wa_trashed_templates')
+            ->where('store_id', Helpers::get_store_id())
+            ->where('name', trim((string) $request->name))
+            ->where('language', trim((string) $request->language) ?: 'en_US')
+            ->delete();
+
+        Toastr::success('Template restored.');
+        return back();
+    }
+
+    /** The only path that touches Meta: the template is gone and the slot is freed. */
     public function templateDelete(Request $request)
     {
-        $request->validate(['name' => 'required']);
-        $wa = WhatsAppService::make(Helpers::get_store_id());
-        $res = $wa->deleteTemplate(trim((string) $request->name));
+        $request->validate(['name' => 'required', 'language' => 'nullable|string|max:20']);
+        $storeId = Helpers::get_store_id();
+        $name = trim((string) $request->name);
+
+        $wa = WhatsAppService::make($storeId);
+
+        // Without this the delete lands on whatever WABA resolveConfig() fell back to. For an
+        // unconnected vendor that is the platform account, so a click here would permanently
+        // remove a MyChitti template at Meta — vendor_lead_alert5 and friends are shared by
+        // every store on the platform.
+        if (!$wa->hasVendorWaba()) {
+            Toastr::error('Connect your own WhatsApp number first — these are not your templates.');
+            return back();
+        }
+
+        $res = $wa->deleteTemplate($name);
+
         if ($res['success']) {
-            Toastr::success('Template deleted.');
+            WhatsAppService::ensureTrashTable();
+            DB::table('wa_trashed_templates')
+                ->where('store_id', $storeId)->where('name', $name)->delete();
+            Toastr::success('Template permanently deleted. That slot is free again.');
         } else {
             Toastr::error('Delete failed: ' . $res['error']);
         }

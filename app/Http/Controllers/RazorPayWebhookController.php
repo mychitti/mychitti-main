@@ -41,7 +41,9 @@ class RazorPayWebhookController extends Controller
         }
 
         try {
-            Utility::verifyWebhookSignature($body, $signature, $secret);
+            // Instance method, not static — calling it statically throws an Error on PHP 8,
+            // which the catch below turned into "invalid signature" for every real delivery.
+            (new Utility())->verifyWebhookSignature($body, $signature, $secret);
         } catch (\Throwable $e) {
             Log::warning('Razorpay webhook signature rejected: ' . $e->getMessage());
             return response()->json(['status' => 'invalid signature'], 400);
@@ -55,10 +57,21 @@ class RazorPayWebhookController extends Controller
             return response()->json(['status' => 'ignored']);
         }
 
-        // Only our WhatsApp subscriptions carry this note — anything else on the same webhook
+        // Only our own subscriptions carry this note — anything else on the same webhook
         // (order, refund, another product's mandate) is not ours to act on.
-        if (data_get($entity, 'notes.purpose') !== 'whatsapp_monthly') {
+        $purpose = data_get($entity, 'notes.purpose');
+        if ($purpose !== 'whatsapp_monthly') {
             return response()->json(['status' => 'ignored']);
+        }
+
+        // Staging and production register separate webhooks against one Razorpay account, so each
+        // is delivered the other's events too. Act only on our own: resolveStoreId() would
+        // otherwise fall back to notes.store_id and apply a staging test to whichever production
+        // store shares that id. Subscriptions created before the tag existed carry no env and are
+        // still handled, so replaying old deliveries keeps working.
+        $env = data_get($entity, 'notes.env');
+        if ($env && $env !== WhatsAppRecurring::instanceTag()) {
+            return response()->json(['status' => 'other environment']);
         }
 
         $storeId = $this->resolveStoreId($entity);

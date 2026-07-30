@@ -66,13 +66,16 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('notification-settings/toggle', 'NotificationSettingController@toggle')->name('notification-settings.toggle');
         Route::get('notification-settings/{direction?}', 'NotificationSettingController@index')->name('notification-settings');
         Route::post('whatsapp/templates/update', 'WhatsAppController@templateUpdate')->name('whatsapp.templates.update');
+        // Trash hides a template but leaves it at Meta; only delete removes it there.
+        Route::post('whatsapp/templates/trash', 'WhatsAppController@templateTrash')->name('whatsapp.templates.trash');
+        Route::post('whatsapp/templates/restore', 'WhatsAppController@templateRestore')->name('whatsapp.templates.restore');
         Route::post('whatsapp/templates/delete', 'WhatsAppController@templateDelete')->name('whatsapp.templates.delete');
         Route::post('whatsapp/test-message', 'WhatsAppController@sendTestMessage')->name('whatsapp.test-message')->middleware('throttle:5,1');
         Route::get('whatsapp/bulk/recipients', 'WhatsAppController@bulkRecipients')->name('whatsapp.bulk.recipients');
         Route::post('whatsapp/bulk/send', 'WhatsAppController@bulkSend')->name('whatsapp.bulk.send');
         Route::post('whatsapp/features/subscribe', 'WhatsAppController@featureSubscribe')->name('whatsapp.features.subscribe');
         Route::post('whatsapp/features/toggle', 'WhatsAppController@featureToggle')->name('whatsapp.features.toggle');
-        // WhatsApp Business Platform billing — recurring platform fee, template slots, AI tokens.
+        // WhatsApp Business Platform billing — the monthly plan, template slots, AI tokens.
         Route::get('whatsapp/billing', 'WhatsAppController@billing')->name('whatsapp.billing');
         Route::post('whatsapp/billing/subscribe', 'WhatsAppController@billingSubscribe')->name('whatsapp.billing.subscribe');
         Route::post('whatsapp/billing/authorize-mandate', 'WhatsAppController@billingAuthorizeMandate')->name('whatsapp.billing.authorize-mandate');
@@ -80,13 +83,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/billing/account-manager', 'WhatsAppController@billingAccountManager')->name('whatsapp.billing.account-manager');
         Route::post('whatsapp/billing/template-slot', 'WhatsAppController@buyTemplateSlot')->name('whatsapp.billing.template-slot');
         Route::post('whatsapp/billing/tokens', 'WhatsAppController@buyTokens')->name('whatsapp.billing.tokens');
-        // AI Agent — monthly plan for lead & appointment management, plus its token top-up.
-        Route::post('whatsapp/billing/agent/subscribe', 'WhatsAppController@agentSubscribe')->name('whatsapp.billing.agent.subscribe');
-        Route::post('whatsapp/billing/agent/cancel', 'WhatsAppController@agentCancel')->name('whatsapp.billing.agent.cancel');
-        Route::post('whatsapp/billing/agent/tokens', 'WhatsAppController@buyAgentTokens')->name('whatsapp.billing.agent.tokens');
-        // Which chatbot answers customers, and what it may share with them.
+        // What the AI Agent may do for customers, and what it may share with them.
         Route::get('whatsapp/bot', 'WhatsAppController@bot')->name('whatsapp.bot');
-        Route::post('whatsapp/bot/mode', 'WhatsAppController@botMode')->name('whatsapp.bot.mode');
         Route::post('whatsapp/bot/shares', 'WhatsAppController@botShares')->name('whatsapp.bot.shares');
 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');

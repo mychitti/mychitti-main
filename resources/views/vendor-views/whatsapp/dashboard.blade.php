@@ -3,81 +3,111 @@
 @section('title', 'WhatsApp Dashboard')
 
 @push('css_or_js')
+    @include('vendor-views.whatsapp.partials._ui')
     <style>
-        /* Every card/stat shares one box so rows line up. margin-bottom on the column gives a
-           uniform vertical gap; overflow:hidden keeps charts and tables inside the rounded card. */
-        .wd-col { margin-bottom:16px; }
-        .wd-stat, .wd-card { border:1px solid #eef0f4; border-radius:14px; background:#fff; height:100%; overflow:hidden; }
-        .wd-stat { padding:18px 20px; display:flex; justify-content:space-between; align-items:flex-start; }
-        .wd-stat-val { font-size:26px; font-weight:800; line-height:1.1; color:#1e293b; }
-        .wd-stat-lbl { font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:#8a94a6; margin-top:4px; }
-        .wd-stat-ico { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:19px; flex-shrink:0; }
-        .wd-card-h { padding:16px 20px; border-bottom:1px solid #f1f3f7; font-weight:700; font-size:14px; color:#1e293b; }
-        .wd-card-b { padding:20px; }
         .wd-chart { position:relative; width:100%; }
         .wd-chart canvas { max-width:100%; }
-        .wd-chip { font-size:11px; padding:3px 10px; border-radius:20px; font-weight:600; }
-        .wd-empty { color:#8a94a6; font-size:13px; text-align:center; padding:26px 10px; }
-        .wd-ctx-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:8px 0; border-bottom:1px dashed #eef0f4; }
-        .wd-ctx-row:last-child { border-bottom:0; }
     </style>
 @endpush
 
 @section('content')
     <div class="content container-fluid">
         <div class="page-header d-flex align-items-center justify-content-between flex-wrap" style="gap:10px;">
-            <h1 class="page-header-title mb-0"><i class="tio-chat"></i> WhatsApp Dashboard</h1>
-            <div class="d-flex" style="gap:8px;">
+            <div>
+                <h1 class="page-header-title mb-0"><i class="tio-chat"></i> WhatsApp Dashboard</h1>
+                <span class="wa-sub">How your WhatsApp messages are performing.</span>
+            </div>
+            <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
                 @if ($connected)
-                    <span class="wd-chip badge-soft-success align-self-center">Your number connected</span>
+                    <span class="wa-chip badge-soft-success">Sending from your own number</span>
+                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">
+                        <i class="tio-send"></i> Send a message
+                    </a>
                 @else
-                    <span class="wd-chip badge-soft-secondary align-self-center">Using MyChitti number</span>
+                    {{-- Not a capability, an unfinished setup: there is no sending at all until the
+                         vendor connects their own number. The MyChitti number is ours, and only
+                         ever carries our alerts TO them. --}}
+                    <span class="wa-chip badge-soft-secondary">Number not connected</span>
+                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">
+                        <i class="tio-add-circle-outlined"></i> Connect number
+                    </a>
                 @endif
-                <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">
-                    <i class="tio-send"></i> Send / Connect
-                </a>
             </div>
         </div>
 
-        {{-- ── Stat cards ── --}}
+        {{-- Not connected is the one thing worth interrupting for: everything below stays empty
+             until it is done, so the fix leads rather than hiding at the bottom of the page. --}}
+        @if (!$connected)
+            <div class="wa-card wa-col">
+                <div class="wa-card-b d-flex align-items-center flex-wrap" style="gap:14px;">
+                    <div class="wa-stat-ico badge-soft-primary"><i class="tio-add-circle-outlined"></i></div>
+                    <div style="flex:1 1 280px;">
+                        <div style="font-weight:700;font-size:14px;color:#1e293b;">Connect your own WhatsApp number</div>
+                        <div class="wa-sub">
+                            You cannot send anything to your customers until this is done. Connect your number to
+                            send bills, reminders and campaigns under your own business name.
+                        </div>
+                    </div>
+                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary text-nowrap">Get started</a>
+                </div>
+            </div>
+        @endif
+
+        {{-- ── Headline numbers ── --}}
         <div class="row">
-            <div class="col-sm-6 col-lg-4 wd-col">
-                <div class="wd-stat d-flex justify-content-between align-items-start">
+            <div class="col-sm-6 col-lg-3 wa-col">
+                <div class="wa-stat">
                     <div>
-                        <div class="wd-stat-val">{{ number_format($stats['total']) }}</div>
-                        <div class="wd-stat-lbl">Messages (all time)</div>
+                        <div class="wa-stat-val">{{ number_format($stats['total']) }}</div>
+                        <div class="wa-stat-lbl">Messages sent</div>
                     </div>
-                    <div class="wd-stat-ico badge-soft-primary"><i class="tio-chat"></i></div>
+                    <div class="wa-stat-ico badge-soft-primary"><i class="tio-chat"></i></div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-4 wd-col">
-                <div class="wd-stat d-flex justify-content-between align-items-start">
+            <div class="col-sm-6 col-lg-3 wa-col">
+                <div class="wa-stat">
                     <div>
-                        <div class="wd-stat-val">{{ $stats['delivery_rate'] }}%</div>
-                        <div class="wd-stat-lbl">Delivery rate</div>
+                        <div class="wa-stat-val">{{ number_format($stats['delivered']) }}</div>
+                        <div class="wa-stat-lbl">Delivered</div>
                     </div>
-                    <div class="wd-stat-ico badge-soft-success"><i class="tio-checkmark-circle-outlined"></i></div>
+                    <div class="wa-stat-ico badge-soft-success"><i class="tio-checkmark-circle-outlined"></i></div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-4 wd-col">
-                <div class="wd-stat d-flex justify-content-between align-items-start">
+            <div class="col-sm-6 col-lg-3 wa-col">
+                <div class="wa-stat">
                     <div>
-                        <div class="wd-stat-val">{{ number_format($stats['failed']) }}</div>
-                        <div class="wd-stat-lbl">Failed</div>
+                        <div class="wa-stat-val">{{ $stats['delivery_rate'] }}%</div>
+                        <div class="wa-stat-lbl">Delivery rate</div>
                     </div>
-                    <div class="wd-stat-ico badge-soft-danger"><i class="tio-warning"></i></div>
+                    <div class="wa-stat-ico badge-soft-info"><i class="tio-chart-bar-4"></i></div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3 wa-col">
+                <div class="wa-stat">
+                    <div>
+                        <div class="wa-stat-val">{{ number_format($stats['failed']) }}</div>
+                        <div class="wa-stat-lbl">Failed</div>
+                    </div>
+                    <div class="wa-stat-ico badge-soft-danger"><i class="tio-warning"></i></div>
                 </div>
             </div>
         </div>
 
+        {{-- ── Volume + delivery mix ── --}}
         <div class="row">
-            {{-- ── Volume line chart ── --}}
-            <div class="col-lg-8 wd-col">
-                <div class="wd-card h-100">
-                    <div class="wd-card-h">Messages — last 14 days</div>
-                    <div class="wd-card-b">
+            <div class="col-lg-8 wa-col">
+                <div class="wa-card h-100">
+                    <div class="wa-card-h">
+                        <span>Messages over time</span>
+                        <span class="wa-sub">Last 14 days</span>
+                    </div>
+                    <div class="wa-card-b">
                         @if (array_sum($chart['counts']) === 0)
-                            <div class="wd-empty">No messages in the last 14 days yet.</div>
+                            <div class="wa-empty">
+                                <i class="tio-chart-line"></i>
+                                <div class="wa-empty-t">No messages in the last 14 days</div>
+                                <div class="wa-empty-s">Your sending activity will appear here.</div>
+                            </div>
                         @else
                             <div class="wd-chart" style="height:280px;"><canvas id="wdVolume"></canvas></div>
                         @endif
@@ -85,163 +115,120 @@
                 </div>
             </div>
 
-            {{-- ── Status doughnut ── --}}
-            <div class="col-lg-4 wd-col">
-                <div class="wd-card h-100">
-                    <div class="wd-card-h">Delivery status</div>
-                    <div class="wd-card-b">
+            <div class="col-lg-4 wa-col">
+                <div class="wa-card h-100">
+                    <div class="wa-card-h">Delivery status</div>
+                    <div class="wa-card-b">
                         @if ($stats['total'] === 0)
-                            <div class="wd-empty">Nothing sent yet.</div>
-                        @else
-                            <div class="wd-chart" style="height:220px;"><canvas id="wdStatus"></canvas></div>
-                            <div class="d-flex justify-content-around mt-3" style="font-size:12px;">
-                                <span><b>{{ number_format($stats['delivered']) }}</b> delivered</span>
-                                <span><b>{{ number_format($stats['failed']) }}</b> failed</span>
+                            <div class="wa-empty">
+                                <i class="tio-pie-chart"></i>
+                                <div class="wa-empty-t">Nothing sent yet</div>
+                                <div class="wa-empty-s">Send your first message to see the breakdown.</div>
                             </div>
+                        @else
+                            <div class="wd-chart" style="height:210px;"><canvas id="wdStatus"></canvas></div>
+                            @if ($stats['failed'] > 0)
+                                <div class="wa-note mt-3">
+                                    <b>{{ number_format($stats['failed']) }} failed.</b>
+                                    Open <b>Recent activity</b> below and hover the failed rows for Meta's reason.
+                                </div>
+                            @endif
                         @endif
                     </div>
                 </div>
             </div>
         </div>
 
+        {{-- ── Activity: two views of the same story, tabbed rather than stacked ── --}}
         <div class="row">
-            {{-- ── Breakdown by type ── --}}
-            <div class="col-lg-4 wd-col">
-                <div class="wd-card h-100">
-                    <div class="wd-card-h">What was sent</div>
-                    <div class="wd-card-b">
-                        @forelse ($contextRows as $label => $count)
-                            <div class="wd-ctx-row">
-                                <span>{{ $label }}</span>
-                                <b>{{ number_format($count) }}</b>
-                            </div>
-                        @empty
-                            <div class="wd-empty">No activity yet.</div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-
-            {{-- ── Recent messages ── --}}
-            <div class="col-lg-8 wd-col">
-                <div class="wd-card h-100">
-                    <div class="wd-card-h">Recent messages</div>
-                    <div class="wd-card-b" style="padding:0;">
-                        @if ($recent->isEmpty())
-                            <div class="wd-empty">No messages to show.</div>
-                        @else
-                            <div class="table-responsive">
-                                <table class="table table-sm mb-0" style="font-size:13px;">
-                                    <thead>
-                                        <tr class="text-muted">
-                                            <th class="pl-3">To</th>
-                                            <th>Type</th>
-                                            <th>Status</th>
-                                            <th>When</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($recent as $m)
-                                            @php
-                                                $d = preg_replace('/[^0-9]/', '', (string) $m->recipient);
-                                                $masked = strlen($d) >= 4 ? '••••' . substr($d, -4) : '—';
-                                                $st = strtolower($m->status ?? '');
-                                                $cls = in_array($st, ['read','delivered']) ? 'success' : ($st === 'failed' ? 'danger' : 'warning');
-                                            @endphp
-                                            <tr>
-                                                <td class="pl-3">{{ $masked }}</td>
-                                                <td class="text-muted">{{ $m->context ?: $m->type }}</td>
-                                                <td>
-                                                    <span class="wd-chip badge-soft-{{ $cls }}">{{ ucfirst($m->status ?: '—') }}</span>
-                                                    @if ($st === 'failed' && $m->error)
-                                                        <i class="tio-info-outined text-danger" title="{{ $m->error }}"></i>
-                                                    @endif
-                                                </td>
-                                                <td class="text-muted text-nowrap">{{ $m->sent_at ? \Illuminate\Support\Carbon::parse($m->sent_at)->diffForHumans() : '—' }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ── Your customers (bulk-send audience) + Excel import ── --}}
-        <div class="row">
-            <div class="col-lg-5 wd-col">
-                <div class="wd-card h-100">
-                    <div class="wd-card-h d-flex justify-content-between align-items-center">
-                        <span>Your customers</span>
-                        <span class="wd-chip badge-soft-primary">{{ number_format($customerStats['with_phone']) }} with a phone</span>
-                    </div>
-                    <div class="wd-card-b">
-                        <p class="text-muted" style="font-size:13px;">
-                            These are your own customers — the audience for a bulk WhatsApp send.
-                            Import a spreadsheet to add more in one go.
-                        </p>
-
-                        <form method="post" action="{{ route('vendor.whatsapp.customers.import') }}" enctype="multipart/form-data">
-                            @csrf
-                            <div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px;">
-                                <input type="file" name="file" id="wdCustFile"
-                                       class="form-control form-control-sm" style="flex:1 1 200px;min-width:0;"
-                                       accept=".xlsx,.xls,.csv" required>
-                                <button class="btn btn--primary btn-sm text-nowrap" type="submit">
-                                    <i class="tio-upload"></i> Import
-                                </button>
-                            </div>
-                            <div class="custom-control custom-checkbox mb-2">
-                                <input type="checkbox" class="custom-control-input" id="wdSendWelcome" name="send_welcome" value="1">
-                                <label class="custom-control-label" for="wdSendWelcome" style="font-size:13px;">
-                                    Send a WhatsApp welcome message to the newly imported customers
-                                    <small class="text-muted d-block">Sent in the background from your connected WhatsApp number using your approved welcome template.</small>
-                                </label>
-                            </div>
-                            <small class="text-muted d-block">
-                                Columns: <b>Name, Phone, Email, GST, Address</b> — only Name and Phone are required.
-                                <a href="{{ route('vendor.whatsapp.customers.template') }}">Download template</a>.
-                                Duplicates (same phone) are skipped automatically.
-                            </small>
-                        </form>
-
-                        <div class="mt-3">
-                            <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn-outline-primary">
-                                <i class="tio-send"></i> Send a bulk message
+            <div class="col-12 wa-col">
+                <div class="wa-card">
+                    <ul class="nav wa-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-toggle="tab" href="#wdRecent" role="tab">Recent activity</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-toggle="tab" href="#wdBreakdown" role="tab">
+                                What was sent
+                                @if (count($contextRows))
+                                    <span class="wa-chip badge-soft-secondary ml-1">{{ count($contextRows) }}</span>
+                                @endif
                             </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                        </li>
+                    </ul>
 
-            <div class="col-lg-7 wd-col">
-                <div class="wd-card h-100">
-                    <div class="wd-card-h">Recently added customers</div>
-                    <div class="wd-card-b" style="padding:0;">
-                        @if ($recentCustomers->isEmpty())
-                            <div class="wd-empty">No customers yet. Import a sheet to get started.</div>
-                        @else
-                            <div class="table-responsive">
-                                <table class="table table-sm mb-0" style="font-size:13px;">
-                                    <thead>
-                                        <tr class="text-muted">
-                                            <th class="pl-3">Name</th>
-                                            <th>Phone</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($recentCustomers as $c)
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="wdRecent" role="tabpanel">
+                            @if ($recent->isEmpty())
+                                <div class="wa-empty">
+                                    <i class="tio-chat-outlined"></i>
+                                    <div class="wa-empty-t">No messages to show</div>
+                                    <div class="wa-empty-s">Everything you send appears here with its delivery status.</div>
+                                </div>
+                            @else
+                                <div class="table-responsive">
+                                    <table class="table wa-table">
+                                        <thead>
                                             <tr>
-                                                <td class="pl-3">{{ $c->f_name ?: '—' }}</td>
-                                                <td class="text-muted">{{ $c->phone ?: '—' }}</td>
+                                                <th>To</th>
+                                                <th>What</th>
+                                                <th>Status</th>
+                                                <th class="text-right">When</th>
                                             </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @endif
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($recent as $m)
+                                                @php
+                                                    $d = preg_replace('/[^0-9]/', '', (string) $m->recipient);
+                                                    $masked = strlen($d) >= 4 ? '••••' . substr($d, -4) : '—';
+                                                    $st = strtolower($m->status ?? '');
+                                                    $cls = in_array($st, ['read', 'delivered']) ? 'success' : ($st === 'failed' ? 'danger' : 'warning');
+                                                @endphp
+                                                <tr>
+                                                    <td class="text-nowrap">{{ $masked }}</td>
+                                                    <td class="text-muted">{{ $m->context ?: $m->type }}</td>
+                                                    <td class="text-nowrap">
+                                                        <span class="wa-chip badge-soft-{{ $cls }}">{{ ucfirst($m->status ?: '—') }}</span>
+                                                        @if ($st === 'failed' && $m->error)
+                                                            <i class="tio-info-outined text-danger" title="{{ $m->error }}"></i>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-muted text-nowrap text-right">
+                                                        {{ $m->sent_at ? \Illuminate\Support\Carbon::parse($m->sent_at)->diffForHumans() : '—' }}
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="tab-pane fade" id="wdBreakdown" role="tabpanel">
+                            @if (empty($contextRows))
+                                <div class="wa-empty">
+                                    <i class="tio-poll"></i>
+                                    <div class="wa-empty-t">No activity yet</div>
+                                    <div class="wa-empty-s">Once you send, this splits your traffic by type.</div>
+                                </div>
+                            @else
+                                @php $ctxMax = max($contextRows); @endphp
+                                <div class="wa-card-b">
+                                    @foreach ($contextRows as $label => $count)
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:13px;">
+                                                <span>{{ $label }}</span>
+                                                <b>{{ number_format($count) }}</b>
+                                            </div>
+                                            {{-- Relative bars read faster than a column of numbers. --}}
+                                            <div style="height:6px;border-radius:6px;background:#f1f3f7;overflow:hidden;">
+                                                <span style="display:block;height:100%;background:#25d366;width:{{ $ctxMax ? round($count / $ctxMax * 100) : 0 }}%;"></span>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
@@ -275,7 +262,10 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f3f7' } },
+                            x: { grid: { display: false } }
+                        }
                     }
                 });
             }
@@ -296,8 +286,8 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        cutout: '62%',
-                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+                        cutout: '64%',
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, padding: 14 } } }
                     }
                 });
             }

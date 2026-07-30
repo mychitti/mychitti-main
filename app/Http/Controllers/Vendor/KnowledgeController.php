@@ -28,7 +28,22 @@ class KnowledgeController extends Controller
 
         $docTypes = StoreKnowledgeDoc::DOC_TYPES;
 
-        return view('vendor-views.knowledge.index', compact('docs', 'docTypes'));
+        // How many documents exist per type, and how many are live. Coverage is what decides
+        // whether the auto-reply can actually answer, so it belongs on the page — a vendor with
+        // nothing under "Services & Pricing" should be able to see that at a glance.
+        $typeCounts = StoreKnowledgeDoc::where('store_id', $storeId)
+            ->selectRaw('doc_type, COUNT(*) total, SUM(active) live')
+            ->groupBy('doc_type')
+            ->get()
+            ->keyBy('doc_type');
+
+        $totalDocs = StoreKnowledgeDoc::where('store_id', $storeId)->count();
+        $activeDocs = StoreKnowledgeDoc::where('store_id', $storeId)->where('active', 1)->count();
+        $maxDocs = self::MAX_DOCS;
+
+        return view('vendor-views.knowledge.index', compact(
+            'docs', 'docTypes', 'typeCounts', 'totalDocs', 'activeDocs', 'maxDocs'
+        ));
     }
 
     public function store(Request $request)

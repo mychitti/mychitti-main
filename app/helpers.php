@@ -3393,7 +3393,11 @@ function whatsapp_setup_success($data)
         \App\Services\WhatsAppBilling::markSetupPaidViaGateway($tmp->store_id, $data->transaction_id ?? null);
         \Illuminate\Support\Facades\DB::table('wa_subscriptions')
             ->where('store_id', $tmp->store_id)
-            ->update(['account_manager' => $tmp->account_manager ? 1 : 0, 'updated_at' => now()]);
+            ->update([
+                'plan'            => $tmp->plan ?: \App\Services\WhatsAppBilling::DEFAULT_PLAN,
+                'account_manager' => $tmp->account_manager ? 1 : 0,
+                'updated_at'      => now(),
+            ]);
     } catch (\Throwable $e) {
         // The setup fee is already captured — never bubble out of the payment callback, or the
         // vendor lands on an error page having paid. The billing screen shows what is still due.
@@ -3409,6 +3413,40 @@ function whatsapp_setup_success($data)
 function whatsapp_setup_fail($data)
 {
     \App\Models\TmpWhatsAppSetup::where('id', $data->attribute_id)->delete();
+}
+
+/**
+ * A one-time WhatsApp purchase cleared at the gateway — AI token top-ups or an extra message
+ * template slot. The intent row says what was bought; nothing is granted before this runs, so
+ * an abandoned checkout hands over nothing.
+ */
+function whatsapp_purchase_success($data)
+{
+    $intent = \Illuminate\Support\Facades\DB::table('wa_purchase_intents')
+        ->where('id', $data->attribute_id)->first();
+    if (!$intent) {
+        return;
+    }
+
+    try {
+        \App\Services\WhatsAppBilling::fulfilPurchase($intent, $data->transaction_id ?? null);
+    } catch (\Throwable $e) {
+        // The money is already captured — never bubble out of the payment callback, or the
+        // vendor lands on an error page having paid. The billing screen shows what arrived.
+        \Illuminate\Support\Facades\Log::error('WhatsApp purchase fulfilment failed after payment', [
+            'intent' => $intent->id,
+            'store'  => $intent->store_id,
+            'error'  => $e->getMessage(),
+        ]);
+        return;
+    }
+
+    \Illuminate\Support\Facades\DB::table('wa_purchase_intents')->where('id', $intent->id)->delete();
+}
+
+function whatsapp_purchase_fail($data)
+{
+    \Illuminate\Support\Facades\DB::table('wa_purchase_intents')->where('id', $data->attribute_id)->delete();
 }
 
 function store_data_formatting_limited($data, $multi_data = false)

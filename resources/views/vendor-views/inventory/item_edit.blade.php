@@ -668,7 +668,11 @@
                         <!-- Variations Tab -->
                         <div class="tab-pane fade" id="variations" role="tabpanel">
                             <div class="row g-0">
-                                <div class="col-12 my-2" id="add_variations_wrap" style="display:none;">
+                                {{-- Tells _stock_type_sync to leave these controls alone: an item that
+                                     already carries variations must not have them hidden out from
+                                     under it, whatever its stock type says. --}}
+                                <div class="col-12 my-2" id="add_variations_wrap" style="display:none;"
+                                     data-has-variations="{{ !empty(json_decode($item['variations'] ?? '[]', true)) ? '1' : '0' }}">
                                     <label class="custom-label cursor-pointer mb-0">
                                         <input type="checkbox" id="add_variations_cb" class="form-check-input position-static ml-0 mr-1">
                                         Add Variations

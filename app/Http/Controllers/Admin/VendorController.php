@@ -1522,6 +1522,10 @@ class VendorController extends Controller
         }
 
 
+        // Before the rows go: the WhatsApp mandate lives at Razorpay and survives this delete
+        // happily, debiting the vendor's card every month for a store that no longer exists.
+        \App\Services\WhatsAppBilling::closeForDeletedStore($store->id);
+
         $store?->deliverymen()?->delete();
         $store?->discount()?->delete();
         $store?->schedules()?->delete();
@@ -4079,6 +4083,11 @@ class VendorController extends Controller
     {
         $store = Store::withoutGlobalScopes()->findOrFail($store_id);
         $vendor = $store->vendor;
+
+        // Same reason as destroy(): stop the Razorpay mandate before the store row disappears,
+        // or the card keeps being charged with nothing left pointing at it.
+        \App\Services\WhatsAppBilling::closeForDeletedStore($store->id);
+
         // Reuse standard destroy pipeline
         $store->delete();
         if ($vendor) {

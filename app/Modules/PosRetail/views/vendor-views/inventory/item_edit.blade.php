@@ -898,7 +898,10 @@
 
                             </div>
 
-                            <div class="col-12 p-1" id="add_variations_wrap">
+                            {{-- Leaves the controls alone for an item that already has variations —
+                                 see _stock_type_sync. --}}
+                            <div class="col-12 p-1" id="add_variations_wrap"
+                                 data-has-variations="{{ !empty(json_decode($item['variations'] ?? '[]', true)) ? '1' : '0' }}">
                                 <label for="add_variations_cb" class="custom-label cursor-pointer mb-0 d-inline-block">
                                     <div class="badge badge-soft-primary align-items-center"
                                         style="height: 39px;display: flex;">

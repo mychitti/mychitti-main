@@ -13,30 +13,32 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * The two WhatsApp chatbots.
+ * The WhatsApp AI Agent: it answers from the store's Auto-Reply Knowledge, and on top of that
+ * manages leads and appointments — book, reschedule, report status — plus whichever records the
+ * vendor has allowed it to share (prescription, diagnosis, bill, reminders).
  *
- *   knowledge — the default. Answers from the store's Auto-Reply Knowledge and nothing else.
- *   agent     — the paid AI Agent (WhatsAppBilling::AGENT_PLANS). On top of the knowledge base
- *               it manages leads and appointments: book, reschedule, and report status, plus
- *               whichever records the vendor has allowed it to share (prescription, diagnosis,
- *               bill, reminders).
+ * The plan decides whether it runs at all. Basic has no chatbot; Starter and Pro have the agent,
+ * and it is on from the moment the plan is. There is no bot-type choice any more: the agent is a
+ * superset of the old knowledge-only bot and costs exactly the same to run, so asking the vendor
+ * to pick between them only ever left them paying for something they were not receiving.
  *
- * Agent mode needs BOTH the vendor's choice (stores.wa_bot_mode) and a live plan, so a lapsed
- * plan quietly falls back to the knowledge bot rather than leaking clinical data for free.
- *
- * Every share item is opt-in per store: the customer's records only reach the model for the
- * items the vendor ticked, so what the bot cannot see it cannot say.
+ * What the agent may DO and SAY is still the vendor's call, item by item (SHARE_ITEMS). Every
+ * item is opt-in per store: the customer's records only reach the model for the items the vendor
+ * ticked, so what the bot cannot see it cannot say. Turning `booking` off leaves an agent that
+ * answers questions but never acts on the vendor's behalf.
  */
 class WhatsAppAgent
 {
-    const MODE_KNOWLEDGE = 'knowledge';
-    const MODE_AGENT     = 'agent';
-
     /**
-     * What the AI Agent may tell a customer about their lead / appointment.
+     * What the AI Agent may do, and what it may tell a customer about their lead / appointment.
      * 'default' is what a store gets before the vendor has touched the settings.
      */
     const SHARE_ITEMS = [
+        'booking' => [
+            'label'   => 'Book and reschedule appointments',
+            'desc'    => 'Let the agent act, not just answer — it can take a booking or move one. Turn this off for an agent that answers questions and hands anything else to your team.',
+            'default' => 1,
+        ],
         'status' => [
             'label'   => 'Lead & appointment status',
             'desc'    => 'Whether their request or appointment is pending, confirmed, completed or cancelled.',
@@ -83,57 +85,30 @@ class WhatsAppAgent
         }
     }
 
-    /* --------------------------------------------------------------- bot mode */
+    /* ------------------------------------------------------------ availability */
 
     /**
-     * Resolved per request: mode(), pool() and isAgent() are each hit a few times while one
-     * reply is built, and the column check behind them is not free.
+     * Is the AI Agent answering for this store? Purely a plan question now — a paid-up
+     * Starter/Pro has it, Basic does not, and there is nothing for the vendor to switch on.
      */
-    protected static array $modeCache = [];
-
-    public static function mode(int $storeId): string
-    {
-        if (isset(static::$modeCache[$storeId])) {
-            return static::$modeCache[$storeId];
-        }
-
-        WhatsAppService::ensureStoreColumns();
-        $mode = DB::table('stores')->where('id', $storeId)->value('wa_bot_mode');
-
-        return static::$modeCache[$storeId] = ($mode === self::MODE_AGENT ? self::MODE_AGENT : self::MODE_KNOWLEDGE);
-    }
-
-    public static function setMode(int $storeId, string $mode): array
-    {
-        if (!in_array($mode, [self::MODE_KNOWLEDGE, self::MODE_AGENT], true)) {
-            return ['success' => false, 'message' => 'Unknown chatbot type.'];
-        }
-        if ($mode === self::MODE_AGENT && !WhatsAppBilling::agentActive($storeId)) {
-            return ['success' => false, 'message' => 'Choose an AI Agent plan first — lead and appointment management needs an active plan.'];
-        }
-
-        WhatsAppService::ensureStoreColumns();
-        DB::table('stores')->where('id', $storeId)->update(['wa_bot_mode' => $mode]);
-        unset(static::$modeCache[$storeId]);
-
-        return [
-            'success' => true,
-            'message' => $mode === self::MODE_AGENT
-                ? 'AI Agent is now answering your customers — it can book, reschedule and report status.'
-                : 'Knowledge-base chatbot is now answering your customers.',
-        ];
-    }
-
-    /** Agent behaviour is live only when the vendor picked it AND the plan is paid up. */
     public static function isAgent(int $storeId): bool
     {
-        return static::mode($storeId) === self::MODE_AGENT && WhatsAppBilling::agentActive($storeId);
+        return WhatsAppBilling::agentActive($storeId);
+    }
+
+    /**
+     * May the agent actually book or reschedule, rather than only answer? Vendors who want a
+     * read-only agent untick `booking` and everything else it does stays as it was.
+     */
+    public static function canBook(int $storeId): bool
+    {
+        return static::isAgent($storeId) && static::shareEnabled($storeId, 'booking');
     }
 
     /** Which token pool this store's replies are metered against. */
     public static function pool(int $storeId): string
     {
-        return static::isAgent($storeId) ? WhatsAppBilling::POOL_AGENT : WhatsAppBilling::POOL_CHATBOT;
+        return WhatsAppBilling::POOL_PLAN;
     }
 
     /* ----------------------------------------------------------- share items */
@@ -190,10 +165,17 @@ class WhatsAppAgent
         $shares  = static::shares($storeId);
         $section = "\n\nAI AGENT — you also handle this business's leads and appointments.\n";
 
-        // Booking / rescheduling tooling (HMIS stores with doctors on file).
-        $appointments = WhatsAppAppointmentBot::promptSection($storeId, $phoneKey);
-        if ($appointments !== '') {
-            $section .= $appointments . "\n";
+        // Booking / rescheduling tooling (HMIS stores with doctors on file). Withheld entirely
+        // when the vendor has turned booking off: a model that is never shown the markers cannot
+        // emit them, which is a firmer guarantee than asking it not to act.
+        if ($shares['booking'] ?? false) {
+            $appointments = WhatsAppAppointmentBot::promptSection($storeId, $phoneKey);
+            if ($appointments !== '') {
+                $section .= $appointments . "\n";
+            }
+        } else {
+            $section .= "You cannot book, move or cancel appointments. If the customer asks for any of "
+                . "that, say the team will confirm it and stop there.\n";
         }
 
         $records = static::recordsFor($storeId, $phoneKey, $shares);
