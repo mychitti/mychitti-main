@@ -96,6 +96,9 @@
                                                                         Pharmacy
                                                                     @elseif($value->slug == 'leads_manage')
                                                                         Appointment Manage
+                                                                    @elseif($value->slug == 'client_manage')
+                                                                        {{-- Patients are this store's clients; the list is left holding suppliers. --}}
+                                                                        Suppliers
                                                                          @else
                                                                     {{ $value->name }}
                                                                     @endif

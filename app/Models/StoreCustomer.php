@@ -28,6 +28,16 @@ class StoreCustomer extends Model
             if (static::$welcomeOnCreate && $customer->store_id && $customer->phone) {
                 \App\Services\WhatsAppService::sendWelcomeMessage((int) $customer->store_id, $customer->f_name, $customer->phone);
             }
+
+            // A hospital does not keep clients and patients apart — whoever is added here is
+            // the same person OPD will see. No-ops for every other kind of store.
+            \App\Services\PatientCustomerLink::fromCustomer($customer);
+        });
+
+        static::updated(function (self $customer) {
+            if (\App\Services\PatientCustomerLink::customerFieldsChanged($customer)) {
+                \App\Services\PatientCustomerLink::fromCustomer($customer);
+            }
         });
     }
 
@@ -43,6 +53,11 @@ class StoreCustomer extends Model
         'pin_code',
         'user_type',
     ];
+
+    public function patient()
+    {
+        return $this->hasOne(Patient::class, 'store_customer_id');
+    }
 
     public function billing_address()
     {

@@ -864,17 +864,20 @@
                     {{-- ============= SHOP ORDERS END ============================== --}}
 
                 @endif
-                {{-- =============================== CLIENT Management=========================== --}}
+                {{-- =============================== SUPPLIERS =========================== --}}
+                {{-- A hospital's clients ARE its patients — the same person, one record, kept in
+                     step by PatientCustomerLink. So this menu is not a second people list here;
+                     what is left of it is the supplier side (pharmacy and consumables purchasing),
+                     which patients never cover. --}}
                 @if (
                     (auth('vendor')->check() && selected_menu('client_manage') && hasMasterModulePermission('client_manage')) ||
                         (auth('vendor_employee')->check() && hasMasterModulePermission('client_manage')))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('client*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
-                            title="Client Management">
+                            title="Suppliers">
                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
                                 alt="" class="nav-link-icon">
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Client
-                                Management
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Suppliers
                             </span>
                         </a>
 
@@ -883,21 +886,20 @@
                             @if (hasPermission('client_manage', 'add'))
                                 <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('customer/add') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.customer.add') }}"
-                                        title="Add New Client">
+                                    <a class="nav-link" href="{{ route('vendor.customer.add', ['user_type' => 'vendor']) }}"
+                                        title="Add New Supplier">
                                         <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class=" text-truncate">Add New Client</span>
+                                        <span class=" text-truncate">Add New Supplier</span>
                                     </a>
                                 </li>
                             @endif
                             @if (hasAnyPermission(['client_manage.list', 'client_manage.import', 'client_manage.export']))
                                 <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('client/list') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('vendor.customer.list') }}"
-                                        title="{{ translate('messages.clients') }} Management">
+                                    <a class="nav-link" href="{{ route('vendor.customer.list', ['type' => 'vendor']) }}"
+                                        title="Suppliers List">
                                         <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class=" text-truncate">{{ translate('messages.clients') }}
-                                            List</span>
+                                        <span class=" text-truncate">Suppliers List</span>
                                     </a>
                                 </li>
                             @endif

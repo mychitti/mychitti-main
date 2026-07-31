@@ -12,6 +12,7 @@ class Patient extends Model
     protected $fillable = [
         'store_id',
         'user_id',
+        'store_customer_id',
         'patient_uid',
         'name',
         'dob',
@@ -32,9 +33,32 @@ class Patient extends Model
         'created_by',
     ];
 
+    /**
+     * A patient is the store's client as well — one person, one record. Patients are created
+     * from eight different places (registration, OPD, appointments, the booking API, lead
+     * conversion), so the mirror lives on the model rather than in each caller.
+     */
+    protected static function booted()
+    {
+        static::created(function (self $patient) {
+            \App\Services\PatientCustomerLink::fromPatient($patient);
+        });
+
+        static::updated(function (self $patient) {
+            if (\App\Services\PatientCustomerLink::patientFieldsChanged($patient)) {
+                \App\Services\PatientCustomerLink::fromPatient($patient);
+            }
+        });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(StoreCustomer::class, 'store_customer_id');
     }
 
     public function medicalHistory()

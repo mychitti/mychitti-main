@@ -603,6 +603,14 @@
 
                 <div class="stat-label"><i class="tio-call"></i> {{ $customer->phone }}</div>
                 <div class="stat-label"><i class="tio-email"></i> {{ $customer->email }}</div>
+                @if (!empty($linkedPatient) && hasPermission('patient', 'view'))
+                    <div class="stat-label">
+                        <a href="{{ route('vendor.patient.show', $linkedPatient->id) }}"
+                            title="Same person in the hospital records">
+                            <i class="tio-heart-outlined"></i> Patient {{ $linkedPatient->patient_uid }}
+                        </a>
+                    </div>
+                @endif
             </div>
 
             <div class="stat-card purple ">

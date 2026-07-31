@@ -97,8 +97,14 @@
                 <div class="d-flex gap-2  ">
                     @if (count(_quickActions()))
                         @foreach (_quickActions() as $key => $value)
-                            @if ($value->route == 'vendor.customer.list' && hasPermission('client_manage', 'add'))
-                                <button type="button" class="badge badge-soft-primary quick_action add-customer-btn " 
+                            @if ($value->route == 'vendor.customer.list' && _isHospital() && hasPermission('patient', 'add'))
+                                {{-- The quick "add a client" here would open a second record for
+                                     someone the hospital already keeps as a patient. --}}
+                                <a href="{{ route('vendor.patient.add') }}" class="badge badge-soft-primary quick_action">
+                                    Register Patient
+                                </a>
+                            @elseif ($value->route == 'vendor.customer.list' && hasPermission('client_manage', 'add'))
+                                <button type="button" class="badge badge-soft-primary quick_action add-customer-btn "
                                     data-toggle="modal" data-target="#addCustomerModal">
                                     {{ $value->name }}
                                 </button>

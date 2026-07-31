@@ -2,6 +2,12 @@
 
 @section('title', translate('messages.clients'))
 
+@php
+    // A hospital has no client list apart from its patients — the customer side of this screen
+    // IS the patient list, and what remains distinct is suppliers. Relabel rather than fork.
+    $isHospital = _isHospital();
+@endphp
+
 @push('css_or_js')
     <style>
         .dropdown-toggle:not(.dropdown-toggle-empty)::after {
@@ -24,7 +30,7 @@
             <h1 class="page-header-title">
 
                 <span>
-                    {{ translate('messages.client_list') }} <span class="badge badge-soft-dark ml-2"
+                    {{ $isHospital ? 'Patients & Suppliers' : translate('messages.client_list') }} <span class="badge badge-soft-dark ml-2"
                         id="itemCount">{{ $customers->total() }}</span>
                 </span>
             </h1>
@@ -55,20 +61,29 @@
                             <select class="form-control mx-1" name="type" onchange="this.form.submit()">
                                 <option {{ request('type' ?? '') == 'all' ? 'selected' : '' }} value="all">All</option>
                                 <option {{ request('type' ?? '') == 'customer' ? 'selected' : '' }} value="customer">
-                                    Customer</option>
-                                <option {{ request('type' ?? '') == 'vendor' ? 'selected' : '' }} value="vendor">Vendor
+                                    {{ $isHospital ? 'Patient' : 'Customer' }}</option>
+                                <option {{ request('type' ?? '') == 'vendor' ? 'selected' : '' }} value="vendor">{{ $isHospital ? 'Supplier' : 'Vendor' }}
                                 </option>
                             </select>
                         </form>
                         @if (hasPermission('client_manage', 'add'))
-                            <button style=" white-space: nowrap;"
-                                class="ml-1 btn btn-sm btn-primary customer_modal_btn modal_btn mb-0" data-value="customer"
-                                data-toggle="modal" data-target="#customerAddModal">
-                                + Add Customer
-                            </button>
+                            {{-- A hospital registers people as patients, never as a second client
+                                 record — the two are the same row, so send staff to the real form. --}}
+                            @if ($isHospital)
+                                <a style=" white-space: nowrap;" class="ml-1 btn btn-sm btn-primary mb-0"
+                                    href="{{ route('vendor.patient.add') }}">
+                                    + Register Patient
+                                </a>
+                            @else
+                                <button style=" white-space: nowrap;"
+                                    class="ml-1 btn btn-sm btn-primary customer_modal_btn modal_btn mb-0" data-value="customer"
+                                    data-toggle="modal" data-target="#customerAddModal">
+                                    + Add Customer
+                                </button>
+                            @endif
                             <a style=" white-space: nowrap;" class="btn btn-sm btn-primary  modal_btn mb-0"
                                 data-value="vendor" data-toggle="modal" data-target="#customerAddModal">
-                                + Add Vendor
+                                + Add {{ $isHospital ? 'Supplier' : 'Vendor' }}
                             </a>
                         @endif
                          <div class="dropdown mr-1">
@@ -213,9 +228,15 @@
                                             @endif
                                             <td class="text-center">{{ $key + $customers->firstItem() }}</td>
                                             <td class="text-center">
+                                                @php
+                                                    $typeLabel = ucfirst($customer->user_type);
+                                                    if ($isHospital) {
+                                                        $typeLabel = $customer->user_type == 'customer' ? 'Patient' : 'Supplier';
+                                                    }
+                                                @endphp
                                                 <span
                                                     class="badge badge-soft-{{ $customer->user_type == 'customer' ? 'info' : 'warning' }} badge-pill ml-1">
-                                                    {{ ucfirst($customer->user_type) }}
+                                                    {{ $typeLabel }}
                                                 </span>
                                             </td>
                                             <td class="">

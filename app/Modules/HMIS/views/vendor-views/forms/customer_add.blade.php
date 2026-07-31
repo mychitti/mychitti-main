@@ -24,7 +24,9 @@
         }
     </style>
     <input type="hidden" id="" name="customer_id" value="{{ isset($customer) ? $customer->id : '' }}">
-    @if( Route::currentRouteName() == "vendor.invoice.my-bills" || Route::currentRouteName() == "vendor.inventory.purchase.orders" || Route::currentRouteName() == "vendor.laundry.challans.create")
+    {{-- ?user_type=vendor lets a menu open this form straight on the supplier side — the hospital
+         sidebar does that, since its customer side is the patient list. --}}
+    @if( request('user_type') === 'vendor' || Route::currentRouteName() == "vendor.invoice.my-bills" || Route::currentRouteName() == "vendor.inventory.purchase.orders" || Route::currentRouteName() == "vendor.laundry.challans.create")
     <input type="hidden" id="add_user_type" name="user_type" value="vendor">
     @else
     <input type="hidden" id="add_user_type" name="user_type" value="customer">

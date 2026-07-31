@@ -88,6 +88,10 @@ class PatientController extends Controller
 
         $store_id = Helpers::get_store_id();
 
+        // Add the patient↔client column before the transaction opens — DDL inside one would
+        // implicitly commit it and split the registration in half.
+        \App\Services\PatientCustomerLink::ensureSchema();
+
         DB::beginTransaction();
         try {
             $patient              = new Patient();
@@ -198,6 +202,18 @@ class PatientController extends Controller
             ->with('medicalHistory', 'documents')
             ->findOrFail($id);
 
+        // Patients registered before the two records were joined get their client record here,
+        // so the link works without waiting on the backfill command. Silent — these people
+        // registered long ago and must not be greeted as if they just signed up.
+        if (\App\Services\PatientCustomerLink::ensureSchema() && !$patient->store_customer_id) {
+            \App\Models\StoreCustomer::$welcomeOnCreate = false;
+            try {
+                \App\Services\PatientCustomerLink::fromPatient($patient);
+            } finally {
+                \App\Models\StoreCustomer::$welcomeOnCreate = true;
+            }
+        }
+
         $appointments = \App\Models\Appointment::where('store_id', $store_id)
             ->where('patient_id', $id)
             ->with('doctorProfile.employee')
@@ -267,9 +283,20 @@ class PatientController extends Controller
         // Every HMIS counter — consultation, hospital bill, lab, radiology, pharmacy — bills the
         // patient through a ManualInvoice keyed by bill_to/bill_to_type, so one query is the
         // patient's whole billing history. vendor_id holds the STORE id here, not a user id.
+        //
+        // The same person is also the store's client, so anything billed to them at a
+        // non-hospital counter (pharmacy retail, a service invoice) belongs on this ledger too.
+        $customerId = $patient->store_customer_id;
         $invoices = \App\Models\ManualInvoice::where('vendor_id', $store_id)
-            ->where('bill_to_type', 'patient')
-            ->where('bill_to', $id)
+            ->where(function ($q) use ($id, $customerId) {
+                $q->where(fn($q2) => $q2->where('bill_to_type', 'patient')->where('bill_to', $id));
+                if ($customerId) {
+                    $q->orWhere(fn($q2) => $q2
+                        ->where('bill_to_type', '!=', 'patient')
+                        ->where('user_type', 'store_user')
+                        ->where('bill_to', $customerId));
+                }
+            })
             ->withCount('invoiceItems')
             ->orderByDesc('created_at')
             ->get();
@@ -458,6 +485,8 @@ class PatientController extends Controller
         $store_id = Helpers::get_store_id();
         $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
 
+        \App\Services\PatientCustomerLink::ensureSchema();
+
         DB::beginTransaction();
         try {
             // Only overwrite fields that were actually submitted. The sidebar inline
@@ -633,6 +662,8 @@ class PatientController extends Controller
         ]);
 
         $store_id = Helpers::get_store_id();
+
+        \App\Services\PatientCustomerLink::ensureSchema();
 
         DB::beginTransaction();
         try {

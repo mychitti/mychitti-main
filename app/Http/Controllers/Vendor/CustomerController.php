@@ -301,6 +301,10 @@ class CustomerController extends Controller
         $customer = StoreCustomer::with('billing_address', 'shipping_address', 'comments')->where('id', $id)->first();
         $userids = User::where('phone', $customer->phone)->pluck('id')->toArray();
 
+        // In a hospital this client is also a patient — surface the crossing so staff never
+        // hunt for the same person twice. Null everywhere else.
+        $linkedPatient = \App\Services\PatientCustomerLink::patientFor($customer);
+
         $preset = request('date_range') ?? 'last_30_days';
         $custom = request('custom_date_range') ?? null;
         $range = Helpers::calculatePresetDates($preset, $custom);
@@ -332,8 +336,20 @@ class CustomerController extends Controller
             ->where('bill_to_type', 'vendor')
             ->get();
 
+        // Every HMIS counter bills through manual_invoices keyed bill_to_type = 'patient', so
+        // without this the client ledger would show none of the same person's hospital bills.
+        $patientInvoices = $linkedPatient
+            ? DB::table('manual_invoices')
+                ->select('*', DB::raw("'debit' as invoice_type"), DB::raw("'manual' as inv_type"))
+                ->where('vendor_id', $storeId)
+                ->where('bill_to_type', 'patient')
+                ->where('bill_to', $linkedPatient->id)
+                ->whereBetween('created_at', [$formatted_from, $formatted_to])
+                ->get()
+            : collect();
+
         // Merge all invoices
-        $invoices = $serviceInvoices->merge($manualInvoices)->merge($fromCustomerInvoices);
+        $invoices = $serviceInvoices->merge($manualInvoices)->merge($fromCustomerInvoices)->merge($patientInvoices);
 
         // Totals by source
         $data['serviceTotal'] = $serviceInvoices->sum('total_amount');
@@ -358,7 +374,7 @@ class CustomerController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
         // prx($projects);
-        return view('vendor-views.customer.view', compact('id', 'preset', 'customer', 'data', 'services', 'invoices', 'tasks', 'projects'));
+        return view('vendor-views.customer.view', compact('id', 'preset', 'customer', 'data', 'services', 'invoices', 'tasks', 'projects', 'linkedPatient'));
     }
 
     public function search(Request $request)

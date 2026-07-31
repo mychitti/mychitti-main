@@ -46,6 +46,14 @@
                     @endif
                     <h5 class="mb-0">{{ $patient->name }}</h5>
                     <span class="badge badge-soft-info mt-1">{{ $patient->patient_uid }}</span>
+                    @if ($patient->store_customer_id && hasPermission('client_manage', 'view'))
+                        <div class="mt-2">
+                            <a href="{{ route('vendor.customer.view', $patient->store_customer_id) }}"
+                                class="badge badge-soft-secondary" title="Same person on the client ledger">
+                                <i class="tio-user-outlined"></i> Client record
+                            </a>
+                        </div>
+                    @endif
 
                     <hr>
 

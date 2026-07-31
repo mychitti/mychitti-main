@@ -976,13 +976,15 @@
                             </div>
                         </a>
                     @endif
-                    @if (selected_menu('client_manage'))
-                        <a href="{{route('vendor.customer.list')}}" class="stat-card soft-red">
+                    {{-- Every patient is mirrored onto the client list, so this count IS the patient
+                         population — send the card where a hospital expects it to go. --}}
+                    @if (selected_menu('patient') || selected_menu('client_manage'))
+                        <a href="{{route('vendor.patient.list')}}" class="stat-card soft-red">
                             <div class="stat-icon icon-customers">
                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
                                     alt="my wallet" class="dashboard-icon">
                             </div>
-                            <div class="stat-label">My Customers</div>
+                            <div class="stat-label">My Patients</div>
                             <div class="stat-value">{{ $data['my_customers'] }}
                                 {{-- <span style="font-size: 1rem; color: var(--text-muted);">+88</span> --}}
                             </div>
