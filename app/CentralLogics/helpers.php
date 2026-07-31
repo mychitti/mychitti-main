@@ -1321,6 +1321,61 @@ class Helpers
 
         return ['po_number' => $po_number, 'serial_number' => $nextNumber];
     }
+    /**
+     * Columns holding what a sold line really was: its quantity in the item's own unit, and what
+     * it cost us on the day. Idempotent, no migration files (project rule).
+     */
+    public static function _ensureInvOrderCostColumns(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_order_details')) {
+            return;
+        }
+        foreach (['base_qty' => 'DECIMAL(18,4) NULL', 'line_cost' => 'DECIMAL(18,4) NULL'] as $col => $def) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_order_details', $col)) {
+                DB::statement("ALTER TABLE `inventory_order_details` ADD COLUMN `{$col}` {$def}");
+            }
+        }
+    }
+
+    /**
+     * A billed line's quantity in the item's own unit, and its cost at today's landing price.
+     *
+     * Returns [null, null] when the item is gone or has no cost on record — the report then falls
+     * back to its old behaviour for that line rather than reporting a cost of zero, which would
+     * read as pure profit.
+     */
+    public static function _invLineCost($invoiceItem): array
+    {
+        try {
+            $item = \App\Models\InventoryItem::find($invoiceItem->inv_id);
+            if (!$item) {
+                return [null, null];
+            }
+
+            $varType = \Illuminate\Support\Facades\Schema::hasColumn('invoice_items', 'variation_type')
+                ? ($invoiceItem->variation_type ?? null)
+                : null;
+
+            $baseQty = (float) _stockQtyForLine($item, (float) $invoiceItem->qty, $item->unit, $varType);
+            $landing = (float) ($item->landing_price ?? 0);
+
+            if ($landing <= 0) {
+                return [round($baseQty, 4), null];
+            }
+
+            return [round($baseQty, 4), round($baseQty * $landing, 4)];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Inventory line cost skipped: ' . $e->getMessage());
+            return [null, null];
+        }
+    }
+
     public static function _placeInventoryOrder($invoice, ?array $onlyInvoiceItemIds = null)
     {
         // $onlyInvoiceItemIds restricts the order to a specific batch of invoice lines — needed
@@ -1345,7 +1400,9 @@ class Helpers
             $invOrder->status = 'pending';
             $invOrder->save();
 
-            // order details 
+            self::_ensureInvOrderCostColumns();
+
+            // order details
             foreach ($invItemsInInvoice as $key => $item) {
                 $invOrderDetail = new InventoryOrderDetail();
                 $invOrderDetail->order_id = $order_id;
@@ -1355,6 +1412,22 @@ class Helpers
                 $invOrderDetail->total_price = $item->price * $item->qty;
                 $invOrderDetail->tax_rate    = $item->tax;
                 $invOrderDetail->status    = 'pending';
+
+                // What this line actually cost us, worked out here and stored, for two reasons.
+                //
+                // Units: `qty` is whatever the line was billed in — for a measured variation that
+                // is a count of packs, so three 250g packs off a per-kg item is qty 3, not 0.75.
+                // landing_price is per the item's own unit, so qty × landing_price valued those
+                // three packs as three kilos and turned a healthy margin into a reported loss.
+                // The same conversion the stock deduction uses gives the real quantity.
+                //
+                // History: landing_price is today's purchase price. Reading it at report time
+                // revalues last month's sales at this month's cost, so a supplier price rise
+                // retroactively turns past profits into losses. The cost of a sale is the cost on
+                // the day it was sold.
+                [$baseQty, $lineCost] = self::_invLineCost($item);
+                $invOrderDetail->base_qty  = $baseQty;
+                $invOrderDetail->line_cost = $lineCost;
 
                 $lineTax = ($invOrderDetail->total_price * $invOrderDetail->tax_rate) / 100;
 

@@ -501,8 +501,28 @@ class InventoryReportController extends Controller
 
         return ['success' => true, 'file_name' => $fileName,  'url'  => asset('storage/app/public/store_reports/stock2/' . $fileName)];
     }
+    /**
+     * Cost of goods sold for one order line, in SQL. Mirrors the vendor report exactly — the two
+     * screens showing different profit for the same sale is its own kind of wrong.
+     *
+     * Prefers `line_cost`, captured when the sale was billed, because `qty` is whatever unit the
+     * line was billed in: a measured variation bills three 250g packs as qty 3, and multiplying
+     * that by a per-kilo landing price reports a loss on a profitable sale.
+     */
+    protected function cogsExpression(): string
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_order_details', 'line_cost')) {
+            return '(inventory_order_details.qty * inventory_items.landing_price)';
+        }
+
+        return '(COALESCE(inventory_order_details.line_cost, '
+            . 'COALESCE(inventory_order_details.base_qty, inventory_order_details.qty) * inventory_items.landing_price))';
+    }
+
     public function profit_and_loss(Request $request, $export = null, $export_type = null)
     {
+        Helpers::_ensureInvOrderCostColumns();
+
         if (hasPermission('profit_loss_summary', 'list') || hasPermission('profit_loss_summary', 'export')) {
 
             $preset = request('date_range') ?? 'last_30_days';
@@ -534,12 +554,15 @@ class InventoryReportController extends Controller
                     });
                 })
                 ->when($status, function ($q) use ($status) {
+                    $cost = $this->cogsExpression();
                     if ($status == 'profit') {
-                        $q->whereRaw('(inventory_order_details.qty * inventory_order_details.unit_price) - (inventory_order_details.qty * inventory_items.landing_price) > 0');
+                        $q->whereRaw("(inventory_order_details.qty * inventory_order_details.unit_price) - {$cost} > 0");
                     } elseif ($status == 'loss') {
-                        $q->whereRaw('(inventory_order_details.qty * inventory_order_details.unit_price) - (inventory_order_details.qty * inventory_items.landing_price) < 0');
+                        $q->whereRaw("(inventory_order_details.qty * inventory_order_details.unit_price) - {$cost} < 0");
                     }
                 });
+
+            $cost = $this->cogsExpression();
 
             $orderItems = (clone $invQuery)
                 ->select(
@@ -547,8 +570,8 @@ class InventoryReportController extends Controller
                     'inventory_items.item_name',
                     'categories.name as cat_name',
                     DB::raw('SUM(inventory_order_details.qty * inventory_order_details.unit_price) as total_revenue'),
-                    DB::raw('SUM(inventory_order_details.qty * inventory_items.landing_price) as total_cost'),
-                    DB::raw('SUM((inventory_order_details.qty * inventory_order_details.unit_price) - (inventory_order_details.qty * inventory_items.landing_price)) as total_profit_loss')
+                    DB::raw("SUM({$cost}) as total_cost"),
+                    DB::raw("SUM((inventory_order_details.qty * inventory_order_details.unit_price) - {$cost}) as total_profit_loss")
                 )
                 ->groupBy('inventory_items.id', 'inventory_items.item_name', 'categories.name')
                 ->get();
