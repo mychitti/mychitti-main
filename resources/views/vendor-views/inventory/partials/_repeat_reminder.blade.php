@@ -24,9 +24,12 @@
                 style="width: 90px;">
             <span>days after they bought it</span>
         </div>
+        {{-- Opens in a new tab on purpose: this sits inside an unsaved item form, and sending the
+             vendor away to flip a switch would throw away everything they have typed. --}}
         <small class="d-block mt-1 text-muted">One WhatsApp message per customer listing everything
-            that's due, at most once a fortnight. Switch the feature on under Notification
-            Settings.</small>
+            that's due, at most once a fortnight. Switch the feature on under
+            <a href="{{ route('vendor.notification-settings', ['direction' => 'send', 'tab' => 'whatsapp']) }}"
+                target="_blank" rel="noopener">Notification Settings</a>.</small>
     </div>
 </div>
 <script>

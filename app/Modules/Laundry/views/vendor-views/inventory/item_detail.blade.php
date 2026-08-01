@@ -32,12 +32,22 @@
         .owl-dots { margin-top: 8px; text-align: center; }
 
         .specs_div {
-            height: 250px;
+            max-height: 250px;
             overflow: hidden;
+        }
+
+        .specs_div.expanded {
+            max-height: none;
         }
 
         .desc_card {
             {{-- height: fit-content; --}}
+        }
+
+        .desc_card .empty-text {
+            color: #97a4af;
+            font-size: 13px;
+            margin-bottom: 0;
         }
 
         .back-btn {
@@ -275,6 +285,298 @@
         .btn-action {
             margin-top: 15px;
         }
+        /* ------------------------------------------------------------------
+           Item detail.
+
+           One type scale, hairline borders instead of drop shadows, and
+           colour only where it carries meaning — stock state, and nothing
+           else. Everything decorative is grey on purpose.
+        ------------------------------------------------------------------ */
+
+        .header {
+            padding-bottom: 1rem;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid #e9edf3;
+        }
+
+        .header h1 {
+            margin-bottom: 0;
+            font-size: 1.375rem;
+            font-weight: 600;
+            line-height: 1.35;
+            letter-spacing: -0.01em;
+            color: #101828;
+        }
+
+        /* Image and attributes stack in a narrow rail; the dense card takes
+           the rest. The empty third row absorbs the height difference so the
+           rail cards stay packed at the top. */
+        .main-content {
+            grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+            grid-template-areas:
+                "image info"
+                "attrs info"
+                ".     info";
+            grid-template-rows: auto auto 1fr;
+            align-items: start;
+            gap: 1rem;
+        }
+
+        .main-content > .image-section {
+            grid-area: image;
+        }
+
+        .main-content > .info-section {
+            grid-area: info;
+        }
+
+        .main-content > .specifications {
+            grid-area: attrs;
+        }
+
+        .image-section,
+        .info-section,
+        .specifications {
+            padding: 1.25rem 1.5rem;
+            border: 1px solid #e9edf3;
+            border-radius: 10px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+        }
+
+        .image-section {
+            padding: 1rem;
+        }
+
+        .image-section .owl-carousel .owl-item img,
+        .product-image img {
+            border-radius: 8px;
+        }
+
+        .img-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            aspect-ratio: 1;
+            border: 1px dashed #e3e8ef;
+            border-radius: 8px;
+            background: #fafbfc;
+            color: #b6bec9;
+        }
+
+        .img-placeholder i {
+            font-size: 32px;
+        }
+
+        .img-placeholder span {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .info-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding-bottom: 0.9rem;
+            margin-bottom: 1.125rem;
+            border-bottom: 1px solid #f0f3f8;
+        }
+
+        .product-sku {
+            margin-bottom: 0;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            color: #667085;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .info-section .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 0;
+            padding: 0.25rem 0.625rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0;
+        }
+
+        .success-badge {
+            background: #ecfdf3;
+            color: #067647;
+        }
+
+        .error-badge {
+            background: #fef3f2;
+            color: #b42318;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Hairline-separated group rather than three floating cards. */
+        .stat-tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1px;
+            margin-bottom: 1.25rem;
+            border: 1px solid #e9edf3;
+            border-radius: 8px;
+            background: #e9edf3;
+            overflow: hidden;
+        }
+
+        .stat-tile {
+            padding: 0.875rem 1rem;
+            background: #fff;
+        }
+
+        .stat-tile-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #667085;
+        }
+
+        .stat-tile-value {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            line-height: 1.3;
+            color: #101828;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-tile-value small {
+            margin-left: 3px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #98a2b3;
+        }
+
+        /* The one figure that earns colour is the one that needs attention. */
+        .stat-tile.is-out .stat-tile-value {
+            color: #b42318;
+        }
+
+        /* Two up, so a label and its value are not a screen apart. */
+        .details-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0 2.5rem;
+        }
+
+        .detail-row {
+            gap: 1rem;
+            padding: 0.625rem 0;
+            border-bottom: 1px solid #f0f3f8;
+        }
+
+        .detail-label {
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #667085;
+        }
+
+        .detail-value {
+            text-align: right;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #101828;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .details-grid > .barcode-row,
+        .details-grid > .lbl-panel,
+        .details-grid > .mb-2 {
+            grid-column: 1 / -1;
+        }
+
+        .barcode-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.625rem;
+        }
+
+        .spec-title {
+            display: block;
+            margin-bottom: 0;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f0f3f8;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #667085;
+        }
+
+        .spec-grid {
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        .spec-item {
+            align-items: baseline;
+            gap: 1rem;
+            padding: 0.625rem 0;
+            border-bottom: 1px solid #f0f3f8;
+        }
+
+        .spec-item:last-child {
+            border-bottom: none;
+        }
+
+        .spec-label {
+            font-size: 0.8125rem;
+            font-weight: 400;
+            color: #667085;
+        }
+
+        .spec-value {
+            text-align: right;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #101828;
+            word-break: break-word;
+        }
+
+        .is-empty {
+            color: #c2c9d3;
+            font-weight: 400;
+        }
+
+        .desc_card .empty-text {
+            margin-bottom: 0;
+            font-size: 0.8125rem;
+            color: #98a2b3;
+        }
+
+        @media (max-width: 991.98px) {
+            .main-content {
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-areas:
+                    "image"
+                    "info"
+                    "attrs";
+                grid-template-rows: auto;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .details-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
     </style>
 @endpush
 @section('content')
@@ -299,57 +601,68 @@
                         'inventory-item/'
                     );
                 @endphp 
-                <div class="owl-carousel owl-theme" id="itemImageCarousel">
-                    {{-- Main image always first --}}
-                    <div class="item">
-                        <img src="{{ $mainImageSrc }}"
-                             data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
-                             alt="{{ $item->item_name }}" class="onerror-image">
-                    </div>
-                    {{-- Gallery images --}}
-                    @foreach($galleryImages as $img)
+                @if ($item['image'] || count($galleryImages))
+                    <div class="owl-carousel owl-theme" id="itemImageCarousel">
+                        {{-- Main image always first --}}
                         <div class="item">
-                            <img src="{{ asset('storage/app/public/inventory-item/' . $img) }}"
+                            <img src="{{ $mainImageSrc }}"
                                  data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
                                  alt="{{ $item->item_name }}" class="onerror-image">
                         </div>
-                    @endforeach
-                </div>
+                        {{-- Gallery images --}}
+                        @foreach($galleryImages as $img)
+                            <div class="item">
+                                <img src="{{ asset('storage/app/public/inventory-item/' . $img) }}"
+                                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
+                                     alt="{{ $item->item_name }}" class="onerror-image">
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="img-placeholder">
+                        <i class="tio-image"></i>
+                        <span>No image added</span>
+                    </div>
+                @endif
             </div>
 
             <div class="info-section">
-                <div class="product-sku">SKU: {{ $item->sku_id }}</div>
+                <div class="info-head">
+                    <span class="product-sku">SKU: {{ $item->sku_id }}</span>
+                    @if ($item->stock > 0)
+                        <span class="status-badge success-badge"><span class="status-dot"></span> In Stock</span>
+                    @else
+                        <span class="status-badge error-badge"><span class="status-dot"></span> Out of Stock</span>
+                    @endif
+                </div>
 
-                @if ($item->stock)
-                    <div class="status-badge success-badge">In Stock</div>
-                @else
-                    <div class="status-badge error-badge">Out of Stock</div>
-                @endif
+                <div class="stat-tiles">
+                    <div class="stat-tile @if ($item->stock <= 0) is-out @endif">
+                        <span class="stat-tile-label">Quantity Available</span>
+                        <span class="stat-tile-value">{{ $item->stock }}<small>{{ $item->itemunit?->unit }}</small></span>
+                    </div>
+                    <div class="stat-tile">
+                        <span class="stat-tile-label">MRP</span>
+                        <span class="stat-tile-value">{{ _price($item->mrp) }}</span>
+                    </div>
+                    <div class="stat-tile">
+                        <span class="stat-tile-label">Selling Price</span>
+                        <span class="stat-tile-value">{{ _price($item->selling_price ?? 0) }}</span>
+                    </div>
+                </div>
 
                 <div class="details-grid">
 
                     <div class="detail-row">
-                        <span class="detail-label">Quantity Available</span>
-                        <span class="detail-value">
-                            <span class=" quantity">
-                                {{ $item->stock }} {{ $item->itemunit?->unit }}
-                            </span><br>
-                        </span>
-                    </div>
-                    <div class="detail-row">
                         <span class="detail-label">Storage Unit</span>
-                        <span class="detail-value"> {{ ucfirst($item->storage_unit?->full_hierarchy_name) }}</span>
+                        <span class="detail-value @if (!$item->storage_unit?->full_hierarchy_name) is-empty @endif">{{ $item->storage_unit?->full_hierarchy_name ? ucfirst($item->storage_unit->full_hierarchy_name) : '—' }}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Last Updated</span>
                         <span class="detail-value">{{ \Carbon\Carbon::parse($item->updated_at)->format('M d, Y') }}</span>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">MRP</span>
-                        <span class="detail-value">{{ _price($item->mrp) }}</span>
-                    </div>
                     @if ($item->barcode || $item->sku_id)
-                        <div class="detail-row">
+                        <div class="detail-row barcode-row">
                             <span class="detail-label">Barcode</span>
                             <div style="width:fit-content;padding:8px;border:1px dashed #ccc;">
                                 @if ($item->barcode)
@@ -406,15 +719,15 @@
                 <div class="spec-grid">
                     <div class="spec-item">
                         <span class="spec-label">Category</span>
-                        <span class="spec-value">{{ ucfirst($item->category?->name) }}</span>
+                        <span class="spec-value @if (!$item->category?->name) is-empty @endif">{{ $item->category?->name ? ucfirst($item->category->name) : '—' }}</span>
                     </div>
                     <div class="spec-item">
                         <span class="spec-label">Brand</span>
-                        <span class="spec-value">{{ $item->brand }}</span>
+                        <span class="spec-value @if (!$item->brand) is-empty @endif">{{ $item->brand ?: '—' }}</span>
                     </div>
                     <div class="spec-item">
                         <span class="spec-label">Model Number</span>
-                        <span class="spec-value">{{ $item->model_number }}</span>
+                        <span class="spec-value @if (!$item->model_number) is-empty @endif">{{ $item->model_number ?: '—' }}</span>
                     </div>
 
                     @if ($item->custom_attributes)
@@ -431,17 +744,30 @@
 
 
         <div class="d-flex gap-2 my-2">
+        @php
+            $hasSpecs = trim(strip_tags($item->specifications, '<img><iframe><video>')) !== '';
+            $hasHighlights = trim(strip_tags($item->description, '<img><iframe><video>')) !== '';
+        @endphp
             <div class="col-md-6 card p-3 desc_card">
                 <h4>Specifications</h4>
-                <div class="specs_div">{!! $item->specifications !!} </div>
-                <div class="d-flex justify-content-end">
-                    <button class="btn btn-sm btn-outline-primary read_more_btn">Read More</button>
-                    <button class="btn btn-sm btn-outline-primary read_less_btn" style="display:none;">Less</button>
-                </div>
+                @if ($hasSpecs)
+                    <div class="specs_div">{!! $item->specifications !!} </div>
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-sm btn-outline-primary read_more_btn" style="display:none;">Read
+                            More</button>
+                        <button class="btn btn-sm btn-outline-primary read_less_btn" style="display:none;">Less</button>
+                    </div>
+                @else
+                    <p class="empty-text">No specifications added</p>
+                @endif
             </div>
             <div class="col-md-6 card p-3 desc_card">
                 <h4>Highlights</h4>
-                {!! $item->description !!}
+                @if ($hasHighlights)
+                    {!! $item->description !!}
+                @else
+                    <p class="empty-text">No highlights added</p>
+                @endif
             </div>
         </div>
         @include('vendor-views.inventory._price_history')
@@ -629,13 +955,19 @@
         });
     </script>
     <script>
+        $(function() {
+            var $specs = $(".specs_div");
+            if ($specs.length && $specs[0].scrollHeight > $specs[0].clientHeight + 2) {
+                $(".read_more_btn").show();
+            }
+        });
         $(".read_more_btn").on('click', function() {
-            $(".specs_div").css('height', 'fit-content');
+            $(".specs_div").addClass('expanded');
             $(".read_more_btn").hide()
             $(".read_less_btn").show()
         })
         $(".read_less_btn").on('click', function() {
-            $(".specs_div").css('height', '250px');
+            $(".specs_div").removeClass('expanded');
             $(".read_more_btn").show()
             $(".read_less_btn").hide()
         })

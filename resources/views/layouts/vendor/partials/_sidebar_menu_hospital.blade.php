@@ -153,6 +153,18 @@
                         </li>
                     @endif
 
+                    {{-- Documents sent out to patients, across every patient --}}
+                    @if (selected_menu('patient') && hasAnyPermission(['patient_documents.list']))
+                        <li class="nav-item {{ Request::is('patient/sent-documents') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link"
+                                href="{{ route('vendor.patient.sent-documents') }}" title="Sent Documents">
+                                <i class="tio-send nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                    Sent Documents</span>
+                            </a>
+                        </li>
+                    @endif
+
                     {{-- Outpatient --}}
                     {{-- Outpatient — single direct OPD Register link (only live item) --}}
                     @if (selected_menu('opd_register') && hasAnyPermission(['opd_register.list', 'opd_register.add', 'opd_register.export']))

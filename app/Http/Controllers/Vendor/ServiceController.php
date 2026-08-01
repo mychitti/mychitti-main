@@ -41,6 +41,7 @@ use App\Models\StoreVoucher;
 use App\Models\TempStoreStatus;
 use App\Models\User;
 use App\Models\Zone;
+use App\Services\InvoicePayments;
 use Carbon\Carbon;
 use Doctrine\DBAL\Schema\View;
 use Exception;
@@ -942,6 +943,15 @@ class ServiceController extends Controller
         // prx($invoices);
         // die;
 
+        // What has actually been collected on each bill — one query for the whole list, so a
+        // part-paid invoice can show its balance instead of pretending nothing has been received.
+        $paidMap = InvoicePayments::paidForMany($invoices);
+        $invoices->each(function ($invoice) use ($paidMap) {
+            $paid = $paidMap[$invoice->invoice_type . ':' . $invoice->id] ?? 0;
+            $invoice->paid_amount = $paid;
+            $invoice->due_amount = max(0, round((float) $invoice->total_amount - $paid, 2));
+        });
+
         return view('vendor-views.service.invoices', compact('preset', 'invoices', 'from', 'to', 'status', 'search'));
     }
 
@@ -1463,79 +1473,108 @@ class ServiceController extends Controller
         $staff = VendorEmployee::find($staff_id);
         return view('vendor-views.staff.location-tracking', compact('staff_id', 'staff'));
     }
+    /**
+     * Settle an invoice in one go — the "mark this as paid" link, with no amount to type.
+     *
+     * Goes through the same payment ledger as a part payment, so it raises a receipt and reaches
+     * the customer exactly like every other payment does.
+     */
     public function mark_paid(Request $request)
     {
-        $type = $request->type;
-        if ($type == 'service') {
-            $invoice = ServiceInvoice::find($request->id);
-        } else {
-            $invoice = ManualInvoice::find($request->id);
-        }
-        // voucher update
-        $voucher = StoreVoucher::where('invoice_id', $type . '-' . $invoice->id)->first();
-        if ($voucher) {
-            $voucher->status = 'approved';
-            $voucher->completed_at = now();
-            $voucher->save();
+        $type = InvoicePayments::normalizeType($request->type);
+        $invoice = InvoicePayments::find($type, $request->id);
 
-            // ledger entries update 
-            $ledger_entries = StoreLedgerEntry::where('voucher_id', $voucher->id)->get();
-            foreach ($ledger_entries as $key => $value) {
-                $value->status = 'approved';
-                $value->completed_at = now();
-                $value->save();
-            }
-        }
-
-
-        $invoice->payment_status = 'Paid';
-        $invoice->payment_date = date('Y-m-d');
-        $invoice->save();
-
-        $data = _createBillPdf($invoice, 'vendor');
-        $invoice->update(['pdf' => $data['pdf']]);
-
-        Toastr::success("Payment status changed successfully");
-        return back();
-    }
-    public function mark_paid2(Request $request)
-    {
-        $type = $request->type;
-        if ($type == 'service') {
-            $invoice = ServiceInvoice::find($request->id);
-        } else {
-            $invoice = ManualInvoice::find($request->id);
-        }
-        if ($request->payment_mode == 'Cash and Online' && ($invoice->total_amount != ($request->cash_amount + $request->online_amount))) {
-            Toastr::error('Amount Mismatched');
+        if (!$invoice || $invoice->vendor_id != Helpers::get_store_id()) {
+            Toastr::error('Invoice not found');
             return back();
         }
-        // voucher update
-        $voucher = StoreVoucher::where('invoice_id', $type . '-' . $invoice->id)->first();
-        if ($voucher) {
-            $voucher->status = 'approved';
-            $voucher->completed_at = now();
-            $voucher->save();
 
-            // ledger entries update 
-            $ledger_entries = StoreLedgerEntry::where('voucher_id', $voucher->id)->get();
-            foreach ($ledger_entries as $key => $value) {
-                $value->status = 'approved';
-                $value->completed_at = now();
-                $value->save();
-            }
+        $result = InvoicePayments::record($invoice, $type, [
+            'payment_mode' => $invoice->payment_method ?: 'Cash',
+            'amount'       => InvoicePayments::balanceOf($invoice, $type),
+        ]);
+
+        if (!$result['success']) {
+            Toastr::error($result['message']);
+            return back();
         }
-        $invoice->cash_amount = $request->cash_amount;
-        $invoice->online_amount = $request->online_amount;
-        $invoice->payment_status = 'Paid';
-        $invoice->payment_date = date('Y-m-d');
-        $invoice->save();
 
-        $data = _createBillPdf($invoice, 'vendor');
-        $invoice->update(['pdf' => $data['pdf']]);
-
-        Toastr::success("Payment status changed successfully");
+        Toastr::success($result['message']);
+        if ($result['wa']) {
+            Toastr::info($result['wa']);
+        }
         return back();
+    }
+
+    /**
+     * Take a payment against an invoice — the whole bill or any part of it.
+     *
+     * Part payments are the point: the amount received is deducted from what is owed, the invoice
+     * stays open until the balance reaches zero, and every payment raises its own receipt.
+     */
+    public function mark_paid2(Request $request)
+    {
+        $type = InvoicePayments::normalizeType($request->type);
+        $invoice = InvoicePayments::find($type, $request->id);
+
+        if (!$invoice || $invoice->vendor_id != Helpers::get_store_id()) {
+            Toastr::error('Invoice not found');
+            return back();
+        }
+
+        $result = InvoicePayments::record($invoice, $type, [
+            'payment_mode'  => $request->payment_mode,
+            'amount'        => $request->amount,
+            'cash_amount'   => $request->cash_amount,
+            'online_amount' => $request->online_amount,
+            'payment_date'  => $request->payment_date,
+            'reference'     => $request->reference,
+            'note'          => $request->note,
+        ]);
+
+        if (!$result['success']) {
+            Toastr::error($result['message']);
+            return back();
+        }
+
+        Toastr::success($result['message']);
+        if ($result['wa']) {
+            Toastr::info($result['wa']);
+        }
+        return back();
+    }
+
+    /** Payment history of one invoice, for the Mark as Paid dialog. */
+    public function invoice_payments($type, $id)
+    {
+        $type = InvoicePayments::normalizeType($type);
+        $invoice = InvoicePayments::find($type, $id);
+
+        if (!$invoice || $invoice->vendor_id != Helpers::get_store_id()) {
+            return response()->json(['status' => false, 'message' => 'Invoice not found'], 404);
+        }
+
+        $receipts = InvoicePayments::receiptsFor($type, (int) $invoice->id);
+        $paid = round((float) $receipts->sum('amount'), 2);
+
+        return response()->json([
+            'status'       => true,
+            'invoice_id'   => $invoice->invoice_id,
+            'total'        => round((float) $invoice->total_amount, 2),
+            'paid'         => $paid,
+            'balance'      => InvoicePayments::balanceOf($invoice, $type),
+            'total_text'   => _price($invoice->total_amount),
+            'paid_text'    => _price($paid),
+            'balance_text' => _price(InvoicePayments::balanceOf($invoice, $type)),
+            'receipts'     => $receipts->map(fn($r) => [
+                'receipt_no' => $r->receipt_no,
+                'date'       => Carbon::parse($r->payment_date ?? $r->created_at)->format('d M Y'),
+                'mode'       => $r->payment_mode,
+                'amount'     => _price($r->amount),
+                'balance'    => _price($r->balance_after),
+                'url'        => InvoicePayments::receiptUrl($r->pdf),
+            ])->values(),
+        ]);
     }
     public function reviews(Request $request)
     {
@@ -1566,7 +1605,132 @@ class ServiceController extends Controller
         // total_earning is the live wallet balance for this store; total_withdrawn isn't maintained here.
         $walletBalance = $wallet ? $wallet->total_earning : 0;
 
-        return view('vendor-views.service.lead_settings', compact('storeConfig', 'store_data', 'waFeatures', 'walletBalance'));
+        \App\Services\RepeatPurchaseReminder::ensureTables();
+        $repeatRules = DB::table('store_repeat_rules')->where('store_id', $storeId)
+            ->orderBy('label')->get();
+        $billedServiceNames = $this->billedServiceNames($storeId);
+
+        return view('vendor-views.service.lead_settings', compact(
+            'storeConfig', 'store_data', 'waFeatures', 'walletBalance', 'repeatRules', 'billedServiceNames'
+        ));
+    }
+
+    /**
+     * Service names this store has actually billed, for the rule form's suggestion list.
+     *
+     * A rule only fires if its name matches what was billed, so guessing at the spelling is the
+     * one way to configure a cycle that silently never triggers. These are the real strings off
+     * real invoices — both kinds, since a hand-typed billing line resolves by name too.
+     */
+    private function billedServiceNames(int $storeId): array
+    {
+        $noItem = function ($q) {
+            $q->whereNull('ii.inv_id')->orWhere('ii.inv_id', 0);
+        };
+
+        $names = DB::table('invoice_items as ii')
+            ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
+            ->where('mi.vendor_id', $storeId)
+            ->where('mi.created_at', '>=', now()->subDays(400))
+            ->where($noItem)
+            ->distinct()->pluck('ii.name')->all();
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('service_invoices')) {
+            $names = array_merge($names, DB::table('invoice_items as ii')
+                ->join('service_invoices as si', 'si.id', '=', 'ii.invoice_id')
+                ->where('si.vendor_id', $storeId)
+                ->where('si.created_at', '>=', now()->subDays(400))
+                ->where($noItem)
+                ->distinct()->pluck('ii.name')->all());
+        }
+
+        $names = array_values(array_unique(array_filter(array_map('trim', $names))));
+        sort($names, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return array_slice($names, 0, 300);
+    }
+
+    /**
+     * Save the per-service repeat purchase cycles.
+     *
+     * These exist because a service billed by name carries no item id, so there is nothing to
+     * hang a cycle off other than the name itself. Stocked items are set on the item form
+     * instead — see the Inventory item's "Remind the customer to buy this again".
+     */
+    public function repeat_rules_save(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        \App\Services\RepeatPurchaseReminder::ensureTables();
+
+        $taken = [];   // match_key => rule id, to keep the (store, key) unique index happy
+        foreach (DB::table('store_repeat_rules')->where('store_id', $storeId)->get() as $existing) {
+            $taken[$existing->match_key] = (int) $existing->id;
+        }
+
+        $clashes = 0;
+        foreach ((array) $request->input('rules', []) as $id => $row) {
+            $id = (int) $id;
+            $label = trim((string) ($row['label'] ?? ''));
+            $days  = (int) ($row['repeat_days'] ?? 0);
+            $key   = \App\Services\RepeatPurchaseReminder::matchKey($label);
+
+            if ($key === '' || $days <= 0 || !DB::table('store_repeat_rules')
+                ->where('id', $id)->where('store_id', $storeId)->exists()) {
+                continue;
+            }
+            // Renaming onto another rule's name would break the unique key — and silently merge
+            // two cycles the vendor still thinks are separate. Left alone and reported instead.
+            if (isset($taken[$key]) && $taken[$key] !== $id) {
+                $clashes++;
+                continue;
+            }
+
+            DB::table('store_repeat_rules')->where('id', $id)->update([
+                'label'       => mb_substr($label, 0, 190),
+                'match_key'   => $key,
+                'repeat_days' => min($days, 730),
+                'active'      => !empty($row['active']) ? 1 : 0,
+                'updated_at'  => now(),
+            ]);
+            $taken[$key] = $id;
+        }
+
+        $newLabel = trim((string) $request->input('new_label', ''));
+        $newDays  = (int) $request->input('new_repeat_days', 0);
+        $newKey   = \App\Services\RepeatPurchaseReminder::matchKey($newLabel);
+
+        if ($newKey !== '' && $newDays > 0) {
+            if (isset($taken[$newKey])) {
+                $clashes++;
+            } else {
+                DB::table('store_repeat_rules')->insert([
+                    'store_id'    => $storeId,
+                    'label'       => mb_substr($newLabel, 0, 190),
+                    'match_key'   => $newKey,
+                    'repeat_days' => min($newDays, 730),
+                    'active'      => 1,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+            }
+        }
+
+        if ($clashes) {
+            Toastr::warning($clashes . ' rule(s) skipped — you already have a rule for that service name.');
+        } else {
+            Toastr::success('Repeat reminder rules saved');
+        }
+
+        return back();
+    }
+
+    public function repeat_rule_delete($id)
+    {
+        $storeId = Helpers::get_store_id();
+        DB::table('store_repeat_rules')->where('id', (int) $id)->where('store_id', $storeId)->delete();
+        Toastr::success('Rule removed');
+
+        return back();
     }
 
     public function lead_settings_update(Request $request)

@@ -234,6 +234,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('list', 'ServiceController@invoice_list')->name('list')->middleware('permission:billing,list');
             Route::get('mark-paid/{type}/{id}', 'ServiceController@mark_paid')->name('mark-paid')->middleware('permission:billing,mark_paid');
             Route::post('mark-paid2', 'ServiceController@mark_paid2')->name('mark-paid2')->middleware('permission:billing,mark_paid');
+            Route::get('payments/{type}/{id}', 'ServiceController@invoice_payments')->name('payments')->middleware('permission:billing,view');
             Route::get('pay-bill/{invoice_id}', 'BillingController@pay_bill')->name('pay-bill')->middleware('permission:billing,pay');
             Route::get('make-payment/{invoice_id}', 'BillingController@make_payment')->name('make-payment')->middleware('permission:billing,pay');
             Route::get('delete/{type}/{invoice_id}', 'BillingController@delete')->name('delete')->middleware('permission:billing,delete');
@@ -708,6 +709,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('service/review-status', 'ServiceController@review_status')->name('service.review-status');
         Route::get('service/lead-settings', 'ServiceController@lead_settings')->name('service.lead-settings');
         Route::post('service/lead-settings', 'ServiceController@lead_settings_update')->name('service.lead-settings.update');
+        // Repeat purchase cycles for services billed by name (stocked items are set on the item form).
+        Route::post('service/repeat-rules', 'ServiceController@repeat_rules_save')->name('service.repeat-rules.save');
+        Route::get('service/repeat-rules/{id}/delete', 'ServiceController@repeat_rule_delete')->name('service.repeat-rules.delete');
         Route::get('service/lead-subscription', '\App\Http\Controllers\Vendor\LeadSubscriptionController@index')->name('service.lead-subscription');
         Route::post('service/lead-subscription/buy', '\App\Http\Controllers\Vendor\LeadSubscriptionController@buy')->name('service.lead-subscription.buy');
         Route::post('service/lead-subscription/gateway', '\App\Http\Controllers\Vendor\LeadSubscriptionController@initiate_gateway')->name('service.lead-subscription.gateway');

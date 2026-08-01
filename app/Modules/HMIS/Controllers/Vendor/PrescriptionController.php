@@ -276,8 +276,17 @@ class PrescriptionController extends Controller
 
         $storeId = (int) $rx->store_id;
 
-        HmisWhatsAppShare::auto('prescription', $storeId, (int) $rx->id,
-            fn() => HmisWhatsAppShare::prescription($rx));
+        // The prescription goes out one way or the other, never both. A link and an attachment are
+        // the same document — a hospital with both toggles on would pay for two messages to send
+        // the patient one prescription twice. The PDF wins where it is asked for, because unlike
+        // the link it does not expire and the patient can forward it on.
+        if (\App\Services\NotificationPrefs::enabled($storeId, 'whatsapp_send', 'hmis_prescription_pdf')) {
+            HmisWhatsAppShare::auto('prescription_pdf', $storeId, (int) $rx->id,
+                fn() => HmisWhatsAppShare::prescriptionPdf($rx));
+        } else {
+            HmisWhatsAppShare::auto('prescription', $storeId, (int) $rx->id,
+                fn() => HmisWhatsAppShare::prescription($rx));
+        }
 
         HmisWhatsAppShare::auto('medicines', $storeId, (int) $rx->id,
             fn() => HmisWhatsAppShare::medicines($rx));

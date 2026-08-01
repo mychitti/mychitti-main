@@ -56,6 +56,7 @@ class HmisWhatsAppShare
         'followup_reminder'     => 'Powers “Send follow-up” on a prescription and “Send reminder” on an appointment.',
         'visit_feedback'        => 'Powers “Ask for feedback” after an OPD visit or a completed appointment.',
         'lab_report_ready'      => 'Powers “WhatsApp” on Lab → Reports, once a report is verified.',
+        'patient_document'      => 'Powers “Send a document” on a patient — attaches any file from their record to the chat.',
     ];
 
     /**
@@ -98,6 +99,14 @@ class HmisWhatsAppShare
             'template' => 'lab_report_ready',
             'context'  => 'lab report',
         ],
+        // Anything the hospital decides to send that this system did not generate — a discharge
+        // summary typed in Word, an insurance form, a scan a patient brought in from elsewhere.
+        // Manual only: there is no rule that could decide on its own when to send one.
+        'document' => [
+            'label'    => 'Document',
+            'template' => 'patient_document',
+            'context'  => 'document',
+        ],
     ];
 
     /**
@@ -105,11 +114,17 @@ class HmisWhatsAppShare
      * A kind absent here can only ever be sent by hand.
      */
     const AUTO_PREFS = [
-        'treatment'    => 'hmis_treatment',
-        'prescription' => 'hmis_prescription',
-        'medicines'    => 'hmis_medicines',
+        'treatment'        => 'hmis_treatment',
+        'prescription'     => 'hmis_prescription',
+        'prescription_pdf' => 'hmis_prescription_pdf',
+        'medicines'        => 'hmis_medicines',
         'followup'     => 'hmis_followup',
         'feedback'     => 'hmis_feedback',
+        // Same toggle as 'feedback', separate kind on purpose. The dedupe key is
+        // (store, kind, record_id) with no source in it, so a walk-in visit #7 keyed as 'feedback'
+        // would collide with appointment #7's feedback and silently suppress one of them. A
+        // distinct kind keeps the two id spaces apart.
+        'feedback_opd' => 'hmis_feedback',
         'lab'          => 'hmis_lab_report',
     ];
 
@@ -401,6 +416,17 @@ class HmisWhatsAppShare
     public static function ensureTable(): void
     {
         if (Schema::hasTable('wa_patient_shares')) {
+            // sent_as separates a link send from a file send — the patient's profile lists both,
+            // and only one of them has a link left to open. title names a manually sent document,
+            // which is the only kind whose name isn't derivable from the record it points at.
+            foreach ([
+                'sent_as' => "VARCHAR(10) NOT NULL DEFAULT 'link'",
+                'title'   => 'VARCHAR(150) NULL',
+            ] as $col => $def) {
+                if (!Schema::hasColumn('wa_patient_shares', $col)) {
+                    DB::statement("ALTER TABLE `wa_patient_shares` ADD COLUMN `{$col}` {$def}");
+                }
+            }
             return;
         }
 
@@ -416,6 +442,8 @@ class HmisWhatsAppShare
             `token` VARCHAR(64) NOT NULL,
             `sent_to` VARCHAR(32) NULL,
             `sent_by` BIGINT NULL,
+            `sent_as` VARCHAR(10) NOT NULL DEFAULT 'link',
+            `title` VARCHAR(150) NULL,
             `views` INT NOT NULL DEFAULT 0,
             `first_viewed_at` TIMESTAMP NULL,
             `last_viewed_at` TIMESTAMP NULL,
@@ -614,6 +642,107 @@ class HmisWhatsAppShare
         ], true);
     }
 
+    /**
+     * Any file the hospital chooses to send this patient — a discharge summary, an insurance
+     * form, a scan they brought in from another clinic. Not every document a patient needs is one
+     * this system generated, and the ones it didn't generate used to have no way out of the panel.
+     *
+     * $storedPath is a path on the public disk (a patient document). It is copied to PDF_DIR under
+     * a random name rather than linked where it lies: /storage/patient/... is auth-gated by design,
+     * and Meta fetches the file itself with no session. The copy is what PruneSharedPdfs deletes
+     * once Meta has had time to collect it, so the exposed name is short-lived.
+     */
+    public static function document(int $storeId, Patient $patient, string $storedPath, ?string $title = null, ?string $phone = null, ?int $documentId = null): array
+    {
+        $label = trim((string) $title) ?: 'Document';
+
+        $file = self::stageFile($storedPath, $label);
+        if (!$file) {
+            return self::fail('Could not prepare that file for sending. Please try another file.');
+        }
+
+        return self::dispatch('document', $storeId, $patient, $phone, $documentId, [
+            self::name($patient),
+            self::storeName($storeId),
+            self::oneLine($label),
+            self::date(now()),
+        ], false, $file, $label);
+    }
+
+    /**
+     * Copy a stored document somewhere Meta can fetch it, and hand back the link and filename.
+     *
+     * An image is wrapped in a PDF first: the template's header is a DOCUMENT, and Meta rejects a
+     * JPEG offered as one. Patients are handed photographed reports constantly, so refusing them
+     * would gut the feature.
+     */
+    protected static function stageFile(string $storedPath, string $label): ?array
+    {
+        try {
+            $disk = Storage::disk('public');
+            if (!$disk->exists($storedPath)) {
+                return null;
+            }
+
+            $ext  = strtolower(pathinfo($storedPath, PATHINFO_EXTENSION));
+            $safe = preg_replace('/[^A-Za-z0-9\-_ ]/', '', $label) ?: 'Document';
+
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                return self::imageAsPdf($disk->path($storedPath), $safe);
+            }
+
+            $name = bin2hex(random_bytes(24)) . ($ext ? '.' . $ext : '');
+            $disk->copy($storedPath, self::PDF_DIR . '/' . $name);
+
+            return [
+                'url'      => asset('storage/app/public/' . self::PDF_DIR . '/' . $name),
+                'filename' => $safe . ($ext ? '.' . $ext : ''),
+                'stored'   => self::PDF_DIR . '/' . $name,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('HMIS document staging failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /** One image, one A4 page — enough to make a photographed report sendable as a document. */
+    protected static function imageAsPdf(string $absolutePath, string $safeLabel): ?array
+    {
+        try {
+            $temp = storage_path('app/tmp');
+            if (!is_dir($temp)) {
+                mkdir($temp, 0775, true);
+            }
+
+            $mpdf = new \Mpdf\Mpdf([
+                'mode'          => 'utf-8',
+                'format'        => 'A4',
+                'margin_left'   => 8,
+                'margin_right'  => 8,
+                'margin_top'    => 8,
+                'margin_bottom' => 8,
+                'tempDir'       => $temp,
+            ]);
+            $mpdf->WriteHTML('<div style="text-align:center;"><img src="' . $absolutePath . '" style="max-width:100%;"></div>');
+
+            $name = bin2hex(random_bytes(24)) . '.pdf';
+            $path = $temp . '/' . $name;
+            $mpdf->Output($path, 'F');
+
+            Storage::disk('public')->putFileAs(self::PDF_DIR, new File($path), $name);
+            @unlink($path);
+
+            return [
+                'url'      => asset('storage/app/public/' . self::PDF_DIR . '/' . $name),
+                'filename' => $safeLabel . '.pdf',
+                'stored'   => self::PDF_DIR . '/' . $name,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('HMIS image-to-PDF failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     /* ------------------------------------------------------------------ plumbing */
 
     /**
@@ -623,7 +752,7 @@ class HmisWhatsAppShare
      * $withLink appends the record URL as the last body parameter, so a template that ends in a
      * link has exactly one more parameter than the summary needs.
      */
-    protected static function dispatch(string $kind, int $storeId, Patient $patient, ?string $phone, ?int $recordId, array $params, bool $withLink, ?array $document = null): array
+    protected static function dispatch(string $kind, int $storeId, Patient $patient, ?string $phone, ?int $recordId, array $params, bool $withLink, ?array $document = null, ?string $title = null): array
     {
         try {
             $meta = self::KINDS[$kind] ?? null;
@@ -687,6 +816,13 @@ class HmisWhatsAppShare
                         . '(it is in the suggested list) and wait for Meta to approve it.';
                 }
                 return self::fail($error);
+            }
+
+            // A file send leaves no link to log, but the patient is holding the document all the
+            // same — record it so their profile shows what they were given, not only what they
+            // could open.
+            if (!$withLink && $document) {
+                self::recordFileSend($kind, $storeId, (int) $patient->id, $recordId, $to, $title);
             }
 
             self::log($storeId, $kind, $recordId, $patient, $to);
@@ -780,12 +916,80 @@ class HmisWhatsAppShare
             'token'      => $token,
             'sent_to'    => $sentTo ? mb_substr($sentTo, 0, 32) : null,
             'sent_by'    => auth('vendor_employee')->id() ?? auth('vendor')->id(),
+            'sent_as'    => 'link',
             'expires_at' => now()->addDays(self::LINK_DAYS),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         return route('patient-record', ['token' => $token]);
+    }
+
+    /**
+     * Log a document that went out as a file rather than a link, so it appears on the patient's
+     * profile alongside the link sends.
+     *
+     * The token is minted and revoked in the same breath. The column is unique and not null, and
+     * this row exists to be listed, never opened — the delivery was the attachment itself, and a
+     * live link nobody was ever given is a credential with no reason to exist.
+     */
+    protected static function recordFileSend(string $kind, int $storeId, int $patientId, ?int $recordId, ?string $sentTo, ?string $title = null): void
+    {
+        try {
+            self::ensureTable();
+
+            DB::table('wa_patient_shares')->insert([
+                'store_id'   => $storeId,
+                'patient_id' => $patientId,
+                'kind'       => $kind,
+                'record_id'  => $recordId,
+                'token'      => bin2hex(random_bytes(24)),
+                'sent_to'    => $sentTo ? mb_substr($sentTo, 0, 32) : null,
+                'sent_by'    => auth('vendor_employee')->id() ?? auth('vendor')->id(),
+                'sent_as'    => 'pdf',
+                'title'      => $title ? mb_substr($title, 0, 150) : null,
+                'revoked_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('HMIS share file log skipped: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Where the record behind a share lives inside the vendor panel, so staff reading the sent log
+     * can open the thing that was sent. One mapping, used by the patient profile and the sent-
+     * documents log alike — kind => record has to mean the same thing on every screen.
+     */
+    public static function panelUrl(string $kind, ?int $recordId): ?string
+    {
+        if (!$recordId) {
+            return null;
+        }
+
+        try {
+            switch ($kind) {
+                case 'treatment':
+                    return route('vendor.opd.show', $recordId);
+                case 'prescription':
+                case 'prescription_pdf':
+                case 'medicines':
+                    return route('vendor.prescription.show', $recordId);
+                case 'lab':
+                    return route('vendor.lab.orders.report', $recordId);
+            }
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return null;
+    }
+
+    /** Masked for display — a sent log is read across a busy desk. */
+    public static function maskedPhone(?string $phone): string
+    {
+        return self::maskPhone($phone);
     }
 
     protected static function log(int $storeId, string $kind, ?int $recordId, Patient $patient, string $phone): void

@@ -431,6 +431,10 @@ class OpdController extends Controller
         $diagnosisOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS);
         $treatmentOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_TREATMENT);
 
+        // This hospital's own casemix — how often each term is used and which treatments actually
+        // accompany which diagnosis here. Drives the ordering and the suggestion chips.
+        $termInsights = \App\Services\OpdTermInsights::for($store_id);
+
         // Follow-ups already on the books for this patient, so the doctor doesn't double-book.
         $upcomingVisits = \App\Models\Appointment::where('store_id', $store_id)
             ->where('patient_id', $visit->patient_id)
@@ -444,7 +448,7 @@ class OpdController extends Controller
         return view('hmis::vendor.opd.show', compact(
             'visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions',
             'labTests', 'radiologyTests', 'labOrders', 'radiologyStudies',
-            'diagnosisOptions', 'treatmentOptions', 'upcomingVisits'
+            'diagnosisOptions', 'treatmentOptions', 'upcomingVisits', 'termInsights'
         ));
     }
 
@@ -542,6 +546,13 @@ class OpdController extends Controller
         }
 
         $visit->save();
+
+        // The casemix just changed. Dropped rather than recomputed — the next page load rebuilds
+        // it, and a doctor who corrects a diagnosis should see that reflected on the next patient
+        // instead of waiting out an hour of cache.
+        if ($saved) {
+            \App\Services\OpdTermInsights::forget($store_id);
+        }
 
         return response()->json(['ok' => true] + $saved);
     }

@@ -753,6 +753,12 @@
             </div>
         </div>
     </div>
+
+    {{-- ── Documents Sent to Patient ────────────────────────────────────────────
+         Its own section, not a tab of the uploads panel: what the hospital sends out is a
+         different question from what it holds on file, and not everything sent is a
+         prescription or a bill. --}}
+    @include('hmis::vendor.patient._sent_section', ['patient' => $patient, 'sentDocs' => $sentDocs])
 </div>
 {{-- ── Floating Documents Panel ───────────────────────────────────────────────── --}}
 <div id="docsModalDialog" style="display:none; position:fixed; top:80px; left:50%; transform:translateX(-50%);
@@ -882,6 +888,25 @@ function openDocsPanel() {
     panel.style.display = '';
 }
 function closeDocsModal() { document.getElementById('docsModalDialog').style.display = 'none'; }
+
+// The exact link the patient was sent, so the desk can resend it in a chat or read it out.
+function copySentLink(btn, url) {
+    const done = () => {
+        const html = btn.innerHTML;
+        btn.innerHTML = '<i class="tio-checkmark"></i>';
+        setTimeout(() => { btn.innerHTML = html; }, 1500);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url).then(done).catch(() => window.prompt('Copy this link', url));
+        return;
+    }
+    // http:// panel — clipboard API is unavailable, so fall back to a selectable prompt.
+    const box = document.createElement('textarea');
+    box.value = url; box.style.position = 'fixed'; box.style.opacity = '0';
+    document.body.appendChild(box); box.select();
+    try { document.execCommand('copy'); done(); } catch (e) { window.prompt('Copy this link', url); }
+    document.body.removeChild(box);
+}
 
 function toggleUploadForm(cat) {
     const form = document.getElementById(cat + 'UploadForm');

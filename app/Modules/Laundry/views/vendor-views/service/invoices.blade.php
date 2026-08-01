@@ -158,11 +158,22 @@
                                             data-url="{{ route('vendor.invoice.mark-paid', ['type' => $conf->invoice_type, 'id' => $conf->id]) }}"
                                             data-message="{{ translate('messages.Do_you_want_to_mark_this_invoice_as_paid?') }}"
                                             href="javascript:;">Unpaid</a> --}}
+                                            @php
+                                                $paidSoFar = $conf->paid_amount ?? 0;
+                                                $dueNow = $conf->due_amount ?? $conf->total_amount;
+                                            @endphp
                                             @if (hasPermission('billing', 'pay'))
-                                                <a style="width: 74px;"
+                                                <a style="min-width: 74px;"
                                                     class="btn action-btn btn--warning btn-outline-warning mark_paid_btn"
-                                                    data-toggle="modal" data-id ="{{ $conf->id }}"
-                                                    data-target="#markPaidModal" href="javascript:;">Unpaid</a>
+                                                    data-toggle="modal" data-target="#markPaidModal" href="javascript:;"
+                                                    data-id="{{ $conf->id }}" data-type="{{ $conf->invoice_type }}"
+                                                    data-invoice="{{ $conf->invoice_id }}" data-balance="{{ $dueNow }}"
+                                                    data-total-text="{{ _price($conf->total_amount) }}"
+                                                    data-paid-text="{{ _price($paidSoFar) }}"
+                                                    data-balance-text="{{ _price($dueNow) }}">{{ $paidSoFar > 0 ? 'Part Paid' : 'Unpaid' }}</a>
+                                                @if ($paidSoFar > 0)
+                                                    <small class="d-block text-danger">Due {{ _price($dueNow) }}</small>
+                                                @endif
                                             @else
                                                 <span class="text-{{strtolower($conf->payment_status) == 'paid' ? 'success' : 'danger'}}">{{ucfirst($conf->payment_status)}}</span>
                                             @endif
@@ -216,6 +227,17 @@
                                                             View Invoice
                                                         </a>
                                                     @endif
+                                                @endif
+                                                @if (hasPermission('billing', 'view'))
+                                                    <a href="javascript:;"
+                                                        class="dropdown-item text-info view_receipts_btn"
+                                                        data-toggle="modal" data-target="#receiptsModal"
+                                                        data-id="{{ $conf->id }}"
+                                                        data-type="{{ $conf->invoice_type }}"
+                                                        data-invoice="{{ $conf->invoice_id }}"
+                                                        title="Payment receipts"><i class="tio-receipt-outlined"></i>
+                                                        Receipts
+                                                    </a>
                                                 @endif
                                                 @if (hasPermission('billing', 'edit'))
                                                     @if ($conf->type == 'service')
@@ -301,7 +323,7 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Mark as Paid</h5>
+                    <h5 class="modal-title" id="exampleModalLabel">Record Payment</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -310,7 +332,27 @@
                     @csrf
                     <div class="modal-body">
                         <input type="hidden" name="id" class="invoice_id_inp">
-                        <input type="hidden" name="type" value="manual" class="">
+                        <input type="hidden" name="type" value="manual" class="invoice_type_inp">
+
+                        <div class="d-flex justify-content-between border rounded p-2 mb-3">
+                            <div>
+                                <small class="text-muted d-block">Invoice</small>
+                                <b class="pay_invoice_no">—</b>
+                            </div>
+                            <div class="text-right">
+                                <small class="text-muted d-block">Bill amount</small>
+                                <b class="pay_total">—</b>
+                            </div>
+                            <div class="text-right">
+                                <small class="text-muted d-block">Received</small>
+                                <b class="text-success pay_paid">—</b>
+                            </div>
+                            <div class="text-right">
+                                <small class="text-muted d-block">Balance</small>
+                                <b class="text-danger pay_balance">—</b>
+                            </div>
+                        </div>
+
                         <div class="">
                             <div class="pos--payment-options">
                                 <label class="">{{ translate('payment mode') }}</label>
@@ -337,25 +379,94 @@
                             </div>
                         </div>
                         <div class="w-100 row">
-                            <div class="col-md-6 p-1 partial_payment" style="display: none">
-                                <label class="form-check-label mb-1" for="flexRadioDefault2">Cash Amount</label>
-                                <input class="form-control form-control-sm cash_amount" name="cash_amount" type="number"
-                                    placeholder="Ex: 2000" name="flexRadioDefault" id="flexRadioDefault2">
+                            <div class="col-md-6 p-1 single_amount">
+                                <label class="form-check-label mb-1">Amount Received</label>
+                                <input class="form-control form-control-sm amount_inp" name="amount" type="number"
+                                    step="0.01" min="0.01" placeholder="Ex: 2000">
+                                <small class="text-muted">Keep the full balance to settle the bill, or enter less to
+                                    take a part payment.</small>
                             </div>
                             <div class="col-md-6 p-1 partial_payment" style="display: none">
-                                <label class="form-check-label mb-1" for="flexRadioDefault2">Online Amount</label>
+                                <label class="form-check-label mb-1">Cash Amount</label>
+                                <input class="form-control form-control-sm cash_amount" name="cash_amount"
+                                    type="number" step="0.01" placeholder="Ex: 2000">
+                            </div>
+                            <div class="col-md-6 p-1 partial_payment" style="display: none">
+                                <label class="form-check-label mb-1">Online Amount</label>
                                 <input class="form-control form-control-sm online_amount" name="online_amount"
-                                    type="number" placeholder="Ex: 3000" name="flexRadioDefault"
-                                    id="flexRadioDefault2">
+                                    type="number" step="0.01" placeholder="Ex: 3000">
+                            </div>
+                            <div class="col-md-6 p-1">
+                                <label class="form-check-label mb-1">Payment Date</label>
+                                <input class="form-control form-control-sm payment_date_inp" name="payment_date"
+                                    type="date" value="{{ date('Y-m-d') }}">
+                            </div>
+                            <div class="col-md-6 p-1">
+                                <label class="form-check-label mb-1">Reference <span
+                                        class="text-muted">(optional)</span></label>
+                                <input class="form-control form-control-sm reference_inp" name="reference"
+                                    type="text" placeholder="UPI / cheque / txn no.">
                             </div>
                         </div>
 
+                        <div class="mt-3 receipts_wrap" style="display: none">
+                            <label class="mb-1">Receipts already issued</label>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tbody class="receipts_rows"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Mark Paid</button>
+                        <button type="submit" class="btn btn-primary">Record Payment</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="receiptsModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Payment Receipts — <span class="rcpt_invoice_no"></span></h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between border rounded p-2 mb-3">
+                        <div>
+                            <small class="text-muted d-block">Bill amount</small>
+                            <b class="rcpt_total">—</b>
+                        </div>
+                        <div class="text-right">
+                            <small class="text-muted d-block">Received</small>
+                            <b class="text-success rcpt_paid">—</b>
+                        </div>
+                        <div class="text-right">
+                            <small class="text-muted d-block">Balance</small>
+                            <b class="text-danger rcpt_balance">—</b>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Receipt No</th>
+                                    <th>Date</th>
+                                    <th>Mode</th>
+                                    <th class="text-right">Amount</th>
+                                    <th class="text-right">Balance After</th>
+                                </tr>
+                            </thead>
+                            <tbody class="rcpt_rows"></tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted rcpt_empty" style="display: none">No payments have been recorded against this
+                        invoice yet.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -535,12 +646,16 @@
                 }
             })
         }
+        // A split payment is described by its two legs, a single-mode one by the amount box — only
+        // ever show the pair that will actually be read on submit.
         $(document).on('change', 'input[name="payment_mode"]', function() {
             var val = $(this).val();
             if (val == 'Cash and Online') {
                 $(".partial_payment").show()
+                $(".single_amount").hide()
             } else {
                 $(".partial_payment").hide()
+                $(".single_amount").show()
             }
         })
         $('#importForm').on('submit', function(e) {
@@ -690,10 +805,89 @@
                 $(".check_item").prop('checked', false)
             }
         })
+        var paymentsUrl = "{{ route('vendor.invoice.payments', ['type' => 'TYPE', 'id' => 'ID']) }}";
+
         $('.mark_paid_btn').on('click', function() {
-            let id = $(this).attr('data-id')
+            let btn = $(this);
+            let id = btn.attr('data-id');
+            let type = btn.attr('data-type') || 'manual';
+
             $(".invoice_id_inp").val(id);
+            $(".invoice_type_inp").val(type);
+            $(".pay_invoice_no").text(btn.attr('data-invoice') || '—');
+            $(".pay_total").text(btn.attr('data-total-text') || '—');
+            $(".pay_paid").text(btn.attr('data-paid-text') || '—');
+            $(".pay_balance").text(btn.attr('data-balance-text') || '—');
+
+            // Defaults to the whole balance: settling a bill in full is the common case, and a
+            // part payment is one edit away from it.
+            $(".amount_inp").val(btn.attr('data-balance')).attr('max', btn.attr('data-balance'));
+            $(".cash_amount, .online_amount, .reference_inp").val('');
+            $(".payment_date_inp").val("{{ date('Y-m-d') }}");
+            $('input[name="payment_mode"][value="Cash"]').prop('checked', true);
+            $(".partial_payment").hide();
+            $(".single_amount").show();
+
+            loadReceipts(type, id);
         })
+
+        $('.view_receipts_btn').on('click', function() {
+            let btn = $(this);
+            $(".rcpt_invoice_no").text(btn.attr('data-invoice') || '');
+            $(".rcpt_total, .rcpt_paid, .rcpt_balance").text('—');
+            $(".rcpt_rows").html('');
+            $(".rcpt_empty").hide();
+
+            $.get(paymentsUrl.replace('TYPE', btn.attr('data-type') || 'manual').replace('ID', btn.attr(
+                'data-id')), function(data) {
+                if (!data.status) {
+                    return;
+                }
+                $(".rcpt_total").text(data.total_text);
+                $(".rcpt_paid").text(data.paid_text);
+                $(".rcpt_balance").text(data.balance_text);
+
+                if (!data.receipts.length) {
+                    $(".rcpt_empty").show();
+                    return;
+                }
+                let rows = '';
+                data.receipts.forEach(function(r) {
+                    rows += '<tr><td>' + (r.url ? '<a target="_blank" href="' + r.url + '">' + r
+                            .receipt_no + '</a>' : r.receipt_no) + '</td><td>' + r.date +
+                        '</td><td>' + r.mode + '</td><td class="text-right">' + r.amount +
+                        '</td><td class="text-right">' + r.balance + '</td></tr>';
+                });
+                $(".rcpt_rows").html(rows);
+            });
+        })
+
+        function loadReceipts(type, id) {
+            $(".receipts_wrap").hide();
+            $(".receipts_rows").html('');
+
+            $.get(paymentsUrl.replace('TYPE', type).replace('ID', id), function(data) {
+                if (!data.status || !data.receipts.length) {
+                    return;
+                }
+                let rows = '';
+                data.receipts.forEach(function(r) {
+                    rows += '<tr><td>' + (r.url ? '<a target="_blank" href="' + r.url + '">' + r
+                            .receipt_no + '</a>' : r.receipt_no) + '</td><td>' + r.date +
+                        '</td><td>' + r.mode + '</td><td class="text-right">' + r.amount +
+                        '</td><td class="text-right text-muted">bal ' + r.balance + '</td></tr>';
+                });
+                $(".receipts_rows").html(rows);
+                $(".receipts_wrap").show();
+
+                // The list was rendered before this payment; the dialog re-reads the live balance
+                // so two people taking money at once can't both be shown the stale figure.
+                $(".pay_total").text(data.total_text);
+                $(".pay_paid").text(data.paid_text);
+                $(".pay_balance").text(data.balance_text);
+                $(".amount_inp").val(data.balance).attr('max', data.balance);
+            });
+        }
     </script>
     @include('vendor-views/js/date_range')
 @endpush

@@ -18,6 +18,26 @@ use Illuminate\Support\Str;
 
 class DoctorController extends Controller
 {
+    /**
+     * How long after a completed visit this doctor's patients are invited back.
+     *
+     * 0 means never — the right default for a speciality where recall is not a thing. Leaving the
+     * value untouched when the form did not submit the control keeps any other save path from
+     * clearing an interval the hospital set.
+     */
+    private function applyRebookInterval(DoctorProfile $doctor, Request $request): void
+    {
+        if (!$request->has('rebook_reminder')) {
+            return;
+        }
+
+        \App\Services\AppointmentRebookReminder::ensureColumn();
+
+        $days = (int) $request->input('rebook_days', 0);
+        $doctor->rebook_days = ($request->boolean('rebook_reminder') && $days > 0) ? min($days, 730) : 0;
+        $doctor->save();
+    }
+
     public function index()
     {
         $store_id = Helpers::get_store_id();
@@ -104,6 +124,7 @@ class DoctorController extends Controller
                 'bio'                 => $request->bio,
             ]);
 
+            $this->applyRebookInterval($doctor, $request);
             $this->syncServices($doctor->id, $request->input('services', []));
 
             $doctorRole = EmployeeRole::firstOrCreate(
@@ -133,6 +154,7 @@ class DoctorController extends Controller
     public function edit($id)
     {
         if (!auth('vendor')->check() && !hasPermission('staff_doctor', 'edit')) abort(403);
+        \App\Services\AppointmentRebookReminder::ensureColumn();
         $store_id = Helpers::get_store_id();
         $doctor   = DoctorProfile::with('services')->where('store_id', $store_id)->with('employee', 'slots')->findOrFail($id);
 
@@ -181,6 +203,7 @@ class DoctorController extends Controller
             'bio'                 => $request->bio,
         ]);
 
+        $this->applyRebookInterval($doctor, $request);
         $this->syncServices($doctor->id, $request->input('services', []));
 
         $doctor->load('employee');

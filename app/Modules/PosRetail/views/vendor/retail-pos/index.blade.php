@@ -374,8 +374,8 @@
                         <div id="cam-scan" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:1080; align-items:center; justify-content:center;">
                             <div style="background:#fff; border-radius:14px; padding:16px; width:340px; max-width:92vw; text-align:center;">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <b>Scan a barcode</b>
-                                    <a href="javascript:;" id="cam-close" class="text-danger" style="font-size:20px;">&times;</a>
+                                    <b>Scan barcodes</b>
+                                    <a href="javascript:;" id="cam-close" class="text-danger font-weight-bold" style="font-size:13px;">Done &times;</a>
                                 </div>
                                 <div id="cam-reader" style="width:100%;"></div>
                                 <div class="small text-muted mt-2" id="cam-msg">Point the camera at the product barcode.</div>
@@ -1286,7 +1286,7 @@
                 searchTimer = setTimeout(() => {
                     const code = searchBox.value.trim();
                     fastCount = 0;
-                    if (code) lookup(code, true);
+                    if (code) lookup(code, true, true);
                 }, 130);
             } else {
                 searchTimer = setTimeout(() => lookup(q, false), 200);
@@ -1294,10 +1294,50 @@
         });
 
         searchBox.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimer); fastCount = 0; lookup(this.value.trim(), true); }
+            if (e.key !== 'Enter') return;
+            e.preventDefault(); clearTimeout(searchTimer);
+            const wasScan = fastCount >= 3; // scanner's trailing Enter, not a typed search
+            fastCount = 0;
+            lookup(this.value.trim(), true, wasScan);
         });
 
-        function lookup(q, exact) {
+        // A picker that owns the screen (variation choice, weight prompt). The backdrop lands
+        // synchronously even when the modal itself fades in, so this is safe to test right after
+        // addToCart().
+        function promptOpen() { return !!document.querySelector('.modal.show, .modal.in, .modal-backdrop'); }
+        function camOpen() { const c = document.getElementById('cam-scan'); return !!c && c.style.display !== 'none'; }
+
+        // Ready for the next scan: empty box, no stale dropdown, burst detection reset,
+        // and the caret back in the search field.
+        function armScanner() {
+            searchBox.value = '';
+            resultsBox.style.display = 'none';
+            fastCount = 0; lastInputAt = 0;
+            const h = document.querySelector('.search-hint'); if (h) h.style.display = '';
+            // Don't grab focus behind a picker, or on a phone with the camera open (it would
+            // throw the on-screen keyboard over the viewfinder).
+            if (!promptOpen() && !camOpen()) searchBox.focus();
+        }
+
+        // A USB scanner types into whatever has focus. If that is not a field — the cashier
+        // clicked a button, or a modal just closed — send the keystroke to the search box so
+        // the scan still lands instead of being swallowed by the page.
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey || e.altKey || e.metaKey || !e.key || e.key.length !== 1) return;
+            if (promptOpen() || camOpen()) return;
+            const el = document.activeElement, tag = ((el && el.tagName) || '').toLowerCase();
+            if (tag === 'input' || tag === 'select' || tag === 'textarea' || (el && el.isContentEditable)) return;
+            searchBox.focus();
+        });
+
+        // Variation picker / weight prompt closed → the scanner is free again. hidden.bs.modal is
+        // a jQuery event, and jQuery loads after this script, so bind as soon as it exists.
+        (function bindModalRefocus(tries) {
+            if (!window.jQuery) { if ((tries || 0) < 40) setTimeout(() => bindModalRefocus((tries || 0) + 1), 250); return; }
+            window.jQuery(document).on('hidden.bs.modal', function () { setTimeout(() => searchBox.focus(), 60); });
+        })(0);
+
+        function lookup(q, exact, fromScan) {
             if (!q) return Promise.resolve(null);
             return fetch(POS.products + '?q=' + encodeURIComponent(q) + (exact ? '&exact=1' : '') + '&branch=' + encodeURIComponent(posBranch()))
                 .then(r => r.json())
@@ -1311,16 +1351,22 @@
                                 activeVariations = it.variations;
                                 activeParentItem = it;
                                 selectVarIndex(vIdx);
-                                searchBox.value = ''; resultsBox.style.display = 'none'; searchBox.focus();
-                                const h0 = document.querySelector('.search-hint'); if (h0) h0.style.display = '';
+                                armScanner();
                                 if (window.toastr) toastr.success(it.name + ' (' + it.matched_variation + ') added to cart');
                                 return it;
                             }
                         }
-                        addToCart(it); searchBox.value = ''; resultsBox.style.display = 'none'; searchBox.focus();
-                        const h = document.querySelector('.search-hint'); if (h) h.style.display = '';
+                        addToCart(it);
+                        armScanner();
                         if (window.toastr) toastr.success(it.name + ' added to cart');
                         return it;
+                    }
+                    // A scan that matched nothing must not leave its digits in the box — the next
+                    // barcode would be typed onto the end of it.
+                    if (fromScan) {
+                        armScanner();
+                        if (!camOpen() && window.toastr) toastr.error('No product for barcode ' + q);
+                        return null;
                     }
                     if (!d.items.length) { resultsBox.innerHTML = '<div class="res-row text-muted">No products</div>'; resultsBox.style.display = 'block'; return null; }
                     resultsBox.innerHTML = d.items.map(it =>
@@ -1332,7 +1378,7 @@
                     resultsBox.querySelectorAll('.res-row[data-it]').forEach(row => {
                         row.addEventListener('click', () => {
                             addToCart(JSON.parse(row.getAttribute('data-it')));
-                            searchBox.value = ''; resultsBox.style.display = 'none'; searchBox.focus();
+                            armScanner();
                         });
                     });
                     return null;
@@ -1706,11 +1752,11 @@
         (function () {
             const overlay = document.getElementById('cam-scan');
             const msg = document.getElementById('cam-msg');
-            let cam = null, lastCode = '', lastAt = 0, scanBusy = false;
+            let cam = null, lastCode = '', lastAt = 0, scanBusy = false, scanned = 0;
 
             function open() {
                 if (typeof Html5Qrcode === 'undefined') { (window.toastr ? toastr.error : alert)('Scanner library not loaded'); return; }
-                scanBusy = false; lastCode = ''; msg.textContent = 'Point the camera at the product barcode.';
+                scanBusy = false; lastCode = ''; scanned = 0; msg.textContent = 'Point the camera at the product barcode.';
                 overlay.style.display = 'flex';
                 cam = new Html5Qrcode('cam-reader');
                 cam.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, onScan, () => {})
@@ -1719,17 +1765,22 @@
             function close() {
                 overlay.style.display = 'none';
                 if (cam) { cam.stop().then(() => cam.clear()).catch(() => {}); cam = null; }
+                if (!promptOpen()) searchBox.focus(); // hand the keyboard wedge back to the search box
             }
             function onScan(code) {
                 const now = Date.now();
                 if (scanBusy || (code === lastCode && now - lastAt < 1500)) return; // de-dupe rapid frames
                 lastCode = code; lastAt = now; scanBusy = true;
                 if (navigator.vibrate) navigator.vibrate(60);
-                // Exact match adds to cart; on success close the scanner and notify (toast comes
-                // from lookup). If nothing matched, keep scanning and show a hint.
-                lookup(code, true).then(item => {
-                    if (item) { msg.textContent = 'Added: ' + item.name; close(); }
-                    else { msg.textContent = 'Not found: ' + code; scanBusy = false; }
+                // Exact match adds to cart, then the scanner stays open and re-arms for the next
+                // barcode — a basket is many items, not one. Only a prompt that needs the screen
+                // (variation picker / weight) closes it; nothing matched keeps scanning.
+                lookup(code, true, true).then(item => {
+                    if (!item) { msg.textContent = 'Not found: ' + code; scanBusy = false; return; }
+                    scanned++;
+                    if (promptOpen()) { msg.textContent = 'Added: ' + item.name; close(); return; }
+                    msg.textContent = '✅ ' + item.name + ' added (' + scanned + ') — scan the next barcode';
+                    setTimeout(() => { scanBusy = false; }, 600);
                 }).catch(() => { scanBusy = false; });
             }
 

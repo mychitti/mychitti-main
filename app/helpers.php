@@ -1357,6 +1357,20 @@ function _createBillPdf($invoice, $from, $shipping_address_id = null, $renderOnl
     $bill_data['change_return'] = $tendered > 0 ? max(0, round($tendered - (float) $invoice->total_amount, 2)) : 0;
     $bill_data['balance_due']   = $tendered > 0 ? max(0, round((float) $invoice->total_amount - $tendered, 2)) : 0;
 
+    // Part payments taken against this bill, so the PDF the customer holds shows what they have
+    // already handed over and what is still owed — not just the original total.
+    $bill_data['receipts']    = collect();
+    $bill_data['paid_total']  = 0;
+    $bill_data['amount_due']  = 0;
+    if (!$quotation) {
+        $bill_data['receipts'] = \App\Services\InvoicePayments::receiptsFor(
+            $invoice instanceof ServiceInvoice ? 'service' : 'manual',
+            (int) $invoice->id
+        );
+        $bill_data['paid_total'] = round((float) $bill_data['receipts']->sum('amount'), 2);
+        $bill_data['amount_due'] = max(0, round((float) $invoice->total_amount - $bill_data['paid_total'], 2));
+    }
+
     // Customer savings vs MRP: Σ(mrp − selling price)·qty per line, plus bill discount + coupon.
     $bill_data['total_saved'] = 0;
     if (!$quotation) {

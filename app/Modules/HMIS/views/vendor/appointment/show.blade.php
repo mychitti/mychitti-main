@@ -11,26 +11,9 @@
                 Appointment Detail
             </h1>
             <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-                {{-- A reminder only makes sense while the visit is still ahead, and feedback only
-                     once it has happened — so the two never show at the same time. --}}
-                @if (in_array($appointment->status, ['scheduled', 'checked_in']))
-                    @include('hmis::vendor._wa_send', [
-                        'action' => route('vendor.hmis-whatsapp.appointment-followup', $appointment->id),
-                        'label'  => 'Send reminder',
-                        'phone'  => $appointment->patient?->phone ?? '',
-                        'note'   => 'Confirms the date, time and doctor for this visit. The automatic reminder before the appointment still goes out as usual.',
-                    ])
-                @endif
-                @if ($appointment->status === 'completed')
-                    @include('hmis::vendor._wa_send', [
-                        'action' => route('vendor.hmis-whatsapp.appointment-feedback', $appointment->id),
-                        'label'  => 'Ask for feedback',
-                        'class'  => 'btn btn-sm btn-outline-secondary',
-                        'icon'   => 'tio-star-outlined',
-                        'phone'  => $appointment->patient?->phone ?? '',
-                        'note'   => 'Asks how the visit went, with one-tap answers. Replies land in WhatsApp → Chats.',
-                    ])
-                @endif
+                {{-- Nothing to press here. The reminder before the visit and the feedback request
+                     after it are both standing settings under Notification Settings, sent by the
+                     scheduled sweep and by autoSendOnCompletion respectively. --}}
                 <a href="{{ route('vendor.appointment.list') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="tio-arrow-backward"></i> Back
                 </a>

@@ -15,6 +15,7 @@ use App\Jobs\Scheduled\PruneSharedPdfsJob;
 use App\Jobs\Scheduled\RegenerateSitemapJob;
 use App\Jobs\Scheduled\RunWhatsAppCampaignsJob;
 use App\Jobs\Scheduled\SendDueHmisMessagesJob;
+use App\Jobs\Scheduled\SendAppointmentRebookRemindersJob;
 use App\Jobs\Scheduled\SendRepeatPurchaseRemindersJob;
 use App\Jobs\Scheduled\SendAppointmentRemindersJob;
 use App\Jobs\Scheduled\SendPaymentRemindersJob;
@@ -81,6 +82,13 @@ class Kernel extends ConsoleKernel
         $schedule->job(new SendRepeatPurchaseRemindersJob)->dailyAt('10:30')
             ->timezone($tz)
             ->name('repeat-purchase-reminders')
+            ->withoutOverlapping();
+
+        // "Due for a check-up?" — patients past their doctor's recall interval with nothing booked.
+        // Half an hour after the retail sweep so the two never contend for the same wallet check.
+        $schedule->job(new SendAppointmentRebookRemindersJob)->dailyAt('11:00')
+            ->timezone($tz)
+            ->name('appointment-rebook-reminders')
             ->withoutOverlapping();
 
         // Feedback requests and follow-up reminders the vendor asked to delay.

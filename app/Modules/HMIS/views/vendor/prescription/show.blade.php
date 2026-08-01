@@ -20,37 +20,12 @@
         </div>
         @if (hasPermission('prescription', 'print'))
         <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-            {{-- Three different things a patient needs from one prescription: the document itself,
-                 how to actually take the medicines, and when to come back. --}}
-            @include('hmis::vendor._wa_send', [
-                'action' => route('vendor.hmis-whatsapp.prescription', $rx->id),
-                'label'  => 'Send prescription',
-                'phone'  => $rx->patient?->phone ?? '',
-                'note'   => 'The patient gets a message with a private link to this prescription — they can read, save or print it.',
-            ])
-            @include('hmis::vendor._wa_send', [
-                'action' => route('vendor.hmis-whatsapp.prescription-pdf', $rx->id),
-                'label'  => 'Send as PDF',
-                'icon'   => 'tio-file-text',
-                'phone'  => $rx->patient?->phone ?? '',
-                'note'   => 'Attaches the prescription as a PDF the patient keeps in their chat. Unlike the link, an attachment does not expire and can be forwarded on.',
-            ])
-            @include('hmis::vendor._wa_send', [
-                'action' => route('vendor.hmis-whatsapp.medicines', $rx->id),
-                'label'  => 'Send medicine instructions',
-                'icon'   => 'tio-drop',
-                'phone'  => $rx->patient?->phone ?? '',
-                'note'   => 'A plain-language message on how to take each medicine — dose, timing and how long — with the full list behind a private link.',
-            ])
-            @if ($rx->follow_up_date)
-                @include('hmis::vendor._wa_send', [
-                    'action' => route('vendor.hmis-whatsapp.prescription-followup', $rx->id),
-                    'label'  => 'Send follow-up',
-                    'icon'   => 'tio-calendar',
-                    'phone'  => $rx->patient?->phone ?? '',
-                    'note'   => 'Reminds the patient that their next visit is due on ' . \Carbon\Carbon::parse($rx->follow_up_date)->format('d M Y') . '.',
-                ])
-            @endif
+            {{-- No WhatsApp buttons here on purpose. What the patient is sent — the prescription,
+                 the medicine instructions, the follow-up — is a standing decision the hospital
+                 makes once under Notification Settings, and it goes out on its own the moment the
+                 prescription is finalized (PrescriptionController::autoSendToPatient). A per-record
+                 button next to it only invites sending the same thing a second time, by hand, to a
+                 patient who already has it. --}}
             <button onclick="window.print()" class="btn btn--primary btn-sm">
                 <i class="tio-print"></i> Print
             </button>

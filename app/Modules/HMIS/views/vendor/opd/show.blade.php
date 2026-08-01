@@ -435,6 +435,43 @@
         border: 1px solid #ddd6fe;
         color: #6d28d9;
     }
+    /* Tappable suggestion chips. Deliberately quieter than the saved badges above — these are
+       offers, and they must not read as something already recorded on the visit. */
+    .term-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 9px;
+        margin: 0 4px 4px 0;
+        border-radius: 999px;
+        border: 1px dashed #cbd5e1;
+        background: #fff;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .12s, border-color .12s, color .12s;
+    }
+    .term-chip:hover {
+        border-color: #94a3b8;
+        background: #f8fafc;
+    }
+    .term-chip.is-on {
+        border-style: solid;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+    }
+    .term-chip-suggest:hover {
+        background: #f5f3ff;
+        border-color: #ddd6fe;
+        color: #6d28d9;
+    }
+    .term-chip-count {
+        font-size: 10px;
+        font-weight: 700;
+        opacity: .55;
+    }
     #dxEdit .select2-container--default .select2-selection--multiple {
         border-color: #e7eaf3;
         min-height: 34px;
@@ -670,25 +707,11 @@
             <div class="token-status">
                 Token {{ $visit->token_number }} / {{ \App\Models\OpdVisit::where('store_id', $visit->store_id)->whereDate('visit_date', $visit->visit_date)->count() }}
             </div>
-            {{-- Sending the summary is what closes the loop with the patient — it belongs beside
-                 the consultation, not on a separate screen someone has to remember to visit. --}}
-            @if (hasPermission('opd_register', 'view'))
-                @include('hmis::vendor._wa_send', [
-                    'action' => route('vendor.hmis-whatsapp.treatment', $visit->id),
-                    'label'  => 'Send summary',
-                    'class'  => 'btn btn-sm btn-outline-success',
-                    'phone'  => $visit->patient?->phone ?? '',
-                    'note'   => 'The patient gets the diagnosis in the message, with the full summary — treatment advised, vitals and notes — behind a private link.',
-                ])
-                @include('hmis::vendor._wa_send', [
-                    'action' => route('vendor.hmis-whatsapp.opd-feedback', $visit->id),
-                    'label'  => 'Ask for feedback',
-                    'class'  => 'btn btn-sm btn-outline-secondary',
-                    'icon'   => 'tio-star-outlined',
-                    'phone'  => $visit->patient?->phone ?? '',
-                    'note'   => 'Asks how their visit went, with one-tap answers. Replies land in WhatsApp → Chats.',
-                ])
-            @endif
+            {{-- The summary and the feedback request are standing decisions the hospital makes
+                 under Notification Settings, and both go out on their own once the consultation is
+                 billed (OpdConsultationReceiptController::autoSendToPatient) or the appointment is
+                 marked completed. No button here: it would only offer to send a patient the same
+                 summary a second time. --}}
             <a href="{{ route('vendor.opd.index') }}" class="btn-back-queue">
                 ← OPD Queue
             </a>
@@ -997,8 +1020,28 @@
                 @php
                     $dxCurrent = $visit->diagnosis_list;
                     $txCurrent = $visit->treatment_list;
-                    $dxChoices = collect($diagnosisOptions ?? [])->merge($dxCurrent)->unique()->sort()->values();
-                    $txChoices = collect($treatmentOptions ?? [])->merge($txCurrent)->unique()->sort()->values();
+                    $dxUsage = $termInsights['diagnosis'] ?? [];
+                    $txUsage = $termInsights['treatment'] ?? [];
+
+                    // Most-used first, alphabetical to break ties. A busy OPD sees the same dozen
+                    // presentations all morning; making the doctor scroll past Anaemia to reach
+                    // Viral Fever every time is the whole problem with an alphabetical list.
+                    //
+                    // Ranked on the normalised key, so a term that differs from the recorded
+                    // spelling only by case or spacing still finds its own history.
+                    $rankTerms = function ($choices, $usage) {
+                        $count = fn($term) => $usage[\App\Services\OpdTermInsights::key($term)] ?? 0;
+
+                        return collect($choices)->unique()->sort(function ($a, $b) use ($count) {
+                            return ($count($b) <=> $count($a)) ?: strcasecmp($a, $b);
+                        })->values();
+                    };
+
+                    $dxChoices = $rankTerms(collect($diagnosisOptions ?? [])->merge($dxCurrent), $termInsights['diagnosisByKey'] ?? []);
+                    $txChoices = $rankTerms(collect($treatmentOptions ?? [])->merge($txCurrent), $termInsights['treatmentByKey'] ?? []);
+
+                    // One-tap chips for what this hospital actually sees most.
+                    $dxQuick = collect($dxUsage)->keys()->take(\App\Services\OpdTermInsights::TOP_QUICK);
                 @endphp
                 <div class="card shadow-none border mb-3">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
@@ -1035,6 +1078,20 @@
                     </div>
                     @if (hasPermission('opd_register', 'edit'))
                         <div class="card-body py-3" id="dxEdit" style="display:none;">
+                            @if ($dxQuick->isNotEmpty())
+                                <div class="mb-2">
+                                    <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">
+                                        Seen most here
+                                    </div>
+                                    @foreach ($dxQuick as $term)
+                                        <button type="button" class="term-chip" data-term="{{ $term }}"
+                                            onclick="toggleChipTerm('dxSelect', this)"
+                                            title="Recorded {{ $dxUsage[$term] }} time{{ $dxUsage[$term] == 1 ? '' : 's' }} in the last two years">
+                                            {{ $term }} <span class="term-chip-count">{{ $dxUsage[$term] }}</span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
                             <div class="row">
                                 <div class="col-md-6 form-group mb-2">
                                     <label class="input-label" style="font-size:12px">Diagnosis</label>
@@ -1043,7 +1100,7 @@
                                             <option value="{{ $term }}" @if(in_array($term, $dxCurrent)) selected @endif>{{ $term }}</option>
                                         @endforeach
                                     </select>
-                                    <small class="text-muted">Pick from the list, or type a new one and press Enter.</small>
+                                    <small class="text-muted">Most-used first. Pick from the list, or type a new one and press Enter.</small>
                                 </div>
                                 <div class="col-md-6 form-group mb-2">
                                     <label class="input-label" style="font-size:12px">Treatment</label>
@@ -1052,8 +1109,17 @@
                                             <option value="{{ $term }}" @if(in_array($term, $txCurrent)) selected @endif>{{ $term }}</option>
                                         @endforeach
                                     </select>
-                                    <small class="text-muted">Pick from the list, or type a new one and press Enter.</small>
+                                    <small class="text-muted">Most-used first. Pick from the list, or type a new one and press Enter.</small>
                                 </div>
+                            </div>
+                            {{-- Populated from the diagnoses currently selected. Suggestions only —
+                                 what this hospital has in fact given for that diagnosis before,
+                                 never applied on the doctor's behalf. --}}
+                            <div id="txSuggestBox" class="mb-2" style="display:none;">
+                                <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">
+                                    Usually given here for <span id="txSuggestFor" class="text-dark"></span>
+                                </div>
+                                <div id="txSuggest"></div>
                             </div>
                             <div class="mt-2 d-flex gap-2">
                                 <button class="btn btn-sm btn-primary" onclick="saveDxTx(this)">Save</button>
@@ -2086,6 +2152,15 @@
     // ── Diagnosis & Treatment (Select2 tags: pick from the list or type a new term) ──
     let dxSelect2Ready = false;
 
+    // diagnosis (normalised) => { treatment: timesGivenTogether }, built from this hospital's own
+    // visits. See App\Services\OpdTermInsights.
+    const dxTxPairs = @json($termInsights['pairs'] ?? new stdClass);
+
+    // Must match OpdTermInsights::key() — the map is keyed with it.
+    function termKey(term) {
+        return String(term || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    }
+
     function initDxSelect2() {
         if (dxSelect2Ready || typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
         jQuery('#dxSelect').select2({
@@ -2093,15 +2168,105 @@
             width: '100%',
             tokenSeparators: [','],
             placeholder: 'Select or type a diagnosis…'
-        });
+        }).on('change', renderTxSuggestions);
         jQuery('#txSelect').select2({
             tags: true,
             width: '100%',
             tokenSeparators: [','],
             placeholder: 'Select or type a treatment…',
             containerCssClass: 'tx-select2'
+        }).on('change', function () {
+            syncChipState('dxSelect');
+            renderTxSuggestions();
         });
         dxSelect2Ready = true;
+        syncChipState('dxSelect');
+        renderTxSuggestions();
+    }
+
+    /** Select a term on a picker, creating the option when it is one the list has never seen. */
+    function addTermTo(selectId, term) {
+        const el = document.getElementById(selectId);
+        if (!el) return;
+        let opt = Array.from(el.options).find(o => o.value.toLowerCase() === term.toLowerCase());
+        if (!opt) {
+            opt = new Option(term, term, true, true);
+            el.appendChild(opt);
+        }
+        opt.selected = true;
+        if (window.jQuery) jQuery(el).trigger('change');
+    }
+
+    function removeTermFrom(selectId, term) {
+        const el = document.getElementById(selectId);
+        if (!el) return;
+        Array.from(el.options).forEach(o => {
+            if (o.value.toLowerCase() === term.toLowerCase()) o.selected = false;
+        });
+        if (window.jQuery) jQuery(el).trigger('change');
+    }
+
+    /** A "seen most here" chip toggles that diagnosis rather than only adding it. */
+    function toggleChipTerm(selectId, btn) {
+        const term = btn.dataset.term;
+        const on = selectedTerms(selectId).some(t => t.toLowerCase() === term.toLowerCase());
+        if (on) {
+            removeTermFrom(selectId, term);
+        } else {
+            addTermTo(selectId, term);
+        }
+        syncChipState(selectId);
+    }
+
+    function syncChipState(selectId) {
+        const chosen = selectedTerms(selectId).map(t => t.toLowerCase());
+        document.querySelectorAll('#dxEdit .term-chip[data-term]').forEach(chip => {
+            chip.classList.toggle('is-on', chosen.includes(chip.dataset.term.toLowerCase()));
+        });
+    }
+
+    /**
+     * Treatments this hospital has actually given alongside the selected diagnoses.
+     *
+     * Ranked by how often the pairing occurred, and anything already on the treatment picker is
+     * dropped so the row only ever offers something new to add.
+     */
+    function renderTxSuggestions() {
+        const box = document.getElementById('txSuggestBox');
+        const list = document.getElementById('txSuggest');
+        if (!box || !list) return;
+
+        const dx = selectedTerms('dxSelect');
+        const already = selectedTerms('txSelect').map(t => t.toLowerCase());
+
+        const scores = {};
+        dx.forEach(term => {
+            const found = dxTxPairs[termKey(term)];
+            if (!found) return;
+            Object.keys(found).forEach(tx => {
+                if (already.includes(tx.toLowerCase())) return;
+                scores[tx] = (scores[tx] || 0) + found[tx];
+            });
+        });
+
+        const ranked = Object.keys(scores).sort((a, b) => scores[b] - scores[a]).slice(0, 6);
+        if (!ranked.length) {
+            box.style.display = 'none';
+            return;
+        }
+
+        document.getElementById('txSuggestFor').textContent = dx.join(', ');
+        list.innerHTML = '';
+        ranked.forEach(tx => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'term-chip term-chip-suggest';
+            btn.title = 'Given with this diagnosis ' + scores[tx] + ' time' + (scores[tx] === 1 ? '' : 's') + ' here';
+            btn.innerHTML = '+ ' + tx.replace(/[<>&]/g, '') + ' <span class="term-chip-count">' + scores[tx] + '</span>';
+            btn.onclick = () => addTermTo('txSelect', tx);
+            list.appendChild(btn);
+        });
+        box.style.display = '';
     }
 
     function toggleDxEdit() {

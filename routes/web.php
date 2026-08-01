@@ -384,8 +384,13 @@ Route::get('storage/{path}', function ($path) {
         $path = substr($path, strlen('app/public/'));
     }
 
-    // Always public paths regardless of extension — no auth required on any server
-    $alwaysPublic = ['vendor_login/'];
+    // Always public paths regardless of extension — no auth required on any server.
+    //
+    // hmis-shared/ holds the files WhatsApp is sent as a template attachment. Meta fetches each
+    // one from its own servers with no session, so an auth check here would simply mean the
+    // patient receives nothing. The whole of its protection is the name: a 48-character random
+    // token, unlisted, and deleted by PruneSharedPdfs once Meta has collected it.
+    $alwaysPublic = ['vendor_login/', 'hmis-shared/'];
     foreach ($alwaysPublic as $prefix) {
         if (str_starts_with($path, $prefix)) {
             if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {

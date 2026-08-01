@@ -671,8 +671,60 @@
             </td>
         </tr>
     </table>
+ 
 
 
+    @if (!empty($bill_data['receipts']) && count($bill_data['receipts']))
+        @php($cs = \App\CentralLogics\Helpers::currency_symbol())
+        @php($hasRef = collect($bill_data['receipts'])->contains(fn($r) => !empty($r->reference)))
+        @php($totalCols = $hasRef ? 6 : 5)
+        <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:10px;border:1px solid #cccccc;">
+            <tr>
+                <td colspan="{{ $totalCols }}" style="background:#eeeeee;padding:4px 6px;font-weight:bold;">PAYMENTS RECEIVED</td>
+            </tr>
+            <tr style="background:#f7f7f7;">
+                <th style="border:1px solid #cccccc;padding:4px 6px;text-align:left;">Receipt No</th>
+                <th style="border:1px solid #cccccc;padding:4px 6px;text-align:left;">Date</th>
+                <th style="border:1px solid #cccccc;padding:4px 6px;text-align:left;">Mode</th>
+                @if ($hasRef)
+                    <th style="border:1px solid #cccccc;padding:4px 6px;text-align:left;">Ref / Txn ID</th>
+                @endif
+                <th style="border:1px solid #cccccc;padding:4px 6px;text-align:right;">Amount</th>
+                <th style="border:1px solid #cccccc;padding:4px 6px;text-align:right;">Balance</th>
+            </tr>
+            @foreach ($bill_data['receipts'] as $receipt)
+                @php($receiptUrl = \App\Services\InvoicePayments::receiptUrl($receipt->pdf ?? null))
+                <tr>
+                    <td style="border:1px solid #cccccc;padding:4px 6px;">
+                        @if ($receiptUrl)
+                            <a href="{{ $receiptUrl }}" style="color:#1a73e8;text-decoration:underline;">{{ $receipt->receipt_no }}</a>
+                        @else
+                            {{ $receipt->receipt_no }}
+                        @endif
+                    </td>
+                    <td style="border:1px solid #cccccc;padding:4px 6px;">
+                        {{ \Carbon\Carbon::parse($receipt->payment_date ?? $receipt->created_at)->format('d M Y') }}
+                    </td>
+                    <td style="border:1px solid #cccccc;padding:4px 6px;">{{ $receipt->payment_mode }}</td>
+                    @if ($hasRef)
+                        <td style="border:1px solid #cccccc;padding:4px 6px;font-size:9px;">{{ $receipt->reference ?: '—' }}</td>
+                    @endif
+                    <td style="border:1px solid #cccccc;padding:4px 6px;text-align:right;">
+                        {{ $cs . _num($receipt->amount, 2) }}</td>
+                    <td style="border:1px solid #cccccc;padding:4px 6px;text-align:right;">
+                        {{ $cs . _num($receipt->balance_after, 2) }}</td>
+                </tr>
+            @endforeach
+            <tr style="background:#f7f7f7;font-weight:bold;">
+                <td colspan="{{ $totalCols - 2 }}" style="border:1px solid #cccccc;padding:4px 6px;text-align:right;">Total Paid</td>
+                <td style="border:1px solid #cccccc;padding:4px 6px;text-align:right;">
+                    {{ $cs . _num($bill_data['paid_total'], 2) }}</td>
+                <td style="border:1px solid #cccccc;padding:4px 6px;text-align:right;">
+                    {{ $bill_data['amount_due'] > 0 ? 'Due ' . $cs . _num($bill_data['amount_due'], 2) : 'Paid in full' }}
+                </td>
+            </tr>
+        </table>
+    @endif
 
     <?php
         $isQuotation = ($bill_data['template_type'] ?? '') === 'quotation';

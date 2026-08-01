@@ -120,6 +120,9 @@
                         <textarea name="bio" class="form-control" rows="3" placeholder="Short bio / about the doctor">{{ old('bio') }}</textarea>
                     </div>
                 </div>
+                <div class="row mt-3">
+                    @include('hmis::vendor.doctor._rebook_days', ['rebookDays' => (int) old('rebook_days', 0)])
+                </div>
             </div>
         </div>
 

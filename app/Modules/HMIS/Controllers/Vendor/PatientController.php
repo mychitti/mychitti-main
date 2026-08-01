@@ -13,8 +13,10 @@ use App\Models\PatientDocument;
 use App\Models\PatientMedicalHistory;
 use App\Models\RadiologyStudy;
 use App\Models\RadiologyTest;
+use App\Services\HmisWhatsAppShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -306,11 +308,89 @@ class PatientController extends Controller
             'due'    => $invoices->where('payment_status', '!=', 'Paid')->sum('total_amount'),
         ];
 
+        // Every document this patient has been sent — the record link on WhatsApp, or the
+        // prescription as a PDF. What they uploaded and what they were given belong on the same
+        // screen: "have they got their report yet?" is asked far more often at the desk than it
+        // is answerable from the record itself.
+        $sentDocs = Schema::hasTable('wa_patient_shares')
+            ? DB::table('wa_patient_shares')
+                ->where('store_id', $store_id)
+                ->where('patient_id', $id)
+                ->orderByDesc('created_at')
+                ->limit(200)
+                ->get()
+            : collect();
+
         return view('hmis::vendor.patient.view', compact(
             'patient', 'appointments', 'opdVisits', 'ipdAdmissions', 'prescriptions', 'consents',
             'labTests', 'radiologyTests', 'doctors', 'labOrders', 'radiologyStudies',
-            'invoices', 'invoiceTotals'
+            'invoices', 'invoiceTotals', 'sentDocs'
         ));
+    }
+
+    /**
+     * Every document the hospital has sent its patients, in one log.
+     *
+     * The patient profile answers "what did we send this person"; this answers the question the
+     * front desk actually asks at the end of a day — which reports went out, and which of them
+     * nobody has opened.
+     */
+    public function sentDocuments(Request $request)
+    {
+        $store_id = Helpers::get_store_id();
+
+        if (!Schema::hasTable('wa_patient_shares')) {
+            return view('hmis::vendor.patient.sent_documents', [
+                'shares'  => new LengthAwarePaginator([], 0, 25, 1, ['path' => $request->url()]),
+                'summary' => ['total' => 0, 'opened' => 0, 'pending' => 0, 'files' => 0],
+            ]);
+        }
+
+        // Brings sent_as onto older installs, so the filters below can rely on it.
+        HmisWhatsAppShare::ensureTable();
+
+        $search = trim((string) $request->search);
+        $kind   = $request->kind;
+        $status = $request->status;
+
+        $query = DB::table('wa_patient_shares as s')
+            ->leftJoin('patients as p', 'p.id', '=', 's.patient_id')
+            ->where('s.store_id', $store_id)
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($q2) use ($search) {
+                    $q2->where('p.name', 'like', "%{$search}%")
+                        ->orWhere('p.patient_uid', 'like', "%{$search}%")
+                        ->orWhere('p.phone', 'like', "%{$search}%")
+                        ->orWhere('s.sent_to', 'like', "%{$search}%");
+                });
+            })
+            ->when($kind, fn($q) => $q->where('s.kind', $kind))
+            ->when($request->from, fn($q) => $q->whereDate('s.created_at', '>=', $request->from))
+            ->when($request->to, fn($q) => $q->whereDate('s.created_at', '<=', $request->to))
+            ->when($status === 'opened', fn($q) => $q->where('s.views', '>', 0))
+            // A file send has no link to open, so it can never be "waiting to be read".
+            ->when($status === 'pending', fn($q) => $q->where('s.views', 0)->where('s.sent_as', '!=', 'pdf'))
+            ->when($status === 'pdf', fn($q) => $q->where('s.sent_as', 'pdf'))
+            ->when($status === 'expired', fn($q) => $q
+                ->where('s.sent_as', '!=', 'pdf')
+                ->where('s.views', 0)
+                ->whereNotNull('s.expires_at')
+                ->where('s.expires_at', '<', now()));
+
+        $summary = [
+            'total'   => (clone $query)->count(),
+            'opened'  => (clone $query)->where('s.views', '>', 0)->count(),
+            'pending' => (clone $query)->where('s.views', 0)->where('s.sent_as', '!=', 'pdf')->count(),
+            'files'   => (clone $query)->where('s.sent_as', 'pdf')->count(),
+        ];
+
+        $shares = $query
+            ->orderByDesc('s.created_at')
+            ->select('s.*', 'p.name as patient_name', 'p.patient_uid', 'p.phone as patient_phone')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('hmis::vendor.patient.sent_documents', compact('shares', 'summary'));
     }
 
     /**
@@ -608,6 +688,61 @@ class PatientController extends Controller
         }
 
         return response()->json(['ok' => true, 'documents' => $uploaded]);
+    }
+
+    /**
+     * Send a patient a document on WhatsApp — one already on their record, or one uploaded here
+     * and then sent.
+     *
+     * An uploaded file is filed on the patient's record as well as sent: a document worth sending
+     * is a document worth keeping, and a hospital that has to upload the same discharge summary
+     * twice stops filing it at all.
+     */
+    public function sendDocument(Request $request, $id)
+    {
+        $request->validate([
+            'document_id' => 'nullable|integer',
+            'file'        => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,webp',
+            'title'       => 'nullable|string|max:100',
+            'phone'       => 'nullable|string|max:20',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+        $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
+
+        $doc = null;
+        if ($request->hasFile('file')) {
+            $file     = $request->file('file');
+            $dir      = 'patient/documents/';
+            $filename = Helpers::upload($dir, $file->getClientOriginalExtension(), $file);
+            $doc = PatientDocument::create([
+                'patient_id'    => $patient->id,
+                'document_type' => 'other',
+                'document_name' => $request->title ?: $file->getClientOriginalName(),
+                'file_path'     => $dir . $filename,
+                'uploaded_by'   => auth('vendor_employee')->id() ?? auth('vendor')->id(),
+            ]);
+        } elseif ($request->document_id) {
+            $doc = PatientDocument::where('patient_id', $patient->id)->find($request->document_id);
+        }
+
+        if (!$doc) {
+            return response()->json(['ok' => false, 'message' => 'Choose a document from the record, or upload one to send.'], 422);
+        }
+
+        $result = HmisWhatsAppShare::document(
+            $store_id,
+            $patient,
+            $doc->file_path,
+            $request->title ?: $doc->document_name,
+            $request->phone,
+            (int) $doc->id
+        );
+
+        return response()->json([
+            'ok'      => !empty($result['success']),
+            'message' => $result['message'],
+        ], !empty($result['success']) ? 200 : 422);
     }
 
     public function listDocuments($id)

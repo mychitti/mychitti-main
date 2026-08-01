@@ -10,7 +10,7 @@ class DoctorProfile extends Model
         'emp_id', 'store_id', 'specialization', 'qualification',
         'registration_number', 'department', 'opd_room',
         'consultation_fee', 'available_days', 'available_from',
-        'available_to', 'bio',
+        'available_to', 'bio', 'rebook_days',
     ];
 
     public function employee()

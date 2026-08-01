@@ -77,6 +77,9 @@
                         <textarea name="bio" class="form-control" rows="3">{{ $doctor->bio }}</textarea>
                     </div>
                 </div>
+                <div class="row mt-3">
+                    @include('hmis::vendor.doctor._rebook_days', ['rebookDays' => $doctor->rebook_days ?? 0])
+                </div>
             </div>
         </div>
 

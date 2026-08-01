@@ -90,6 +90,8 @@
             </div>
         </div>
 
+        @include('vendor-views.service._repeat_rules')
+
         @if ($store_data->module_id == 6)
             <div class="card mt-3">
                 <div class="card-body" style="max-width:680px;">

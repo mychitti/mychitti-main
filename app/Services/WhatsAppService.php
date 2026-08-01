@@ -909,6 +909,7 @@ class WhatsAppService
             static::ensureHmisPresets();
             static::repairHmisPresetBodies();
             static::ensureRepeatPreset();
+        static::ensurePaymentReceiptPreset();
             return;
         }
         DB::statement("CREATE TABLE `wa_template_presets` (
@@ -970,6 +971,7 @@ class WhatsAppService
         static::ensureHmisPresets();
         static::repairHmisPresetBodies();
         static::ensureRepeatPreset();
+        static::ensurePaymentReceiptPreset();
     }
 
     /**
@@ -1038,6 +1040,10 @@ class WhatsAppService
         }
         $done = true;
 
+        // Added after the first HMIS seed shipped, so it sits above the seeded-once guard —
+        // below it, no existing hospital would ever be offered the template.
+        self::ensurePatientDocumentPreset();
+
         if (DB::table('business_settings')->where('key', 'wa_preset_hmis_seeded')->exists()) {
             return;
         }
@@ -1075,6 +1081,18 @@ class WhatsAppService
                 'body'     => "Hi {{1}}, this is a reminder from {{2}} that your follow-up visit is due on {{3}} with {{4}}. Please reply to this message if you need a different date.",
                 'footer'   => null,
                 'example'  => 'Ramesh | Krishna Hospital | 02 Aug 2026 | Dr. Anita Rao',
+            ],
+            [
+                // MARKETING, not UTILITY: nothing has happened on the patient's account to report.
+                // This asks someone who stopped coming to come back, which is what Meta means by
+                // marketing, and filing it as utility is how a WABA gets its category corrected
+                // the hard way.
+                'title'    => 'Rebook Reminder (Hospital)',
+                'name'     => 'rebook_reminder',
+                'category' => 'MARKETING',
+                'body'     => "Hi {{1}}, it has been a while since your last visit with {{2}} at {{3}}. If you are due for a check-up, reply to this message and we will find you a slot.",
+                'footer'   => 'Reply STOP to unsubscribe',
+                'example'  => 'Ramesh | Dr. Anita Rao | Krishna Hospital',
             ],
             [
                 'title'    => 'Lab Report Ready (Hospital)',
@@ -1151,6 +1169,37 @@ class WhatsAppService
     }
 
     /**
+     * Preset behind "Send a document" on a patient — any file the hospital attaches by hand.
+     *
+     * A media template, like prescription_pdf: the header carries the file, which is the only way
+     * to put a document in a message a patient never asked for. The body says what the file is,
+     * because an attachment with no explanation reads like a scam.
+     */
+    protected static function ensurePatientDocumentPreset(): void
+    {
+        if (DB::table('wa_template_presets')->where('name', 'patient_document')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Send a Document (Hospital)',
+            'name'          => 'patient_document',
+            'category'      => 'UTILITY',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => 'DOCUMENT',
+            'body'          => "Hi {{1}}, {{2}} has sent you a document — {{3}}, dated {{4}}. It is attached to this message. Please save it for your records.",
+            'footer'        => 'Reply here if you cannot open the file',
+            'example'       => 'Ramesh | Krishna Hospital | Discharge summary | 25 July 2026',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
      * Preset behind the repeat purchase reminder. MARKETING, not UTILITY — it is a nudge to buy
      * again, and Meta categorises it that way whatever we call it.
      *
@@ -1185,6 +1234,43 @@ class WhatsAppService
             'active'      => 1,
             'created_at'  => now(),
             'updated_at'  => now(),
+        ]);
+    }
+
+    /**
+     * Preset behind the receipt a customer gets each time they pay something towards a bill.
+     *
+     * A media template, because the receipt itself is the attachment: a payment acknowledgement the
+     * customer cannot save is not a receipt. The balance is a whole sentence in {{5}} rather than a
+     * bare number — "0" would read as a demand rather than a settlement.
+     */
+    public static function ensurePaymentReceiptPreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('wa_template_presets')->where('name', 'payment_receipt')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Payment Receipt',
+            'name'          => 'payment_receipt',
+            'category'      => 'UTILITY',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => 'DOCUMENT',
+            'body'          => "Hi {{1}}, we have received {{2}} towards invoice {{3}} at {{4}}. {{5}} Your receipt is attached to this message — please keep it for your records.",
+            'footer'        => 'Reply here if anything looks wrong',
+            'example'       => 'Ramesh | ₹2,000.00 | KHB_M_26-27_234 | Krishna Hospital | Balance still due: ₹500.00.',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
         ]);
     }
 

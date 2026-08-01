@@ -19,8 +19,14 @@ use Illuminate\Support\Facades\Schema;
  * How long a thing lasts is set per item, and only per item: the vendor ticks it on the item form
  * and types the days. There is no category-wide cycle — a category holds things that run out at
  * completely different rates, and a number inherited by items nobody chose it for is how a
- * customer ends up chased about a mop bucket. A service line (billing has no item id, just a typed
- * name) resolves through a matching store rule instead.
+ * customer ends up chased about a mop bucket.
+ *
+ * A line billed without an item id — every service invoice line, and hand-typed billing lines —
+ * resolves by name: an explicit store rule first, otherwise the store's own item of that name.
+ * So the cycle is still set once, on the item, and applies wherever that work gets billed from.
+ *
+ * Both places a store bills are swept: manual_invoices (counter, POS Retail, billing) and
+ * service_invoices (work that arrived as a service request). See lastPurchases().
  *
  * Nothing set means no reminder. Guessing a cycle is worse than staying quiet.
  */
@@ -75,11 +81,21 @@ class RepeatPurchaseReminder
 
         // What has already been chased, per customer per thing. A reminder goes out once per
         // purchase: buying again moves last_bought past reminded_at and re-arms it.
+        //
+        // customer_id is only unique WITHIN customer_type. A billing invoice bills a
+        // store_customers row; a service invoice bills a users row; both count from 1, so the two
+        // are different people at the same id and the type has to be part of the key.
+        //
+        // phone_key (last 10 digits) is the other half: it is the one identifier that means the
+        // same human across both tables, so the "don't message this person again for a fortnight"
+        // cooldown reads it rather than the id.
         if (!Schema::hasTable('wa_repeat_reminders')) {
             DB::statement("CREATE TABLE `wa_repeat_reminders` (
                 `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 `store_id` BIGINT NOT NULL,
+                `customer_type` VARCHAR(10) NOT NULL DEFAULT 'store',
                 `customer_id` BIGINT NOT NULL,
+                `phone_key` VARCHAR(15) NULL,
                 `ref_key` VARCHAR(190) NOT NULL,
                 `label` VARCHAR(190) NULL,
                 `last_bought_at` TIMESTAMP NULL,
@@ -87,9 +103,19 @@ class RepeatPurchaseReminder
                 `created_at` TIMESTAMP NULL,
                 `updated_at` TIMESTAMP NULL,
                 PRIMARY KEY (`id`),
-                UNIQUE KEY `wrr_once` (`store_id`, `customer_id`, `ref_key`),
-                KEY `wrr_customer` (`store_id`, `customer_id`, `reminded_at`)
+                UNIQUE KEY `wrr_once` (`store_id`, `customer_type`, `customer_id`, `ref_key`),
+                KEY `wrr_customer` (`store_id`, `customer_id`, `reminded_at`),
+                KEY `wrr_phone` (`store_id`, `phone_key`, `reminded_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        } elseif (!Schema::hasColumn('wa_repeat_reminders', 'customer_type')) {
+            // Built before service invoices were swept. Everything already in it came from a
+            // billing invoice, so the default backfills every existing row correctly.
+            DB::statement("ALTER TABLE `wa_repeat_reminders`
+                ADD COLUMN `customer_type` VARCHAR(10) NOT NULL DEFAULT 'store' AFTER `store_id`,
+                ADD COLUMN `phone_key` VARCHAR(15) NULL AFTER `customer_id`,
+                DROP INDEX `wrr_once`,
+                ADD UNIQUE KEY `wrr_once` (`store_id`, `customer_type`, `customer_id`, `ref_key`),
+                ADD KEY `wrr_phone` (`store_id`, `phone_key`, `reminded_at`)");
         }
     }
 
@@ -118,8 +144,10 @@ class RepeatPurchaseReminder
     /**
      * Everything this store's customers are due to rebuy.
      *
-     * Returns rows of [customer_id, ref_key, label, last_bought_at, due_at] — one per customer per
-     * thing, already filtered to those actually due and not already chased for that purchase.
+     * Returns rows of [customer_type, customer_id, ref_key, label, last_bought_at, due_at] — one
+     * per customer per thing, already filtered to those actually due and not already chased for
+     * that purchase. The per-person cooldown is applied later, in runStore(), because it works on
+     * the phone number and that is not known until the customer row is resolved.
      */
     public static function dueFor(int $storeId): array
     {
@@ -140,6 +168,7 @@ class RepeatPurchaseReminder
             }
 
             $due[] = (object) [
+                'customer_type'  => $row->customer_type,
                 'customer_id'    => (int) $row->customer_id,
                 'ref_key'        => $row->ref_key,
                 'label'          => $row->label,
@@ -152,28 +181,94 @@ class RepeatPurchaseReminder
     }
 
     /**
-     * The most recent purchase of each thing by each identified customer.
+     * The most recent purchase of each thing by each identified customer, from both places a
+     * store's work gets billed.
      *
-     * Walk-in sales (bill_to 0/null) are skipped throughout — there is nobody to remind. Both
-     * halves come from the same invoice tables, so a POS Retail sale and a billing invoice are
-     * treated identically; the only difference is that a stocked line knows its item id and a
-     * service line only knows the name it was billed under.
+     * Walk-in sales (bill_to 0/null) are skipped throughout — there is nobody to remind.
+     *
+     * Two sources, because a store's sales do not all land in one table. A counter sale, a POS
+     * Retail sale and a billing invoice are all `manual_invoices`. Work that came in as a service
+     * request — a room cleaning booked through the site, say — is billed on `service_invoices`
+     * instead, whose lines sit in the same invoice_items table but hang off `invoice_id` and are
+     * never given a `manual_invoice_id`. Sweeping only the first table is why a vendor who works
+     * entirely through service requests saw nothing from this feature.
+     *
+     * The two differ in who they bill: a billing invoice names a store_customers row, a service
+     * invoice names the marketplace `users` row that raised the request. Hence customer_type —
+     * see ensureTables().
      */
     protected static function lastPurchases(int $storeId)
     {
-        return DB::table('invoice_items as ii')
+        $fromBilling = DB::table('invoice_items as ii')
             ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
             ->where('mi.vendor_id', $storeId)          // vendor_id holds the STORE id here
             ->whereNotNull('mi.bill_to')->where('mi.bill_to', '>', 0)
             ->where('mi.created_at', '>=', now()->subDays(400))
-            ->groupBy('mi.bill_to', 'ref_key', 'label')
-            ->selectRaw("mi.bill_to as customer_id,
+            // Customer + thing only. `label` is MAX(ii.name), and grouping on an aggregate's own
+            // alias is an error in MySQL ("Can't group on 'label'") — it threw for every store,
+            // which the job's per-store catch then swallowed as a log line.
+            ->groupBy('mi.bill_to', 'ref_key')
+            ->selectRaw("'store' as customer_type,
+                mi.bill_to as customer_id,
                 CASE WHEN ii.inv_id IS NULL OR ii.inv_id = 0
                      THEN CONCAT('svc:', LOWER(TRIM(ii.name)))
                      ELSE CONCAT('item:', ii.inv_id) END as ref_key,
                 MAX(ii.name) as label,
                 MAX(mi.created_at) as last_bought_at")
             ->get();
+
+        if (!Schema::hasTable('service_invoices')) {
+            return $fromBilling;
+        }
+
+        // bill_to_type is what says which table bill_to points into. Only 'user' is a person the
+        // store sells to; a 'vendor' row is one business billing another and must never be
+        // chased to rebuy.
+        $fromServices = DB::table('invoice_items as ii')
+            ->join('service_invoices as si', 'si.id', '=', 'ii.invoice_id')
+            ->where('si.vendor_id', $storeId)
+            ->where('si.bill_to_type', 'user')
+            ->whereNotNull('si.bill_to')->where('si.bill_to', '>', 0)
+            ->where('si.created_at', '>=', now()->subDays(400))
+            ->groupBy('si.bill_to', 'ref_key')
+            ->selectRaw("'user' as customer_type,
+                si.bill_to as customer_id,
+                CASE WHEN ii.inv_id IS NULL OR ii.inv_id = 0
+                     THEN CONCAT('svc:', LOWER(TRIM(ii.name)))
+                     ELSE CONCAT('item:', ii.inv_id) END as ref_key,
+                MAX(ii.name) as label,
+                MAX(si.created_at) as last_bought_at")
+            ->get();
+
+        return self::mergeByRefKey($fromBilling->concat($fromServices));
+    }
+
+    /**
+     * Collapse rows that are the same purchase spelled differently.
+     *
+     * SQL groups a service line by LOWER(TRIM(name)), which unifies case and the spaces at either
+     * end but nothing inside: "Room  Cleaning" and "Room Cleaning" arrive as two ref_keys, and
+     * since ref_key is what records a thing as chased, the customer would be reminded once for
+     * each spelling. matchKey() is the one definition of "the same name" in this feature, so the
+     * key is rebuilt through it here and the rows folded together, keeping the latest purchase.
+     */
+    protected static function mergeByRefKey($rows)
+    {
+        $merged = [];
+        foreach ($rows as $row) {
+            if (str_starts_with($row->ref_key, 'svc:')) {
+                $row->ref_key = 'svc:' . self::matchKey(substr($row->ref_key, 4));
+            }
+
+            $key  = $row->customer_type . '|' . $row->customer_id . '|' . $row->ref_key;
+            $seen = $merged[$key] ?? null;
+
+            if (!$seen || $row->last_bought_at > $seen->last_bought_at) {
+                $merged[$key] = $row;
+            }
+        }
+
+        return collect(array_values($merged));
     }
 
     /** Days between repeats for one purchased thing, or null when nothing is configured. */
@@ -202,8 +297,49 @@ class RepeatPurchaseReminder
 
         $key  = self::matchKey(substr($row->ref_key, 4));
         $days = (int) ($rules[$storeId][$key] ?? 0);
+        if ($days > 0) {
+            return $days;
+        }
 
-        return $days > 0 ? $days : null;
+        // No explicit rule — try to find the item the vendor already configured, by name.
+        //
+        // Service invoice lines save a typed name and no inv_id at all, so without this they
+        // could never resolve to anything and the whole service-invoice sweep would be dead
+        // weight. Matching "Room cleaning" on the bill to the "Room cleaning" service item means
+        // the vendor sets the cycle once, on the item form, and it applies wherever that work
+        // gets billed from. Nothing matching still means no reminder.
+        return self::itemDaysByName($storeId, $key);
+    }
+
+    /**
+     * repeat_days of this store's item whose name normalises to $key, or null.
+     *
+     * Loaded once per store per run. Ambiguous names (two items normalising the same) take the
+     * larger cycle: chasing someone later than ideal is recoverable, chasing them too early is
+     * the message that gets a number reported.
+     */
+    protected static function itemDaysByName(int $storeId, string $key): ?int
+    {
+        static $byName = [];
+
+        if (!array_key_exists($storeId, $byName)) {
+            $map = [];
+            DB::table('inventory_items')
+                ->where('store_id', $storeId)
+                ->where('repeat_days', '>', 0)
+                ->select('item_name', 'repeat_days')
+                ->orderBy('id')
+                ->each(function ($item) use (&$map) {
+                    $name = self::matchKey($item->item_name);
+                    if ($name === '') {
+                        return;
+                    }
+                    $map[$name] = max($map[$name] ?? 0, (int) $item->repeat_days);
+                });
+            $byName[$storeId] = $map;
+        }
+
+        return $byName[$storeId][$key] ?? null;
     }
 
     /**
@@ -218,30 +354,75 @@ class RepeatPurchaseReminder
 
         $customerIds = array_values(array_unique(array_map(fn($d) => $d->customer_id, $due)));
 
-        $recentlyMessaged = DB::table('wa_repeat_reminders')
-            ->where('store_id', $storeId)
-            ->whereIn('customer_id', $customerIds)
-            ->where('reminded_at', '>=', now()->subDays(self::CUSTOMER_COOLDOWN_DAYS))
-            ->distinct()->pluck('customer_id')->all();
-        $recentlyMessaged = array_flip($recentlyMessaged);
-
+        // Keyed by type as well as id — the same number in store_customers and in users is two
+        // different people, and treating them as one would silence a real reminder.
         $chased = DB::table('wa_repeat_reminders')
             ->where('store_id', $storeId)
             ->whereIn('customer_id', $customerIds)
-            ->get(['customer_id', 'ref_key', 'reminded_at'])
-            ->keyBy(fn($r) => $r->customer_id . '|' . $r->ref_key);
+            ->get(['customer_type', 'customer_id', 'ref_key', 'reminded_at'])
+            ->keyBy(fn($r) => ($r->customer_type ?: 'store') . '|' . $r->customer_id . '|' . $r->ref_key);
 
-        return array_values(array_filter($due, function ($d) use ($recentlyMessaged, $chased) {
-            if (isset($recentlyMessaged[$d->customer_id])) {
-                return false;
-            }
-            $seen = $chased[$d->customer_id . '|' . $d->ref_key] ?? null;
+        return array_values(array_filter($due, function ($d) use ($chased) {
+            $seen = $chased[$d->customer_type . '|' . $d->customer_id . '|' . $d->ref_key] ?? null;
             if (!$seen || !$seen->reminded_at) {
                 return true;
             }
             // Chased before — only again once they have actually bought it since.
             return $d->last_bought_at->gt(Carbon::parse($seen->reminded_at));
         }));
+    }
+
+    /**
+     * Anyone this store messaged inside the cooldown, as a set of phone keys.
+     *
+     * By phone rather than by id, deliberately: a customer who bought over the counter and also
+     * booked a service request exists twice, once in each table, and the whole point of the
+     * cooldown is that the human on the other end hears from this feature once a fortnight.
+     *
+     * Public because the appointment rebook sweep shares this table and this cooldown — in a
+     * hospital a patient and a client are the same person, so "buy your rice again" and "time for
+     * a check-up" landing in the same fortnight is one business pestering one human twice.
+     */
+    public static function recentlyMessagedPhones(int $storeId): array
+    {
+        return array_flip(array_filter(
+            DB::table('wa_repeat_reminders')
+                ->where('store_id', $storeId)
+                ->whereNotNull('phone_key')
+                ->where('reminded_at', '>=', now()->subDays(self::CUSTOMER_COOLDOWN_DAYS))
+                ->distinct()->pluck('phone_key')->all()
+        ));
+    }
+
+    /** Last 10 digits — how a number is compared everywhere in this feature. */
+    public static function phoneKey(?string $phone): string
+    {
+        return substr(preg_replace('/[^0-9]/', '', (string) $phone) ?? '', -10);
+    }
+
+    /** Name and phone for whichever table this customer lives in. */
+    protected static function resolveCustomer(string $type, int $id): ?object
+    {
+        if ($type === 'user') {
+            $user = DB::table('users')->where('id', $id)->first(['f_name', 'name', 'phone']);
+            if (!$user) {
+                return null;
+            }
+            return (object) [
+                'name'  => trim((string) ($user->f_name ?: $user->name)),
+                'phone' => trim((string) $user->phone),
+            ];
+        }
+
+        $customer = StoreCustomer::find($id);
+        if (!$customer) {
+            return null;
+        }
+
+        return (object) [
+            'name'  => trim((string) $customer->f_name),
+            'phone' => trim((string) $customer->phone),
+        ];
     }
 
     /**
@@ -267,42 +448,56 @@ class RepeatPurchaseReminder
             return 0;
         }
 
-        $byCustomer = [];
-        foreach ($due as $d) {
-            $byCustomer[$d->customer_id][] = $d;
-        }
-
         $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
         $optedOut  = array_flip(array_map(
-            fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10),
+            fn($p) => self::phoneKey((string) $p),
             WhatsAppService::optedOutPhones($storeId)
         ));
+        $onCooldown = self::recentlyMessagedPhones($storeId);
+
+        // Grouped by the phone we will actually message, not by customer id. Someone who buys at
+        // the counter AND books service requests is two rows in two tables and one person holding
+        // one handset: they get a single message listing both halves, and both halves are marked
+        // chased when it goes.
+        $byPhone = [];
+        foreach ($due as $d) {
+            $who = self::resolveCustomer($d->customer_type, $d->customer_id);
+            if (!$who || $who->phone === '') {
+                continue;
+            }
+
+            $key = self::phoneKey($who->phone);
+            if ($key === '' || isset($optedOut[$key]) || isset($onCooldown[$key])) {
+                continue;
+            }
+
+            if (!isset($byPhone[$key])) {
+                $byPhone[$key] = ['phone' => $who->phone, 'name' => $who->name, 'lines' => []];
+            }
+            // First non-empty name wins, so a bare users row does not blank out a real name.
+            if ($byPhone[$key]['name'] === '' && $who->name !== '') {
+                $byPhone[$key]['name'] = $who->name;
+            }
+            $byPhone[$key]['lines'][] = $d;
+        }
 
         $sent = 0;
-        foreach (array_slice($byCustomer, 0, self::BATCH, true) as $customerId => $lines) {
+        foreach (array_slice($byPhone, 0, self::BATCH, true) as $phoneKey => $target) {
             try {
-                $customer = StoreCustomer::find($customerId);
-                $phone = trim((string) ($customer->phone ?? ''));
-                if (!$customer || $phone === '') {
-                    continue;
-                }
-                if (isset($optedOut[substr(preg_replace('/[^0-9]/', '', $phone) ?? '', -10)])) {
-                    continue;
-                }
                 if (!WhatsAppBilling::canAffordMessage($storeId, 'own')) {
                     Log::info('Repeat reminders stopped — wallet empty', ['store' => $storeId]);
                     break;
                 }
 
                 $res = $wa->sendTemplate(
-                    $phone,
+                    $target['phone'],
                     self::TEMPLATE,
                     'en_US',
                     [['type' => 'body', 'parameters' => array_map(
                         fn($v) => ['type' => 'text', 'text' => $v],
                         [
-                            trim((string) $customer->f_name) ?: 'there',
-                            self::itemsPhrase($lines),
+                            $target['name'] ?: 'there',
+                            self::itemsPhrase($target['lines']),
                             $storeName,
                         ]
                     )]],
@@ -311,7 +506,7 @@ class RepeatPurchaseReminder
 
                 // Marked as chased whatever Meta said. A failed send that gets retried tomorrow,
                 // and the day after, is how one broken template turns into a daily charge.
-                self::markReminded($storeId, (int) $customerId, $lines);
+                self::markReminded($storeId, (string) $phoneKey, $target['lines']);
 
                 if ($res['success']) {
                     $sent++;
@@ -346,12 +541,24 @@ class RepeatPurchaseReminder
         return trim(preg_replace('/\s+/u', ' ', mb_substr($phrase, 0, 500)) ?? $phrase);
     }
 
-    protected static function markReminded(int $storeId, int $customerId, array $lines): void
+    /**
+     * One row per thing that was in the message.
+     *
+     * Every line is stamped with the phone actually messaged, whichever table its customer came
+     * from — that stamp is what the fortnight cooldown reads next time.
+     */
+    protected static function markReminded(int $storeId, string $phoneKey, array $lines): void
     {
         foreach ($lines as $line) {
             DB::table('wa_repeat_reminders')->updateOrInsert(
-                ['store_id' => $storeId, 'customer_id' => $customerId, 'ref_key' => $line->ref_key],
                 [
+                    'store_id'      => $storeId,
+                    'customer_type' => $line->customer_type,
+                    'customer_id'   => $line->customer_id,
+                    'ref_key'       => $line->ref_key,
+                ],
+                [
+                    'phone_key'      => $phoneKey,
                     'label'          => mb_substr((string) $line->label, 0, 190),
                     'last_bought_at' => $line->last_bought_at,
                     'reminded_at'    => now(),

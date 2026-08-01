@@ -51,6 +51,15 @@ class NotificationPrefs
                     'template' => 'repeat_purchase_reminder',
                 ],
 
+                // On by default: this only ever fires when a human has just taken money from this
+                // customer at the counter, and a receipt is what they expect to walk away with.
+                'payment_receipt' => [
+                    'label'    => 'Payment receipt',
+                    'desc'     => 'Sends the customer their receipt as a PDF each time a payment is recorded against one of their bills, part payment or full (needs your approved payment_receipt template).',
+                    'default'  => true,
+                    'template' => 'payment_receipt',
+                ],
+
                 // Hospital records. All default OFF, unlike everything above: these send a
                 // patient their own medical information without a human pressing anything, and
                 // each message is billed. That is a decision a hospital makes deliberately, not
@@ -70,6 +79,13 @@ class NotificationPrefs
                     'template' => 'prescription_share',
                     'module'  => 'hospital_manage',
                 ],
+                'hmis_prescription_pdf' => [
+                    'label'   => 'Prescription as a PDF instead',
+                    'desc'    => 'Sends the prescription as an attached PDF rather than a link — it never expires and the patient can forward it (needs your approved prescription_pdf template). This replaces the message above rather than adding to it: with both on, the patient still gets the prescription once, as the PDF.',
+                    'default' => false,
+                    'template' => 'prescription_pdf',
+                    'module'  => 'hospital_manage',
+                ],
                 'hmis_medicines' => [
                     'label'   => 'Medicine instructions',
                     'desc'    => 'How to take each medicine, sent when a prescription is finalized (needs your approved medicine_instructions template).',
@@ -82,6 +98,15 @@ class NotificationPrefs
                     'desc'    => 'Sent when you book a patient\'s next visit (needs your approved followup_reminder template). Separate from the reminder before the appointment.',
                     'default' => false,
                     'template' => 'followup_reminder',
+                    'module'  => 'hospital_manage',
+                ],
+                // Off by default like the rest of this group, and for a sharper reason: it messages
+                // people who stopped coming, unprompted, and each one is billed.
+                'hmis_rebook' => [
+                    'label'   => 'Rebook reminder',
+                    'desc'    => 'Invites a patient back when they are past their doctor\'s recall interval and have nothing booked (needs your approved rebook_reminder template). Anyone with an appointment already on the books is skipped. Set the interval per doctor under Doctors — leave a doctor blank and their patients are never chased.',
+                    'default' => false,
+                    'template' => 'rebook_reminder',
                     'module'  => 'hospital_manage',
                 ],
                 'hmis_feedback' => [

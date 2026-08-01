@@ -10,6 +10,7 @@ use App\Models\OpdConsultationReceipt;
 use App\Models\OpdVisit;
 use App\Models\Store;
 use App\Models\StoreConfig;
+use App\Services\HmisWhatsAppShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -222,8 +223,54 @@ class OpdConsultationReceiptController extends Controller
             }
         }
 
+        $this->autoSendToPatient($visit);
+
         Toastr::success('OP consultation receipt generated.');
         return redirect()->route('vendor.opd.consultation-receipt', $visit->id);
+    }
+
+    /**
+     * WhatsApp the patient their consultation summary once the visit is billed.
+     *
+     * Generating the receipt is the only signal in OPD that a walk-in consultation is actually
+     * over — nothing sets opd_visits.status, and the queue itself reads "completed" as
+     * consultation_receipt_id being present. A visit that came from an appointment is already
+     * handled when the appointment is marked completed; the summary is keyed to the visit id in
+     * both places, so whichever happens first sends and the other is a no-op.
+     */
+    private function autoSendToPatient(OpdVisit $visit): void
+    {
+        $storeId = (int) $visit->store_id;
+
+        HmisWhatsAppShare::auto('treatment', $storeId, (int) $visit->id,
+            fn() => HmisWhatsAppShare::treatment($visit));
+
+        // Feedback for walk-ins only. An appointment-driven visit gets its request from
+        // AppointmentController::autoSendOnCompletion, held back by the hospital's chosen delay —
+        // asking again from here would be the same question twice about one visit.
+        if ($visit->appointment_id) {
+            return;
+        }
+
+        $visit->loadMissing('patient');
+        if (!$visit->patient) {
+            return;
+        }
+
+        HmisWhatsAppShare::auto(
+            'feedback_opd',
+            $storeId,
+            (int) $visit->id,
+            fn() => HmisWhatsAppShare::feedback(
+                $storeId,
+                $visit->patient,
+                $visit->visit_date,
+                null,
+                (int) $visit->id
+            ),
+            'opd_visit',
+            HmisWhatsAppShare::feedbackDueAt($storeId)
+        );
     }
 
     public function pdf($id)
