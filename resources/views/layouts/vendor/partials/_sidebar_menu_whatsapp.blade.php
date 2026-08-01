@@ -1,8 +1,14 @@
 {{-- Owner-only: staff (vendor_employee) logins do not see the WhatsApp menu.
      Toggleable via Menu Preference (slug: whatsapp); on by default.
 
-     TEMPORARY: also limited to the pilot stores in WhatsAppBilling::PILOT_STORE_IDS while the
-     onboarding and billing flow is still being built. Empty that constant to open it to all. --}}
+     PILOT_STORE_IDS is empty, so every store sees this. Put store ids back in that constant to
+     narrow it to a pilot group again. --}}
+@php
+    // Seed the menu masterdata row and, for stores already in explicit Menu Preference mode, the
+    // one visibility row this module needs. Without it the block below is invisible to every store
+    // that saved its menus before WhatsApp existed. Insert-only, so a deliberate hide survives.
+    \App\Services\WhatsAppService::ensureMenuVisible(\App\CentralLogics\Helpers::get_store_id());
+@endphp
 @if(selected_menu('whatsapp') && auth('vendor')->check() && \App\Services\WhatsAppBilling::pilotVisible(\App\CentralLogics\Helpers::get_store_id()))
 <li class="navbar-vertical-aside-has-menu {{ Request::is('*whatsapp*') ? 'active' : '' }}">
     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="{{ translate('WhatsApp') }}">

@@ -66,6 +66,75 @@ class WhatsAppService
     const BULK_SHOW_UNAPPROVED = false;
 
     /**
+     * Make the WhatsApp sidebar item reachable for every store, and keep it that way.
+     *
+     * selected_menu() has two modes. A store that has never opened Menu Preference falls back to
+     * the `menu` table, so the item needs a row there with default = 1 or it is invisible to
+     * everyone. A store that HAS saved preferences is in explicit mode, where a slug missing from
+     * store_menu_visibility returns false — which is every store that saved its menus before this
+     * module existed. Both are seeded here.
+     *
+     * Only ever inserts. A vendor who deliberately switches the menu off owns a row with
+     * is_visible = 0, and that must survive the next page load.
+     */
+    public static function ensureMenuVisible(?int $storeId): void
+    {
+        static $done = [];
+        $key = (int) $storeId;
+        if (isset($done[$key])) {
+            return;
+        }
+        $done[$key] = true;
+
+        try {
+            if (!Schema::hasTable('menu')) {
+                return;
+            }
+
+            $cols = Schema::getColumnListing('menu');
+            $exists = DB::table('menu')->where('slug', 'whatsapp')->where('menu_type', 'sidebar')->exists();
+            if (!$exists) {
+                // business_type 'all' and free = 1: the module is sold per store on its own
+                // subscription, so it must not be filtered out by the plan checks the Menu
+                // Preference page applies to generic items.
+                DB::table('menu')->insert(array_intersect_key([
+                    'slug'              => 'whatsapp',
+                    'name'              => 'WhatsApp',
+                    'route'             => 'vendor.whatsapp.dashboard',
+                    'menu_type'         => 'sidebar',
+                    'business_type'     => 'all',
+                    'group'             => 'communication',
+                    'status'            => 1,
+                    'default'           => 1,
+                    'free'              => 1,
+                    'under_development' => 0,
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ], array_flip($cols)));
+            }
+
+            if (!$storeId || !Schema::hasTable('store_menu_visibility')) {
+                return;
+            }
+
+            // No saved preferences at all — the `menu` default above already shows it, and writing
+            // a single row here would flip the store into explicit mode and hide every other menu.
+            $hasPrefs = DB::table('store_menu_visibility')
+                ->where('store_id', $storeId)->where('menu_type', 'sidebar')->exists();
+            if (!$hasPrefs) {
+                return;
+            }
+
+            $where = ['store_id' => $storeId, 'menu_type' => 'sidebar', 'menu_key' => 'whatsapp'];
+            if (!DB::table('store_menu_visibility')->where($where)->exists()) {
+                DB::table('store_menu_visibility')->insert($where + ['is_visible' => 1]);
+            }
+        } catch (\Throwable $e) {
+            // Best-effort — a menu row must never break a page render.
+        }
+    }
+
+    /**
      * Named body variables a template may use instead of {{1}}, {{2}}. Meta calls this the
      * NAMED parameter format: the body carries {{customer_name}} and the send supplies a
      * parameter_name for each value, so the slot can never drift out of order.
