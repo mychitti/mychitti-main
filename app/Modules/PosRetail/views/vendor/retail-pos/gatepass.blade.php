@@ -13,10 +13,6 @@
                 <h1>Stock Transfer — Gatepass</h1>
                 <div class="sub">Move stock from the main store to a branch. Branch stock can only be added here.</div>
             </div>
-            <form method="get" class="rp-filter">
-                <input type="text" name="q" value="{{ $search }}" class="rp-input" placeholder="Search item / SKU">
-                <button class="rp-btn o">Search</button>
-            </form>
         </div>
 
         @if (!$branches->count())
@@ -54,6 +50,16 @@
                                         placeholder="e.g. vehicle no / remarks">
                                 </div>
                             </div>
+
+                            {{-- The transfer is built one line at a time, like a bill: search,
+                                 pick, and the row appears below. --}}
+                            <div style="margin-top:12px;">
+                                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#555;">Add item</label>
+                                <select id="gp-item-picker" style="width:100%;"></select>
+                                <small class="text-muted d-block" style="font-size:11px;margin-top:4px;">
+                                    Search by item name or SKU — variation SKUs find their parent item too.
+                                </small>
+                            </div>
                         </div>
                         <div class="table-responsive">
                             <table class="rp-table">
@@ -63,65 +69,29 @@
                                         <th class="text-right">Main store stock</th>
                                         <th width="200">Deduct from</th>
                                         <th width="160">Transfer qty</th>
+                                        <th width="40"></th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    @forelse ($items as $it)
-                                        <tr>
-                                            <td><b>{{ $it->item_name }}</b></td>
-                                            <td class="text-muted">{{ $it->sku_id }}</td>
-                                            <td class="text-right text-muted">
-                                                {{ rtrim(rtrim(number_format((float) $it->stock, 3), '0'), '.') }}
-                                                {{ optional($it->itemunit)->unit }}
-                                            </td>
-                                            <td>
-                                                @if (count($it->variations))
-                                                    {{-- Each option carries the ceiling in its own units: picking a
-                                                         100gm pack means the box counts packs, not kilograms. --}}
-                                                    <select name="source[{{ $it->id }}]" class="rp-input rp-gp-source" style="width:190px"
-                                                            data-target="qty-{{ $it->id }}"
-                                                            data-main-max="{{ (float) $it->stock }}"
-                                                            data-main-hint="{{ _unitLabelFor($it->unit) }}">
-                                                        <option value="" data-max="{{ (float) $it->stock }}" data-hint="{{ _unitLabelFor($it->unit) }}">Main stock</option>
-                                                        @foreach ($it->variations as $v)
-                                                            <option value="{{ $v['type'] }}"
-                                                                    data-max="{{ $v['max'] }}"
-                                                                    data-hint="{{ $v['hint'] }}">{{ $v['type'] }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                @else
-                                                    <span class="text-muted">Main stock</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <input type="number" step="0.001" min="0" max="{{ (float) $it->stock }}"
-                                                    id="qty-{{ $it->id }}"
-                                                    name="qty[{{ $it->id }}]" class="rp-input rp-gp-qty" style="width:140px"
-                                                    placeholder="0">
-                                                <small class="text-muted d-block rp-gp-hint" style="font-size:11px;">
-                                                    max {{ rtrim(rtrim(number_format((float) $it->stock, 3), '0'), '.') }}
-                                                    {{ _unitLabelFor($it->unit) }}
-                                                </small>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr><td colspan="5"><div class="rp-empty">No products.</div></td></tr>
-                                    @endforelse
+                                <tbody id="gp-lines">
+                                    <tr id="gp-empty-row">
+                                        <td colspan="6">
+                                            <div class="rp-empty">No items yet — search above to add the first one.</div>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
-                        @if (count($items))
-                            <div class="bd d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
-                                <div class="text-muted" style="font-size:12px;">
-                                    The branch receives the main product, and the quantity always comes out of
-                                    main-store stock. On an item with variations, pick which one is going so the
-                                    gatepass records it.
-                                </div>
-                                <button class="rp-btn p" onclick="return confirm('Transfer the entered quantities to the selected branch? This deducts main-store stock.')">
-                                    Transfer &amp; Generate Gatepass
-                                </button>
+                        <div class="bd d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
+                            <div class="text-muted" style="font-size:12px;">
+                                The branch receives the main product, and the quantity always comes out of
+                                main-store stock. On an item with variations, pick which one is going so the
+                                gatepass records it.
                             </div>
-                        @endif
+                            <button class="rp-btn p" id="gp-submit" disabled
+                                    onclick="return confirm('Transfer the entered quantities to the selected branch? This deducts main-store stock.')">
+                                Transfer &amp; Generate Gatepass
+                            </button>
+                        </div>
                     </div>
                 </form>
             @endif
@@ -201,31 +171,150 @@
                         return confirm('Delete ' + sel + ' selected gatepass(es)? This returns the transferred stock to the main store and removes it from the branch.');
                     }
 
-                    // Retarget the quantity ceiling when the source pool changes. The box counts
-                    // whatever the chosen pool is measured in — packs for a measured variation,
-                    // base units for main stock — so a fixed max would reject valid quantities.
-                    (function () {
-                        Array.prototype.forEach.call(document.querySelectorAll('.rp-gp-source'), function (sel) {
-                            var input = document.getElementById(sel.dataset.target);
-                            if (!input) return;
-                            var hint = input.parentNode.querySelector('.rp-gp-hint');
-
-                            sel.addEventListener('change', function () {
-                                var opt = sel.options[sel.selectedIndex];
-                                var max = parseFloat(opt.getAttribute('data-max'));
-                                if (!isNaN(max)) {
-                                    input.max = max;
-                                    if (parseFloat(input.value) > max) input.value = '';
-                                }
-                                if (hint) {
-                                    var label = (opt.getAttribute('data-hint') || '').trim();
-                                    hint.textContent = 'max ' + (isNaN(max) ? '' : max) + (label ? ' ' + label : '');
-                                }
-                            });
-                        });
-                    })();
                 </script>
             @endif
+
         @endif
     </div>
 @endsection
+
+{{-- Select2 and jQuery both arrive with the layout's vendor bundle, which loads after the
+     content — so the picker has to be wired up here rather than inline above. --}}
+@push('script_2')
+    @if (auth("vendor")->check() || hasPermission("pos_gatepass", "create"))
+                <script>
+                    (function () {
+                        var SEARCH_URL = '{{ route('vendor.retail-pos.gatepass.search') }}';
+                        var $picker = $('#gp-item-picker');
+                        var $lines  = $('#gp-lines');
+
+                        function esc(s) {
+                            return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                            });
+                        }
+
+                        $picker.select2({
+                            placeholder: 'Search item name or SKU…',
+                            allowClear: false,
+                            minimumInputLength: 1,
+                            ajax: {
+                                url: SEARCH_URL,
+                                dataType: 'json',
+                                delay: 250,
+                                data: function (params) { return { q: params.term }; },
+                                processResults: function (data) {
+                                    return {
+                                        results: (data.results || []).map(function (it) {
+                                            return {
+                                                id: it.id,
+                                                text: it.item_name + (it.sku_id ? ' — ' + it.sku_id : ''),
+                                                item: it
+                                            };
+                                        })
+                                    };
+                                },
+                                cache: true
+                            },
+                            templateResult: function (o) {
+                                if (!o.item) { return o.text; }
+                                return $(
+                                    '<div><b>' + esc(o.item.item_name) + '</b>'
+                                    + (o.item.sku_id ? ' <span class="text-muted">' + esc(o.item.sku_id) + '</span>' : '')
+                                    + '<div class="text-muted" style="font-size:11px;">In stock: '
+                                    + esc(o.item.stock_text) + ' ' + esc(o.item.unit)
+                                    + (o.item.last_sent ? ' &middot; ' + esc(o.item.last_sent) : '')
+                                    + '</div></div>'
+                                );
+                            }
+                        });
+
+                        // The source dropdown carries each pool's ceiling in ITS OWN units, because
+                        // the quantity box counts whatever pool is selected — packs for a measured
+                        // variation, base units for main stock.
+                        function sourceCell(it) {
+                            if (!it.variations || !it.variations.length) {
+                                return '<span class="text-muted">Main stock</span>';
+                            }
+                            var html = '<select name="source[' + it.id + ']" class="rp-input rp-gp-source" style="width:190px">'
+                                + '<option value="" data-max="' + it.stock + '" data-hint="' + esc(it.unit) + '">Main stock</option>';
+                            it.variations.forEach(function (v) {
+                                html += '<option value="' + esc(v.type) + '" data-max="' + v.max
+                                    + '" data-hint="' + esc(v.hint || '') + '">' + esc(v.type) + '</option>';
+                            });
+                            return html + '</select>';
+                        }
+
+                        function addRow(it) {
+                            if ($lines.find('tr[data-item="' + it.id + '"]').length) {
+                                // Already on the transfer — a second row would post the same input
+                                // name twice and silently drop one of the quantities.
+                                $lines.find('tr[data-item="' + it.id + '"] .rp-gp-qty').focus();
+                                return;
+                            }
+
+                            $('#gp-empty-row').remove();
+
+                            $lines.append(
+                                '<tr data-item="' + it.id + '">'
+                                + '<td><b>' + esc(it.item_name) + '</b>'
+                                + (it.last_sent
+                                    ? '<small class="text-muted d-block" style="font-size:11px;">' + esc(it.last_sent) + '</small>'
+                                    : '<small class="text-muted d-block" style="font-size:11px;">Not transferred before</small>')
+                                + '</td>'
+                                + '<td class="text-muted">' + esc(it.sku_id) + '</td>'
+                                + '<td class="text-right text-muted">' + esc(it.stock_text) + ' ' + esc(it.unit) + '</td>'
+                                + '<td>' + sourceCell(it) + '</td>'
+                                + '<td>'
+                                + '<input type="number" step="0.001" min="0" max="' + it.stock + '"'
+                                + ' name="qty[' + it.id + ']" class="rp-input rp-gp-qty" style="width:140px" placeholder="0">'
+                                + '<small class="text-muted d-block rp-gp-hint" style="font-size:11px;">max '
+                                + esc(it.stock_text) + ' ' + esc(it.unit) + '</small>'
+                                + '</td>'
+                                + '<td><button type="button" class="rp-btn o gp-remove" title="Remove">&times;</button></td>'
+                                + '</tr>'
+                            );
+
+                            $lines.find('tr[data-item="' + it.id + '"] .rp-gp-qty').focus();
+                            refresh();
+                        }
+
+                        function refresh() {
+                            var rows = $lines.find('tr[data-item]').length;
+                            $('#gp-submit').prop('disabled', rows === 0);
+                            if (rows === 0 && !$('#gp-empty-row').length) {
+                                $lines.append('<tr id="gp-empty-row"><td colspan="6">'
+                                    + '<div class="rp-empty">No items yet — search above to add the first one.</div></td></tr>');
+                            }
+                        }
+
+                        $picker.on('select2:select', function (e) {
+                            addRow(e.params.data.item);
+                            $picker.val(null).trigger('change');
+                        });
+
+                        $lines.on('click', '.gp-remove', function () {
+                            $(this).closest('tr').remove();
+                            refresh();
+                        });
+
+                        // Delegated: rows arrive after this script runs.
+                        $lines.on('change', '.rp-gp-source', function () {
+                            var $row = $(this).closest('tr');
+                            var opt  = this.options[this.selectedIndex];
+                            var max  = parseFloat(opt.getAttribute('data-max'));
+                            var $qty = $row.find('.rp-gp-qty');
+                            var label = (opt.getAttribute('data-hint') || '').trim();
+
+                            if (!isNaN(max)) {
+                                $qty.attr('max', max);
+                                if (parseFloat($qty.val()) > max) { $qty.val(''); }
+                            }
+                            $row.find('.rp-gp-hint').text('max ' + (isNaN(max) ? '' : max) + (label ? ' ' + label : ''));
+                        });
+
+                        refresh();
+                    })();
+                </script>
+    @endif
+@endpush

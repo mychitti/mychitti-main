@@ -33,10 +33,13 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
 use Illuminate\Http\File as IlluminateFile;
 use Mpdf\Mpdf;
+use App\Traits\InventoryPriceHistory;
 
 
 class InventoryController extends Controller
 {
+    use InventoryPriceHistory;
+
     private function ensureLooseColumn(): void
     {
         if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'sell_loose')) {
@@ -48,6 +51,27 @@ class InventoryController extends Controller
     {
         // Loose item — weighed on the scale at POS sale time; billed weight × per-unit price.
         $item->sell_loose = ($request->item_type === 'product' && $request->boolean('sell_loose')) ? 1 : 0;
+    }
+
+    private function ensureRepeatDaysColumn(): void
+    {
+        if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'repeat_days')) {
+            DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `repeat_days` INT NULL");
+        }
+    }
+
+    /**
+     * Per-item repeat purchase cycle: whether this item is chased at all, and after how long.
+     * The item's own number is the whole answer — nothing is inherited from its category.
+     */
+    private function applyRepeatReminder(InventoryItem $item, Request $request): void
+    {
+        if (!$request->has('repeat_reminder')) {
+            return;
+        }
+
+        $days = (int) $request->input('repeat_days', 0);
+        $item->repeat_days = ($request->boolean('repeat_reminder') && $days > 0) ? min($days, 730) : 0;
     }
 
     public function dashboard(Request $request)
@@ -598,6 +622,7 @@ class InventoryController extends Controller
     }
     public function edit_item(Request $request, $id)
     {
+        $this->ensureRepeatDaysColumn();
         $item = InventoryItem::find($id);
         $items = InventoryItem::where('inventory_items.store_id', Helpers::get_store_id())->get();
 
@@ -696,8 +721,10 @@ class InventoryController extends Controller
             $old_stock = $inventory_item->stock;
 
             $inventory_item->stock = $old_stock + $request->quantity[$key];
+            // No price-log row: the entry above already records both prices, and the history
+            // reads it directly, so logging this save too would double-count the change.
             $inventory_item->selling_price = $selling_price;
-            $inventory_item->save();
+            _withoutItemPriceLog(fn() => $inventory_item->save());
 
             \App\Models\Item::withoutGlobalScopes()
                 ->where('inventory_item_id', $inventory_item->id)
@@ -768,6 +795,7 @@ class InventoryController extends Controller
 
     public function update_item(Request $request)
     {
+        $this->ensureRepeatDaysColumn();
         $validator = FacadesValidator::make($request->all(), [
             'item_name'            => 'required|string|max:255',
             'mrp'                  => 'required',
@@ -885,6 +913,7 @@ class InventoryController extends Controller
         $inventory_item->specifications = $specifications;
         $this->ensureLooseColumn();
         $this->applyLooseSelling($inventory_item, $request);
+        $this->applyRepeatReminder($inventory_item, $request);
         $inventory_item->save();
 
         // variation -=====================================
@@ -1019,6 +1048,7 @@ class InventoryController extends Controller
 
     public function save_item(Request $request)
     {
+        $this->ensureRepeatDaysColumn();
         $rules = [
             'item_name' => 'required|string|max:255',
             'item_type' => 'required',
@@ -1133,6 +1163,7 @@ class InventoryController extends Controller
 
         $this->ensureLooseColumn();
         $this->applyLooseSelling($inventory_item, $request);
+        $this->applyRepeatReminder($inventory_item, $request);
 
         $inventory_item->save();
 
@@ -1383,7 +1414,8 @@ class InventoryController extends Controller
     public function item_detail(Request $request, $id)
     {
         $item = InventoryItem::with('entries', 'itemunit', 'storage_unit', 'secondaryUnit')->find($id);
-        return view("laundry::vendor.inventory.item_detail", compact('item'));
+        $priceHistory = $this->item_price_history($item);
+        return view("laundry::vendor.inventory.item_detail", compact('item', 'priceHistory'));
     }
     public function variant_combination(Request $request)
     {

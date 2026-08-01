@@ -89,7 +89,7 @@ class NextVisitService
             Log::warning('Next-visit activity log skipped: ' . $e->getMessage());
         }
 
-        self::notifyPatient($storeId, $patientId, $date, $time);
+        self::notifyPatient($storeId, $patientId, $date, $time, $next);
 
         return $next;
     }
@@ -99,7 +99,7 @@ class NextVisitService
      * delivers inside the patient's 24h window; the scheduled reminder template covers everyone
      * regardless, closer to the visit. Never allowed to fail the booking.
      */
-    private static function notifyPatient(int $storeId, int $patientId, string $date, string $time): void
+    private static function notifyPatient(int $storeId, int $patientId, string $date, string $time, ?Appointment $appointment = null): void
     {
         try {
             $patient = Patient::find($patientId);
@@ -109,6 +109,21 @@ class NextVisitService
 
             $wa = WhatsAppService::make($storeId);
             if ($wa->source() !== 'vendor') {
+                return;
+            }
+
+            // A hospital that turned the follow-up on under Send Notifications gets the approved
+            // template, which delivers whether or not the patient has an open 24h window. The
+            // free-text note below is the old behaviour and only reaches someone already in a
+            // conversation — so it stays as the fallback rather than being sent as well.
+            if ($appointment && HmisWhatsAppShare::auto(
+                'followup',
+                $storeId,
+                (int) $appointment->id,
+                fn() => HmisWhatsAppShare::followUpForAppointment($appointment),
+                'appointment',
+                HmisWhatsAppShare::followUpDueAt($storeId, $appointment->appointment_date)
+            )) {
                 return;
             }
 

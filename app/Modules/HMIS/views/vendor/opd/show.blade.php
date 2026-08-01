@@ -670,6 +670,25 @@
             <div class="token-status">
                 Token {{ $visit->token_number }} / {{ \App\Models\OpdVisit::where('store_id', $visit->store_id)->whereDate('visit_date', $visit->visit_date)->count() }}
             </div>
+            {{-- Sending the summary is what closes the loop with the patient — it belongs beside
+                 the consultation, not on a separate screen someone has to remember to visit. --}}
+            @if (hasPermission('opd_register', 'view'))
+                @include('hmis::vendor._wa_send', [
+                    'action' => route('vendor.hmis-whatsapp.treatment', $visit->id),
+                    'label'  => 'Send summary',
+                    'class'  => 'btn btn-sm btn-outline-success',
+                    'phone'  => $visit->patient?->phone ?? '',
+                    'note'   => 'The patient gets the diagnosis in the message, with the full summary — treatment advised, vitals and notes — behind a private link.',
+                ])
+                @include('hmis::vendor._wa_send', [
+                    'action' => route('vendor.hmis-whatsapp.opd-feedback', $visit->id),
+                    'label'  => 'Ask for feedback',
+                    'class'  => 'btn btn-sm btn-outline-secondary',
+                    'icon'   => 'tio-star-outlined',
+                    'phone'  => $visit->patient?->phone ?? '',
+                    'note'   => 'Asks how their visit went, with one-tap answers. Replies land in WhatsApp → Chats.',
+                ])
+            @endif
             <a href="{{ route('vendor.opd.index') }}" class="btn-back-queue">
                 ← OPD Queue
             </a>

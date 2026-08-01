@@ -927,18 +927,12 @@ class BillingController extends Controller
 
     $invoice->save();
 
-    // Per-line MRP (purchase bills) — store it so the invoice prints the real MRP, not the price.
-    if (!\Illuminate\Support\Facades\Schema::hasColumn('invoice_items', 'mrp')) {
-      \Illuminate\Support\Facades\DB::statement("ALTER TABLE `invoice_items` ADD COLUMN `mrp` DECIMAL(12,3) NULL");
-    }
-
     foreach ($data['items'] as $item) {
       $InvoiceItem = new InvoiceItem();
       $InvoiceItem->rand_invoice_id = $invoice->invoice_id;
       $InvoiceItem->manual_invoice_id = $invoice->id;
       $InvoiceItem->name = $item['name'] ?? '';
       $InvoiceItem->price = $item['price'] ?? 0;
-      $InvoiceItem->mrp = ($item['mrp'] ?? null) !== '' ? ($item['mrp'] ?? null) : null;
       $InvoiceItem->qty = $item['qty'] ?? 1;
       $InvoiceItem->unit = $item['unit'];
       $InvoiceItem->tax = $data['tax_type'] === 'gst' ? ($item['tax'] ?? 0) : 0;
@@ -1073,11 +1067,9 @@ class BillingController extends Controller
       if ($inventory_item) {
         $inv_id = $inventory_item->id;
       }
-      $mrp = $request->item_mrp_new[$key] ?? null;
       $items[] = [
         'name' => $request->item_name_new[$key],
         'price' => $request->item_price_new[$key],
-        'mrp' => $mrp,
         'qty' => $request->item_qty_new[$key],
         'unit' => $request->item_unit_new[$key] ?? 0,
         'tax' => $request->item_tax_new[$key] ?? 0,
@@ -1088,11 +1080,6 @@ class BillingController extends Controller
       // INCREMENT INVENTORY STOCK (purchase invoice adds stock)
       if ($request->inventory_item_id[$key]) {
         _incrementInventoryStock($request->inventory_item_id[$key], $request->item_qty_new[$key], ($request->has('item_unit_new.' . $key) ? $request->item_unit_new[$key] : null));
-        // Update the product's MRP from the purchase bill, when provided.
-        if ($mrp !== null && $mrp !== '') {
-          InventoryItem::where('id', $request->inventory_item_id[$key])->where('store_id', Helpers::get_store_id())
-            ->update(['mrp' => (float) $mrp]);
-        }
       }
     }
 
@@ -1578,7 +1565,6 @@ class BillingController extends Controller
       $qty = $request->item_qty_new[$key] ?? 1;
       $price = $request->item_price_new[$key] ?? 0;
       $tax = $request->tax_type === 'gst' ? ($request->item_tax_new[$key] ?? 0) : 0;
-      $mrp = $request->item_mrp_new[$key] ?? null;
       $inventoryItemId = $request->inventory_item_id[$key] ?? null;
       $unit = $request->item_unit_new[$key] ?? null;
 
@@ -1587,7 +1573,6 @@ class BillingController extends Controller
       $item->manual_invoice_id = $invoice->id;
       $item->name = $name;
       $item->price = $price;
-      $item->mrp = ($mrp !== null && $mrp !== '') ? $mrp : null;
       $item->qty = $qty;
       $item->unit = $unit;
       $item->tax = $tax;
@@ -1600,10 +1585,6 @@ class BillingController extends Controller
       if ($inventoryItemId) {
         $hasInventoryLines = true;
         _incrementInventoryStock($inventoryItemId, $qty, $unit);
-        if ($mrp !== null && $mrp !== '') {
-          InventoryItem::where('id', $inventoryItemId)->where('store_id', $storeId)
-            ->update(['mrp' => (float) $mrp]);
-        }
       }
     }
 

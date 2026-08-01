@@ -32,6 +32,7 @@ class NotificationPrefs
                     'label'   => 'Customer welcome message',
                     'desc'    => 'Sent automatically when a new customer is added to your store (needs your approved customer_welcome template).',
                     'default' => true,
+                    'template' => 'customer_welcome',
                 ],
                 'auto_reply' => [
                     'label'   => 'AI auto-reply to customer messages',
@@ -40,6 +41,63 @@ class NotificationPrefs
                 ],
                 // appointment_reminder is rendered on the page too, but its on/off lives in
                 // stores.wa_appt_reminder (the hours value) — see the settings view.
+
+                // Off by default: it messages past customers unprompted and each one is billed,
+                // and it sends nothing at all until the store sets a repeat cycle somewhere.
+                'repeat_purchase' => [
+                    'label'    => 'Repeat purchase reminder',
+                    'desc'     => 'Reminds a customer when something they buy regularly is due again — one message listing everything due, at most once a fortnight per customer (needs your approved repeat_purchase_reminder template). Switch it on item by item under Inventory, where you also set how many days after the purchase it goes out.',
+                    'default'  => false,
+                    'template' => 'repeat_purchase_reminder',
+                ],
+
+                // Hospital records. All default OFF, unlike everything above: these send a
+                // patient their own medical information without a human pressing anything, and
+                // each message is billed. That is a decision a hospital makes deliberately, not
+                // one they discover after the fact. Every one of them can still be sent by hand
+                // from its own screen whether the toggle is on or off.
+                'hmis_treatment' => [
+                    'label'   => 'Consultation summary',
+                    'desc'    => 'Sent to the patient when an OPD visit is marked completed (needs your approved treatment_summary template).',
+                    'default' => false,
+                    'template' => 'treatment_summary',
+                    'module'  => 'hospital_manage',
+                ],
+                'hmis_prescription' => [
+                    'label'   => 'Prescription',
+                    'desc'    => 'Sent when a prescription is finalized (needs your approved prescription_share template).',
+                    'default' => false,
+                    'template' => 'prescription_share',
+                    'module'  => 'hospital_manage',
+                ],
+                'hmis_medicines' => [
+                    'label'   => 'Medicine instructions',
+                    'desc'    => 'How to take each medicine, sent when a prescription is finalized (needs your approved medicine_instructions template).',
+                    'default' => false,
+                    'template' => 'medicine_instructions',
+                    'module'  => 'hospital_manage',
+                ],
+                'hmis_followup' => [
+                    'label'   => 'Follow-up confirmation',
+                    'desc'    => 'Sent when you book a patient\'s next visit (needs your approved followup_reminder template). Separate from the reminder before the appointment.',
+                    'default' => false,
+                    'template' => 'followup_reminder',
+                    'module'  => 'hospital_manage',
+                ],
+                'hmis_feedback' => [
+                    'label'   => 'Feedback request',
+                    'desc'    => 'Asks how the visit went once an OPD visit or appointment is completed (needs your approved visit_feedback template).',
+                    'default' => false,
+                    'template' => 'visit_feedback',
+                    'module'  => 'hospital_manage',
+                ],
+                'hmis_lab_report' => [
+                    'label'   => 'Lab report',
+                    'desc'    => 'Sent when a lab report is verified and finalized (needs your approved lab_report_ready template). Never sent for unverified results.',
+                    'default' => false,
+                    'template' => 'lab_report_ready',
+                    'module'  => 'hospital_manage',
+                ],
             ],
         ],
         'push_send' => [
@@ -124,9 +182,13 @@ class NotificationPrefs
     }
 
     /**
-     * Is this action enabled for this store? Falls back to the registry default, and to
-     * TRUE on any failure — a broken prefs table must never silently mute notifications
-     * that were working before.
+     * Is this action enabled for this store? Falls back to the registry default, including when
+     * the lookup itself fails — a broken prefs table must never silently mute notifications that
+     * were working before, and must never silently switch on ones nobody asked for.
+     *
+     * That second half matters for the opt-in items: returning a blanket TRUE on error would mean
+     * a table problem started WhatsApping patients their prescriptions at a hospital that had
+     * deliberately left every one of these off.
      */
     public static function enabled(?int $storeId, string $group, string $key): bool
     {
@@ -139,7 +201,7 @@ class NotificationPrefs
             $rows = static::rowsFor($storeId);
             return array_key_exists("$group.$key", $rows) ? (bool) $rows["$group.$key"] : $default;
         } catch (\Throwable $e) {
-            return true;
+            return $default;
         }
     }
 
@@ -152,14 +214,33 @@ class NotificationPrefs
     public static function forDirection(int $storeId, string $direction): array
     {
         $out = [];
+        // Fetched at most once per call, and only if some visible item needs it.
+        $statuses = null;
         foreach (self::CHANNELS as $channel => $meta) {
             foreach (self::GROUPS as $group => $g) {
                 if ($g['channel'] !== $channel || $g['direction'] !== $direction) {
                     continue;
                 }
-                $items = $g['items'];
-                foreach ($items as $key => &$item) {
+                // An item tied to a module is only offered to stores that run it — a restaurant
+                // has no use for a consultation-summary toggle it could never trigger.
+                $items = [];
+                foreach ($g['items'] as $key => $item) {
+                    if (!empty($item['module']) && !vendorPlanHasModule($item['module'])) {
+                        continue;
+                    }
                     $item['enabled'] = static::enabled($storeId, $group, $key);
+
+                    // Whether the template this action sends actually exists and is approved on
+                    // the vendor's own WABA. Without it the toggle is a switch wired to nothing.
+                    // null = no template needed, or the status could not be read.
+                    if (!empty($item['template']) && $channel === 'whatsapp') {
+                        $statuses = $statuses ?? WhatsAppService::templateStatuses($storeId);
+                        $item['template_status'] = $statuses
+                            ? ($statuses[strtolower($item['template'])] ?? 'MISSING')
+                            : null;
+                    }
+
+                    $items[$key] = $item;
                 }
                 $out[$channel] = $meta + ['group' => $group, 'items' => $items];
             }

@@ -57,6 +57,13 @@ Route::get('/opcache-reset', function() {
 // WhatsApp Cloud API webhook (public — Meta verifies via GET, posts status/inbound via POST).
 Route::get('whatsapp/webhook',  [App\Http\Controllers\WhatsAppWebhookController::class, 'verify']);
 Route::post('whatsapp/webhook', [App\Http\Controllers\WhatsAppWebhookController::class, 'receive']);
+
+// A patient opening their own record from the WhatsApp link the hospital sent. Public because
+// the patient has no login; the token is the credential. Declared up here so the catch-all
+// {category_slug}/{slug} product route at the bottom of this file can never swallow it.
+Route::get('health-record/{token}', [App\Http\Controllers\PatientRecordController::class, 'show'])
+    ->name('patient-record')
+    ->middleware('throttle:30,1');
 // Route::get('/print-receipt', function () {
 //     try {
 //         // Printer IP and port

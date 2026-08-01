@@ -102,6 +102,31 @@
                 </form>
             </div>
         </div>
+
+        <div class="rp-card">
+            <div class="hd"><span class="accent">Receipt Contents</span></div>
+            <div class="bd">
+                <form method="post" action="{{ route('vendor.retail-pos.mrp-saving.save') }}">
+                    @csrf
+                    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:12px;">
+                        {{-- Posted as 0 first so unticking actually turns it off; an unchecked box
+                             sends nothing at all. --}}
+                        <input type="hidden" name="pos_show_mrp_saving" value="0">
+                        <input type="checkbox" name="pos_show_mrp_saving" value="1" style="margin-top:3px;"
+                               {{ $showMrpSaving ? 'checked' : '' }}>
+                        <span>
+                            <b>Show “Saved Rs. …/- On MRP”</b>
+                            <span style="display:block;font-size:11.5px;color:#71717a;margin-top:2px;">
+                                Prints the customer's total saving against MRP at the bottom of the receipt,
+                                including any bill discount and coupon. Turn it off if you'd rather not print
+                                the gap between MRP and your selling price.
+                            </span>
+                        </span>
+                    </label>
+                    <button class="rp-btn p">Save</button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script>

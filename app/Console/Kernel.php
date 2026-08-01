@@ -11,7 +11,11 @@ use App\Jobs\Scheduled\CancelStaleOrdersJob;
 use App\Jobs\Scheduled\DatabaseBackupJob;
 use App\Jobs\Scheduled\EmployeeAttendanceMarkJob;
 use App\Jobs\Scheduled\MonthlyMaintenanceReminderJob;
+use App\Jobs\Scheduled\PruneSharedPdfsJob;
 use App\Jobs\Scheduled\RegenerateSitemapJob;
+use App\Jobs\Scheduled\RunWhatsAppCampaignsJob;
+use App\Jobs\Scheduled\SendDueHmisMessagesJob;
+use App\Jobs\Scheduled\SendRepeatPurchaseRemindersJob;
 use App\Jobs\Scheduled\SendAppointmentRemindersJob;
 use App\Jobs\Scheduled\SendPaymentRemindersJob;
 use App\Jobs\Scheduled\UnavailableProviderNotificationJob;
@@ -33,6 +37,8 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\DeductPlatformFee::class,
         \App\Console\Commands\BillWhatsAppSubscriptions::class,
         \App\Console\Commands\BackfillVariationStockCommand::class,
+        \App\Console\Commands\BackfillInventoryCogs::class,
+        \App\Console\Commands\BackfillItemOpeningPrices::class,
     ];
 
     /**
@@ -69,6 +75,31 @@ class Kernel extends ConsoleKernel
         $schedule->job(new SendAppointmentRemindersJob)->hourly()
             ->timezone($tz)
             ->name('whatsapp-appointment-reminders')
+            ->withoutOverlapping();
+
+        // "Running low?" nudges for things a customer is due to rebuy.
+        $schedule->job(new SendRepeatPurchaseRemindersJob)->dailyAt('10:30')
+            ->timezone($tz)
+            ->name('repeat-purchase-reminders')
+            ->withoutOverlapping();
+
+        // Feedback requests and follow-up reminders the vendor asked to delay.
+        $schedule->job(new SendDueHmisMessagesJob)->everyFifteenMinutes()
+            ->timezone($tz)
+            ->name('hmis-due-whatsapp')
+            ->withoutOverlapping();
+
+        // Medical PDFs sent as WhatsApp attachments are public while Meta fetches them — clear
+        // them out once that window has passed.
+        $schedule->job(new PruneSharedPdfsJob)->hourly()
+            ->timezone($tz)
+            ->name('prune-shared-pdfs')
+            ->withoutOverlapping();
+
+        // WhatsApp drip campaigns — sends whichever step of each series is due.
+        $schedule->job(new RunWhatsAppCampaignsJob)->everyFiveMinutes()
+            ->timezone($tz)
+            ->name('whatsapp-campaign-runner')
             ->withoutOverlapping();
 
         $schedule->job(new RegenerateSitemapJob)->dailyAt('00:00')

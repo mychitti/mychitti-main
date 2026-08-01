@@ -116,7 +116,7 @@
                                 data-target="#inventoryItemModal">+ Add From Inventory</button>
                         @endif
                     </div>
-                    <table class="items-table">
+                    <table class="items-table" data-purchase="1">
                         <thead class="items_head">
                             <tr>
                                 <th>Description</th>

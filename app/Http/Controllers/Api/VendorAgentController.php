@@ -168,6 +168,12 @@ class VendorAgentController extends Controller
                     'unit' => $data['unit'] ?? 'pcs', 'category_id' => $data['category_id'] ?? null,
                     'module_id' => 6, 'created_at' => now(), 'updated_at' => now(),
                 ]);
+                // A query-builder insert skips model events, so record the opening prices
+                // explicitly or they are missing from the item's price history.
+                _logItemPriceValues($id, $storeId, [
+                    'purchase' => ['old' => null, 'new' => $data['landing_price'] ?? $data['purchase_price'] ?? 0],
+                    'sell' => ['old' => null, 'new' => $data['selling_price'] ?? $data['sale_price'] ?? $data['price'] ?? 0],
+                ], 'create');
                 return response()->json(['success' => true, 'message' => "Item '{$name}' added. ID: #{$id}"]);
 
             case 'edit':
@@ -181,7 +187,21 @@ class VendorAgentController extends Controller
                 if (isset($data['name']))           { $data['item_name'] = $data['name']; unset($data['name']); }
                 if (isset($data['sku']))            { $data['sku_id'] = $data['sku']; unset($data['sku']); }
                 $data['updated_at'] = now();
+                // Read the prices about to be overwritten — once the update lands the old
+                // figures are gone, and a price history with no "was" is half a history.
+                $priceBefore = DB::table('inventory_items')->where('id', $id)->where('store_id', $storeId)
+                    ->first(['landing_price', 'selling_price']);
                 DB::table('inventory_items')->where('id', $id)->where('store_id', $storeId)->update($data);
+                if ($priceBefore && (array_key_exists('landing_price', $data) || array_key_exists('selling_price', $data))) {
+                    $pricePairs = [];
+                    if (array_key_exists('landing_price', $data)) {
+                        $pricePairs['purchase'] = ['old' => $priceBefore->landing_price, 'new' => $data['landing_price']];
+                    }
+                    if (array_key_exists('selling_price', $data)) {
+                        $pricePairs['sell'] = ['old' => $priceBefore->selling_price, 'new' => $data['selling_price']];
+                    }
+                    _logItemPriceValues($id, $storeId, $pricePairs, 'edit');
+                }
                 // A query-builder update skips model events, so re-derive stock_base explicitly
                 // when this call touched stock or the unit (see InventoryItem::booted).
                 if (array_key_exists('stock', $data) || array_key_exists('unit', $data)) {

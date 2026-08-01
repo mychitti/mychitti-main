@@ -423,6 +423,8 @@
     // ordinary case — labelling every one of those REPLY is noise, not information.
     var CONTEXT_TAG = {
         'bulk':          'Campaign',
+        'campaign':      'Campaign series',
+        'button-reply':  'Button tap',
         'nearby':        'Nearby offer',
         'welcome':       'Welcome',
         'auto reply':    'AI auto-reply',

@@ -51,6 +51,7 @@ class InventoryItem extends Model
         'specifications',
         'sell_loose',
         'stock_type',
+        'repeat_days',
     ];
  
     public function purchaseOrders()
@@ -119,6 +120,24 @@ class InventoryItem extends Model
                     ->where('inventory_item_id', $inventoryItem->id)
                     ->update(['stock' => $inventoryItem->stock]);
             }
+        });
+
+        // Price history. Same reasoning as stock_base above: the price columns are written from
+        // the item form, the quick-price editor, the variant editor and each module's own copy
+        // of the save, so this is captured on the model where no write path can miss it.
+        //
+        // Deliberately `created` and `updated` rather than `saved`. `saved` fires on every save,
+        // and save_item() saves the same new row three times while it attaches barcode, images
+        // and variations — with wasRecentlyCreated staying true throughout, one new item logged
+        // its opening price three times. `created` fires once, on the insert itself.
+        static::created(function ($inventoryItem) {
+            _logItemPriceChange($inventoryItem, true);
+        });
+
+        // `updated` fires only when an UPDATE actually ran, after syncChanges() and before
+        // syncOriginal(), so wasChanged() and getOriginal() both read true here.
+        static::updated(function ($inventoryItem) {
+            _logItemPriceChange($inventoryItem, false);
         });
     }
 }

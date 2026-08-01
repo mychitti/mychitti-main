@@ -542,6 +542,8 @@
                 {!! $item->description !!}
             </div>
         </div>
+        @include('vendor-views.inventory._price_history')
+
         @php $variations  = json_decode($item->variations); @endphp
         @if ($variations)
             <div class="info-section">

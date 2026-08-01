@@ -2271,6 +2271,170 @@ if (!function_exists('_ensureStockTypeColumn')) {
         }
     }
 }
+if (!function_exists('_ensureItemPriceLogTable')) {
+    /**
+     * Every purchase and selling price an inventory item has ever been given.
+     *
+     * Editing an item's price overwrites the old figure, so before this table there was no
+     * record that the price used to be something else — the item row only ever knows today's
+     * number. Without it "what have we been pricing this at" has no answer to read.
+     */
+    function _ensureItemPriceLogTable(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_item_price_logs')) {
+                DB::statement("CREATE TABLE `inventory_item_price_logs` (
+                    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `store_id` BIGINT UNSIGNED NULL,
+                    `item_id` BIGINT UNSIGNED NULL,
+                    `price_type` VARCHAR(16) NOT NULL,
+                    `old_price` DECIMAL(24,4) NULL,
+                    `new_price` DECIMAL(24,4) NULL,
+                    `source` VARCHAR(24) NULL,
+                    `created_at` TIMESTAMP NULL,
+                    `updated_at` TIMESTAMP NULL,
+                    PRIMARY KEY (`id`),
+                    KEY `iipl_item_idx` (`item_id`, `price_type`),
+                    KEY `iipl_store_idx` (`store_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            }
+        } catch (\Throwable $e) {
+            Log::error('item price log provisioning failed: ' . $e->getMessage());
+        }
+    }
+}
+if (!function_exists('_itemPriceLogPaused')) {
+    /**
+     * Read, and optionally set, whether price logging is suspended for the current request.
+     *
+     * Kept out of the model as a plain static rather than a property on it: anything assigned to
+     * an Eloquent model is an attribute, and an attribute with no column behind it breaks the
+     * very save it was meant to annotate.
+     */
+    function _itemPriceLogPaused(?bool $set = null): bool
+    {
+        static $paused = false;
+        if ($set !== null) {
+            $paused = $set;
+        }
+        return $paused;
+    }
+}
+if (!function_exists('_withoutItemPriceLog')) {
+    /**
+     * Run a save that should not produce a price-log row, because the change is already
+     * recorded elsewhere. A stock entry writes its own purchase and selling price onto the
+     * entry row and then pushes the selling price onto the item; logging that second write
+     * as well would show one price change twice in the history and count it twice in the
+     * average. `finally` so an exception mid-save cannot leave logging off for the rest of
+     * the request.
+     */
+    function _withoutItemPriceLog(callable $callback)
+    {
+        _itemPriceLogPaused(true);
+        try {
+            return $callback();
+        } finally {
+            _itemPriceLogPaused(false);
+        }
+    }
+}
+if (!function_exists('_logItemPriceValues')) {
+    /**
+     * Write the price-history rows for one item, given the before and after of each price.
+     *
+     * $pairs is keyed by price type — ['purchase' => ['old' => ?, 'new' => ?], 'sell' => [...]] —
+     * with 'old' null for a price being set for the first time. Takes plain values rather than a
+     * model so the paths that update inventory_items through the query builder, which fires no
+     * model events, can record their changes too.
+     */
+    function _logItemPriceValues($itemId, $storeId, array $pairs, string $source = 'edit'): void
+    {
+        if (_itemPriceLogPaused() || !$itemId) {
+            return;
+        }
+
+        $rows = [];
+        $now = now();
+
+        foreach ($pairs as $type => $pair) {
+            $new = $pair['new'] ?? null;
+            $old = $pair['old'] ?? null;
+
+            if ($new === null || (float) $new <= 0) {
+                continue;
+            }
+
+            // A price re-saved as itself is not a price change. Compared as floats so that
+            // "400" and "400.00" coming back from different forms do not read as a move.
+            if ($old !== null && (float) $old === (float) $new) {
+                continue;
+            }
+
+            $rows[] = [
+                'store_id' => $storeId,
+                'item_id' => $itemId,
+                'price_type' => $type,
+                'old_price' => $old !== null ? (float) $old : null,
+                'new_price' => (float) $new,
+                'source' => $source,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        if (!$rows) {
+            return;
+        }
+
+        try {
+            _ensureItemPriceLogTable();
+            DB::table('inventory_item_price_logs')->insert($rows);
+        } catch (\Throwable $e) {
+            // A price history that cannot be written is not a reason to fail the save that
+            // the vendor actually asked for.
+            Log::error('item price log write failed: ' . $e->getMessage());
+        }
+    }
+}
+if (!function_exists('_logItemPriceChange')) {
+    /**
+     * Record a price the item has just been given, one row per price that actually moved.
+     *
+     * Driven off the model's created and updated events rather than the controllers, because the
+     * item form, the quick-price editor, the variant editor and each module's own copy of the
+     * save all write these two columns — hooking the model is the only way none of them can drift.
+     *
+     * $created is passed in rather than read from wasRecentlyCreated, which stays true for the
+     * rest of the request: save_item() saves a new row three times as it attaches barcode, images
+     * and variations, and reading the flag logged the opening price on each of them.
+     */
+    function _logItemPriceChange($item, bool $created): void
+    {
+        if (_itemPriceLogPaused() || !$item || !$item->id) {
+            return;
+        }
+
+        $pairs = [];
+
+        foreach (['landing_price' => 'purchase', 'selling_price' => 'sell'] as $column => $type) {
+            if ($created) {
+                $pairs[$type] = ['old' => null, 'new' => $item->{$column}];
+            } elseif ($item->wasChanged($column)) {
+                $pairs[$type] = ['old' => $item->getOriginal($column), 'new' => $item->{$column}];
+            }
+        }
+
+        if ($pairs) {
+            _logItemPriceValues($item->id, $item->store_id, $pairs, $created ? 'create' : 'edit');
+        }
+    }
+}
 if (!function_exists('_ensureInvoiceItemVariationColumn')) {
     /**
      * Which variation a sold line was, as data rather than as text inside the item name.

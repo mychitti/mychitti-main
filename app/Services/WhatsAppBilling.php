@@ -114,8 +114,8 @@ class WhatsAppBilling
     const MESSAGE_FEE_OWN      = 0.06;
     const MESSAGE_FEE_PLATFORM = 0.12;
 
-    /** Message templates included in the platform fee. Temporarily raised from 4 to 10. */
-    const INCLUDED_TEMPLATES = 10;
+    /** Message templates included in the platform fee. Admin can override via whatsapp_config. */
+    const INCLUDED_TEMPLATES = 4;
 
     /** One-time fee for each template slot beyond the included quota. */
     const EXTRA_TEMPLATE_FEE = 99;

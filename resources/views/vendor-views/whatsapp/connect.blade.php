@@ -447,13 +447,17 @@
                              see who they could reach while deciding whether to make one. --}}
                         <div class="wa-card-h">
                             <span><i class="tio-send"></i> Bulk message</span>
-                            <div class="d-flex flex-wrap" style="gap:6px;">
+                            <div class="d-flex flex-wrap align-items-center" style="gap:6px;">
                                 <span class="wa-chip badge-soft-info">
                                     {{ $clientCount }} of your {{ $clientCount == 1 ? 'customer' : 'customers' }}
                                 </span>
                                 <span class="wa-chip badge-soft-primary">
                                     {{ $platformUserCount }} MyChitti {{ $platformUserCount == 1 ? 'user' : 'users' }}
                                 </span>
+                                <a href="{{ route('vendor.whatsapp.bulk.history') }}"
+                                   class="btn btn-xs btn-outline-secondary" style="font-size:11px;">
+                                    <i class="tio-history"></i> Past sends
+                                </a>
                             </div>
                         </div>
                         <div class="wa-card-b">
@@ -508,18 +512,24 @@
                                         <span id="wb-selected-count" class="badge badge-soft-secondary">0 selected</span>
                                     </div>
 
-                                    <ul class="nav nav-pills mb-3" style="gap:6px;">
+                                    {{-- Two audiences, one send. The pills only switch which picker is on
+                                         screen — both selections go out together under one Send, so a vendor
+                                         never has to run the same campaign twice. --}}
+                                    <ul class="nav nav-pills mb-2" style="gap:6px;">
                                         <li class="nav-item">
                                             <a href="javascript:;" class="nav-link active wb-mode" data-mode="clients" style="font-size:13px;padding:6px 14px;">
-                                                My customers <span class="badge badge-soft-light ml-1">{{ $clientCount }}</span>
+                                                My customers <span id="wb-pill-clients" class="badge badge-soft-light ml-1">{{ $clientCount }}</span>
                                             </a>
                                         </li>
                                         <li class="nav-item">
                                             <a href="javascript:;" class="nav-link wb-mode" data-mode="platform" style="font-size:13px;padding:6px 14px;">
-                                                MyChitti users <span class="badge badge-soft-light ml-1">{{ $platformUserCount }}</span>
+                                                MyChitti users <span id="wb-pill-platform" class="badge badge-soft-light ml-1">{{ $platformUserCount }}</span>
                                             </a>
                                         </li>
                                     </ul>
+                                    <small class="text-muted d-block mb-3">
+                                        Pick from both tabs if you like — one <b>Send</b> covers everything you’ve chosen.
+                                    </small>
 
                                     <div id="wb-pane-clients">
                                         <div class="d-flex mb-2" style="gap:8px;">
@@ -549,9 +559,13 @@
                                             @else
                                                 <label style="font-size:12px;" class="mb-1">How many users to message</label>
                                                 <input id="wb-platform-count" type="number" class="form-control form-control-sm"
-                                                       style="max-width:200px;" min="1" max="{{ $platformUserCount }}"
-                                                       value="{{ min(50, $platformUserCount) }}">
+                                                       style="max-width:200px;" min="0" max="{{ $platformUserCount }}"
+                                                       value="0">
                                                 <small class="text-muted d-block mt-1">
+                                                    {{-- Starts at zero on purpose: this box is now added to whatever is
+                                                         ticked under My customers, and reaching strangers costs more per
+                                                         message. Nobody here is messaged unless the vendor asks for them. --}}
+                                                    Leave this at <b>0</b> to message only your own customers.
                                                     Maximum {{ $platformUserCount }} available now. Anyone who has already
                                                     received {{ \App\Http\Controllers\Vendor\WhatsAppController::NEARBY_MONTHLY_CAP }}
                                                     offers from any business this month is excluded automatically, so the
@@ -567,6 +581,10 @@
                                     future send.@if (($optOutCount ?? 0) > 0) {{ $optOutCount }} {{ $optOutCount == 1 ? 'person has' : 'people have' }} opted out and {{ $optOutCount == 1 ? 'is' : 'are' }} already excluded from the counts above.@endif
                                     Keeping unwanted messages down protects your number's WhatsApp quality rating.
                                 </small>
+
+                                {{-- What this one Send actually covers, priced before it is pressed —
+                                     the two audiences bill at different rates. --}}
+                                <div id="wb-summary" class="border rounded p-2 mb-3" style="display:none;font-size:12px;"></div>
 
                                 <div class="d-flex align-items-center" style="gap:12px;">
                                     <button id="wb-send" class="btn btn--primary" disabled>Send</button>
@@ -615,14 +633,16 @@
             var BATCH = {{ \App\Http\Controllers\Vendor\WhatsAppController::BULK_BATCH_LIMIT }};
             var RECIPIENTS_URL = '{{ route('vendor.whatsapp.bulk.recipients') }}';
             var SEND_URL = '{{ route('vendor.whatsapp.bulk.send') }}';
+            var HISTORY_URL = '{{ route('vendor.whatsapp.bulk.history') }}';
             var CSRF = '{{ csrf_token() }}';
 
             var PLATFORM_MAX = {{ $platformUserCount }};
+            var RATE = @json($rates);
+            var CURRENCY = '{{ \App\CentralLogics\Helpers::currency_symbol() }}';
 
             var selected = new Set();
             var loaded = [];
             var searchTimer = null;
-            var mode = 'clients';
 
             // Built by concatenation so Blade never sees a literal double-brace in this script.
             var OPEN = '{' + '{', CLOSE = '}' + '}';
@@ -640,6 +660,9 @@
             var $bar = document.getElementById('wb-progress-bar');
             var $ptext = document.getElementById('wb-progress-text');
             var $results = document.getElementById('wb-results');
+            var $summary = document.getElementById('wb-summary');
+            var $pillClients = document.getElementById('wb-pill-clients');
+            var $pillPlatform = document.getElementById('wb-pill-platform');
 
             function esc(s) {
                 return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -672,10 +695,10 @@
             // first person will actually receive it instead of showing placeholders. Platform
             // recipients are anonymous to the vendor, so there is nothing to sample there.
             function sampleClient() {
-                if (mode === 'clients') {
-                    for (var i = 0; i < loaded.length; i++) {
-                        if (selected.has(loaded[i].id)) return loaded[i];
-                    }
+                // Whichever tab is open — a ticked customer is still the truest preview of how
+                // the message reads, and platform recipients are anonymous so they offer none.
+                for (var i = 0; i < loaded.length; i++) {
+                    if (selected.has(loaded[i].id)) return loaded[i];
                 }
                 return null;
             }
@@ -772,27 +795,63 @@
                 return Math.min(n, max);
             }
 
+            function platformCount() {
+                return countFrom('wb-platform-count', PLATFORM_MAX);
+            }
+
+            // Everyone this Send covers — both audiences added together, because one press now
+            // sends to both rather than to whichever tab happened to be open.
             function recipientCount() {
-                if (mode === 'platform') return countFrom('wb-platform-count', PLATFORM_MAX);
-                return selected.size;
+                return selected.size + platformCount();
+            }
+
+            function money(n) {
+                return CURRENCY + (Math.round(n * 100) / 100).toFixed(2);
+            }
+
+            function renderSummary() {
+                var own = selected.size, plat = platformCount();
+                if (!own && !plat) { $summary.style.display = 'none'; return; }
+
+                var parts = [];
+                if (own) parts.push('<b>' + own + '</b> of your customers');
+                if (plat) parts.push('<b>' + plat + '</b> MyChitti user' + (plat === 1 ? '' : 's'));
+
+                var cost = own * (RATE.own || 0) + plat * (RATE.platform || 0);
+                $summary.innerHTML = 'This send goes to ' + parts.join(' <span class="text-muted">and</span> ') +
+                    ' — <b>' + (own + plat) + '</b> message' + (own + plat === 1 ? '' : 's') + ' in one go.' +
+                    '<div class="text-muted mt-1">Costs about ' + money(cost) + ' from your wallet' +
+                    (own && plat ? ' (' + money(RATE.own) + ' per own customer, ' + money(RATE.platform) + ' per MyChitti user)' : '') +
+                    ', GST included.</div>';
+                $summary.style.display = 'block';
             }
 
             function syncSend() {
                 renderPreview();
                 var t = currentTemplate();
                 var filled = !t || paramValues().every(function (p) { return p.auto || p.value.trim() !== ''; });
-                var n = recipientCount();
+                var own = selected.size, plat = platformCount(), n = own + plat;
+
                 $send.disabled = !t || !filled || n === 0;
-                $count.textContent = mode === 'clients'
-                    ? selected.size + ' selected'
-                    : n + ' MyChitti user' + (n === 1 ? '' : 's');
+
+                // Each pill shows what is chosen from it, so a selection on the tab that is out of
+                // sight can never be forgotten about — or sent by surprise.
+                $pillClients.textContent = own ? own + ' / {{ $clientCount }}' : '{{ $clientCount }}';
+                $pillPlatform.textContent = plat ? plat + ' / {{ $platformUserCount }}' : '{{ $platformUserCount }}';
+
+                $count.textContent = n
+                    ? n + ' selected' + (own && plat ? ' (' + own + ' + ' + plat + ')' : '')
+                    : '0 selected';
                 $send.textContent = n
                     ? 'Send to ' + n + ' recipient' + (n === 1 ? '' : 's')
                     : 'Send';
+
+                renderSummary();
             }
 
+            // Switches which picker is on screen. It does NOT choose an audience any more —
+            // whatever is selected on both tabs goes out together on one Send.
             function setMode(next) {
-                mode = next;
                 Array.prototype.forEach.call(document.querySelectorAll('.wb-mode'), function (el) {
                     el.classList.toggle('active', el.dataset.mode === next);
                 });
@@ -849,21 +908,34 @@
                 var total = recipientCount();
                 var batches = [];
 
-                if (mode === 'platform') {
-                    // The server walks the audience in a fixed order, so an offset/limit pair
-                    // addresses each recipient exactly once without the browser ever seeing a
-                    // number.
-                    for (var o = 0; o < total; o += BATCH) {
-                        batches.push({ mode: mode, offset: o, limit: Math.min(BATCH, total - o) });
-                    }
-                } else {
-                    var ids = Array.from(selected);
-                    for (var i = 0; i < ids.length; i += BATCH) {
-                        batches.push({ mode: 'clients', client_ids: ids.slice(i, i + BATCH) });
-                    }
+                // One id for the whole send — across BOTH audiences. The server claims each
+                // recipient against it before dispatching, so a batch that is retried - or a whole
+                // run started again after a break - skips anyone already messaged instead of
+                // messaging them twice. Sharing the id between the two audiences is also what
+                // stops someone who sits in the vendor's book *and* the platform pool being
+                // messaged once as each: the claim is on the number, not on the list it came from.
+                var runId = (window.crypto && crypto.randomUUID)
+                    ? crypto.randomUUID()
+                    : 'r' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+
+                // Own customers first. They are the cheaper audience and the relationship the
+                // vendor actually has, so if a wallet runs dry mid-run it should run dry on
+                // strangers, not on the people who already buy from them.
+                var ids = Array.from(selected);
+                for (var i = 0; i < ids.length; i += BATCH) {
+                    batches.push({ mode: 'clients', client_ids: ids.slice(i, i + BATCH) });
                 }
 
-                var done = 0, sent = 0, failures = [];
+                // No offset: the server excludes everyone already reached and everyone
+                // already claimed in this run, so each batch returns the next unmessaged
+                // people. An offset walk restarted at zero on every send, which is why the
+                // same lowest-numbered people were reached over and over.
+                var plat = platformCount();
+                for (var o = 0; o < plat; o += BATCH) {
+                    batches.push({ mode: 'platform', limit: Math.min(BATCH, plat - o) });
+                }
+
+                var done = 0, sent = 0, skipped = 0, failures = [];
                 $send.disabled = true;
                 $progress.style.display = 'block';
                 $results.style.display = 'none';
@@ -872,10 +944,12 @@
                     return b.mode === 'clients' ? b.client_ids.length : b.limit;
                 }
 
-                function step(index) {
+                function step(index, attempt) {
+                    attempt = attempt || 0;
                     if (index >= batches.length) {
-                        $ptext.textContent = 'Finished — ' + sent + ' sent, ' + failures.length + ' failed.';
-                        showResults(sent, failures);
+                        $ptext.textContent = 'Finished — ' + sent + ' sent, ' + failures.length + ' failed'
+                            + (skipped ? ', ' + skipped + ' already messaged' : '') + '.';
+                        showResults(sent, skipped, failures);
                         $send.disabled = false;
                         return;
                     }
@@ -889,7 +963,8 @@
                         body: JSON.stringify(Object.assign({
                             template: t.name,
                             language: t.language,
-                            params: paramValues()
+                            params: paramValues(),
+                            run_id: runId
                         }, batches[index]))
                     })
                     .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
@@ -898,6 +973,7 @@
                             failures.push({ name: '—', phone: '—', error: res.d.message || 'Request rejected.' });
                         } else {
                             sent += res.d.sent || 0;
+                            skipped += res.d.skipped || 0;
                             (res.d.results || []).forEach(function (r) { if (!r.success) failures.push(r); });
                         }
                         done += batchSize(batches[index]);
@@ -907,18 +983,26 @@
                         step(index + 1);
                     })
                     .catch(function () {
-                        failures.push({ name: '—', phone: '—', error: 'Network error on a batch of ' + batchSize(batches[index]) + '.' });
+                        // Retrying a lost request is safe because the server claims each
+                        // recipient before dispatching: anyone the first attempt already
+                        // messaged is claimed, so they come back as skipped, not as a duplicate.
+                        if (attempt < 1) {
+                            step(index, attempt + 1);
+                            return;
+                        }
+                        failures.push({ name: '—', phone: '—', error: 'Network error on a batch of ' + batchSize(batches[index]) + '. Nobody in it was messaged twice — send again to cover them.' });
                         done += batchSize(batches[index]);
                         step(index + 1);
                     });
                 }
-                step(0);
+                step(0, 0);
             }
 
-            function showResults(sent, failures) {
+            function showResults(sent, skipped, failures) {
                 var html = '<div class="alert ' + (failures.length ? 'alert-warning' : 'alert-success') + '" style="font-size:13px;">' +
                     '<b>' + sent + '</b> message' + (sent === 1 ? '' : 's') + ' sent' +
-                    (failures.length ? ', <b>' + failures.length + '</b> failed.' : '.') + '</div>';
+                    (failures.length ? ', <b>' + failures.length + '</b> failed' : '') +
+                    (skipped ? ', <b>' + skipped + '</b> skipped (already messaged in this run)' : '') + '.</div>';
 
                 if (failures.length) {
                     html += '<div class="border rounded" style="max-height:200px;overflow-y:auto;">' +
@@ -928,6 +1012,12 @@
                                 '<span class="text-danger">' + esc(f.error) + '</span></div>';
                         }).join('') + '</div>';
                 }
+
+                // Where the full list of numbers lives — the results box only keeps what failed,
+                // and only until the page is reloaded.
+                html += '<div class="mt-2"><a href="' + HISTORY_URL + '" class="btn btn-sm btn-outline-secondary">' +
+                    '<i class="tio-history"></i> See every number this went to</a></div>';
+
                 $results.innerHTML = html;
                 $results.style.display = 'block';
             }
@@ -955,9 +1045,13 @@
                 if (el) el.addEventListener('input', syncSend);
             });
             $send.addEventListener('click', function () {
-                var n = recipientCount();
-                var who = mode === 'clients' ? 'of your customers' : 'MyChitti user(s)';
-                if (!confirm('Send this template to ' + n + ' ' + who + '?')) return;
+                // Spelled out per audience: the confirm is the last chance to notice that the
+                // other tab still has people on it.
+                var own = selected.size, plat = platformCount(), parts = [];
+                if (own) parts.push(own + ' of your customers');
+                if (plat) parts.push(plat + ' MyChitti user' + (plat === 1 ? '' : 's'));
+
+                if (!confirm('Send this template to ' + parts.join(' and ') + '?')) return;
                 sendBatches();
             });
 

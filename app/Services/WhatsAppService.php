@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\CentralLogics\Helpers;
 use App\Models\UserNotificationPreference;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -55,6 +56,14 @@ class WhatsAppService
 
     /** Hours-before default when the vendor never chose a value (stores.wa_appt_reminder NULL). */
     const DEFAULT_APPT_REMINDER_HOURS = 2;
+
+    /** Messages one person may receive from the shared outreach pool per 30 days. */
+    const NEARBY_MONTHLY_CAP = 4;
+
+    /** Whether the send composers list PENDING/REJECTED templates alongside approved ones.
+     *  Off: Meta refuses to deliver them, so offering one only buys the vendor a failed send
+     *  and a charge for it. Set to true to list them again while testing. */
+    const BULK_SHOW_UNAPPROVED = false;
 
     /**
      * Named body variables a template may use instead of {{1}}, {{2}}. Meta calls this the
@@ -426,6 +435,59 @@ class WhatsAppService
     }
 
     /**
+     * Every template on this store's WABA as name => STATUS (APPROVED / PENDING / REJECTED …).
+     *
+     * For screens that need to say whether a feature can actually send — a toggle whose template
+     * Meta has not approved is a switch that does nothing, and the vendor deserves to be told that
+     * at the moment they flip it rather than by noticing no messages ever arrived.
+     *
+     * Cached briefly: a settings page reading six templates must not make six Graph calls, and the
+     * answer changes only when Meta finishes a review. Returns [] when the list can't be fetched,
+     * which callers must read as "unknown", never as "not approved".
+     */
+    public static function templateStatuses(int $storeId): array
+    {
+        try {
+            return Cache::remember('wa_tpl_status_' . $storeId, 300, function () use ($storeId) {
+                $wa = static::make($storeId);
+                if ($wa->source() !== 'vendor' || !$wa->hasWaba()) {
+                    return [];
+                }
+
+                $res = $wa->listTemplates();
+                if (!$res['success']) {
+                    return [];
+                }
+
+                $out = [];
+                foreach ($res['data'] as $tpl) {
+                    $name = strtolower((string) data_get($tpl, 'name'));
+                    if ($name === '') {
+                        continue;
+                    }
+                    // A template can exist per language; APPROVED anywhere means sendable.
+                    $status = strtoupper((string) data_get($tpl, 'status'));
+                    if (!isset($out[$name]) || $status === 'APPROVED') {
+                        $out[$name] = $status;
+                    }
+                }
+                return $out;
+            });
+        } catch (\Throwable $e) {
+            Log::warning('WA template status lookup failed: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /** Drop the cached statuses — called when a template is created, edited or deleted. */
+    public static function forgetTemplateStatuses(?int $storeId): void
+    {
+        if ($storeId) {
+            Cache::forget('wa_tpl_status_' . $storeId);
+        }
+    }
+
+    /**
      * Business Management API base for the WABA (templates, phone numbers, etc.).
      * Requires the `whatsapp_business_management` permission and a business_account_id.
      */
@@ -735,6 +797,12 @@ class WhatsAppService
             'wa_business_account_id' => 'VARCHAR(64) NULL',
             'wa_api_version'         => 'VARCHAR(12) NULL',
             'wa_appt_reminder'       => 'VARCHAR(20) NULL',
+            // Hours after a visit is completed before the feedback request goes out. NULL = never
+            // chosen, which takes HmisWhatsAppShare's default rather than meaning "immediately".
+            'wa_feedback_delay'      => 'VARCHAR(20) NULL',
+            // Days before the follow-up date to remind the patient. 0 = send the confirmation at
+            // the moment the visit is booked instead.
+            'wa_followup_lead'       => 'VARCHAR(20) NULL',
             // DEAD: used to pick between the knowledge bot and the AI Agent, back when they were
             // priced differently. The plan decides that now, so nothing reads or writes this.
             // Kept so the column definition survives a fresh install identically; drop it when
@@ -757,7 +825,21 @@ class WhatsAppService
     public static function ensurePresetsTable(): void
     {
         if (Schema::hasTable('wa_template_presets')) {
+            // Quick-reply labels, comma separated. A preset could only ever offer one URL button
+            // before, which is no use for a template whose whole point is asking a question.
+            if (!Schema::hasColumn('wa_template_presets', 'btn_replies')) {
+                DB::statement("ALTER TABLE `wa_template_presets` ADD COLUMN `btn_replies` VARCHAR(200) NULL AFTER `btn_url`");
+            }
+            // TEXT (the `header` string) or DOCUMENT — a media template, whose header carries a
+            // file rather than words. Meta wants a sample file at creation, which the preset
+            // path generates rather than asking the vendor to find one.
+            if (!Schema::hasColumn('wa_template_presets', 'header_format')) {
+                DB::statement("ALTER TABLE `wa_template_presets` ADD COLUMN `header_format` VARCHAR(20) NULL AFTER `header`");
+            }
             static::ensureStaffForwardPreset();
+            static::ensureHmisPresets();
+            static::repairHmisPresetBodies();
+            static::ensureRepeatPreset();
             return;
         }
         DB::statement("CREATE TABLE `wa_template_presets` (
@@ -767,11 +849,13 @@ class WhatsAppService
             `category` VARCHAR(30) NOT NULL DEFAULT 'UTILITY',
             `language` VARCHAR(12) NOT NULL DEFAULT 'en_US',
             `header` VARCHAR(200) NULL,
+            `header_format` VARCHAR(20) NULL,
             `body` TEXT NOT NULL,
             `footer` VARCHAR(200) NULL,
             `example` TEXT NULL,
             `btn_text` VARCHAR(60) NULL,
             `btn_url` VARCHAR(500) NULL,
+            `btn_replies` VARCHAR(200) NULL,
             `active` TINYINT(1) NOT NULL DEFAULT 1,
             `created_at` TIMESTAMP NULL,
             `updated_at` TIMESTAMP NULL,
@@ -814,6 +898,9 @@ class WhatsAppService
         ]);
 
         static::ensureStaffForwardPreset();
+        static::ensureHmisPresets();
+        static::repairHmisPresetBodies();
+        static::ensureRepeatPreset();
     }
 
     /**
@@ -858,6 +945,222 @@ class WhatsAppService
 
         DB::table('business_settings')->updateOrInsert(
             ['key' => 'wa_preset_staff_forward_seeded'],
+            ['value' => '1', 'updated_at' => now(), 'created_at' => now()]
+        );
+    }
+
+    /**
+     * Presets behind "Send on WhatsApp" in the hospital module — consultation summary,
+     * prescription, medicine instructions, follow-up, feedback and lab report.
+     *
+     * The names are fixed: HmisWhatsAppShare sends against exactly these, so a vendor creating
+     * them from the suggested list ends up with templates their hospital screens can already use.
+     * Anything longer than a sentence (a medicine list, a panel of results) is deliberately NOT in
+     * the template — Meta rejects newlines inside a parameter, and a patient's results have no
+     * business sitting in a WhatsApp message forever. The last parameter is a private link instead.
+     *
+     * Seeded once; an admin who deletes one does not get it back.
+     */
+    public static function ensureHmisPresets(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('business_settings')->where('key', 'wa_preset_hmis_seeded')->exists()) {
+            return;
+        }
+
+        $now = now();
+        $presets = [
+            [
+                'title'    => 'Consultation Summary (Hospital)',
+                'name'     => 'treatment_summary',
+                'category' => 'UTILITY',
+                'body'     => "Hi {{1}}, here is your consultation summary from {{2}} for your visit on {{3}}. Diagnosis noted: {{4}}. Open {{5}} to read the full summary, including the treatment advised and your vitals. This link works for 30 days.",
+                'footer'   => 'Please discuss any concerns with your doctor',
+                'example'  => 'Ramesh | Krishna Hospital | 25 July 2026 | Viral fever | https://mychitti.net/health-record/abc123',
+            ],
+            [
+                'title'    => 'Prescription (Hospital)',
+                'name'     => 'prescription_share',
+                'category' => 'UTILITY',
+                'body'     => "Hi {{1}}, your prescription from {{2}} dated {{3}} is ready — {{4}} prescribed. Open {{5}} to view, save or print it. This link works for 30 days.",
+                'footer'   => 'Please take medicines only as prescribed',
+                'example'  => 'Ramesh | Krishna Hospital | 25 July 2026 | 3 medicines | https://mychitti.net/health-record/abc123',
+            ],
+            [
+                'title'    => 'Medicine Instructions (Hospital)',
+                'name'     => 'medicine_instructions',
+                'category' => 'UTILITY',
+                'body'     => "Hi {{1}}, here is how to take the medicines prescribed at {{2}}: {{3}}. Open {{4}} for the full instructions for every medicine. Please finish the full course even if you feel better sooner.",
+                'footer'   => 'Do not change the dose without asking your doctor',
+                'example'  => 'Ramesh | Krishna Hospital | Paracetamol 500mg twice a day 3 days; Azithromycin 250mg once a day 5 days | https://mychitti.net/health-record/abc123',
+            ],
+            [
+                'title'    => 'Follow-Up Reminder (Hospital)',
+                'name'     => 'followup_reminder',
+                'category' => 'UTILITY',
+                'body'     => "Hi {{1}}, this is a reminder from {{2}} that your follow-up visit is due on {{3}} with {{4}}. Please reply to this message if you need a different date.",
+                'footer'   => null,
+                'example'  => 'Ramesh | Krishna Hospital | 02 Aug 2026 | Dr. Anita Rao',
+            ],
+            [
+                'title'    => 'Lab Report Ready (Hospital)',
+                'name'     => 'lab_report_ready',
+                'category' => 'UTILITY',
+                'body'     => "Hi {{1}}, your lab report from {{2}} is ready. Tests done: {{3}}. Open {{4}} to view or download the full report. This link works for 30 days.",
+                'footer'   => 'Please review the report with your doctor',
+                'example'  => 'Ramesh | Krishna Hospital | Complete Blood Count, Lipid Profile | https://mychitti.net/health-record/abc123',
+            ],
+        ];
+
+        foreach ($presets as $preset) {
+            if (DB::table('wa_template_presets')->where('name', $preset['name'])->exists()) {
+                continue;
+            }
+            DB::table('wa_template_presets')->insert($preset + [
+                'language'   => 'en_US',
+                'header'     => null,
+                'btn_text'   => null,
+                'btn_url'    => null,
+                'active'     => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+
+        // The prescription as an attached PDF. A media template: its header carries the file, which
+        // is the only way to put a document in a business-initiated message — a plain document
+        // message needs an open 24h window the patient will not be in.
+        if (!DB::table('wa_template_presets')->where('name', 'prescription_pdf')->exists()) {
+            DB::table('wa_template_presets')->insert([
+                'title'         => 'Prescription as PDF (Hospital)',
+                'name'          => 'prescription_pdf',
+                'category'      => 'UTILITY',
+                'language'      => 'en_US',
+                'header'        => null,
+                'header_format' => 'DOCUMENT',
+                'body'          => "Hi {{1}}, your prescription from {{2}} dated {{3}} is attached — {{4}} prescribed. Please take them exactly as written and finish the full course.",
+                'footer'        => 'Do not change the dose without asking your doctor',
+                'example'       => 'Ramesh | Krishna Hospital | 25 July 2026 | 3 medicines',
+                'btn_text'      => null,
+                'btn_url'       => null,
+                'active'        => 1,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ]);
+        }
+
+        // Feedback is the one that asks a question, so it carries quick replies — the patient
+        // answers in one tap and the tap lands in the vendor's inbox as a readable label.
+        if (!DB::table('wa_template_presets')->where('name', 'visit_feedback')->exists()) {
+            DB::table('wa_template_presets')->insert([
+                'title'        => 'Visit Feedback (Hospital)',
+                'name'         => 'visit_feedback',
+                'category'     => 'UTILITY',
+                'language'     => 'en_US',
+                'header'       => null,
+                'body'         => "Hi {{1}}, thank you for visiting {{2}} on {{3}}. How was your experience with us? Your answer helps us take better care of our patients.",
+                'footer'       => 'One tap is all it takes',
+                'example'      => 'Ramesh | Krishna Hospital | 25 July 2026',
+                'btn_text'     => null,
+                'btn_url'      => null,
+                'btn_replies'  => 'Very good,Okay,Not good',
+                'active'       => 1,
+                'created_at'   => $now,
+                'updated_at'   => $now,
+            ]);
+        }
+
+        DB::table('business_settings')->updateOrInsert(
+            ['key' => 'wa_preset_hmis_seeded'],
+            ['value' => '1', 'updated_at' => now(), 'created_at' => now()]
+        );
+    }
+
+    /**
+     * Preset behind the repeat purchase reminder. MARKETING, not UTILITY — it is a nudge to buy
+     * again, and Meta categorises it that way whatever we call it.
+     *
+     * Quick replies rather than a link: the answer we want is "yes, keep it ready", and a tap that
+     * lands in the vendor's inbox is the whole interaction.
+     */
+    public static function ensureRepeatPreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('wa_template_presets')->where('name', 'repeat_purchase_reminder')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'       => 'Repeat Purchase Reminder',
+            'name'        => 'repeat_purchase_reminder',
+            'category'    => 'MARKETING',
+            'language'    => 'en_US',
+            'header'      => null,
+            // Ends in text on purpose: Meta rejects a body that finishes on a placeholder.
+            'body'        => "Hi {{1}}, it's been a while since you bought {{2}} from {{3}}. Running low? Tap below and we'll keep it ready for you.",
+            'footer'      => 'Reply STOP to unsubscribe',
+            'example'     => 'Ramesh | rice, sunflower oil and 2 more | Green Mart',
+            'btn_text'    => null,
+            'btn_url'     => null,
+            'btn_replies' => 'Order now,Not now',
+            'active'      => 1,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+    }
+
+    /**
+     * Rewrite hospital preset bodies that end in a variable.
+     *
+     * Meta rejects any template whose body starts or finishes with a placeholder ("Leading or
+     * trailing params not allowed"), and the first four hospital presets shipped with the link
+     * as their last character — so every one of them was refused at review. The corrected wording
+     * moves the link into the sentence.
+     *
+     * Only rewrites a row still carrying the broken shape, so an admin who has since edited the
+     * wording themselves keeps their version. Bodies only: a preset's title, category and buttons
+     * are untouched.
+     */
+    public static function repairHmisPresetBodies(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('business_settings')->where('key', 'wa_preset_hmis_bodies_v2')->exists()) {
+            return;
+        }
+
+        $fixed = [
+            'treatment_summary'     => "Hi {{1}}, here is your consultation summary from {{2}} for your visit on {{3}}. Diagnosis noted: {{4}}. Open {{5}} to read the full summary, including the treatment advised and your vitals. This link works for 30 days.",
+            'prescription_share'    => "Hi {{1}}, your prescription from {{2}} dated {{3}} is ready — {{4}} prescribed. Open {{5}} to view, save or print it. This link works for 30 days.",
+            'medicine_instructions' => "Hi {{1}}, here is how to take the medicines prescribed at {{2}}: {{3}}. Open {{4}} for the full instructions for every medicine. Please finish the full course even if you feel better sooner.",
+            'lab_report_ready'      => "Hi {{1}}, your lab report from {{2}} is ready. Tests done: {{3}}. Open {{4}} to view or download the full report. This link works for 30 days.",
+        ];
+
+        foreach ($fixed as $name => $body) {
+            $row = DB::table('wa_template_presets')->where('name', $name)->first();
+            if (!$row || !preg_match('/\{\{\d+\}\}\s*$/', (string) $row->body)) {
+                continue;
+            }
+            DB::table('wa_template_presets')->where('id', $row->id)
+                ->update(['body' => $body, 'updated_at' => now()]);
+        }
+
+        DB::table('business_settings')->updateOrInsert(
+            ['key' => 'wa_preset_hmis_bodies_v2'],
             ['value' => '1', 'updated_at' => now(), 'created_at' => now()]
         );
     }
@@ -1286,6 +1589,33 @@ class WhatsAppService
     }
 
     /**
+     * Last-10-digit forms of numbers that already hit the shared outreach pool's 30-day cap.
+     *
+     * Counted on the 'nearby' context, which is why every platform-audience send has to carry it:
+     * the cap is what stops every vendor in a city messaging the same few thousand people until
+     * they all opt out. Re-checked between the steps of a drip campaign, not just when the
+     * audience is first picked — a four-step series would otherwise blow straight through it.
+     */
+    public static function nearbyCappedPhones(): array
+    {
+        try {
+            $phones = DB::table('whatsapp_messages')
+                ->where('context', 'nearby')
+                ->where('sent_at', '>=', now()->subDays(30))
+                ->whereNotNull('recipient')
+                ->groupBy('recipient')
+                ->havingRaw('count(*) >= ?', [static::NEARBY_MONTHLY_CAP])
+                ->pluck('recipient');
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter($phones
+            ->map(fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10))
+            ->all())));
+    }
+
+    /**
      * Normalized phone numbers that must not receive marketing from this store —
      * its own opt-outs plus everyone who opted out platform-wide.
      */
@@ -1342,6 +1672,138 @@ class WhatsAppService
             DB::statement("ALTER TABLE `whatsapp_messages` ADD KEY `wam_billing_idx` (`store_id`, `direction`, `sent_at`)");
         }
     }
+
+    /**
+     * One row per person per bulk-send run, claimed *before* the message is dispatched.
+     *
+     * The delivery log (whatsapp_messages) is written after the API call returns, which makes it
+     * a record of what happened rather than a lock on what may happen. If a run of 17,000 broke
+     * at 500 and the vendor pressed send again, nothing stopped those 500 being messaged a second
+     * time. The unique key on (run_id, phone10) is what stops it: a repeat claim fails, and the
+     * recipient is skipped instead of re-messaged.
+     *
+     * phone10 rather than the raw number, so "+91 98…", "098…" and "98…" are one person — the
+     * same dedupe key the audience queries use.
+     */
+    public static function ensureBulkSendTable(): void
+    {
+        if (Schema::hasTable('wa_bulk_sends')) {
+            // The message each person actually received, variables already filled in. The delivery
+            // log only records "template: {name}", which cannot answer "what did you send my
+            // customer?" months later — a template can be edited or deleted after the fact.
+            if (!Schema::hasColumn('wa_bulk_sends', 'body')) {
+                DB::statement("ALTER TABLE `wa_bulk_sends` ADD COLUMN `body` TEXT NULL");
+            }
+            if (!Schema::hasColumn('wa_bulk_sends', 'language')) {
+                DB::statement("ALTER TABLE `wa_bulk_sends` ADD COLUMN `language` VARCHAR(20) NULL");
+            }
+            // Run history is read newest-first for one store; without this it is a full scan of
+            // every vendor's sends.
+            if (!static::hasIndex('wa_bulk_sends', 'wabs_store_run')) {
+                DB::statement("ALTER TABLE `wa_bulk_sends` ADD KEY `wabs_store_run` (`store_id`, `id`)");
+            }
+            return;
+        }
+
+        DB::statement("CREATE TABLE `wa_bulk_sends` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `store_id` BIGINT NOT NULL,
+            `run_id` VARCHAR(40) NOT NULL,
+            `phone10` VARCHAR(10) NOT NULL,
+            `phone` VARCHAR(32) NULL,
+            `name` VARCHAR(190) NULL,
+            `client_id` BIGINT NULL,
+            `audience` VARCHAR(10) NOT NULL DEFAULT 'own',
+            `template` VARCHAR(190) NULL,
+            `language` VARCHAR(20) NULL,
+            `body` TEXT NULL,
+            `status` VARCHAR(20) NOT NULL DEFAULT 'queued',
+            `wamid` VARCHAR(255) NULL,
+            `error` TEXT NULL,
+            `sent_at` TIMESTAMP NULL,
+            `created_at` TIMESTAMP NULL,
+            `updated_at` TIMESTAMP NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `wabs_once` (`run_id`, `phone10`),
+            KEY `wabs_rotation` (`store_id`, `audience`, `sent_at`),
+            KEY `wabs_run` (`run_id`, `status`),
+            KEY `wabs_store_run` (`store_id`, `id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    /**
+     * Whether a named index exists, so the self-heal above can add one without re-running it.
+     * Reads information_schema rather than SHOW INDEX — SHOW takes no placeholders, and the
+     * table name would have to be interpolated to ask the question at all.
+     * Any failure answers "yes", so an unreadable catalogue never turns into a duplicate-key ALTER.
+     */
+    private static function hasIndex(string $table, string $index): bool
+    {
+        try {
+            return DB::table('information_schema.statistics')
+                ->whereRaw('table_schema = DATABASE()')
+                ->where('table_name', $table)
+                ->where('index_name', $index)
+                ->exists();
+        } catch (\Throwable $e) {
+            return true;
+        }
+    }
+
+    /**
+     * The approved body text of one template, so a send can be recorded as the words the customer
+     * read rather than a template name.
+     *
+     * Cached because a bulk run posts a batch at a time — without this a 1,000-person send would
+     * make forty Graph calls for one unchanging string. Returns null when the list can't be
+     * fetched; callers must treat that as "unknown", never as "no body".
+     */
+    public static function templateBodyText(int $storeId, string $name, ?string $lang = null): ?string
+    {
+        try {
+            $key = 'wa_tpl_body_' . $storeId . '_' . md5(strtolower($name . '|' . $lang));
+            return Cache::remember($key, 600, function () use ($storeId, $name, $lang) {
+                $wa = static::make($storeId);
+                if ($wa->source() !== 'vendor' || !$wa->hasWaba()) {
+                    return null;
+                }
+
+                $res = $wa->listTemplates();
+                if (!$res['success']) {
+                    return null;
+                }
+
+                foreach ($res['data'] as $tpl) {
+                    if (strtolower((string) data_get($tpl, 'name')) !== strtolower($name)) {
+                        continue;
+                    }
+                    // Language is a tiebreak, not a filter — a template approved in one language
+                    // still tells the vendor what was sent.
+                    if ($lang && strtolower((string) data_get($tpl, 'language')) !== strtolower($lang)) {
+                        continue;
+                    }
+                    foreach ((array) data_get($tpl, 'components', []) as $c) {
+                        if (strtoupper((string) data_get($c, 'type')) === 'BODY') {
+                            return (string) data_get($c, 'text', '');
+                        }
+                    }
+                }
+
+                return null;
+            });
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * How long a platform recipient stays out of this store's own pool after being messaged, so
+     * consecutive sends walk forward through the audience instead of restarting at the same
+     * people. Distinct from NEARBY_MONTHLY_CAP, which limits what *every* vendor together may
+     * send one person; this is one vendor not talking to the same strangers twice. Matched to
+     * the same window so the two agree about what "recently" means.
+     */
+    const PLATFORM_ROTATION_DAYS = 30;
 
     /**
      * Send contexts that target MC Vendor Hub's own customer database rather than the vendor's

@@ -275,9 +275,19 @@
          var tax = '';
          var taxable_amount = '';
          var total = '';
+         // A purchase bill marks its table data-purchase="1". On one the unit price is what we
+         // pay the supplier, so it prefills from the item's landing (purchase) price — filling it
+         // with the selling price quietly recorded the wrong figure as the cost of the goods.
+         var isPurchase = $('.rows_parent').first().closest('table').data('purchase') == 1;
+         // The row's base price, held in one variable because updatePriceByUnit() re-reads it
+         // from data-primary-price on every unit change — and adding a row triggers one. Leaving
+         // the selling price in that attribute meant the unit select overwrote the purchase
+         // price a moment after it was put in the input.
+         var basePrice = 0;
          if (item) {
              item_name = item.item_name;
-             item_price = item.selling_price;
+             basePrice = isPurchase ? (item.landing_price ?? 0) : item.selling_price;
+             item_price = basePrice;
              readonly = 'readonly';
              item_id = item.id;
              item_hsn = item.hsn;
@@ -287,7 +297,7 @@
          data-secondary-unit="${item?.secondary_unit ?? ''}"
     data-primary-qty="${item?.primary_qty ?? 0}"
     data-secondary-qty="${item?.secondary_qty ?? 0}"
-    data-primary-price="${item?.selling_price ?? 0}"
+    data-primary-price="${basePrice}"
     data-item-unit="${item?.unit ?? ''}" 
     data-inventory-stock="${item && item.id ? (item.stock != null && item.stock !== '' ? item.stock : 0) : ''}">
                        <input type="hidden" name="inventory_item_id[]" value="` + item_id +

@@ -1,5 +1,4 @@
 @php
-    $showMrp = $showMrp ?? false;
     $isGst = $invoice->tax_type == 'gst';
     $gstClass = $isGst ? 'gst_fld' : 'gst_fld hidden_gst_f';
     $isPaid = $invoice->payment_status != 'Unpaid';
@@ -136,14 +135,11 @@
                             data-target="#inventoryItemModal">+ Add From Inventory</button>
                     @endif
                 </div>
-                <table class="items-table" @if ($showMrp) data-mrp="1" @endif>
+                <table class="items-table" data-purchase="1">
                     <thead class="items_head">
                         <tr>
                             <th>Description</th>
                             <th>Unit Price</th>
-                            @if ($showMrp)
-                                <th>MRP</th>
-                            @endif
                             <th>Quantity</th>
                             <th>Unit</th>
                             <th class="gst_fld hidden_gst_f">Tax</th>
@@ -222,14 +218,6 @@
                                         value="{{ $item->price }}" placeholder="Price"
                                         class="form-control price item_price">
                                 </td>
-                                @if ($showMrp)
-                                    <td style="width: 100px;">
-                                        <label class="small_label">MRP</label>
-                                        <input type="number" step="0.001" min="0" name="item_mrp_new[]"
-                                            value="{{ $item->mrp }}" placeholder="MRP"
-                                            class="form-control item_mrp">
-                                    </td>
-                                @endif
                                 <td style="width: 58px;">
                                     <label class="small_label">Qty</label>
                                     <input type="number" step="any" min="0" name="item_qty_new[]"

@@ -69,6 +69,64 @@
                                     <i class="tio-info-outined"></i> The paid Lead Notifications add-on is not active — this alert won't send even when on.
                                 </small>
                             @endif
+
+                            {{-- Timing is part of the setting for these two: a feedback request is
+                                 worth little asked at the desk, and a follow-up reminder is worth
+                                 little sent months ahead. --}}
+                            @if ($key === 'hmis_feedback')
+                                <form action="{{ route('vendor.notification-settings.timing') }}" method="post"
+                                      class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
+                                    @csrf
+                                    <input type="hidden" name="setting" value="feedback">
+                                    <label class="mb-0 text-muted" style="font-size:12px;">Ask</label>
+                                    <input type="number" name="value" class="form-control form-control-sm" style="width:70px;"
+                                           min="0" max="720" value="{{ $feedbackDelay }}">
+                                    <span class="text-muted" style="font-size:12px;">hour(s) after the visit</span>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary py-0">Save</button>
+                                    <small class="text-muted d-block w-100" style="font-size:11px;">
+                                        0 sends it immediately. Anything landing between 9pm and 8am waits for 10am.
+                                    </small>
+                                </form>
+                            @endif
+                            @if ($key === 'hmis_followup')
+                                <form action="{{ route('vendor.notification-settings.timing') }}" method="post"
+                                      class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
+                                    @csrf
+                                    <input type="hidden" name="setting" value="followup">
+                                    <label class="mb-0 text-muted" style="font-size:12px;">Remind</label>
+                                    <input type="number" name="value" class="form-control form-control-sm" style="width:70px;"
+                                           min="0" max="30" value="{{ $followupLead }}">
+                                    <span class="text-muted" style="font-size:12px;">day(s) before the visit</span>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary py-0">Save</button>
+                                    <small class="text-muted d-block w-100" style="font-size:11px;">
+                                        0 confirms the booking straight away instead. If the visit is sooner than this,
+                                        the confirmation goes out at booking so nobody is missed.
+                                    </small>
+                                </form>
+                            @endif
+
+                            {{-- An action whose template Meta hasn't approved is a switch wired to
+                                 nothing. Say so on the row, not only when they flip it. --}}
+                            @if (!empty($item['template_status']) && $item['template_status'] !== 'APPROVED')
+                                @if ($item['template_status'] === 'MISSING')
+                                    <small class="d-block text-warning" style="font-size:11px;">
+                                        <i class="tio-warning"></i>
+                                        The <code>{{ $item['template'] }}</code> template isn't on your WhatsApp account yet, so this won't send.
+                                        <a href="{{ route('vendor.whatsapp.templates') }}#tplPresets">Add it in one click</a> from the ready-made list.
+                                    </small>
+                                @elseif ($item['template_status'] === 'PENDING')
+                                    <small class="d-block text-info" style="font-size:11px;">
+                                        <i class="tio-time"></i>
+                                        <code>{{ $item['template'] }}</code> is with Meta for review — sending starts automatically once it's approved.
+                                    </small>
+                                @else
+                                    <small class="d-block text-danger" style="font-size:11px;">
+                                        <i class="tio-clear-circle"></i>
+                                        <code>{{ $item['template'] }}</code> is {{ $item['template_status'] }} at Meta, so this won't send.
+                                        <a href="{{ route('vendor.whatsapp.templates') }}">Fix it under Message Templates</a>.
+                                    </small>
+                                @endif
+                            @endif
                         </div>
                         <form action="{{ route('vendor.notification-settings.toggle') }}" method="post" class="mb-0 flex-shrink-0">
                             @csrf

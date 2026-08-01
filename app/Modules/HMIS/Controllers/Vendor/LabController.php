@@ -15,6 +15,7 @@ use App\Models\LabTestParameter;
 use App\Models\ManualInvoice;
 use App\Models\InvoiceItem;
 use App\Models\Patient;
+use App\Services\HmisWhatsAppShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -618,6 +619,14 @@ class LabController extends Controller
             Toastr::success('Draft saved.');
         }
         $order->save();
+
+        // Verified is the first moment this report may reach a patient — 'resulted' means the
+        // values are typed in but nobody has checked them. Only fires for hospitals that turned
+        // the lab report on under Send Notifications, and only once per order.
+        if ($request->boolean('finalize')) {
+            HmisWhatsAppShare::auto('lab', (int) $order->store_id, (int) $order->id,
+                fn() => HmisWhatsAppShare::labReport($order));
+        }
 
         return $request->boolean('finalize')
             ? redirect()->route('vendor.lab.reports')

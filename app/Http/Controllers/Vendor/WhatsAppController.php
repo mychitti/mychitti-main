@@ -12,11 +12,13 @@ use App\Models\BusinessSetting;
 use App\Models\StoreWallet;
 use App\Models\TmpWhatsAppSetup;
 use App\Models\UserNotificationPreference;
+use App\Services\HmisWhatsAppShare;
 use App\Services\WhatsAppAgent;
 use App\Services\WhatsAppBilling;
 use App\Services\WhatsAppRecurring;
 use App\Services\WhatsAppService;
 use App\Traits\Payment;
+use App\Traits\WhatsAppAudience;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -26,7 +28,7 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppController extends Controller
 {
-    use Payment;
+    use Payment, WhatsAppAudience;
 
     /** How many clients the bulk recipient picker will load at once. */
     const BULK_PICKER_LIMIT = 1000;
@@ -35,10 +37,10 @@ class WhatsAppController extends Controller
      *  never hits max_execution_time and the vendor sees live progress. */
     const BULK_BATCH_LIMIT = 25;
 
-    /** TEMPORARY (testing): list PENDING/REJECTED templates in the bulk composer as well.
-     *  Meta still refuses to deliver them — the send just comes back with its error. Set to
-     *  false to go back to approved-only. */
-    const BULK_SHOW_UNAPPROVED = true;
+    /** Both knobs now live on WhatsAppService so the audience trait can read them without
+     *  depending on a controller; kept here because the blades reference them by this name. */
+    const BULK_SHOW_UNAPPROVED = WhatsAppService::BULK_SHOW_UNAPPROVED;
+    const NEARBY_MONTHLY_CAP = WhatsAppService::NEARBY_MONTHLY_CAP;
 
     // Vendor "Connect WhatsApp" screen (Embedded Signup).
     public function connect(Request $request)
@@ -127,10 +129,17 @@ class WhatsAppController extends Controller
             $optOutCount = count(WhatsAppService::optedOutPhones($storeId));
         }
 
+        // Both audiences go out in one send now, and they are not billed at the same rate — the
+        // composer has to be able to price a mixed batch before the vendor commits to it.
+        $rates = [
+            'own'      => WhatsAppBilling::messageCost('own'),
+            'platform' => WhatsAppBilling::messageCost('platform'),
+        ];
+
         return view('vendor-views.whatsapp.connect', compact(
             'es', 'store', 'connected', 'templates', 'templateError',
             'clientCount', 'platformUserCount', 'optOutCount',
-            'setupPaid', 'pricing', 'customerStats', 'recentCustomers'
+            'setupPaid', 'pricing', 'customerStats', 'recentCustomers', 'rates'
         ));
     }
 
@@ -525,343 +534,6 @@ class WhatsAppController extends Controller
         return back();
     }
 
-    /**
-     * The store's own client book — people it already has a relationship with.
-     *
-     * nearby_offers deliberately does not apply here: that preference is about businesses the
-     * customer has NOT dealt with, and this is the one store they have. Only an explicit STOP
-     * removes someone.
-     */
-    private function clientQuery(int $storeId)
-    {
-        return $this->excludeOptedOut(
-            DB::table('store_customers')
-                ->where('store_id', $storeId)
-                ->whereNotNull('phone')
-                ->where('phone', '!=', ''),
-            $storeId
-        );
-    }
-
-    /**
-     * Everyone else reachable in this store's city, as one list: MyChitti account holders plus
-     * the client books of the other stores in the city (and the orphan rows whose store_id was
-     * never saved, which used to be reachable by nobody).
-     *
-     * Presented to the vendor as a single "MyChitti users" count. Numbers are never shown for
-     * this audience and results come back masked — the vendor addresses it by size, not by
-     * picking people out of it.
-     *
-     * Deduped on the last 10 digits of the phone across BOTH sources, so an account holder who
-     * also sits in another store's book counts once and is messaged once. The store's own
-     * customers are subtracted so this and clientQuery() never overlap.
-     */
-    private function outreachQuery(int $storeId)
-    {
-        $ownPhones = $this->ownClientPhones($storeId);
-
-        $users = $this->platformUserQuery($storeId)
-            ->select(
-                DB::raw("TRIM(CONCAT(COALESCE(`users`.`f_name`, ''), ' ', COALESCE(`users`.`l_name`, ''))) as name"),
-                'users.phone as phone'
-            );
-
-        $clients = $this->otherStoreClientQuery($storeId)
-            ->select('f_name as name', 'phone as phone');
-
-        if (!empty($ownPhones)) {
-            $users->whereNotIn(DB::raw($this->phone10Sql('users.phone')), $ownPhones);
-            $clients->whereNotIn(DB::raw($this->phone10Sql('phone')), $ownPhones);
-        }
-
-        $phone10 = $this->phone10Sql('t.phone');
-
-        $query = DB::query()
-            ->fromSub($users->unionAll($clients), 't')
-            ->selectRaw("MIN(t.name) as name, MIN(t.phone) as phone")
-            ->groupByRaw($phone10);
-
-        // Same 30-day cap the shared pool has always had. It is what stops every vendor in a
-        // city blasting the same few thousand people until they all opt out.
-        $capped = $this->nearbyCappedPhones();
-        if (!empty($capped)) {
-            $query->whereNotIn(DB::raw($phone10), $capped);
-        }
-
-        return $query;
-    }
-
-    /** How many distinct people outreachQuery() would reach. */
-    private function outreachCount(int $storeId): int
-    {
-        return DB::query()->fromSub($this->outreachQuery($storeId), 'c')->count();
-    }
-
-    /** Client books of the OTHER stores in this city, plus rows with no store_id at all. */
-    private function otherStoreClientQuery(int $storeId)
-    {
-        $otherStoreIds = array_values(array_diff($this->storeIdsInCity($storeId), [$storeId]));
-
-        // Resolved to a list of store ids rather than joined to `stores`: that table has its
-        // own `phone` column, which would make the opt-out filters below ambiguous.
-        $query = DB::table('store_customers')
-            ->whereNotNull('phone')
-            ->where('phone', '!=', '')
-            ->where(function ($w) use ($otherStoreIds) {
-                $w->whereNull('store_id')->orWhere('store_id', 0);
-                if (!empty($otherStoreIds)) {
-                    $w->orWhereIn('store_id', $otherStoreIds);
-                }
-            });
-
-        // Phone-matched rather than joined: store_customers has no user_id, and the only thing
-        // tying a vendor's client row to a MyChitti account is the number.
-        $blocked = $this->offersOptedOutPhones();
-        if (!empty($blocked)) {
-            $query->whereNotIn(DB::raw($this->phone10Sql('phone')), $blocked);
-        }
-
-        return $this->excludeOptedOut($query, $storeId);
-    }
-
-    /** Last-10-digit forms of the numbers already in this store's own book. */
-    private function ownClientPhones(int $storeId): array
-    {
-        $phones = DB::table('store_customers')
-            ->where('store_id', $storeId)
-            ->whereNotNull('phone')
-            ->pluck('phone');
-
-        return array_values(array_unique(array_filter($phones
-            ->map(fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10))
-            ->all())));
-    }
-
-    /**
-     * Stores counting as "this store's city" — those sharing its zone or sitting in a zone
-     * nested inside it, plus stores that never set a zone at all.
-     */
-    private function storeIdsInCity(int $storeId): array
-    {
-        $zoneIds = Helpers::zone_with_descendants(
-            DB::table('stores')->where('id', $storeId)->value('zone_id')
-        );
-
-        return DB::table('stores')
-            ->where(fn($q) => $this->inZoneOrUnknown($q, 'zone_id', $zoneIds))
-            ->pluck('id')
-            ->all();
-    }
-
-    /** Stored numbers vary between "+91 98…", "098…" and "98…" — compare the last 10 digits. */
-    private function phone10Sql(string $column): string
-    {
-        $quoted = implode('.', array_map(fn($p) => "`$p`", explode('.', $column)));
-        return "RIGHT(REPLACE(REPLACE(REPLACE($quoted, ' ', ''), '-', ''), '+', ''), 10)";
-    }
-
-    /**
-     * Last-10-digit forms of numbers whose MyChitti account has nearby offers turned off.
-     * Only accounts with a saved preference row count — never having set one is not a refusal.
-     */
-    private function offersOptedOutPhones(): array
-    {
-        try {
-            UserNotificationPreference::ensureTable();
-            $phones = DB::table('users')
-                ->join('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
-                ->where('p.nearby_offers', 0)
-                ->whereNotNull('users.phone')
-                ->pluck('users.phone');
-        } catch (\Throwable $e) {
-            Log::warning('offers opt-out lookup failed: ' . $e->getMessage());
-            return [];
-        }
-
-        return array_values(array_unique(array_filter($phones
-            ->map(fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10))
-            ->all())));
-    }
-
-    /** Messages one person may receive from the shared outreach pool per 30 days. */
-    const NEARBY_MONTHLY_CAP = 4;
-
-    /** Last-10-digit forms of numbers that already hit the pool's 30-day cap. */
-    private function nearbyCappedPhones(): array
-    {
-        try {
-            $phones = DB::table('whatsapp_messages')
-                ->where('context', 'nearby')
-                ->where('sent_at', '>=', now()->subDays(30))
-                ->whereNotNull('recipient')
-                ->groupBy('recipient')
-                ->havingRaw('count(*) >= ?', [self::NEARBY_MONTHLY_CAP])
-                ->pluck('recipient');
-        } catch (\Throwable $e) {
-            return [];
-        }
-
-        return array_values(array_unique(array_filter($phones
-            ->map(fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10))
-            ->all())));
-    }
-
-    /**
-     * Drop anyone who has opted out of marketing from this store (or platform-wide).
-     * Matched on the last 10 digits because stored numbers vary between "+91 98…",
-     * "098…" and "98…" — the opt-out table holds the normalized form.
-     */
-    private function excludeOptedOut($query, int $storeId, string $phoneColumn = 'phone')
-    {
-        $suffixes = array_values(array_unique(array_filter(array_map(
-            fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10),
-            WhatsAppService::optedOutPhones($storeId)
-        ))));
-
-        if (empty($suffixes)) {
-            return $query;
-        }
-
-        return $query->whereNotIn(DB::raw($this->phone10Sql($phoneColumn)), $suffixes);
-    }
-
-    /**
-     * MyChitti users in this store's OWN zone who are reachable on WhatsApp.
-     *
-     * Matches users.zone_id, which is populated at registration, on address add/update and on
-     * service-request creation, and was backfilled for existing accounts.
-     *
-     * Matched against the store's zone AND every zone inside it, because zones nest: a store
-     * registered in "India" or "Andhra Pradesh" must reach the Tirupati customers within it,
-     * not just the few tagged with that exact broad zone.
-     *
-     * Users whose zone was never resolved are included too — see inZoneOrUnknown().
-     *
-     * Gated on nearby_offers: a saved preference of 0 removes them, no preference row at all
-     * does not. Feeds outreachQuery() rather than being an audience on its own.
-     */
-    private function platformUserQuery(int $storeId)
-    {
-        $zoneId = DB::table('stores')->where('id', $storeId)->value('zone_id');
-        $zoneIds = Helpers::zone_with_descendants($zoneId);
-
-        $query = DB::table('users')
-            ->where(fn($q) => $this->inZoneOrUnknown($q, 'users.zone_id', $zoneIds))
-            ->whereNotNull('users.phone')
-            ->where('users.phone', '!=', '')
-            ->select('users.*');
-
-        // leftJoin, not a phone match: these rows have a real user_id to key on. Nearby offers
-        // are on by default, so most accounts have no preference row and an inner join would
-        // cut the audience to the handful who once saved their settings.
-        try {
-            UserNotificationPreference::ensureTable();
-            $query->leftJoin('user_notification_prefs as p', 'p.user_id', '=', 'users.id')
-                ->where(fn($q) => $q->whereNull('p.nearby_offers')->orWhere('p.nearby_offers', 1))
-                // Staying in the pool never overrides turning WhatsApp off entirely.
-                ->where(fn($q) => $q->whereNull('p.whatsapp')->orWhere('p.whatsapp', 1));
-        } catch (\Throwable $e) {
-            Log::warning('offers preference unavailable: ' . $e->getMessage());
-        }
-
-        return $this->excludeOptedOut($query, $storeId, 'users.phone');
-    }
-
-    /**
-     * "Same city, or no city on record."
-     *
-     * users.zone_id is only written when the app actually learns where someone is — signup
-     * with location, an address, a service request, an order. Plenty of accounts never hit
-     * any of those and sit NULL (or 0, from an API path that cast a missing header), and
-     * excluding them made most of the customer base unreachable. They are treated as
-     * potentially local rather than definitely not.
-     *
-     * With no zone list at all — a store that never set its own zone — only the unknowns
-     * qualify, since there is no city to match against.
-     */
-    private function inZoneOrUnknown($query, string $column, array $zoneIds)
-    {
-        $query->whereNull($column)->orWhere($column, 0);
-
-        if (!empty($zoneIds)) {
-            $query->orWhereIn($column, $zoneIds);
-        }
-
-        return $query;
-    }
-
-    /**
-     * Reduce Meta's template payload to what the bulk composer needs.
-     * Normally only APPROVED templates are listed (see BULK_SHOW_UNAPPROVED), and only BODY
-     * variables are supported — a template with a variable header or a dynamic URL button needs
-     * parameters this UI doesn't collect, so it is listed as unsupported instead of failing at
-     * send time.
-     */
-    private function bulkTemplateOptions(array $data): array
-    {
-        $out = [];
-        foreach ($data as $tpl) {
-            $status = strtoupper((string) data_get($tpl, 'status')) ?: 'UNKNOWN';
-
-            if (!self::BULK_SHOW_UNAPPROVED && $status !== 'APPROVED') {
-                continue;
-            }
-
-            $body = '';
-            $unsupported = null;
-            foreach ((array) data_get($tpl, 'components', []) as $c) {
-                $type = strtoupper((string) data_get($c, 'type'));
-                if ($type === 'BODY') {
-                    $body = (string) data_get($c, 'text', '');
-                } elseif ($type === 'HEADER' && str_contains((string) data_get($c, 'text', ''), '{{')) {
-                    $unsupported = 'has a variable in its header';
-                } elseif ($type === 'BUTTONS') {
-                    foreach ((array) data_get($c, 'buttons', []) as $b) {
-                        if (str_contains((string) data_get($b, 'url', ''), '{{')) {
-                            $unsupported = 'has a dynamic button URL';
-                        }
-                    }
-                }
-            }
-
-            // Every slot the body needs, in send order. Named slots the platform knows how to
-            // fill are marked auto — the composer shows them as filled-per-recipient instead of
-            // asking the vendor for a value.
-            $vars = [];
-            foreach (WhatsAppService::namedVariables($body) as $named) {
-                $known = WhatsAppService::TEMPLATE_VARIABLES[$named] ?? null;
-                $vars[] = [
-                    'key'   => $named,
-                    'label' => $known['label'] ?? ucfirst(str_replace('_', ' ', $named)),
-                    'auto'  => $known !== null,
-                ];
-            }
-            if (empty($vars)) {
-                $count = WhatsAppService::positionalCount($body);
-                for ($n = 1; $n <= $count; $n++) {
-                    $vars[] = ['key' => (string) $n, 'label' => 'Variable ' . $n, 'auto' => false];
-                }
-            } elseif (WhatsAppService::positionalCount($body) > 0) {
-                // Meta will not have approved this, but a hand-edited body could still reach us.
-                $unsupported = 'mixes named and numbered variables';
-            }
-
-            $out[] = [
-                'name'        => data_get($tpl, 'name'),
-                'language'    => data_get($tpl, 'language', 'en_US'),
-                'category'    => data_get($tpl, 'category'),
-                'body'        => $body,
-                'vars'        => $vars,
-                'var_count'   => count($vars),
-                'unsupported' => $unsupported,
-                'status'      => $status,
-            ];
-        }
-
-        usort($out, fn($a, $b) => strcmp((string) $a['name'], (string) $b['name']));
-        return $out;
-    }
-
     /** Client list for the bulk composer's recipient picker. */
     public function bulkRecipients(Request $request)
     {
@@ -900,9 +572,9 @@ class WhatsAppController extends Controller
             'template'     => 'required|string',
             'language'     => 'required|string',
             'mode'         => 'required|in:clients,platform',
+            'run_id'       => 'required|string|max:40',
             'client_ids'   => 'required_if:mode,clients|array|max:' . self::BULK_BATCH_LIMIT,
             'client_ids.*' => 'integer',
-            'offset'       => 'required_if:mode,platform|integer|min:0',
             'limit'        => 'required_if:mode,platform|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
             'params'       => 'nullable|array',
             'params.*.key' => 'nullable|string|max:64',
@@ -929,13 +601,37 @@ class WhatsAppController extends Controller
 
         $mode = $request->input('mode');
         $platform = $mode === 'platform';
+        $runId = trim((string) $request->input('run_id'));
+
+        WhatsAppService::ensureBulkSendTable();
 
         if ($platform) {
-            // Ordered by the dedupe key so the browser's offset walk covers each person exactly
-            // once — the underlying rows come from two tables with unrelated id spaces.
+            // No offset — the pool is walked by exclusion. An offset walk restarted at zero on
+            // every send, so a vendor asking for 500 got the same 500 lowest-numbered people
+            // every time, never reached the rest of the pool, and re-messaged whoever had
+            // already been served when a broken run was started again.
+            //
+            // outreachQuery drops everyone this store reached inside the rotation window; what
+            // is left here is the within-run exclusion, so a batch never re-offers someone an
+            // earlier batch of the same run already claimed. Between them, each batch returns the
+            // next unmessaged people.
+            //
+            // A subquery rather than an id list pulled into PHP: a 17,000-person run is hundreds
+            // of batches, and re-loading an ever-growing list of claimed numbers on each one
+            // turns a long send quadratic. This reads the unique key head-on (run_id, phone10).
+            $phone10 = $this->phone10Sql('t.phone');
+            // Column against column, so both sides are pinned to one collation — see
+            // collatedPhone(). The claim table and the contact tables can carry different ones.
+            $claimed = $this->collatedPhone('b.`phone10`');
+            $candidate = $this->collatedPhone($phone10);
+
             $recipients = $this->outreachQuery($storeId)
-                ->orderByRaw($this->phone10Sql('t.phone'))
-                ->offset((int) $request->input('offset'))
+                ->whereNotExists(function ($q) use ($runId, $claimed, $candidate) {
+                    $q->select(DB::raw(1))->from('wa_bulk_sends as b')
+                        ->where('b.run_id', $runId)
+                        ->whereRaw("{$claimed} = {$candidate}");
+                })
+                ->orderByRaw($phone10)
                 ->limit((int) $request->input('limit'))
                 ->get()
                 ->map(fn($r) => (object) [
@@ -971,10 +667,27 @@ class WhatsAppController extends Controller
 
         $rawParams = array_values((array) $request->input('params', []));
         $results = [];
+        $skipped = 0;
+
+        // Read once for the whole batch, then filled per recipient below. Kept so the history
+        // screen can show the vendor the words their customer read — the delivery log only has
+        // "template: {name}", and a template can be edited or deleted long before anyone asks.
+        $templateBody = WhatsAppService::templateBodyText($storeId, (string) $request->template, (string) $request->language);
 
         foreach ($recipients as $client) {
             $name = trim((string) $client->name) ?: 'Customer';
             $phone = trim((string) $client->phone);
+
+            // Claim the recipient before dispatching. The unique key on (run_id, phone10) is what
+            // guarantees the answer to "if the run breaks and I send again, do they get it twice?"
+            // — they do not. A repeat claim throws, and the person is skipped rather than
+            // messaged a second time. Claimed first, not after, so a crash between the claim and
+            // the API call still leaves the row behind to block a re-send.
+            $sendId = $this->claimBulkRecipient($runId, $storeId, $client, $phone, $name, $platform, $request->template);
+            if (!$sendId) {
+                $skipped++;
+                continue;
+            }
 
             // {name} / {phone} are substituted inside whatever the vendor typed; the named
             // slots ({{customer_name}}, {{customer_phone}}) are filled outright. Either way the
@@ -990,6 +703,7 @@ class WhatsAppController extends Controller
             ];
 
             $parameters = [];
+            $filled = [];
             foreach ($rawParams as $i => $raw) {
                 // A slot is {key, value} for named templates; older callers send bare strings,
                 // which are positional in the order they arrive.
@@ -998,7 +712,9 @@ class WhatsAppController extends Controller
 
                 $value = array_key_exists($key, $auto) ? $auto[$key] : strtr($value, $tokens);
 
-                $parameters[] = WhatsAppService::bodyParameter($key, $this->sanitizeParam($value));
+                $clean = $this->sanitizeParam($value);
+                $filled[$key] = $clean;
+                $parameters[] = WhatsAppService::bodyParameter($key, $clean);
             }
 
             $components = $parameters
@@ -1015,6 +731,17 @@ class WhatsAppController extends Controller
                 $platform ? 'nearby' : 'bulk'
             );
 
+            DB::table('wa_bulk_sends')->where('id', $sendId)->update([
+                'wamid'      => $res['id'] ?? null,
+                'status'     => $res['success'] ? 'sent' : 'failed',
+                'error'      => $res['error'] ?? null,
+                // This recipient's own copy — {{customer_name}} carries their name, not the next
+                // person's, so the history reads back exactly what each number received.
+                'body'       => $templateBody ? mb_substr($this->fillTemplateBody($templateBody, $filled), 0, 2000) : null,
+                'language'   => mb_substr((string) $request->language, 0, 20),
+                'updated_at' => now(),
+            ]);
+
             $results[] = [
                 'id'      => $client->id,
                 'name'    => $name,
@@ -1030,9 +757,238 @@ class WhatsAppController extends Controller
             'success' => true,
             'sent'    => count(array_filter($results, fn($r) => $r['success'])),
             'failed'  => count(array_filter($results, fn($r) => !$r['success'])),
+            // Already messaged in this run — a resend after a broken batch, which is exactly what
+            // the claim is for. Reported so the composer can say so rather than double-counting.
+            'skipped' => $skipped,
             'results' => $results,
         ]);
     }
+
+    /**
+     * Reserve one recipient for this run. Returns the claim row id, or null when someone else
+     * (an earlier batch, or a repeat of one) already holds them.
+     */
+    private function claimBulkRecipient(string $runId, int $storeId, $client, string $phone, string $name, bool $platform, ?string $template): ?int
+    {
+        $phone10 = substr(preg_replace('/[^0-9]/', '', $phone) ?? '', -10);
+        if ($phone10 === '') {
+            return null;
+        }
+
+        try {
+            return (int) DB::table('wa_bulk_sends')->insertGetId([
+                'store_id'   => $storeId,
+                'run_id'     => $runId,
+                'phone10'    => $phone10,
+                'phone'      => $phone,
+                'name'       => mb_substr($name, 0, 190),
+                'client_id'  => $client->id ?: null,
+                'audience'   => $platform ? 'platform' : 'own',
+                'template'   => $template ? mb_substr($template, 0, 190) : null,
+                'status'     => 'queued',
+                'sent_at'    => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // Duplicate key — already claimed in this run. Any other failure is treated the same
+            // way on purpose: without a claim we cannot promise the person is not messaged twice,
+            // and not sending is the safer half of that bargain.
+            return null;
+        }
+    }
+
+    /** Put this recipient's parameter values into the template body, for the record kept of it. */
+    private function fillTemplateBody(string $body, array $values): string
+    {
+        $tokens = [];
+        foreach ($values as $key => $value) {
+            $tokens['{{' . $key . '}}'] = $value;
+            $tokens['{{ ' . $key . ' }}'] = $value;
+        }
+
+        return strtr($body, $tokens);
+    }
+
+    /**
+     * Every bulk send this store has made, one row per run — the batch the composer sent as a
+     * unit. What went out, to how many people, when, and how it landed.
+     *
+     * Grouped in SQL rather than in PHP: a store with a year of 17,000-person runs has millions of
+     * recipient rows, and this page must never load them to count them.
+     */
+    public function bulkHistory(Request $request)
+    {
+        WhatsAppService::ensureBulkSendTable();
+        $storeId = Helpers::get_store_id();
+
+        $runs = DB::table('wa_bulk_sends')
+            ->where('store_id', $storeId)
+            ->select(
+                'run_id',
+                DB::raw('MAX(template) as template'),
+                DB::raw('MAX(language) as language'),
+                DB::raw('MAX(audience) as audience'),
+                DB::raw('MAX(body) as body'),
+                DB::raw('COUNT(*) as recipients'),
+                DB::raw("SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent"),
+                DB::raw("SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed"),
+                DB::raw("SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) as queued"),
+                DB::raw('MIN(sent_at) as started_at'),
+                DB::raw('MAX(sent_at) as finished_at')
+            )
+            ->groupBy('run_id')
+            ->orderByRaw('MIN(sent_at) DESC')
+            ->paginate(20);
+
+        $totals = DB::table('wa_bulk_sends')->where('store_id', $storeId)
+            ->selectRaw("COUNT(*) as recipients,
+                COUNT(DISTINCT run_id) as runs,
+                SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN sent_at >= ? THEN 1 ELSE 0 END) as last30", [now()->subDays(30)])
+            ->first();
+
+        return view('vendor-views.whatsapp.bulk-history', compact('runs', 'totals'));
+    }
+
+    /**
+     * One run, person by person: who it went to, what they were sent, and where it got to.
+     *
+     * Delivery state comes from whatsapp_messages, joined on the wamid Meta returned — the claim
+     * row only knows the send was accepted, while the webhook is what later says delivered, read
+     * or failed at the handset.
+     */
+    public function bulkHistoryRun(Request $request, $runId)
+    {
+        WhatsAppService::ensureBulkSendTable();
+        WhatsAppService::ensureMessagesTable();
+        $storeId = Helpers::get_store_id();
+
+        $run = $this->ownedRun($storeId, $runId);
+        if (!$run) {
+            Toastr::error('That send could not be found.');
+            return redirect()->route('vendor.whatsapp.bulk.history');
+        }
+
+        $masked = $run->audience === 'platform';
+
+        $query = DB::table('wa_bulk_sends as b')
+            ->leftJoin('whatsapp_messages as m', function ($join) {
+                $join->on('m.wamid', '=', 'b.wamid')->where('m.direction', 'out');
+            })
+            ->where('b.store_id', $storeId)
+            ->where('b.run_id', $run->run_id);
+
+        if ($status = $request->input('status')) {
+            $status === 'delivered'
+                ? $query->whereIn('m.status', ['delivered', 'read'])
+                : $query->where('b.status', $status);
+        }
+
+        if ($search = trim((string) $request->input('search'))) {
+            // Platform numbers are shown masked, so searching them would be a way to read one
+            // back four digits at a time. Only the name is searchable for that audience.
+            $query->where(function ($q) use ($search, $masked) {
+                $q->where('b.name', 'like', "%{$search}%");
+                if (!$masked) {
+                    $q->orWhere('b.phone', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        // Aliased, not `select *` — both tables carry a `status` column and the join would leave
+        // only one of them standing, which is the difference between "we accepted it" and "the
+        // handset got it".
+        $rows = $query->orderBy('b.id')
+            ->select(
+                'b.name', 'b.phone', 'b.client_id', 'b.template', 'b.body', 'b.error', 'b.sent_at',
+                'b.status as send_status',
+                'm.status as delivery_status',
+                'm.status_at as delivery_at'
+            )
+            ->paginate(50)
+            ->appends($request->only('search', 'status'))
+            ->through(function ($row) use ($masked) {
+                // Masked here rather than in the view so no template can print the raw number of
+                // someone who is not this vendor's contact.
+                $row->phone = $masked ? $this->maskPhone($row->phone) : $row->phone;
+                return $row;
+            });
+
+        return view('vendor-views.whatsapp.bulk-run', compact('run', 'rows', 'masked'));
+    }
+
+    /** The same run as a spreadsheet — what a vendor sends their accountant or their client. */
+    public function bulkHistoryExport(Request $request, $runId)
+    {
+        WhatsAppService::ensureBulkSendTable();
+        WhatsAppService::ensureMessagesTable();
+        $storeId = Helpers::get_store_id();
+
+        $run = $this->ownedRun($storeId, $runId);
+        if (!$run) {
+            Toastr::error('That send could not be found.');
+            return redirect()->route('vendor.whatsapp.bulk.history');
+        }
+
+        $masked = $run->audience === 'platform';
+        $filename = 'whatsapp-bulk-' . substr($run->run_id, 0, 8) . '-' . now()->format('Ymd-Hi') . '.csv';
+
+        return response()->streamDownload(function () use ($storeId, $run, $masked) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Name', 'Phone', 'Sent at', 'Template', 'Message sent', 'Result', 'Delivery', 'Error']);
+
+            DB::table('wa_bulk_sends as b')
+                ->leftJoin('whatsapp_messages as m', function ($join) {
+                    $join->on('m.wamid', '=', 'b.wamid')->where('m.direction', 'out');
+                })
+                ->where('b.store_id', $storeId)
+                ->where('b.run_id', $run->run_id)
+                ->orderBy('b.id')
+                ->select('b.name', 'b.phone', 'b.sent_at', 'b.template', 'b.body', 'b.status', 'b.error', 'm.status as delivery')
+                ->chunk(500, function ($chunk) use ($out, $masked) {
+                    foreach ($chunk as $row) {
+                        fputcsv($out, [
+                            $row->name ?: 'Customer',
+                            $masked ? $this->maskPhone($row->phone) : $row->phone,
+                            $row->sent_at,
+                            $row->template,
+                            $row->body,
+                            $row->status,
+                            $row->delivery ?: '—',
+                            $row->error,
+                        ]);
+                    }
+                });
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    /** One run's header, scoped to the store so a run id from elsewhere reads as not found. */
+    private function ownedRun(int $storeId, string $runId)
+    {
+        return DB::table('wa_bulk_sends')
+            ->where('store_id', $storeId)
+            ->where('run_id', $runId)
+            ->select(
+                'run_id',
+                DB::raw('MAX(template) as template'),
+                DB::raw('MAX(language) as language'),
+                DB::raw('MAX(audience) as audience'),
+                DB::raw('MAX(body) as body'),
+                DB::raw('COUNT(*) as recipients'),
+                DB::raw("SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent"),
+                DB::raw("SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed"),
+                DB::raw("SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) as queued"),
+                DB::raw('MIN(sent_at) as started_at'),
+                DB::raw('MAX(sent_at) as finished_at')
+            )
+            ->groupBy('run_id')
+            ->first();
+    }
+
 
     private function templateBodyError(string $body, ?string $name = null): ?string
     {
@@ -1102,12 +1058,6 @@ class WhatsAppController extends Controller
         }
 
         return ['format' => $format, 'handle' => $handle];
-    }
-
-    private function maskPhone(?string $phone): string
-    {
-        $digits = preg_replace('/[^0-9]/', '', (string) $phone) ?? '';
-        return strlen($digits) < 4 ? '••••' : '••••••' . substr($digits, -4);
     }
 
     private function sanitizeParam(string $value): string
@@ -1582,6 +1532,55 @@ class WhatsAppController extends Controller
      * A failed listTemplates call never blocks the vendor — we only enforce on a count we
      * actually read back from Meta.
      */
+    /**
+     * A throwaway one-page PDF for Meta's reviewers, uploaded to get the handle a DOCUMENT header
+     * needs at template creation. It is only ever the sample shown in review — real sends replace
+     * it with the patient's own file.
+     *
+     * Returns ['format' => 'DOCUMENT', 'handle' => …], or false when it could not be produced (the
+     * caller has already flashed the reason).
+     */
+    private function sampleDocumentHeader(WhatsAppService $wa)
+    {
+        $config = Helpers::get_business_settings('whatsapp_config');
+        $appId = $config['es_app_id'] ?? null;
+        $appSecret = $config['es_app_secret'] ?? null;
+        if (!$appId || !$appSecret) {
+            Toastr::error('Templates with an attached file need the WhatsApp app credentials. Ask the admin to set them up.');
+            return false;
+        }
+
+        try {
+            $dir = storage_path('app/tmp');
+            if (!is_dir($dir)) {
+                mkdir($dir, 0775, true);
+            }
+            $path = $dir . '/wa-sample-' . uniqid() . '.pdf';
+
+            $mpdf = new \Mpdf\Mpdf(['mode' => 'utf-8', 'format' => 'A4', 'tempDir' => $dir]);
+            $mpdf->WriteHTML(
+                '<h2 style="font-family:sans-serif;">Sample document</h2>'
+                . '<p style="font-family:sans-serif;font-size:13px;">This is a sample attachment for template review. '
+                . 'Each message sends the patient their own document in its place.</p>'
+            );
+            $mpdf->Output($path, 'F');
+
+            $handle = $wa->uploadHeaderMedia($path, 'application/pdf', $appId, $appSecret);
+            @unlink($path);
+
+            if (!$handle) {
+                Toastr::error('Could not upload the sample file to Meta. Please try again in a moment.');
+                return false;
+            }
+
+            return ['format' => 'DOCUMENT', 'handle' => $handle];
+        } catch (\Throwable $e) {
+            Log::error('WA sample document header failed: ' . $e->getMessage());
+            Toastr::error('Could not prepare the sample file for this template.');
+            return false;
+        }
+    }
+
     private function templateQuotaError(WhatsAppService $wa, int $storeId): ?string
     {
         $res = $wa->listTemplates();
@@ -1681,6 +1680,12 @@ class WhatsAppController extends Controller
         $storeId = Helpers::get_store_id();
         $wa = WhatsAppService::make($storeId);
 
+        // This page reads the live list from Meta anyway, so it is the natural place to refresh
+        // the short-lived status cache the notification settings page reads. It also makes the
+        // page a way to clear a stale warning: a vendor told a template isn't approved opens
+        // Message Templates to look, and that visit re-checks it.
+        WhatsAppService::forgetTemplateStatuses($storeId);
+
         // Vendor's own WABA only — hasWaba() would be true on the platform fallback and list
         // MyChitti's templates here, with working edit and delete buttons beside them.
         $connected = $wa->hasVendorWaba();
@@ -1713,10 +1718,21 @@ class WhatsAppController extends Controller
             foreach ($templates as $tpl) {
                 $statusByName[strtolower((string) data_get($tpl, 'name'))] = strtoupper((string) data_get($tpl, 'status'));
             }
-            $presets = WhatsAppService::templatePresets()->map(function ($p) use ($statusByName) {
-                $p->waba_status = $statusByName[strtolower($p->name)] ?? null;
-                return $p;
-            });
+            // The hospital templates are only offered to stores that actually run the hospital
+            // module — a laundry has no use for "Consultation Summary", and a suggested-list full
+            // of templates a vendor can never send is how the list stops being read at all.
+            $hospital = vendorPlanHasModule('hospital_manage');
+
+            $presets = WhatsAppService::templatePresets()
+                ->filter(fn($p) => $hospital || !array_key_exists($p->name, HmisWhatsAppShare::PRESET_USES))
+                ->map(function ($p) use ($statusByName) {
+                    $p->waba_status = $statusByName[strtolower($p->name)] ?? null;
+                    // Says where the template gets used, so a vendor picks by what it does for
+                    // them rather than by guessing from the wording.
+                    $p->used_for = HmisWhatsAppShare::PRESET_USES[$p->name] ?? null;
+                    return $p;
+                })
+                ->values();
         }
 
         // Hours before the appointment that the reminder goes out; 0 = off, unset = 2 (default).
@@ -1761,6 +1777,9 @@ class WhatsAppController extends Controller
     // Vendor picked an admin preset — submit it to THEIR OWN WABA for Meta review.
     public function templateFromPreset(Request $request)
     {
+        // The vendor just changed their template set; the settings page must not keep
+        // warning (or reassuring) from a stale copy.
+        WhatsAppService::forgetTemplateStatuses(Helpers::get_store_id());
         $request->validate(['preset_id' => 'required|integer']);
 
         $wa = WhatsAppService::make(Helpers::get_store_id());
@@ -1787,6 +1806,22 @@ class WhatsAppController extends Controller
         if ($preset->btn_text && $preset->btn_url) {
             $buttons[] = ['text' => $preset->btn_text, 'url' => $preset->btn_url];
         }
+        // Quick replies come back as their own label when tapped, which is what makes a preset
+        // able to ask a question rather than only link somewhere.
+        foreach (array_filter(array_map('trim', explode(',', (string) ($preset->btn_replies ?? '')))) as $reply) {
+            $buttons[] = ['type' => 'QUICK_REPLY', 'text' => $reply];
+        }
+
+        // A media template needs a sample file uploaded to Meta before it can be created. Asking
+        // the vendor to produce one would end the "one click" promise, so the platform generates
+        // a representative sample and uploads it for them.
+        $header = $preset->header;
+        if (strtoupper((string) ($preset->header_format ?? '')) === 'DOCUMENT') {
+            $header = $this->sampleDocumentHeader($wa);
+            if ($header === false) {
+                return back();
+            }
+        }
 
         $res = $wa->createTemplate(
             $preset->name,
@@ -1795,7 +1830,7 @@ class WhatsAppController extends Controller
             $preset->body,
             $example,
             $buttons,
-            $preset->header,
+            $header,
             $preset->footer
         );
 
@@ -1817,6 +1852,9 @@ class WhatsAppController extends Controller
 
     public function templateCreate(Request $request)
     {
+        // The vendor just changed their template set; the settings page must not keep
+        // warning (or reassuring) from a stale copy.
+        WhatsAppService::forgetTemplateStatuses(Helpers::get_store_id());
         $request->validate([
             'tpl_name'        => 'required|regex:/^[a-z0-9_]+$/',
             'tpl_category'    => 'required',
@@ -1885,6 +1923,9 @@ class WhatsAppController extends Controller
 
     public function templateUpdate(Request $request)
     {
+        // The vendor just changed their template set; the settings page must not keep
+        // warning (or reassuring) from a stale copy.
+        WhatsAppService::forgetTemplateStatuses(Helpers::get_store_id());
         $request->validate([
             'tpl_id'   => 'required',
             'tpl_body' => 'required',
@@ -1929,6 +1970,9 @@ class WhatsAppController extends Controller
      */
     public function templateTrash(Request $request)
     {
+        // The vendor just changed their template set; the settings page must not keep
+        // warning (or reassuring) from a stale copy.
+        WhatsAppService::forgetTemplateStatuses(Helpers::get_store_id());
         $request->validate(['name' => 'required', 'language' => 'nullable|string|max:20']);
         $storeId = Helpers::get_store_id();
 
@@ -1949,6 +1993,9 @@ class WhatsAppController extends Controller
     /** Put a trashed template back in the working list. No re-approval — it never left Meta. */
     public function templateRestore(Request $request)
     {
+        // The vendor just changed their template set; the settings page must not keep
+        // warning (or reassuring) from a stale copy.
+        WhatsAppService::forgetTemplateStatuses(Helpers::get_store_id());
         $request->validate(['name' => 'required', 'language' => 'nullable|string|max:20']);
 
         WhatsAppService::ensureTrashTable();
@@ -1965,6 +2012,9 @@ class WhatsAppController extends Controller
     /** The only path that touches Meta: the template is gone and the slot is freed. */
     public function templateDelete(Request $request)
     {
+        // The vendor just changed their template set; the settings page must not keep
+        // warning (or reassuring) from a stale copy.
+        WhatsAppService::forgetTemplateStatuses(Helpers::get_store_id());
         $request->validate(['name' => 'required', 'language' => 'nullable|string|max:20']);
         $storeId = Helpers::get_store_id();
         $name = trim((string) $request->name);

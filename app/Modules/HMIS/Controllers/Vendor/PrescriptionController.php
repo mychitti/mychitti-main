@@ -15,6 +15,7 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
 use App\Models\ServiceRequest;
+use App\Services\HmisWhatsAppShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -243,6 +244,8 @@ class PrescriptionController extends Controller
                 ['is_finalized' => $rx->is_finalized]
             );
 
+            $this->autoSendToPatient($rx);
+
             Toastr::success('Prescription saved successfully');
 
             if ($request->appointment_id) {
@@ -254,6 +257,52 @@ class PrescriptionController extends Controller
             DB::rollBack();
             Toastr::error('Failed to save: ' . $e->getMessage());
             return back()->withInput();
+        }
+    }
+
+    /**
+     * WhatsApp the patient their prescription the moment it is finalized, for hospitals that have
+     * asked for it on Send Notifications.
+     *
+     * Only on finalize: a draft is still being written, and a patient who receives it starts a
+     * course of medicine the doctor has not committed to. Each message is locked to the record by
+     * HmisWhatsAppShare::auto(), so editing a finalized prescription later does not send it again.
+     */
+    private function autoSendToPatient(Prescription $rx): void
+    {
+        if (!$rx->is_finalized) {
+            return;
+        }
+
+        $storeId = (int) $rx->store_id;
+
+        HmisWhatsAppShare::auto('prescription', $storeId, (int) $rx->id,
+            fn() => HmisWhatsAppShare::prescription($rx));
+
+        HmisWhatsAppShare::auto('medicines', $storeId, (int) $rx->id,
+            fn() => HmisWhatsAppShare::medicines($rx));
+
+        if ($rx->follow_up_date) {
+            $rx->loadMissing('patient', 'doctorProfile.employee');
+            if ($rx->patient) {
+                // Sent at the lead time the hospital chose — days before the follow-up date, or
+                // straight away when they'd rather confirm it while the patient is still here.
+                HmisWhatsAppShare::auto(
+                    'followup',
+                    $storeId,
+                    (int) $rx->id,
+                    fn() => HmisWhatsAppShare::followUp(
+                        $storeId,
+                        $rx->patient,
+                        $rx->follow_up_date,
+                        HmisWhatsAppShare::doctorName($rx->doctorProfile),
+                        null,
+                        (int) $rx->id
+                    ),
+                    'prescription',
+                    HmisWhatsAppShare::followUpDueAt($storeId, $rx->follow_up_date)
+                );
+            }
         }
     }
 
@@ -643,6 +692,8 @@ class PrescriptionController extends Controller
                 "Prescription #{$rx->id} {$action}",
                 ['is_finalized' => $rx->is_finalized]
             );
+
+            $this->autoSendToPatient($rx);
 
             Toastr::success('Prescription updated');
 

@@ -64,6 +64,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/knowledge/delete', 'KnowledgeController@delete')->name('whatsapp.knowledge.delete');
         // Per-action notification preferences — one page per direction, tabbed by channel.
         Route::post('notification-settings/toggle', 'NotificationSettingController@toggle')->name('notification-settings.toggle');
+        Route::post('notification-settings/timing', 'NotificationSettingController@timing')->name('notification-settings.timing');
         Route::get('notification-settings/{direction?}', 'NotificationSettingController@index')->name('notification-settings');
         Route::post('whatsapp/templates/update', 'WhatsAppController@templateUpdate')->name('whatsapp.templates.update');
         // Trash hides a template but leaves it at Meta; only delete removes it there.
@@ -73,6 +74,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/test-message', 'WhatsAppController@sendTestMessage')->name('whatsapp.test-message')->middleware('throttle:5,1');
         Route::get('whatsapp/bulk/recipients', 'WhatsAppController@bulkRecipients')->name('whatsapp.bulk.recipients');
         Route::post('whatsapp/bulk/send', 'WhatsAppController@bulkSend')->name('whatsapp.bulk.send');
+        // Sent-message record: which numbers each batch went to, and what they were sent.
+        Route::get('whatsapp/bulk/history', 'WhatsAppController@bulkHistory')->name('whatsapp.bulk.history');
+        Route::get('whatsapp/bulk/history/{runId}', 'WhatsAppController@bulkHistoryRun')->name('whatsapp.bulk.history.run');
+        Route::get('whatsapp/bulk/history/{runId}/export', 'WhatsAppController@bulkHistoryExport')->name('whatsapp.bulk.history.export');
         Route::post('whatsapp/features/subscribe', 'WhatsAppController@featureSubscribe')->name('whatsapp.features.subscribe');
         Route::post('whatsapp/features/toggle', 'WhatsAppController@featureToggle')->name('whatsapp.features.toggle');
         // WhatsApp Business Platform billing — the monthly plan, template slots, AI tokens.
@@ -86,6 +91,19 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // What the AI Agent may do for customers, and what it may share with them.
         Route::get('whatsapp/bot', 'WhatsAppController@bot')->name('whatsapp.bot');
         Route::post('whatsapp/bot/shares', 'WhatsAppController@botShares')->name('whatsapp.bot.shares');
+        // Campaign series — a run of templates where each step's audience depends on how the
+        // customer answered the last one. /create must stay above /{id} or it reads as an id.
+        Route::get('whatsapp/campaigns', 'WhatsAppCampaignController@index')->name('whatsapp.campaigns');
+        Route::get('whatsapp/campaigns/create', 'WhatsAppCampaignController@create')->name('whatsapp.campaigns.create');
+        Route::post('whatsapp/campaigns/store', 'WhatsAppCampaignController@store')->name('whatsapp.campaigns.store');
+        Route::get('whatsapp/campaigns/{id}', 'WhatsAppCampaignController@show')->name('whatsapp.campaigns.show');
+        Route::get('whatsapp/campaigns/{id}/recipients', 'WhatsAppCampaignController@recipients')->name('whatsapp.campaigns.recipients');
+        Route::get('whatsapp/campaigns/{id}/export', 'WhatsAppCampaignController@export')->name('whatsapp.campaigns.export');
+        Route::post('whatsapp/campaigns/{id}/start', 'WhatsAppCampaignController@start')->name('whatsapp.campaigns.start');
+        Route::post('whatsapp/campaigns/{id}/pause', 'WhatsAppCampaignController@pause')->name('whatsapp.campaigns.pause');
+        Route::post('whatsapp/campaigns/{id}/cancel', 'WhatsAppCampaignController@cancel')->name('whatsapp.campaigns.cancel');
+        Route::post('whatsapp/campaigns/{id}/run-now', 'WhatsAppCampaignController@runNow')->name('whatsapp.campaigns.run-now');
+        Route::post('whatsapp/campaigns/{id}/delete', 'WhatsAppCampaignController@destroy')->name('whatsapp.campaigns.delete');
 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');

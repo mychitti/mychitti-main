@@ -28,6 +28,18 @@
                 <span class="text-truncate">{{ translate('Connection & Bulk Message') }}</span>
             </a>
         </li>
+        <li class="nav-item {{ Request::is('*whatsapp/bulk/history*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.bulk.history') }}" title="{{ translate('Bulk Send History') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Bulk Send History') }}</span>
+            </a>
+        </li>
+        <li class="nav-item {{ Request::is('*whatsapp/campaigns*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.campaigns') }}" title="{{ translate('Campaign Series') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Campaign Series') }}</span>
+            </a>
+        </li>
         <li class="nav-item {{ Request::is('*whatsapp/templates*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.templates') }}" title="{{ translate('Message Templates') }}">
                 <span class="tio-circle nav-indicator-icon"></span>

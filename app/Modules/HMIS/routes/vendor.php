@@ -22,4 +22,5 @@ Route::group(['middleware' => ['planwise:hospital_manage']], function () {
     require __DIR__ . '/vendor/nursing.php';
     require __DIR__ . '/vendor/preop.php';
     require __DIR__ . '/vendor/radiology.php';
+    require __DIR__ . '/vendor/whatsapp.php';
 });

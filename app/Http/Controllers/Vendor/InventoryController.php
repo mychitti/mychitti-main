@@ -34,9 +34,12 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
 use Illuminate\Http\File as IlluminateFile;
 use Mpdf\Mpdf;
+use App\Traits\InventoryPriceHistory;
 
 class InventoryController extends Controller
 {
+    use InventoryPriceHistory;
+
     public function dashboard(Request $request)
     {
 
@@ -832,6 +835,7 @@ class InventoryController extends Controller
     }
     public function edit_item(Request $request, $id)
     {
+        $this->ensureRepeatDaysColumn();
         $item = InventoryItem::find($id);
         $items = InventoryItem::where('inventory_items.store_id', Helpers::get_store_id())->get();
 
@@ -943,8 +947,10 @@ class InventoryController extends Controller
 
             // Price first, then stock. _incrementInventoryStock reloads the row and writes it, so
             // saving this stale copy afterwards would put the old stock figure straight back.
+            // No price-log row: the entry above already records both prices, and the history
+            // reads it directly, so logging this save too would double-count the change.
             $inventory_item->selling_price = $selling_price;
-            $inventory_item->save();
+            _withoutItemPriceLog(fn() => $inventory_item->save());
 
             // Credit the variation the goods actually arrived as. A countable variation gets its
             // own count (and the main figure follows as the sum); a measured pack adds its
@@ -1081,6 +1087,30 @@ class InventoryController extends Controller
         _ensureStockTypeColumn();
     }
 
+    private function ensureRepeatDaysColumn(): void
+    {
+        if (Schema::hasTable('inventory_items') && !Schema::hasColumn('inventory_items', 'repeat_days')) {
+            DB::statement("ALTER TABLE `inventory_items` ADD COLUMN `repeat_days` INT NULL");
+        }
+    }
+
+    /**
+     * Per-item repeat purchase cycle: whether this item is chased at all, and after how long.
+     *
+     * The item's own number is the whole answer — nothing is inherited from its category. Leaving
+     * the value untouched when the form did not submit the control is what keeps any other save
+     * path from silently clearing what the vendor set.
+     */
+    private function applyRepeatReminder(InventoryItem $item, Request $request): void
+    {
+        if (!$request->has('repeat_reminder')) {
+            return;
+        }
+
+        $days = (int) $request->input('repeat_days', 0);
+        $item->repeat_days = ($request->boolean('repeat_reminder') && $days > 0) ? min($days, 730) : 0;
+    }
+
     private function applyLooseSelling(InventoryItem $item, Request $request): void
     {
         // Loose item — weighed on the scale at POS sale time; billed weight × per-unit price.
@@ -1185,6 +1215,7 @@ class InventoryController extends Controller
         $this->ensureDescriptionAttributesColumn();
         $this->ensureLooseColumn();
         $this->ensureDecimalStockColumns();
+        $this->ensureRepeatDaysColumn();
         _ensureSellingPriceBasisColumn();
         $itemId = $request->item_id;
         $validator = FacadesValidator::make($request->all(), [
@@ -1306,6 +1337,7 @@ class InventoryController extends Controller
 
         $inventory_item->specifications = $specifications;
         $this->applyLooseSelling($inventory_item, $request);
+        $this->applyRepeatReminder($inventory_item, $request);
         $inventory_item->save();
 
         // variation -=====================================
@@ -1444,6 +1476,7 @@ class InventoryController extends Controller
         $this->ensureDescriptionAttributesColumn();
         $this->ensureLooseColumn();
         $this->ensureDecimalStockColumns();
+        $this->ensureRepeatDaysColumn();
         _ensureSellingPriceBasisColumn();
         $store_id = Helpers::get_store_id();
         $rules = [
@@ -1563,6 +1596,7 @@ class InventoryController extends Controller
         }
 
         $this->applyLooseSelling($inventory_item, $request);
+        $this->applyRepeatReminder($inventory_item, $request);
 
         $inventory_item->save();
 
@@ -1864,8 +1898,10 @@ class InventoryController extends Controller
         $this->ensureLabelFormatsTable();
         $labelFormats = DB::table('pos_label_formats')->where('store_id', Helpers::get_store_id())
             ->orderByDesc('is_default')->orderBy('name')->get();
-        return view("vendor-views.inventory.item_detail", compact('item', 'labelFormats'));
+        $priceHistory = $this->item_price_history($item);
+        return view("vendor-views.inventory.item_detail", compact('item', 'labelFormats', 'priceHistory'));
     }
+
     public function variant_combination(Request $request)
     {
         $options = [];

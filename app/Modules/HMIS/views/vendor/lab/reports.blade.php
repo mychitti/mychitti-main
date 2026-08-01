@@ -5,7 +5,7 @@
 <div class="content container-fluid"><div class="labx">
     @include('hmis::vendor.lab._chrome')
     <div class="lab-body">
-        @php $cols = 'display:grid;grid-template-columns:90px 1fr 160px 110px 95px 95px 150px;gap:8px'; @endphp
+        @php $cols = 'display:grid;grid-template-columns:90px 1fr 160px 110px 95px 95px 215px;gap:8px'; @endphp
         <div class="lcard">
             <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltgreen)">📄</div> Lab Reports — Completed</h3></div>
             <div class="search-bar">
@@ -31,6 +31,18 @@
                     <div style="display:flex;gap:4px">
                         <a href="{{ route('vendor.lab.orders.report', $o->id) }}" target="_blank" class="btn btn-ghost btn-xs">View</a>
                         @if (hasPermission('lab_report', 'send'))<a href="{{ route('vendor.lab.orders.send', $o->id) }}" class="btn btn-primary btn-xs">{{ $o->status === 'sent' ? 'Resend' : 'Send' }}</a>@endif
+                        {{-- "Send" above marks the report as passed to the doctor; this one puts it
+                             in the patient's own hands. --}}
+                        @if (hasPermission('lab_report', 'send'))
+                            @include('hmis::vendor._wa_send', [
+                                'action' => route('vendor.hmis-whatsapp.lab-report', $o->id),
+                                'label'  => 'WhatsApp',
+                                'class'  => 'btn btn-outline btn-xs',
+                                'icon'   => 'tio-chat',
+                                'phone'  => $o->patient->phone ?? '',
+                                'note'   => 'The patient gets a message with a private link to this report. The results themselves are not put in the WhatsApp message.',
+                            ])
+                        @endif
                         <a href="{{ route('vendor.lab.orders.report', $o->id) }}" target="_blank" class="btn btn-outline btn-xs">🖨</a>
                     </div>
                 </div>

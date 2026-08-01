@@ -250,7 +250,6 @@
                     <th class="border-bottom-none">HSN/SAC</th>
                 @endif
                 <th class="border-bottom-none">QTY</th>
-                <th class="border-bottom-none">MRP</th>
                 <th class="border-bottom-none">DISC</th>
                 <th class="border-bottom-none">PRICE</th>
                 @if ($bill_data['tax_type'] != 'non-gst' && !$composition_vendor)
@@ -270,7 +269,6 @@
                 <tr>
                     <th class="border-top-none"></th>
                     <th class="border-top-none" colspan="3"></th>
-                    <th class="border-top-none"></th>
                     <th class="border-top-none"></th>
                     <th class="border-top-none"></th>
                     <th class="border-top-none"></th>
@@ -315,7 +313,6 @@
                         <td class="no-border">{{ $qt->hsn }}</td>
                     @endif
                     <td class="no-border">{{ $qt->qty }} {{ $qt->unitId?->unit }}</td>
-                    <td class="no-border">{{ $qt->mrp ?? optional($qt->item)->mrp }}</td>
                     <td class="no-border">0</td>
                     <td class="no-border">{{ $qt->price }}</td>
                     @if ($bill_data['tax_type'] != 'non-gst' && !$composition_vendor)

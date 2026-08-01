@@ -66,6 +66,7 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::post('upi-id',      [RetailPosController::class, 'saveUpi'])->name('upi.save')->middleware('permission:pos_billing,settings');
     Route::post('ui-template', [RetailPosController::class, 'saveUiTemplate'])->name('ui-template.save')->middleware('permission:pos_billing,settings');
     Route::post('receipt-template', [RetailPosController::class, 'saveReceiptTemplate'])->name('receipt-template.save')->middleware('permission:pos_billing,settings');
+    Route::post('mrp-saving',  [RetailPosController::class, 'saveMrpSaving'])->name('mrp-saving.save')->middleware('permission:pos_billing,settings');
     Route::post('default-branch', [RetailPosController::class, 'saveDefaultBranch'])->name('default-branch')->middleware('permission:pos_billing,settings');
 
     // Branch stock
@@ -74,6 +75,7 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
 
     // Stock Transfer Gatepass (main store → branch)
     Route::get('gatepass',            [RetailPosController::class, 'gatepass'])->name('gatepass')->middleware('permission:pos_gatepass,view');
+    Route::get('gatepass/search',     [RetailPosController::class, 'gatepassSearch'])->name('gatepass.search')->middleware('permission:pos_gatepass,view');
     Route::post('gatepass',           [RetailPosController::class, 'gatepassStore'])->name('gatepass.store')->middleware('permission:pos_gatepass,create');
     Route::post('gatepass/delete',    [RetailPosController::class, 'gatepassDelete'])->name('gatepass.delete')->middleware('permission:pos_gatepass,delete');
     Route::get('gatepass/{id}/print', [RetailPosController::class, 'gatepassPrint'])->name('gatepass.print')->middleware('permission:pos_gatepass,view');

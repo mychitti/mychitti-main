@@ -265,12 +265,44 @@
                                             @if ($preset->footer)<div class="text-muted mt-1" style="font-size:11px;font-style:italic;">{{ $preset->footer }}</div>@endif
                                         </div>
 
+                                        {{-- Buttons are half of what some templates do — a feedback
+                                             request previewed without its answers reads as a
+                                             question nobody can answer. --}}
+                                        @php
+                                            $presetReplies = array_filter(array_map('trim', explode(',', (string) ($preset->btn_replies ?? ''))));
+                                        @endphp
+                                        @if (!empty($presetReplies) || ($preset->btn_text && $preset->btn_url))
+                                            <div class="d-flex flex-wrap mt-1" style="gap:4px;">
+                                                @foreach ($presetReplies as $reply)
+                                                    <span class="wa-chip badge-soft-secondary" style="background:#fff;border:1px solid #e6e9ef;color:#128c7e;">{{ $reply }}</span>
+                                                @endforeach
+                                                @if ($preset->btn_text && $preset->btn_url)
+                                                    <span class="wa-chip badge-soft-secondary" style="background:#fff;border:1px solid #e6e9ef;color:#128c7e;">
+                                                        <i class="tio-link"></i> {{ $preset->btn_text }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        @if (!empty($preset->used_for))
+                                            <div class="wa-sub mt-2">{{ $preset->used_for }}</div>
+                                        @endif
+
                                         @if (!$preset->waba_status)
                                             <form action="{{ route('vendor.whatsapp.templates.use-preset') }}" method="post" class="mb-0 mt-2">
                                                 @csrf
                                                 <input type="hidden" name="preset_id" value="{{ $preset->id }}">
                                                 <button type="submit" class="btn btn-sm btn--primary btn-block">Use this template</button>
                                             </form>
+                                        @elseif (!in_array($preset->waba_status, ['APPROVED', 'PENDING']))
+                                            {{-- Meta refuses a second template of the same name while the refused
+                                                 one still exists, so "use it again" is not offered — deleting the
+                                                 old one is the actual next step and there is nothing else to try. --}}
+                                            <small class="d-block mt-2 text-danger" style="font-size:11px;">
+                                                <i class="tio-info-outined"></i>
+                                                Meta refused this one. Delete it under <b>Your templates</b> first — then
+                                                this card offers it again, with the corrected wording.
+                                            </small>
                                         @endif
                                         @if ($preset->name === \App\Services\WhatsAppService::DEFAULT_WELCOME_TEMPLATE)
                                             <small class="d-block mt-1 text-info" style="font-size:11px;">
@@ -680,6 +712,22 @@
 
 @push('script_2')
 <script>
+    // Open the tab named in the URL hash, so a link elsewhere in the panel can point at
+    // "Suggested" rather than dropping the vendor on the default tab to hunt for it. The hash is
+    // kept in sync as tabs are clicked, which also makes a tab bookmarkable and survives a reload
+    // after submitting a template.
+    (function () {
+        var hash = window.location.hash;
+        if (hash && $('.wa-tabs a[href="' + hash + '"]').length) {
+            $('.wa-tabs a[href="' + hash + '"]').tab('show');
+        }
+        $('.wa-tabs a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            if (history.replaceState) {
+                history.replaceState(null, '', e.target.getAttribute('href'));
+            }
+        });
+    })();
+
     $(document).on('click', '.wa-tpl-view', function () {
         var d = $(this).data();
         $('#wavName').text(d.name); $('#wavCategory').text(d.category);

@@ -277,6 +277,11 @@ class RetailPosController extends Controller
         if (Schema::hasTable('stores') && !Schema::hasColumn('stores', 'pos_receipt_template')) {
             DB::statement("ALTER TABLE `stores` ADD COLUMN `pos_receipt_template` VARCHAR(20) NULL");
         }
+        // Print the "Saved Rs. X/- On MRP" line. Defaults to 1 so every store that already prints
+        // it keeps doing so — a NULL here means "never chose", not "turn it off".
+        if (Schema::hasTable('stores') && !Schema::hasColumn('stores', 'pos_show_mrp_saving')) {
+            DB::statement("ALTER TABLE `stores` ADD COLUMN `pos_show_mrp_saving` TINYINT(1) NOT NULL DEFAULT 1");
+        }
         // Tag each bill with the branch + counter it was billed at.
         if (Schema::hasTable('manual_invoices')) {
             if (!Schema::hasColumn('manual_invoices', 'pos_branch_id')) {
@@ -2416,6 +2421,13 @@ class RetailPosController extends Controller
         }
         $savedAmount = round($mrpSaving + (float) ($invoice->discount_amount ?? 0) + (float) ($invoice->coupon_amount ?? 0), 2);
 
+        // Some stores would rather not advertise the gap between MRP and what they charge.
+        // Zeroed rather than passed as a flag so all three receipt templates hide it through the
+        // "> 0" test they already apply — one switch, no chance of one layout missing it.
+        if (!$this->showsMrpSaving($storeId)) {
+            $savedAmount = 0;
+        }
+
         return view('posretail::vendor.retail-pos.thermal', compact('invoice', 'items', 'store', 'legs', 'customer', 'receiptTemplate', 'tendered', 'changeReturn', 'balanceDue', 'savedAmount'))->render();
     }
 
@@ -2560,6 +2572,16 @@ class RetailPosController extends Controller
         return view('posretail::vendor.retail-pos.terminals', compact('branches', 'counters', 'staff', 'rosterMap', 'upiId', 'uiTemplate'));
     }
 
+    /** Does this store print the MRP saving on its receipts? On unless it has been turned off. */
+    private function showsMrpSaving(int $storeId): bool
+    {
+        if (!Schema::hasColumn('stores', 'pos_show_mrp_saving')) {
+            return true;
+        }
+        $value = DB::table('stores')->where('id', $storeId)->value('pos_show_mrp_saving');
+        return $value === null || (int) $value === 1;
+    }
+
     // Store-level Retail POS settings page (UPI, New Sale UI template).
     public function settings(Request $request)
     {
@@ -2568,7 +2590,20 @@ class RetailPosController extends Controller
         $upiId      = DB::table('stores')->where('id', $storeId)->value('pos_upi_id');
         $uiTemplate = DB::table('stores')->where('id', $storeId)->value('pos_ui_template') ?: 'classic';
         $receiptTemplate = DB::table('stores')->where('id', $storeId)->value('pos_receipt_template') ?: 'standard';
-        return view('posretail::vendor.retail-pos.settings', compact('upiId', 'uiTemplate', 'receiptTemplate'));
+        $showMrpSaving = $this->showsMrpSaving($storeId);
+        return view('posretail::vendor.retail-pos.settings', compact('upiId', 'uiTemplate', 'receiptTemplate', 'showMrpSaving'));
+    }
+
+    // Print the "Saved Rs. X/- On MRP" line, or don't.
+    public function saveMrpSaving(Request $request)
+    {
+        $this->ensureSchema();
+        DB::table('stores')->where('id', $this->storeId())
+            ->update(['pos_show_mrp_saving' => $request->boolean('pos_show_mrp_saving') ? 1 : 0]);
+        Toastr::success($request->boolean('pos_show_mrp_saving')
+            ? 'Receipts will show the MRP saving.'
+            : 'Receipts will no longer show the MRP saving.');
+        return back();
     }
 
     public function saveUpi(Request $request)
@@ -3051,70 +3086,138 @@ class RetailPosController extends Controller
         $storeId = $this->storeId();
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
 
-        $search = trim((string) $request->get('q', ''));
-        $varItemIds = $this->itemIdsByVariationSku($storeId, $search, true);
-        $dbItems = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
-            ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")
-                ->orWhere('sku_id', 'like', "%{$search}%")
-                ->when(!empty($varItemIds), fn($ww) => $ww->orWhereIn('id', $varItemIds))))
-            ->with('itemunit')->orderBy('item_name')->limit(300)->get(['id', 'item_name', 'sku_id', 'stock', 'unit', 'variations']);
-
-        // One row per product — a branch holds stock per item, not per variation
-        // (pos_branch_stock is unique on branch_id + inventory_item_id), so what moves is always
-        // the main product. Variations ride along only as the pool the qty is deducted from.
-        $items = collect();
-        foreach ($dbItems as $it) {
-            $mode = _variationMode($it);
-            $vars = [];
-            foreach (json_decode($it->variations, true) ?: [] as $var) {
-                if (empty($var['type'])) {
-                    continue;
-                }
-
-                // What the quantity box means depends on which pool is picked, so each option
-                // carries its own ceiling in ITS OWN units. A measured pack is entered in packs
-                // — 3 × 100gm draws 0.3 kg — so capping the box at the item's kg stock would
-                // refuse quantities the transfer can happily fulfil.
-                $max = (float) ($var['stock'] ?? 0);
-                $label = '';
-                if ($mode === 'measured') {
-                    $pack = _variationPack($it, $var);
-                    $perPack = $pack ? _variationQtyInItemUnit($it, $pack, 1) : 0;
-                    if ($perPack > 0) {
-                        $max = floor((float) $it->stock / $perPack);
-                        $label = 'packs of ' . rtrim(rtrim(number_format($perPack, 3), '0'), '.')
-                            . ' ' . _unitLabelFor($it->unit);
-                    } else {
-                        $max = (float) $it->stock;
-                    }
-                }
-
-                $vars[] = [
-                    'type'  => $var['type'],
-                    'stock' => (float) ($var['stock'] ?? 0),
-                    'max'   => $max,
-                    'hint'  => $label,
-                ];
-            }
-            $items->push((object)[
-                'id' => (string) $it->id,
-                'item_name' => $it->item_name,
-                'sku_id' => $it->sku_id,
-                'stock' => $it->stock,
-                'unit' => $it->unit,
-                'itemunit' => $it->itemunit,
-                'var_mode' => $mode,
-                'variations' => $vars,
-            ]);
-        }
-
+        // No item list up front. A transfer is a handful of lines picked deliberately, the same
+        // way a bill is built — rendering the whole catalogue with a quantity box on every row
+        // made the operator hunt through hundreds of items to fill in three.
         $gatepasses = DB::table('pos_stock_gatepass as g')
             ->leftJoin('branches as b', 'b.id', '=', 'g.branch_id')
             ->where('g.store_id', $storeId)
             ->orderByDesc('g.id')->limit(100)
             ->get(['g.id', 'g.gatepass_no', 'g.note', 'g.created_at', 'b.name as branch_name']);
 
-        return view('posretail::vendor.retail-pos.gatepass', compact('branches', 'items', 'gatepasses', 'search'));
+        return view('posretail::vendor.retail-pos.gatepass', compact('branches', 'gatepasses'));
+    }
+
+    /** Item picker for the transfer form — name or SKU, including variation SKUs. */
+    public function gatepassSearch(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+
+        $search = trim((string) $request->get('q', ''));
+        $varItemIds = $this->itemIdsByVariationSku($storeId, $search, true);
+
+        $dbItems = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
+            ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")
+                ->orWhere('sku_id', 'like', "%{$search}%")
+                ->when(!empty($varItemIds), fn($ww) => $ww->orWhereIn('id', $varItemIds))))
+            ->with('itemunit')->orderBy('item_name')->limit(25)
+            ->get(['id', 'item_name', 'sku_id', 'stock', 'unit', 'variations']);
+
+        $lastMoved = $this->gatepassLastTransfers($storeId, $dbItems->pluck('id')->all());
+
+        return response()->json([
+            'results' => $dbItems->map(fn($it) => $this->gatepassItemPayload($it, $lastMoved[$it->id] ?? null))->all(),
+        ]);
+    }
+
+    /**
+     * When each of these items last went out on a gatepass, and to where.
+     *
+     * Answers the question the operator actually has while filling the form — "didn't I already
+     * send this to Andheri on Tuesday?" — which is what stops the same stock being transferred
+     * twice. One grouped query for the whole result set rather than a lookup per row.
+     */
+    private function gatepassLastTransfers(int $storeId, array $itemIds): array
+    {
+        if (empty($itemIds)) {
+            return [];
+        }
+
+        try {
+            return DB::table('pos_stock_gatepass_items as i')
+                ->join('pos_stock_gatepass as g', 'g.id', '=', 'i.gatepass_id')
+                ->leftJoin('branches as b', 'b.id', '=', 'g.branch_id')
+                ->where('g.store_id', $storeId)
+                ->whereIn('i.inventory_item_id', $itemIds)
+                ->groupBy('i.inventory_item_id')
+                ->select(
+                    'i.inventory_item_id as item_id',
+                    DB::raw('MAX(g.created_at) as last_at'),
+                    // The branch on the most recent gatepass, not just any of them. Separated on
+                    // '||' rather than a comma because "Andheri, West" is a perfectly ordinary
+                    // branch name and the default separator would cut it in half.
+                    DB::raw("SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(b.name, '') ORDER BY g.created_at DESC SEPARATOR '||'), '||', 1) as last_branch")
+                )
+                ->get()
+                ->keyBy('item_id')
+                ->all();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Gatepass last-transfer lookup skipped: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * One transfer row's worth of data.
+     *
+     * One row per product — a branch holds stock per item, not per variation (pos_branch_stock is
+     * unique on branch_id + inventory_item_id), so what moves is always the main product.
+     * Variations ride along only as the pool the qty is deducted from.
+     */
+    private function gatepassItemPayload($it, $lastMoved = null): array
+    {
+        $mode = _variationMode($it);
+        $vars = [];
+
+        foreach (json_decode($it->variations, true) ?: [] as $var) {
+            if (empty($var['type'])) {
+                continue;
+            }
+
+            // What the quantity box means depends on which pool is picked, so each option carries
+            // its own ceiling in ITS OWN units. A measured pack is entered in packs — 3 × 100gm
+            // draws 0.3 kg — so capping the box at the item's kg stock would refuse quantities the
+            // transfer can happily fulfil.
+            $max = (float) ($var['stock'] ?? 0);
+            $label = '';
+            if ($mode === 'measured') {
+                $pack = _variationPack($it, $var);
+                $perPack = $pack ? _variationQtyInItemUnit($it, $pack, 1) : 0;
+                if ($perPack > 0) {
+                    $max = floor((float) $it->stock / $perPack);
+                    $label = 'packs of ' . rtrim(rtrim(number_format($perPack, 3), '0'), '.')
+                        . ' ' . _unitLabelFor($it->unit);
+                } else {
+                    $max = (float) $it->stock;
+                }
+            }
+
+            $vars[] = [
+                'type'  => $var['type'],
+                'stock' => (float) ($var['stock'] ?? 0),
+                'max'   => $max,
+                'hint'  => $label,
+            ];
+        }
+
+        $lastText = null;
+        if ($lastMoved && !empty($lastMoved->last_at)) {
+            $lastText = 'Last sent ' . \Carbon\Carbon::parse($lastMoved->last_at)->format('d M Y, h:i A')
+                . (trim((string) ($lastMoved->last_branch ?? '')) !== '' ? ' → ' . $lastMoved->last_branch : '');
+        }
+
+        return [
+            'id'         => (string) $it->id,
+            'item_name'  => $it->item_name,
+            'sku_id'     => (string) $it->sku_id,
+            'stock'      => (float) $it->stock,
+            'stock_text' => rtrim(rtrim(number_format((float) $it->stock, 3), '0'), '.'),
+            'unit'       => _unitLabelFor($it->unit),
+            'var_mode'   => $mode,
+            'variations' => $vars,
+            'last_sent'  => $lastText,
+        ];
     }
 
     public function gatepassStore(Request $request)

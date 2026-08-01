@@ -441,6 +441,9 @@
                                         </div>
                                     </div>
                                 </div>
+                                @include('vendor-views.inventory.partials._repeat_reminder', [
+                                    'repeatDays' => $item->repeat_days ?? 0,
+                                ])
                                 <div class="col-12 d-flex justify-content-end mt-3">
                                     <a class="btn btn--primary next_btn" data-next="attributes">
                                         Next
