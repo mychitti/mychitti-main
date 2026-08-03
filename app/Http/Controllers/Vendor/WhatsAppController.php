@@ -639,6 +639,8 @@ class WhatsAppController extends Controller
                     'name'  => trim((string) $r->name),
                     'phone' => $r->phone,
                 ]);
+
+                prx($recipients);
         } else {
             $recipients = $this->clientQuery($storeId)
                 ->whereIn('id', $request->input('client_ids'))
