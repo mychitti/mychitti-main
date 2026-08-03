@@ -100,7 +100,7 @@ class ReconcilePnl extends Command
         $orphan = (clone $mirror())->leftJoin('inventory_items as i', 'i.id', '=', 'd.item_id')
             ->whereNull('i.id')->selectRaw("{$gross} g, COUNT(*) n")->first();
 
-        // Lines still carrying a rounded quantity, which inventory:fix-order-qty puts back. The
+        // Lines still carrying a rounded quantity, which inventory:fix-numeric-precision puts back. The
         // report is unaffected — it reads total_price — but the sale-order screens and the
         // qty × landing_price cost fallback are.
         $rounded = (clone $mirror())
@@ -144,7 +144,8 @@ class ReconcilePnl extends Command
         }
         if ($rounded->n > 0) {
             $this->warn($rounded->n . ' line(s) still hold a rounded quantity — run '
-                . 'inventory:fix-order-qty. The report is unaffected, the sale-order screens are not.');
+                . 'inventory:fix-numeric-precision. The report is unaffected, the sale-order '
+                . 'screens are not.');
         }
         if ($missingMirror > 1) {
             $this->warn('POS line value exceeds mirrored line value by ' . round($missingMirror, 2)
