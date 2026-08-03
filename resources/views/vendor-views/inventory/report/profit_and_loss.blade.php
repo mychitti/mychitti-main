@@ -83,7 +83,11 @@
                      <img src="{{ asset('storage/app/public/util/revenue.png') }}" style="width: 44px;" alt="">
                      <div>
                          <h4 class="report-title">Total Revenue</h4>
-                         <p class="report-value">{{ _price($orderItems->sum('total_revenue'), 'ceil', 2) }}</p>
+                         <p class="report-value mb-0">{{ _price($orderItems->sum('total_revenue'), 'ceil', 2) }}</p>
+                         @if (($round_off ?? 0) != 0)
+                             <small class="text-muted">excludes {{ _price(abs($round_off), 'ceil', 2) }}
+                                 round-off {{ $round_off > 0 ? 'collected' : 'given back' }}</small>
+                         @endif
                      </div>
                  </div>
                  <div class="report-card d-flex align-items-center gap-3">

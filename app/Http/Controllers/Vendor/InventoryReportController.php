@@ -811,6 +811,27 @@ class InventoryReportController extends Controller
                 ->groupBy('inventory_items.id', 'inventory_items.item_name', 'categories.name')
                 ->get();
 
+            // Every bill is rounded to the rupee, so what the till took is never quite what the
+            // lines were worth. It belongs in an account of its own rather than spread across item
+            // revenue, which would put a few paise of rounding into every margin on the page — but
+            // left unstated it reads as the report disagreeing with the POS dashboard. Shown, it is
+            // the whole of the difference between the two screens.
+            $round_off = 0;
+            if (Schema::hasColumn('manual_invoices', 'round_off')) {
+                $round_off = (float) ManualInvoice::where('vendor_id', $storeId)
+                    ->when($branchId !== null, function ($q) use ($branchId) {
+                        $branchId === 0 ? $q->whereNull('pos_branch_id') : $q->where('pos_branch_id', $branchId);
+                    })
+                    ->whereExists(function ($q) use ($storeId, $formatted_from, $formatted_to) {
+                        $q->select(DB::raw(1))->from('inventory_orders as o')
+                            ->whereColumn('o.invoice_id', 'manual_invoices.invoice_id')
+                            ->whereColumn('o.store_id', 'manual_invoices.vendor_id')
+                            ->where('o.store_id', $storeId)
+                            ->whereBetween('o.created_at', [$formatted_from, $formatted_to]);
+                    })
+                    ->sum('round_off');
+            }
+
             // EXPORT EXCEL AND PDF
             $data['formatted_from'] = \Carbon\Carbon::parse($formatted_from)->format('Y-m-d');
             $data['formatted_to'] = \Carbon\Carbon::parse($formatted_to)->format('Y-m-d');
@@ -832,7 +853,7 @@ class InventoryReportController extends Controller
             // VIEW
             $categories = ModelsCategory::where('module_id', 6)->where('status', 1)->get();
             $branches = $this->reportBranches();
-            return view('vendor-views.inventory.report.profit_and_loss', compact('preset', 'orderItems', 'categories', 'branches', 'branchId'));
+            return view('vendor-views.inventory.report.profit_and_loss', compact('preset', 'orderItems', 'categories', 'branches', 'branchId', 'round_off'));
         } else {
             Toastr::error('Access Denied');
             return back();
