@@ -710,6 +710,25 @@ class InventoryReportController extends Controller
             . 'COALESCE(inventory_order_details.base_qty, inventory_order_details.qty) * inventory_items.landing_price))';
     }
 
+    /**
+     * Revenue for one order line, in SQL.
+     *
+     * Gross line value less the line's share of the bill-level discount (manual + offer + coupon),
+     * captured when the sale was billed. A discount is a reduction of revenue, not an expense —
+     * reporting the gross price here made the P&L read higher than the till ever took, so its
+     * revenue could never be reconciled against the POS sales figure.
+     */
+    protected function revenueExpression(): string
+    {
+        $gross = '(inventory_order_details.qty * inventory_order_details.unit_price)';
+
+        if (!Schema::hasColumn('inventory_order_details', 'line_discount')) {
+            return $gross;
+        }
+
+        return "({$gross} - COALESCE(inventory_order_details.line_discount, 0))";
+    }
+
     public function profit_and_loss(Request $request, $export = null, $export_type = null)
     {
         Helpers::_ensureInvOrderCostColumns();
@@ -728,12 +747,23 @@ class InventoryReportController extends Controller
             $status = ($request->status && $request->status !== 'all') ? $request->status : '';
             $category = ($request->category && $request->category !== 'all') ? $request->category : '';
 
+            // Left join on categories: an item with no category (category_id 0 — the sentinel
+            // _saveCategoryIfNotExists returns for a blank category) or one whose category row is
+            // gone was dropped by the inner join, taking its whole revenue off the report with no
+            // sign that anything was missing. The row now shows with "Deleted" as its category.
             $invQuery = InventoryOrderDetail::with(['order', 'item', 'item.category'])
                 ->join('inventory_items', 'inventory_items.id', '=', 'inventory_order_details.item_id')
-                ->join('categories', 'categories.id', '=', 'inventory_items.category_id')
+                ->leftJoin('categories', 'categories.id', '=', 'inventory_items.category_id')
                 ->whereBetween('inventory_order_details.created_at', [$formatted_from, $formatted_to])
                 ->whereHas('order', function ($q) use ($storeId) {
                     $q->where('store_id', $storeId);
+                })
+                // A voided bill is not a sale. Voiding restores the stock but leaves the sale-order
+                // mirror in place, so its revenue and cost kept counting here.
+                ->when(Schema::hasColumn('manual_invoices', 'pos_status'), function ($q) {
+                    $q->whereDoesntHave('order.invoice', function ($i) {
+                        $i->where('pos_status', 'void');
+                    });
                 })
                 ->when($branchId !== null, function ($q) use ($branchId) {
                     $q->whereHas('order.invoice', function ($i) use ($branchId) {
@@ -752,23 +782,25 @@ class InventoryReportController extends Controller
                 })
                 ->when($status, function ($q) use ($status) {
                     $cost = $this->cogsExpression();
+                    $revenue = $this->revenueExpression();
                     if ($status == 'profit') {
-                        $q->whereRaw("(inventory_order_details.qty * inventory_order_details.unit_price) - {$cost} > 0");
+                        $q->whereRaw("{$revenue} - {$cost} > 0");
                     } elseif ($status == 'loss') {
-                        $q->whereRaw("(inventory_order_details.qty * inventory_order_details.unit_price) - {$cost} < 0");
+                        $q->whereRaw("{$revenue} - {$cost} < 0");
                     }
                 });
 
             $cost = $this->cogsExpression();
+            $revenue = $this->revenueExpression();
 
             $orderItems = (clone $invQuery)
                 ->select(
                     'inventory_items.id as item_id',
                     'inventory_items.item_name',
                     'categories.name as cat_name',
-                    DB::raw('SUM(inventory_order_details.qty * inventory_order_details.unit_price) as total_revenue'),
+                    DB::raw("SUM({$revenue}) as total_revenue"),
                     DB::raw("SUM({$cost}) as total_cost"),
-                    DB::raw("SUM((inventory_order_details.qty * inventory_order_details.unit_price) - {$cost}) as total_profit_loss")
+                    DB::raw("SUM({$revenue} - {$cost}) as total_profit_loss")
                 )
                 ->groupBy('inventory_items.id', 'inventory_items.item_name', 'categories.name')
                 ->get();

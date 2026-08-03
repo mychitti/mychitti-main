@@ -1336,7 +1336,7 @@ class Helpers
         if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_order_details')) {
             return;
         }
-        foreach (['base_qty' => 'DECIMAL(18,4) NULL', 'line_cost' => 'DECIMAL(18,4) NULL'] as $col => $def) {
+        foreach (['base_qty' => 'DECIMAL(18,4) NULL', 'line_cost' => 'DECIMAL(18,4) NULL', 'line_discount' => 'DECIMAL(18,4) NULL'] as $col => $def) {
             if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_order_details', $col)) {
                 DB::statement("ALTER TABLE `inventory_order_details` ADD COLUMN `{$col}` {$def}");
             }
@@ -1402,6 +1402,17 @@ class Helpers
 
             self::_ensureInvOrderCostColumns();
 
+            // Bill-level discounts (manual + offer + coupon) reduce revenue, so each line has to
+            // carry its share of them. Without this the sale order holds gross prices and any
+            // report built on it reads higher than the bill the customer actually paid.
+            // Apportioned by line value across the whole invoice, so a partial batch (pharmacy
+            // dispense) only ever takes its own portion of the discount.
+            $billDiscount = (float) ($invoice->discount_amount ?? 0);
+            $invoiceLineTotal = (float) InvoiceItem::where('manual_invoice_id', $invoice->id)
+                ->selectRaw('COALESCE(SUM(price * qty), 0) as line_total')->value('line_total');
+            $discountRate = ($billDiscount > 0 && $invoiceLineTotal > 0)
+                ? min(1, $billDiscount / $invoiceLineTotal) : 0;
+
             // order details
             foreach ($invItemsInInvoice as $key => $item) {
                 $invOrderDetail = new InventoryOrderDetail();
@@ -1428,6 +1439,7 @@ class Helpers
                 [$baseQty, $lineCost] = self::_invLineCost($item);
                 $invOrderDetail->base_qty  = $baseQty;
                 $invOrderDetail->line_cost = $lineCost;
+                $invOrderDetail->line_discount = round($invOrderDetail->total_price * $discountRate, 4);
 
                 $lineTax = ($invOrderDetail->total_price * $invOrderDetail->tax_rate) / 100;
 

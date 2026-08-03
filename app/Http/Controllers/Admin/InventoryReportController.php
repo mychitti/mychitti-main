@@ -519,6 +519,24 @@ class InventoryReportController extends Controller
             . 'COALESCE(inventory_order_details.base_qty, inventory_order_details.qty) * inventory_items.landing_price))';
     }
 
+    /**
+     * Revenue for one order line, in SQL. Mirrors the vendor report.
+     *
+     * Gross line value less the line's share of the bill-level discount (manual + offer + coupon),
+     * captured when the sale was billed. A discount reduces revenue rather than adding to cost, so
+     * reporting the gross price left this figure permanently above what was actually taken.
+     */
+    protected function revenueExpression(): string
+    {
+        $gross = '(inventory_order_details.qty * inventory_order_details.unit_price)';
+
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_order_details', 'line_discount')) {
+            return $gross;
+        }
+
+        return "({$gross} - COALESCE(inventory_order_details.line_discount, 0))";
+    }
+
     public function profit_and_loss(Request $request, $export = null, $export_type = null)
     {
         Helpers::_ensureInvOrderCostColumns();
@@ -538,10 +556,17 @@ class InventoryReportController extends Controller
 
             $invQuery = InventoryOrderDetail::with(['order', 'item', 'item.category'])
                 ->join('inventory_items', 'inventory_items.id', '=', 'inventory_order_details.item_id')
-                ->join('categories', 'categories.id', '=', 'inventory_items.category_id')
+                ->leftJoin('categories', 'categories.id', '=', 'inventory_items.category_id')
                 ->whereBetween('inventory_order_details.created_at', [$formatted_from, $formatted_to])
                 ->whereHas('order', function ($q) use ($storeId) {
                     $q->where('store_id', $storeId);
+                })
+                // A voided bill is not a sale. Voiding restores stock but leaves the sale-order
+                // mirror behind, so its revenue and cost kept counting here.
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('manual_invoices', 'pos_status'), function ($q) {
+                    $q->whereDoesntHave('order.invoice', function ($i) {
+                        $i->where('pos_status', 'void');
+                    });
                 })
                 ->when($category, function ($q) use ($category) {
                     $q->whereHas('item', function ($query) use ($category) {
@@ -555,23 +580,25 @@ class InventoryReportController extends Controller
                 })
                 ->when($status, function ($q) use ($status) {
                     $cost = $this->cogsExpression();
+                    $revenue = $this->revenueExpression();
                     if ($status == 'profit') {
-                        $q->whereRaw("(inventory_order_details.qty * inventory_order_details.unit_price) - {$cost} > 0");
+                        $q->whereRaw("{$revenue} - {$cost} > 0");
                     } elseif ($status == 'loss') {
-                        $q->whereRaw("(inventory_order_details.qty * inventory_order_details.unit_price) - {$cost} < 0");
+                        $q->whereRaw("{$revenue} - {$cost} < 0");
                     }
                 });
 
             $cost = $this->cogsExpression();
+            $revenue = $this->revenueExpression();
 
             $orderItems = (clone $invQuery)
                 ->select(
                     'inventory_items.id as item_id',
                     'inventory_items.item_name',
                     'categories.name as cat_name',
-                    DB::raw('SUM(inventory_order_details.qty * inventory_order_details.unit_price) as total_revenue'),
+                    DB::raw("SUM({$revenue}) as total_revenue"),
                     DB::raw("SUM({$cost}) as total_cost"),
-                    DB::raw("SUM((inventory_order_details.qty * inventory_order_details.unit_price) - {$cost}) as total_profit_loss")
+                    DB::raw("SUM({$revenue} - {$cost}) as total_profit_loss")
                 )
                 ->groupBy('inventory_items.id', 'inventory_items.item_name', 'categories.name')
                 ->get();
