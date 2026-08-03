@@ -713,14 +713,20 @@ class InventoryReportController extends Controller
     /**
      * Revenue for one order line, in SQL.
      *
-     * Gross line value less the line's share of the bill-level discount (manual + offer + coupon),
-     * captured when the sale was billed. A discount is a reduction of revenue, not an expense —
-     * reporting the gross price here made the P&L read higher than the till ever took, so its
-     * revenue could never be reconciled against the POS sales figure.
+     * Read from `total_price`, never recomputed as qty × unit_price. `qty` is an integer column, so
+     * a line sold by weight — 0.565 kg of avocado — stores as 1 and reads back as a whole kilo at
+     * the kilo price. total_price is worked out in PHP before it is written, so it is the only
+     * faithful record of what the line was billed at. Quantities under one inflated revenue and
+     * larger fractional ones deflated it, which is why the report could disagree with the POS
+     * dashboard in both directions at once.
+     *
+     * Less the line's share of any discount, which reduces revenue rather than adding to cost.
      */
     protected function revenueExpression(): string
     {
-        $gross = '(inventory_order_details.qty * inventory_order_details.unit_price)';
+        $gross = '(CASE WHEN inventory_order_details.total_price > 0 '
+            . 'THEN inventory_order_details.total_price '
+            . 'ELSE inventory_order_details.qty * inventory_order_details.unit_price END)';
 
         if (!Schema::hasColumn('inventory_order_details', 'line_discount')) {
             return $gross;

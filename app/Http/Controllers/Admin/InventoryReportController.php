@@ -522,13 +522,17 @@ class InventoryReportController extends Controller
     /**
      * Revenue for one order line, in SQL. Mirrors the vendor report.
      *
-     * Gross line value less the line's share of the bill-level discount (manual + offer + coupon),
-     * captured when the sale was billed. A discount reduces revenue rather than adding to cost, so
-     * reporting the gross price left this figure permanently above what was actually taken.
+     * Read from `total_price`, never recomputed as qty × unit_price: `qty` is an integer column, so
+     * a line sold by weight reads back rounded to a whole unit and is valued at the whole-unit
+     * price. total_price is computed before it is written and is the only faithful line value.
+     *
+     * Less the line's share of any discount, which reduces revenue rather than adding to cost.
      */
     protected function revenueExpression(): string
     {
-        $gross = '(inventory_order_details.qty * inventory_order_details.unit_price)';
+        $gross = '(CASE WHEN inventory_order_details.total_price > 0 '
+            . 'THEN inventory_order_details.total_price '
+            . 'ELSE inventory_order_details.qty * inventory_order_details.unit_price END)';
 
         if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_order_details', 'line_discount')) {
             return $gross;
