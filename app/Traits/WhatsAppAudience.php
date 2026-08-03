@@ -329,12 +329,18 @@ trait WhatsAppAudience
             $body = '';
             $unsupported = null;
             $quickReplies = [];
+            $headerFormat = null;
             foreach ((array) data_get($tpl, 'components', []) as $c) {
                 $type = strtoupper((string) data_get($c, 'type'));
                 if ($type === 'BODY') {
                     $body = (string) data_get($c, 'text', '');
-                } elseif ($type === 'HEADER' && str_contains((string) data_get($c, 'text', ''), '{{')) {
-                    $unsupported = 'has a variable in its header';
+                } elseif ($type === 'HEADER') {
+                    $headerFormat = strtoupper((string) data_get($c, 'format', 'TEXT')) ?: 'TEXT';
+                    // A media header is supported — the composer asks for the file. Only a TEXT
+                    // header with a variable in it needs parameters this UI cannot collect.
+                    if ($headerFormat === 'TEXT' && str_contains((string) data_get($c, 'text', ''), '{{')) {
+                        $unsupported = 'has a variable in its header';
+                    }
                 } elseif ($type === 'BUTTONS') {
                     foreach ((array) data_get($c, 'buttons', []) as $b) {
                         if (str_contains((string) data_get($b, 'url', ''), '{{')) {
@@ -381,6 +387,10 @@ trait WhatsAppAudience
                 'buttons'     => $quickReplies,
                 'unsupported' => $unsupported,
                 'status'      => $status,
+                // TEXT / IMAGE / VIDEO / DOCUMENT / null. The composer asks for a file when this
+                // is a media format — without one the send fails with Meta error 132012.
+                'header'      => $headerFormat,
+                'needs_media' => in_array($headerFormat, WhatsAppService::MEDIA_HEADERS, true),
             ];
         }
 

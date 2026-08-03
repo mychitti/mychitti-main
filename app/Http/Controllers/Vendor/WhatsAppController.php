@@ -568,7 +568,7 @@ class WhatsAppController extends Controller
      */
     public function bulkSend(Request $request)
     {
-        echo 'f';
+        // echo 'f';
         $request->validate([
             'template'     => 'required|string',
             'language'     => 'required|string',
@@ -579,6 +579,9 @@ class WhatsAppController extends Controller
             'limit'        => 'required_if:mode,platform|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
             'params'       => 'nullable|array',
             'params.*.key' => 'nullable|string|max:64',
+            // The file for a media-header template. Meta fetches it themselves, so it has to be
+            // a public URL — bulkHeaderMedia() below produces one from an upload.
+            'header_media' => 'nullable|url|max:1000',
         ]);
 
         $storeId = Helpers::get_store_id();
@@ -641,7 +644,7 @@ class WhatsAppController extends Controller
                     'phone' => $r->phone,
                 ]);
 
-                prx($recipients);
+                // prx($recipients);
         } else {
             $recipients = $this->clientQuery($storeId)
                 ->whereIn('id', $request->input('client_ids'))
@@ -676,6 +679,23 @@ class WhatsAppController extends Controller
         // screen can show the vendor the words their customer read — the delivery log only has
         // "template: {name}", and a template can be edited or deleted long before anyone asks.
         $templateBody = WhatsAppService::templateBodyText($storeId, (string) $request->template, (string) $request->language);
+
+        // A template is sent with the components it was created with. One with an image, video or
+        // document header needs that file on every message, or Graph rejects the lot with
+        // "(#132012) Parameter format does not match format in the created template".
+        $headerFormat = WhatsAppService::templateHeaderFormat($storeId, (string) $request->template, (string) $request->language);
+        $headerComponent = null;
+        if (in_array($headerFormat, WhatsAppService::MEDIA_HEADERS, true)) {
+            $mediaUrl = trim((string) $request->input('header_media'));
+            if ($mediaUrl === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This template has ' . ($headerFormat === 'IMAGE' ? 'an image' : 'a ' . strtolower($headerFormat))
+                        . ' at the top, so a file has to be attached before it can be sent.',
+                ], 422);
+            }
+            $headerComponent = WhatsAppService::mediaHeaderComponent($headerFormat, $mediaUrl);
+        }
 
         foreach ($recipients as $client) {
             $name = trim((string) $client->name) ?: 'Customer';
@@ -719,10 +739,16 @@ class WhatsAppController extends Controller
                 $filled[$key] = $clean;
                 $parameters[] = WhatsAppService::bodyParameter($key, $clean);
             }
+            
+            // Header first — Meta matches components against the approved template in order.
+            $components = [];
+            if ($headerComponent) {
+                $components[] = $headerComponent;
+            }
+            if ($parameters) {
+                $components[] = ['type' => 'body', 'parameters' => $parameters];
+            }
 
-            $components = $parameters
-                ? [['type' => 'body', 'parameters' => $parameters]]
-                : [];
 
             // Context 'nearby' is what nearbyCappedPhones() counts — it must stay distinct
             // from sends to the store's own book or the frequency cap silently stops working.
@@ -765,6 +791,39 @@ class WhatsAppController extends Controller
             'skipped' => $skipped,
             'results' => $results,
         ]);
+    }
+
+    /**
+     * Take the file for a media-header template and hand back a public URL for it.
+     *
+     * Meta fetches header media from their own servers at send time, so it cannot be a private
+     * path or a data URI — it has to be a link anyone can open. Uploading to the public disk is
+     * what makes that true, and the same URL is reused for every recipient in the run rather
+     * than re-uploaded per message.
+     */
+    public function bulkHeaderMedia(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|max:5120|mimes:jpg,jpeg,png,mp4,pdf',
+        ], [
+            'file.mimes' => 'Attach a JPG or PNG image, an MP4 video, or a PDF document.',
+            'file.max'   => 'The file must be 5 MB or smaller.',
+        ]);
+
+        try {
+            $file = $request->file('file');
+            $extension = $file->getClientOriginalExtension() ?: $file->extension();
+            $name = Helpers::upload('whatsapp/header/', $extension, $file);
+
+            return response()->json([
+                'success' => true,
+                'url'     => asset('storage/app/public/whatsapp/header/' . $name),
+                'name'    => $file->getClientOriginalName(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp header media upload failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Could not upload that file. Try again.'], 500);
+        }
     }
 
     /**

@@ -88,6 +88,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/billing/account-manager', 'WhatsAppController@billingAccountManager')->name('whatsapp.billing.account-manager');
         Route::post('whatsapp/billing/template-slot', 'WhatsAppController@buyTemplateSlot')->name('whatsapp.billing.template-slot');
         Route::post('whatsapp/billing/tokens', 'WhatsAppController@buyTokens')->name('whatsapp.billing.tokens');
+        Route::post('whatsapp/bulk/header-media', 'WhatsAppController@bulkHeaderMedia')->name('whatsapp.bulk.header-media');
         // What the AI Agent may do for customers, and what it may share with them.
         Route::get('whatsapp/bot', 'WhatsAppController@bot')->name('whatsapp.bot');
         Route::post('whatsapp/bot/shares', 'WhatsAppController@botShares')->name('whatsapp.bot.shares');

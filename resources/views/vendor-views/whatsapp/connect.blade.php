@@ -499,6 +499,24 @@
                                     </div>
                                 @endif
 
+                                {{-- Media-header templates carry a file at the top of every message.
+                                     Meta fetches it themselves, so it is uploaded here and sent as
+                                     a public link — without it the send fails with error 132012. --}}
+                                <div id="wb-media" class="form-group" style="display:none;">
+                                    <label class="font-weight-bold" style="font-size:13px;">
+                                        <span id="wb-media-label">Image</span> for this template
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="file" id="wb-media-file" class="form-control-file" accept="image/jpeg,image/png">
+                                    <small class="form-text text-muted" style="font-size:11px;">
+                                        This template was approved with a <span class="wb-media-kind">image</span> at the top, so every
+                                        message needs one. Max 5 MB. The same file goes to everyone in this send.
+                                    </small>
+                                    <div id="wb-media-status" class="mt-2" style="font-size:12px;"></div>
+                                    <img id="wb-media-preview" src="" alt="" class="mt-2 rounded border"
+                                        style="display:none;max-height:120px;max-width:100%;">
+                                </div>
+
                                 <div id="wb-preview" class="border rounded p-3 mb-3 bg-light" style="display:none;">
                                     <div class="text-muted mb-1" style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;">Message preview</div>
                                     <div id="wb-preview-body" style="font-size:13px;white-space:pre-wrap;"></div>
@@ -832,7 +850,11 @@
                 var filled = !t || paramValues().every(function (p) { return p.auto || p.value.trim() !== ''; });
                 var own = selected.size, plat = platformCount(), n = own + plat;
 
-                $send.disabled = !t || !filled || n === 0;
+                // A media template cannot go out without its file — the whole batch would come
+                // back as error 132012, so the button stays down until the upload finishes.
+                var mediaReady = !t || !t.needs_media || !!mediaUrl;
+
+                $send.disabled = !t || !filled || !mediaReady || n === 0;
 
                 // Each pill shows what is chosen from it, so a selection on the tab that is out of
                 // sight can never be forgotten about — or sent by surprise.
@@ -964,6 +986,7 @@
                             template: t.name,
                             language: t.language,
                             params: paramValues(),
+                            header_media: mediaUrl,
                             run_id: runId
                         }, batches[index]))
                     })
@@ -1022,7 +1045,81 @@
                 $results.style.display = 'block';
             }
 
-            $tpl.addEventListener('change', renderVars);
+            // ---- Media header ---------------------------------------------------------------
+            // Templates approved with an image / video / document at the top need that file on
+            // every message. It is uploaded once per send and reused for the whole run.
+            var MEDIA_URL = '{{ route('vendor.whatsapp.bulk.header-media') }}';
+            var $media = document.getElementById('wb-media');
+            var $mediaFile = document.getElementById('wb-media-file');
+            var $mediaLabel = document.getElementById('wb-media-label');
+            var $mediaStatus = document.getElementById('wb-media-status');
+            var $mediaPreview = document.getElementById('wb-media-preview');
+            var mediaUrl = '';
+
+            var MEDIA_ACCEPT = {
+                IMAGE: 'image/jpeg,image/png',
+                VIDEO: 'video/mp4',
+                DOCUMENT: 'application/pdf'
+            };
+
+            function syncMedia() {
+                var t = currentTemplate();
+                mediaUrl = '';
+                $mediaFile.value = '';
+                $mediaStatus.textContent = '';
+                $mediaPreview.style.display = 'none';
+
+                if (!t || !t.needs_media) {
+                    $media.style.display = 'none';
+                    return;
+                }
+
+                var kind = (t.header || 'IMAGE').toLowerCase();
+                $mediaLabel.textContent = kind.charAt(0).toUpperCase() + kind.slice(1);
+                $mediaFile.setAttribute('accept', MEDIA_ACCEPT[t.header] || MEDIA_ACCEPT.IMAGE);
+                Array.prototype.forEach.call(document.querySelectorAll('.wb-media-kind'), function (el) {
+                    el.textContent = kind;
+                });
+                $media.style.display = '';
+            }
+
+            $mediaFile.addEventListener('change', function () {
+                var file = $mediaFile.files && $mediaFile.files[0];
+                mediaUrl = '';
+                $mediaPreview.style.display = 'none';
+                if (!file) { $mediaStatus.textContent = ''; syncSend(); return; }
+
+                $mediaStatus.className = 'mt-2 text-muted';
+                $mediaStatus.textContent = 'Uploading…';
+                syncSend();
+
+                var body = new FormData();
+                body.append('file', file);
+                body.append('_token', CSRF);
+
+                fetch(MEDIA_URL, { method: 'POST', headers: { 'Accept': 'application/json' }, body: body })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (!res.success) { throw new Error(res.message || 'Upload failed.'); }
+                        mediaUrl = res.url;
+                        $mediaStatus.className = 'mt-2 text-success';
+                        $mediaStatus.textContent = 'Attached — ' + res.name;
+                        if (/\.(jpe?g|png)$/i.test(res.url)) {
+                            $mediaPreview.src = res.url;
+                            $mediaPreview.style.display = '';
+                        }
+                    })
+                    .catch(function (e) {
+                        $mediaStatus.className = 'mt-2 text-danger';
+                        $mediaStatus.textContent = e.message || 'Could not upload that file.';
+                    })
+                    .then(syncSend);
+            });
+
+            $tpl.addEventListener('change', function () {
+                syncMedia();
+                renderVars();
+            });
             $search.addEventListener('input', function () {
                 clearTimeout(searchTimer);
                 searchTimer = setTimeout(loadClients, 300);

@@ -2034,6 +2034,82 @@ class WhatsAppService
         }
     }
 
+    /** Header formats that carry a file rather than text, and so need media at send time. */
+    const MEDIA_HEADERS = ['IMAGE', 'VIDEO', 'DOCUMENT'];
+
+    /**
+     * The header format Meta approved this template with: TEXT, IMAGE, VIDEO, DOCUMENT, or null
+     * when it has no header at all.
+     *
+     * A template is sent with the components it was CREATED with — send an IMAGE-header template
+     * without a header component and Graph rejects the whole message with
+     * "(#132012) Parameter format does not match format in the created template". So anything
+     * that sends a template has to know this before it builds the payload.
+     */
+    public static function templateHeaderFormat(int $storeId, string $name, ?string $lang = null): ?string
+    {
+        try {
+            $key = 'wa_tpl_hdr_' . $storeId . '_' . md5(strtolower($name . '|' . $lang));
+            return Cache::remember($key, 600, function () use ($storeId, $name, $lang) {
+                $wa = static::make($storeId);
+                if ($wa->source() !== 'vendor' || !$wa->hasWaba()) {
+                    return null;
+                }
+
+                $res = $wa->listTemplates();
+                if (!$res['success']) {
+                    return null;
+                }
+
+                foreach ($res['data'] as $tpl) {
+                    if (strtolower((string) data_get($tpl, 'name')) !== strtolower($name)) {
+                        continue;
+                    }
+                    if ($lang && strtolower((string) data_get($tpl, 'language')) !== strtolower($lang)) {
+                        continue;
+                    }
+                    foreach ((array) data_get($tpl, 'components', []) as $c) {
+                        if (strtoupper((string) data_get($c, 'type')) === 'HEADER') {
+                            return strtoupper((string) data_get($c, 'format', 'TEXT')) ?: 'TEXT';
+                        }
+                    }
+                    // Matched the template and it has no header component.
+                    return null;
+                }
+
+                return null;
+            });
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * The header component for a media template — the file that rides at the top of the message.
+     *
+     * `$url` must be publicly reachable: Meta fetches it from their own servers, so a link behind
+     * a login or on localhost silently fails the send rather than erroring usefully.
+     */
+    public static function mediaHeaderComponent(string $format, string $url, ?string $filename = null): array
+    {
+        $format = strtoupper($format);
+        $kind   = match ($format) {
+            'VIDEO'    => 'video',
+            'DOCUMENT' => 'document',
+            default    => 'image',
+        };
+
+        $media = ['link' => $url];
+        if ($kind === 'document') {
+            $media['filename'] = $filename ?: (basename(parse_url($url, PHP_URL_PATH) ?: '') ?: 'document.pdf');
+        }
+
+        return [
+            'type'       => 'header',
+            'parameters' => [['type' => $kind, $kind => $media]],
+        ];
+    }
+
     /**
      * How long a platform recipient stays out of this store's own pool after being messaged, so
      * consecutive sends walk forward through the audience instead of restarting at the same
