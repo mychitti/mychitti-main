@@ -35,7 +35,10 @@ class FixInventoryOrderQty extends Command
     {
         $dry = (bool) $this->option('dry-run');
 
-        $column = collect(DB::select('SHOW COLUMNS FROM inventory_order_details LIKE ?', ['qty']))->first();
+        // SHOW COLUMNS takes no bindings — MariaDB will not prepare a placeholder here, so the
+        // whole column list comes back and the one we want is picked out in PHP.
+        $column = collect(DB::select('SHOW COLUMNS FROM inventory_order_details'))
+            ->firstWhere('Field', 'qty');
         if (!$column) {
             $this->error('inventory_order_details has no qty column.');
             return self::FAILURE;
