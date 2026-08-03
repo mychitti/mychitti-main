@@ -2474,6 +2474,31 @@ if (!function_exists('_ensureInvoiceItemVariationColumn')) {
         }
     }
 }
+if (!function_exists('_ensureInvoiceItemDiscountColumn')) {
+    /**
+     * What was taken off a line, as data rather than only as an effect on the bill total.
+     *
+     * A cashier's per-line discount used to be subtracted from the total and then discarded — the
+     * line kept its full unit price and nothing anywhere recorded the reduction. The bill total was
+     * right, but every report reading the line back (Profit & Loss above all) counted revenue the
+     * till never took, and a reprint showed prices that did not add up to what was paid.
+     */
+    function _ensureInvoiceItemDiscountColumn()
+    {
+        static $done = false;
+        if ($done || !\Illuminate\Support\Facades\Schema::hasTable('invoice_items')) {
+            return;
+        }
+        $done = true;
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('invoice_items', 'discount')) {
+                DB::statement("ALTER TABLE `invoice_items` ADD COLUMN `discount` DECIMAL(18,4) NOT NULL DEFAULT 0");
+            }
+        } catch (\Throwable $e) {
+            Log::error('invoice_items.discount provisioning failed: ' . $e->getMessage());
+        }
+    }
+}
 if (!function_exists('_stockTypes')) {
     /** The four ways a product's stock can behave, for the item form's dropdown. */
     function _stockTypes(): array

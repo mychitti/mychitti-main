@@ -1415,6 +1415,9 @@ class RetailPosController extends Controller
                 'qty'        => $qty,
                 'pieces'     => $pieces,
                 'price'      => $price,
+                // Carried through to the invoice line. It comes off the bill total above, so
+                // dropping it here left the line holding a price the customer never paid.
+                'discount'   => $lineDiscount,
                 'rate'       => $rate,
                 'gst_status' => $status,
                 'hsn'        => $item->hsn,
@@ -1565,6 +1568,8 @@ class RetailPosController extends Controller
         }
 
         _ensureInvoiceItemVariationColumn();
+        _ensureInvoiceItemDiscountColumn();
+        $hasLineDiscountColumn = Schema::hasColumn('invoice_items', 'discount');
 
         foreach ($lines as $line) {
             $ii = new InvoiceItem();
@@ -1577,6 +1582,9 @@ class RetailPosController extends Controller
             }
             $ii->qty = $line['qty'];
             $ii->price = $line['price'];
+            if ($hasLineDiscountColumn) {
+                $ii->discount = (float) ($line['discount'] ?? 0);
+            }
             $ii->tax = $line['rate'];
             $ii->hsn = $line['hsn'];
             $ii->gst_status = $line['gst_status'];

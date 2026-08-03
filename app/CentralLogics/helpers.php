@@ -1402,14 +1402,21 @@ class Helpers
 
             self::_ensureInvOrderCostColumns();
 
-            // Bill-level discounts (manual + offer + coupon) reduce revenue, so each line has to
-            // carry its share of them. Without this the sale order holds gross prices and any
-            // report built on it reads higher than the bill the customer actually paid.
-            // Apportioned by line value across the whole invoice, so a partial batch (pharmacy
-            // dispense) only ever takes its own portion of the discount.
+            // Discounts reduce revenue, so each line has to carry its own. There are two kinds and
+            // both were being lost: the cashier's per-line discount, now held on the invoice line,
+            // and the bill-level ones (manual + offer + coupon) held on the invoice. Without them
+            // the sale order keeps gross prices and every report built on it — Profit & Loss above
+            // all — reads higher than the bill the customer actually paid.
+            //
+            // The bill-level share is apportioned over line value net of the line discounts, which
+            // is the order they are applied in at the till, and across the whole invoice so a
+            // partial batch (pharmacy dispense) only ever takes its own portion.
+            $hasLineDiscount = \Illuminate\Support\Facades\Schema::hasColumn('invoice_items', 'discount');
+            $netLineExpr = $hasLineDiscount ? 'price * qty - COALESCE(discount, 0)' : 'price * qty';
+
             $billDiscount = (float) ($invoice->discount_amount ?? 0);
             $invoiceLineTotal = (float) InvoiceItem::where('manual_invoice_id', $invoice->id)
-                ->selectRaw('COALESCE(SUM(price * qty), 0) as line_total')->value('line_total');
+                ->selectRaw("COALESCE(SUM({$netLineExpr}), 0) as line_total")->value('line_total');
             $discountRate = ($billDiscount > 0 && $invoiceLineTotal > 0)
                 ? min(1, $billDiscount / $invoiceLineTotal) : 0;
 
@@ -1439,7 +1446,9 @@ class Helpers
                 [$baseQty, $lineCost] = self::_invLineCost($item);
                 $invOrderDetail->base_qty  = $baseQty;
                 $invOrderDetail->line_cost = $lineCost;
-                $invOrderDetail->line_discount = round($invOrderDetail->total_price * $discountRate, 4);
+                $ownDiscount = $hasLineDiscount ? (float) ($item->discount ?? 0) : 0;
+                $netLine = max(0, $invOrderDetail->total_price - $ownDiscount);
+                $invOrderDetail->line_discount = round($ownDiscount + $netLine * $discountRate, 4);
 
                 $lineTax = ($invOrderDetail->total_price * $invOrderDetail->tax_rate) / 100;
 
