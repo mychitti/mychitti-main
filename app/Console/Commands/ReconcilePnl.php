@@ -79,7 +79,10 @@ class ReconcilePnl extends Command
             ->where('o.store_id', $storeId)
             ->whereBetween('d.created_at', [$from, $to]);
 
-        $gross = 'COALESCE(SUM(d.qty * d.unit_price),0)';
+        // Same expression the report uses. Never qty × unit_price: qty is an integer column, so a
+        // weighed line reads back rounded to a whole unit and priced as one.
+        $gross = 'COALESCE(SUM(CASE WHEN d.total_price > 0 THEN d.total_price '
+            . 'ELSE d.qty * d.unit_price END),0)';
         $disc  = 'COALESCE(SUM(COALESCE(d.line_discount,0)),0)';
 
         $posMirror = (clone $mirror())->where('mi.pos_status', 'final')
@@ -96,6 +99,14 @@ class ReconcilePnl extends Command
         // inventory_items drops them and their cost cannot be worked out either.
         $orphan = (clone $mirror())->leftJoin('inventory_items as i', 'i.id', '=', 'd.item_id')
             ->whereNull('i.id')->selectRaw("{$gross} g, COUNT(*) n")->first();
+
+        // Lines still carrying a rounded quantity, which inventory:fix-order-qty puts back. The
+        // report is unaffected — it reads total_price — but the sale-order screens and the
+        // qty × landing_price cost fallback are.
+        $rounded = (clone $mirror())
+            ->whereRaw('d.unit_price > 0 AND d.total_price > 0')
+            ->whereRaw('ABS(d.qty - (d.total_price / d.unit_price)) > 0.0001')
+            ->selectRaw('COUNT(*) n')->first();
 
         $this->line('SALE-ORDER MIRROR (inventory_order_details)');
         $this->row('From POS bills, gross', (float) $posMirror->g, $posMirror->n . ' lines');
@@ -119,7 +130,8 @@ class ReconcilePnl extends Command
         $this->row('less tax / round-off', -((float) $pos->sales - $posLineValue + (float) $pos->disc));
         $this->row('add back bill discounts', (float) $pos->disc);
         $this->row('less discount recorded on lines', -(float) $posMirror->dsc);
-        $this->row('less POS lines with no mirror row', -$missingMirror);
+        $this->row($missingMirror >= 0 ? 'less POS lines with no mirror row' : 'add surplus mirror lines',
+            -$missingMirror);
         $this->row('add non-POS inventory sales', (float) $otherMirror->g - (float) $otherMirror->dsc);
         $this->row('less orphaned-item lines', -(float) $orphan->g);
         $this->line(str_repeat('-', 62));
@@ -130,9 +142,16 @@ class ReconcilePnl extends Command
             $this->warn($posMirror->no_disc . ' POS line(s) carry no discount share — run '
                 . 'inventory:backfill-line-discount to net the historical bill discounts off revenue.');
         }
-        if (abs($missingMirror) > 1) {
-            $this->warn('POS line value and mirrored line value differ by ' . round($missingMirror, 2)
+        if ($rounded->n > 0) {
+            $this->warn($rounded->n . ' line(s) still hold a rounded quantity — run '
+                . 'inventory:fix-order-qty. The report is unaffected, the sale-order screens are not.');
+        }
+        if ($missingMirror > 1) {
+            $this->warn('POS line value exceeds mirrored line value by ' . round($missingMirror, 2)
                 . ' — some finalised bills never produced a sale order.');
+        } elseif ($missingMirror < -1) {
+            $this->warn('Mirrored line value exceeds POS line value by ' . round(-$missingMirror, 2)
+                . ' — the mirror holds lines the invoices do not.');
         }
 
         return self::SUCCESS;
