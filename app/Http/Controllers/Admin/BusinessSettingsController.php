@@ -2982,19 +2982,35 @@ class BusinessSettingsController extends Controller
             return back()->withInput();
         }
 
+        // The call button. 'store' keeps each vendor's own number on the template they submit;
+        // 'fixed' is for a platform helpline, and is the only mode that needs a number typed.
+        $callMode = $request->btn_phone_mode ?: 'none';
+        $btnPhone = null;
+        if ($callMode === 'store') {
+            $btnPhone = \App\Services\WhatsAppService::STORE_PHONE_TOKEN;
+        } elseif ($callMode === 'fixed') {
+            $btnPhone = trim((string) $request->btn_phone);
+            if (strlen(preg_replace('/[^0-9]/', '', $btnPhone) ?? '') < 10) {
+                Toastr::error(translate('Enter the full call-button number including the country code, or choose the vendor\'s own number.'));
+                return back()->withInput();
+            }
+        }
+
         \App\Services\WhatsAppService::ensurePresetsTable();
         $data = [
-            'title'      => trim((string) $request->title),
-            'name'       => trim((string) $request->name),
-            'category'   => $request->category,
-            'language'   => trim((string) $request->language) ?: 'en_US',
-            'header'     => trim((string) $request->header) ?: null,
-            'body'       => $body,
-            'footer'     => trim((string) $request->footer) ?: null,
-            'example'    => $example ? implode(' | ', $example) : null,
-            'btn_text'   => trim((string) $request->btn_text) ?: null,
-            'btn_url'    => trim((string) $request->btn_url) ?: null,
-            'updated_at' => now(),
+            'title'          => trim((string) $request->title),
+            'name'           => trim((string) $request->name),
+            'category'       => $request->category,
+            'language'       => trim((string) $request->language) ?: 'en_US',
+            'header'         => trim((string) $request->header) ?: null,
+            'body'           => $body,
+            'footer'         => trim((string) $request->footer) ?: null,
+            'example'        => $example ? implode(' | ', $example) : null,
+            'btn_text'       => trim((string) $request->btn_text) ?: null,
+            'btn_url'        => trim((string) $request->btn_url) ?: null,
+            'btn_phone'      => $btnPhone,
+            'btn_phone_text' => $btnPhone ? (trim((string) $request->btn_phone_text) ?: 'Call now') : null,
+            'updated_at'     => now(),
         ];
 
         $duplicate = DB::table('wa_template_presets')->where('name', $data['name'])

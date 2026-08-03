@@ -62,7 +62,9 @@
                                                         data-language="{{ $preset->language }}" data-header="{{ $preset->header }}"
                                                         data-body="{{ $preset->body }}" data-footer="{{ $preset->footer }}"
                                                         data-example="{{ $preset->example }}" data-btntext="{{ $preset->btn_text }}"
-                                                        data-btnurl="{{ $preset->btn_url }}">
+                                                        data-btnurl="{{ $preset->btn_url }}"
+                                                        data-btnphone="{{ $preset->btn_phone ?? '' }}"
+                                                        data-btnphonetext="{{ $preset->btn_phone_text ?? '' }}">
                                                     <i class="tio-edit"></i>
                                                 </button>
                                                 <form action="{{ route('admin.business-settings.third-party.whatsapp-preset-delete') }}" method="post" class="d-inline"
@@ -160,6 +162,35 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="row mt-2">
+                                <div class="col-5">
+                                    <div class="form-group mb-1">
+                                        <label class="form-label mb-1">{{ translate('Call Button') }}</label>
+                                        <select class="form-control wa-preset-call-mode" name="btn_phone_mode">
+                                            <option value="none" {{ old('btn_phone_mode') === 'none' ? 'selected' : '' }}>{{ translate('None') }}</option>
+                                            <option value="store" {{ old('btn_phone_mode') === 'store' ? 'selected' : '' }}>{{ translate("Vendor's own number") }}</option>
+                                            <option value="fixed" {{ old('btn_phone_mode') === 'fixed' ? 'selected' : '' }}>{{ translate('A fixed number') }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="form-group mb-1 wa-preset-call-field" style="display:none;">
+                                        <label class="form-label mb-1">{{ translate('Call Label') }}</label>
+                                        <input type="text" class="form-control" name="btn_phone_text" maxlength="25"
+                                               value="{{ old('btn_phone_text') }}" placeholder="Call now">
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="form-group mb-1 wa-preset-call-number" style="display:none;">
+                                        <label class="form-label mb-1">{{ translate('Number') }}</label>
+                                        <input type="tel" class="form-control" name="btn_phone"
+                                               value="{{ old('btn_phone') }}" placeholder="+91 98765 43210">
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                {{ translate("Vendor's own number puts each store's own phone on the template they submit — a fixed number rings the same line for every vendor's customers.") }}
+                            </small>
                             <button type="submit" class="btn btn--primary btn-block mt-2">{{ translate('Save Preset') }}</button>
                         </form>
                     </div>
@@ -249,6 +280,32 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="row mt-2">
+                            <div class="col-5">
+                                <div class="form-group mb-1">
+                                    <label class="form-label mb-1">{{ translate('Call Button') }}</label>
+                                    <select class="form-control wa-preset-call-mode" name="btn_phone_mode" id="wapCallMode">
+                                        <option value="none">{{ translate('None') }}</option>
+                                        <option value="store">{{ translate("Vendor's own number") }}</option>
+                                        <option value="fixed">{{ translate('A fixed number') }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="form-group mb-1 wa-preset-call-field" style="display:none;">
+                                    <label class="form-label mb-1">{{ translate('Call Label') }}</label>
+                                    <input type="text" class="form-control" name="btn_phone_text" id="wapCallText"
+                                           maxlength="25" placeholder="Call now">
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-group mb-1 wa-preset-call-number" style="display:none;">
+                                    <label class="form-label mb-1">{{ translate('Number') }}</label>
+                                    <input type="tel" class="form-control" name="btn_phone" id="wapCallNumber"
+                                           placeholder="+91 98765 43210">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-white" data-dismiss="modal">{{ translate('Cancel') }}</button>
@@ -262,6 +319,17 @@
 
 @push('script_2')
 <script>
+    var STORE_PHONE_TOKEN = '{{ \App\Services\WhatsAppService::STORE_PHONE_TOKEN }}';
+
+    // A label applies to any call button; a number only to the fixed kind.
+    $(document).on('change', '.wa-preset-call-mode', function () {
+        var mode = $(this).val();
+        var $scope = $(this).closest('form');
+        $scope.find('.wa-preset-call-field').toggle(mode !== 'none');
+        $scope.find('.wa-preset-call-number').toggle(mode === 'fixed');
+    });
+    $('.wa-preset-call-mode').trigger('change');
+
     $(document).on('click', '.wa-preset-edit', function () {
         var d = $(this).data();
         $('#wapId').val(d.id); $('#wapTitle').val(d.title); $('#wapName').val(d.name);
@@ -269,6 +337,15 @@
         $('#wapHeader').val(d.header || ''); $('#wapBody').val(d.body || '');
         $('#wapFooter').val(d.footer || ''); $('#wapExample').val(d.example || '');
         $('#wapBtnText').val(d.btntext || ''); $('#wapBtnUrl').val(d.btnurl || '');
+
+        // btn_phone holds either the vendor-number token or a literal number — the mode is read
+        // back off which one it is, so the admin never sees the token itself.
+        var phone = String(d.btnphone || '');
+        var mode = phone === STORE_PHONE_TOKEN ? 'store' : (phone ? 'fixed' : 'none');
+        $('#wapCallMode').val(mode).trigger('change');
+        $('#wapCallText').val(d.btnphonetext || '');
+        $('#wapCallNumber').val(mode === 'fixed' ? phone : '');
+
         $('#waPresetEditModal').modal('show');
     });
 

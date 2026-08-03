@@ -97,6 +97,18 @@ class WhatsAppBilling
     /** What a store falls back to when nothing else is recorded. */
     const DEFAULT_PLAN = 'basic';
 
+    /**
+     * How a subscription came to exist. NULL means the vendor bought it themselves through the
+     * gateway and Razorpay bills it; everything below is an admin acting on their behalf, and
+     * none of them are ever charged by the daily renewal command.
+     */
+    const GRANT_PAID     = 'paid';      // sold by the admin, money collected off-platform
+    const GRANT_TRIAL    = 'trial';     // free until current_period_end, then lapses
+    const GRANT_LIFETIME = 'lifetime';  // free forever, never expires
+
+    /** The free grants. Only the plan and the platform fee are ever given away like this. */
+    const FREE_GRANTS = [self::GRANT_TRIAL, self::GRANT_LIFETIME];
+
     /** One-time onboarding fee, exclusive of GST. */
     const SETUP_FEE = 2999;
 
@@ -256,6 +268,22 @@ class WhatsAppBilling
         }
         if (Schema::hasTable('wa_tmp_setup') && !Schema::hasColumn('wa_tmp_setup', 'plan')) {
             DB::statement("ALTER TABLE `wa_tmp_setup` ADD COLUMN `plan` VARCHAR(20) NOT NULL DEFAULT 'basic' AFTER `store_id`");
+        }
+
+        // Admin grants, which are the only subscriptions that carry no Razorpay mandate.
+        //   grant_type — NULL for a normal gateway subscription the vendor bought; otherwise
+        //                GRANT_PAID (admin sold it off-platform), GRANT_TRIAL (free until the
+        //                period ends) or GRANT_LIFETIME (free forever, current_period_end NULL).
+        //   auto_renew — 0 means the period lapses when it ends instead of being charged. Every
+        //                admin grant sets this, because the wallet fallback in renew() would
+        //                otherwise debit a vendor for a month nobody asked them to buy.
+        foreach ([
+            'grant_type' => 'VARCHAR(20) NULL',
+            'auto_renew' => 'TINYINT(1) NOT NULL DEFAULT 1',
+        ] as $column => $definition) {
+            if (Schema::hasTable('wa_subscriptions') && !Schema::hasColumn('wa_subscriptions', $column)) {
+                DB::statement("ALTER TABLE `wa_subscriptions` ADD COLUMN `{$column}` {$definition}");
+            }
         }
 
         // Razorpay Subscriptions state. A store with rzp_subscription_id set is billed by
@@ -443,10 +471,34 @@ class WhatsAppBilling
     public static function hasPlan(int $storeId): bool
     {
         $sub = static::subscription($storeId);
+        if (!$sub) {
+            return false;
+        }
 
-        return (bool) ($sub
-            && $sub->current_period_end
+        // A lifetime grant has no period end to point at — the grant itself is the plan.
+        if (static::isLifetime($sub)) {
+            return true;
+        }
+
+        return (bool) ($sub->current_period_end
             && in_array($sub->status, ['active', 'past_due', 'cancelled'], true));
+    }
+
+    /** Is this subscription row a free-forever admin grant? */
+    public static function isLifetime($sub): bool
+    {
+        return (($sub->grant_type ?? null) === self::GRANT_LIFETIME);
+    }
+
+    /** Is this store on a free grant right now — a running trial, or lifetime? */
+    public static function freeGrant(int $storeId): ?string
+    {
+        $sub = static::subscription($storeId);
+        if (!$sub || !in_array($sub->grant_type ?? null, self::FREE_GRANTS, true)) {
+            return null;
+        }
+
+        return static::isActive($storeId) ? $sub->grant_type : null;
     }
 
     /** Monthly fee for a plan; with no plan named, the cheapest one. */
@@ -542,7 +594,16 @@ class WhatsAppBilling
     public static function isActive(int $storeId): bool
     {
         $sub = static::subscription($storeId);
-        if (!$sub || !$sub->current_period_end) {
+        if (!$sub) {
+            return false;
+        }
+
+        // A lifetime grant runs until an admin revokes it, which is what cancel() does.
+        if (static::isLifetime($sub)) {
+            return $sub->status !== 'cancelled';
+        }
+
+        if (!$sub->current_period_end) {
             return false;
         }
 
@@ -693,6 +754,24 @@ class WhatsAppBilling
                 'success' => true,
                 'skipped' => true,
                 'message' => 'Billed by Razorpay auto-debit — nothing to charge here.',
+            ];
+        }
+
+        // Free forever. There is no month to collect and no period to move.
+        if (static::isLifetime($sub)) {
+            return ['success' => true, 'skipped' => true, 'message' => 'Lifetime grant — never billed.'];
+        }
+
+        // An admin grant is paid for (or given away) up front for a fixed stretch of time. When
+        // that stretch runs out it must LAPSE, not roll into a wallet debit: the vendor never
+        // authorised a renewal, and the fallback below would quietly take the monthly fee out of
+        // a wallet they topped up to send messages with.
+        if (isset($sub->auto_renew) && !$sub->auto_renew) {
+            return [
+                'success' => true,
+                'skipped' => true,
+                'message' => ($sub->grant_type === self::GRANT_TRIAL ? 'Free trial' : 'Admin-granted period')
+                    . ' ended — lapsed rather than renewed.',
             ];
         }
 
@@ -1318,6 +1397,457 @@ class WhatsAppBilling
         ]);
     }
 
+    /* ------------------------------------------------------------ admin selling */
+
+    /**
+     * The two ways an admin can hand a vendor something from the admin panel.
+     *
+     *   BILLING — bill to store. Raises the platform GST tax invoice against the store
+     *             (ManualInvoice + line item + PDF), exactly like the gateway path does, and
+     *             posts it to the ledger and day book once it is marked paid.
+     *   RETAIL  — no bill. The vendor gets the goods and nothing is invoiced: no ManualInvoice,
+     *             no GST, no ledger. Used for complimentary grants, pilots and settlements made
+     *             outside the platform.
+     *
+     * Either way a line is written to wa_billing_invoices, which stays the module's own running
+     * ledger of everything a store has been given — a retail grant that left no trace at all
+     * would make the vendor's WhatsApp billing history disagree with what they actually hold.
+     */
+    const ADMIN_MODE_BILLING = 'billing';
+    const ADMIN_MODE_RETAIL  = 'retail';
+
+    /** Payment methods the admin can record against a billed grant. */
+    const ADMIN_METHODS = ['Cash', 'Online', 'Bank Transfer', 'Cheque', 'Wallet'];
+
+    /**
+     * Read the collection choice off an admin form into the shape adminSettle() works with.
+     *
+     * `amount` is what the admin typed, GST-exclusive, and falls back to the list price when
+     * left blank — the common case is selling at list, and re-typing the number invites typos.
+     * A zero amount is respected rather than replaced: giving something away for nothing is a
+     * legitimate thing for an admin to do, and is the whole point of retail mode.
+     *
+     * GST is added on the billing path only. Retail raises no tax document, so charging tax on
+     * it would be collecting GST the platform has no invoice to account for.
+     */
+    protected static function adminTerms(array $terms, float $listPrice): array
+    {
+        $mode = ($terms['mode'] ?? self::ADMIN_MODE_RETAIL) === self::ADMIN_MODE_BILLING
+            ? self::ADMIN_MODE_BILLING
+            : self::ADMIN_MODE_RETAIL;
+
+        $base = isset($terms['amount']) && $terms['amount'] !== '' && is_numeric($terms['amount'])
+            ? round(max(0, (float) $terms['amount']), 2)
+            : round($listPrice, 2);
+
+        $billing = $mode === self::ADMIN_MODE_BILLING;
+        $tax     = $billing ? static::tax($base) : 0.0;
+
+        $method = in_array($terms['method'] ?? '', self::ADMIN_METHODS, true) ? $terms['method'] : 'Cash';
+        $status = ($terms['status'] ?? 'Paid') === 'Unpaid' ? 'Unpaid' : 'Paid';
+
+        return [
+            'mode'   => $mode,
+            'base'   => $base,
+            'tax'    => $tax,
+            'total'  => round($base + $tax, 2),
+            'method' => $method,
+            // Retail collects nothing on the platform, so there is no unpaid state to carry.
+            'status' => $billing ? $status : 'Paid',
+            // A wallet-funded grant is the one case where money actually moves inside MyChitti.
+            'wallet' => $billing && $method === 'Wallet' && $status === 'Paid',
+            'note'   => trim((string) ($terms['note'] ?? '')),
+        ];
+    }
+
+    /**
+     * Collect for one admin grant and record it, without granting anything — the caller hands
+     * over the goods only after this reports success.
+     *
+     * Refuses to run twice for the same `$ref`, on the same rule the vendor-side charge() uses:
+     * a ref already marked paid is a no-op, so a double-clicked Grant button cannot bill or
+     * gift the same thing twice.
+     */
+    protected static function adminSettle(
+        int $storeId,
+        string $type,
+        string $itemName,
+        string $ref,
+        array $terms,
+        ?string $periodStart = null,
+        ?string $periodEnd = null
+    ): array {
+        static::ensureTables();
+
+        $paid = DB::table('wa_billing_invoices')
+            ->where('store_id', $storeId)->where('ref', $ref)->where('status', 'paid')->exists();
+        if ($paid) {
+            return ['success' => false, 'message' => 'That has already been recorded for this store.'];
+        }
+
+        $vendorId = static::vendorId($storeId);
+        if (!$vendorId) {
+            return ['success' => false, 'message' => 'This store has no vendor account to bill.'];
+        }
+
+        $billing = $terms['mode'] === self::ADMIN_MODE_BILLING;
+
+        // Wallet is the only method that takes money out of MyChitti itself — everything else was
+        // collected outside the platform and is being recorded after the fact.
+        if ($terms['wallet'] && $terms['total'] > 0) {
+            $wallet  = StoreWallet::where('vendor_id', $vendorId)->first();
+            $balance = $wallet ? (float) $wallet->total_earning : 0;
+
+            if (!$wallet || $balance < $terms['total']) {
+                return [
+                    'success' => false,
+                    'message' => 'Wallet balance is ' . _price($balance) . ' and this needs ' . _price($terms['total'])
+                        . '. Recharge the vendor wallet, pick another payment method, or use Retail.',
+                ];
+            }
+
+            try {
+                DB::transaction(function () use ($wallet, $vendorId, $itemName, $terms) {
+                    $wallet->decrement('total_earning', $terms['total']);
+
+                    $txn = new AccountTransaction();
+                    $txn->current_balance = $wallet->total_earning;
+                    $txn->from_type  = 'store';
+                    $txn->from_id    = $vendorId;
+                    $txn->amount     = $terms['total'];
+                    $txn->method     = 'wallet';
+                    $txn->type       = 'debit';
+                    $txn->action     = 'debit';
+                    $txn->reason     = $itemName . ' (admin)';
+                    $txn->created_by = 'admin';
+                    $txn->save();
+                });
+            } catch (\Throwable $e) {
+                Log::error('WA admin wallet debit failed', ['store' => $storeId, 'ref' => $ref, 'error' => $e->getMessage()]);
+                return ['success' => false, 'message' => 'Could not debit the vendor wallet. Nothing was charged.'];
+            }
+        }
+
+        $note = $billing
+            ? 'Billed to store by admin — ' . $terms['method'] . ' (' . $terms['status'] . ')'
+            : 'Retail — granted by admin, no bill raised';
+        if ($terms['note'] !== '') {
+            $note .= ': ' . $terms['note'];
+        }
+
+        static::writeInvoice(
+            $storeId,
+            $vendorId,
+            $type,
+            $itemName,
+            $terms['base'],
+            $terms['tax'],
+            $terms['total'],
+            $ref,
+            $terms['status'] === 'Paid' ? 'paid' : 'unpaid',
+            mb_substr($note, 0, 250),
+            $periodStart,
+            $periodEnd
+        );
+
+        if ($billing) {
+            static::billTaxInvoice(
+                $storeId,
+                $ref,
+                $itemName,
+                $terms['base'],
+                $terms['tax'],
+                $terms['total'],
+                null,
+                $terms['method'],
+                $terms['status']
+            );
+        }
+
+        return ['success' => true, 'total' => $terms['total']];
+    }
+
+    /**
+     * Put a store on a plan (or move it to another one) for a number of whole months, on the
+     * admin's authority rather than a payment the vendor made.
+     *
+     * Unlike subscribe(), this never touches the setup fee — onboarding is its own admin action,
+     * so an admin extending a plan cannot accidentally re-bill a fee the vendor already settled.
+     *
+     * Months are added to whatever the store already has left, so extending a live subscription
+     * never shortens it. The token allowance is re-granted for the cycle, exactly as a renewal
+     * does; it does not multiply with the number of months, because the allowance is per cycle
+     * and is reset at each renewal anyway.
+     */
+    public static function adminActivate(
+        int $storeId,
+        ?string $plan,
+        bool $accountManager,
+        int $months,
+        array $terms,
+        string $grant = self::GRANT_PAID
+    ): array {
+        static::ensureTables();
+
+        $grant  = in_array($grant, [self::GRANT_PAID, self::GRANT_TRIAL, self::GRANT_LIFETIME], true)
+            ? $grant
+            : self::GRANT_PAID;
+        $free     = in_array($grant, self::FREE_GRANTS, true);
+        $lifetime = $grant === self::GRANT_LIFETIME;
+
+        $months = max(1, min(36, $months));
+        $sub    = static::subscription($storeId);
+        $plan   = isset(self::PLANS[$plan]) ? $plan : ($sub->plan ?? self::DEFAULT_PLAN);
+        $meta   = static::plan($plan);
+
+        // Extend from the paid-up date when there is one, so months are added rather than lost.
+        $from = ($sub && $sub->status !== 'cancelled' && $sub->current_period_end
+            && Carbon::parse($sub->current_period_end)->endOfDay()->isFuture())
+            ? Carbon::parse($sub->current_period_end)
+            : now();
+
+        $periodStart = $from->toDateString();
+        $periodEnd   = $lifetime ? null : $from->copy()->addMonths($months)->toDateString();
+
+        // A trial and a lifetime grant are free by definition — there is no price to argue with
+        // and nothing to invoice, so the admin's amount and billing choice are ignored rather
+        // than trusted. Only a paid grant reads what was typed on the form.
+        $listPrice = $free ? 0.0 : ($meta['price'] + ($accountManager ? static::accountManagerFee() : 0)) * $months;
+        if ($free) {
+            $terms = ['mode' => self::ADMIN_MODE_RETAIL, 'amount' => 0, 'note' => $terms['note'] ?? ''];
+        }
+        $terms = static::adminTerms($terms, $listPrice);
+
+        $window = $lifetime
+            ? 'lifetime'
+            : Carbon::parse($periodStart)->format('d M Y') . ' – ' . Carbon::parse($periodEnd)->format('d M Y');
+
+        $label = 'WhatsApp ' . $meta['label'] . ' — '
+            . ($lifetime ? 'free lifetime grant' : ($grant === self::GRANT_TRIAL ? 'free trial, ' : '')
+                . ($lifetime ? '' : $months . ' month' . ($months === 1 ? '' : 's')))
+            . ($accountManager ? ' + dedicated account manager' : '')
+            . ' (' . $window . ')';
+
+        // Keyed on the period, so the same stretch of time cannot be sold twice while a genuine
+        // later extension gets its own ref. A lifetime grant is keyed on the tier instead — it
+        // happens once per plan, so a store granted Basic for life can still be moved up to Pro.
+        $ref = $lifetime
+            ? 'wa_admin_plan_' . $storeId . '_lifetime_' . $plan
+            : 'wa_admin_plan_' . $storeId . '_' . $periodStart . '_' . $periodEnd;
+
+        $settled = static::adminSettle($storeId, 'monthly', $label, $ref, $terms, $periodStart, $periodEnd);
+        if (!$settled['success']) {
+            return $settled;
+        }
+
+        DB::table('wa_subscriptions')->updateOrInsert(
+            ['store_id' => $storeId],
+            [
+                'plan'               => $plan,
+                'status'             => 'active',
+                'grant_type'         => $grant,
+                // Nothing an admin grants ever rolls into a charge — see renew().
+                'auto_renew'         => 0,
+                'monthly_fee'        => $free ? 0 : $meta['price'],
+                'included_tokens'    => $meta['tokens'],
+                'account_manager'    => $accountManager ? 1 : 0,
+                // A store the admin has put on a plan has been onboarded by definition —
+                // billing it the setup fee afterwards would be billing for work already done.
+                'setup_fee_paid'     => 1,
+                'started_at'         => $sub->started_at ?? now()->toDateString(),
+                'current_period_end' => $periodEnd,
+                // Doubles as "allowance last granted on" for the free grants, which is what
+                // refreshFreeGrantAllowance() reads to re-grant tokens each month.
+                'last_charged_on'    => now()->toDateString(),
+                'last_error'         => null,
+                'retry_count'        => 0,
+                'cancelled_at'       => null,
+                'updated_at'         => now(),
+                'created_at'         => $sub->created_at ?? now(),
+            ]
+        );
+
+        static::grantPlanTokens($storeId, $meta);
+
+        $until = $lifetime
+            ? ' is active for life — it will never expire and is never billed.'
+            : ' is active until ' . Carbon::parse($periodEnd)->format('d M Y')
+                . ($free ? ', then lapses unless you extend it.' : '.');
+
+        return [
+            'success' => true,
+            'message' => $meta['label'] . ($grant === self::GRANT_TRIAL ? ' free trial' : '') . $until
+                . ($terms['mode'] === self::ADMIN_MODE_BILLING
+                    ? ' Invoice raised for ' . _price($terms['total']) . '.'
+                    : ''),
+        ];
+    }
+
+    /**
+     * Re-grant the monthly token allowance to a store on a free grant.
+     *
+     * Paid stores get this from renew() when their month is collected. A trial or lifetime store
+     * is never collected from, so without this it would receive one cycle's tokens at the moment
+     * of the grant and never another — a "free lifetime Pro plan" that runs dry after a month.
+     *
+     * Returns true when an allowance was actually re-granted.
+     */
+    public static function refreshFreeGrantAllowance(int $storeId): bool
+    {
+        static::ensureTables();
+        $sub = static::subscription($storeId);
+
+        if (!$sub || !in_array($sub->grant_type ?? null, self::FREE_GRANTS, true) || $sub->status === 'cancelled') {
+            return false;
+        }
+
+        // A lapsed trial gets nothing more.
+        if (!static::isActive($storeId)) {
+            return false;
+        }
+
+        $last = $sub->last_charged_on ? Carbon::parse($sub->last_charged_on) : null;
+        if ($last && $last->copy()->addMonth()->endOfDay()->isFuture()) {
+            return false;
+        }
+
+        static::grantPlanTokens($storeId, static::plan($sub->plan ?? null));
+
+        DB::table('wa_subscriptions')->where('store_id', $storeId)->update([
+            'last_charged_on' => now()->toDateString(),
+            'updated_at'      => now(),
+        ]);
+
+        return true;
+    }
+
+    /** Record the one-time onboarding fee as settled, which is what unlocks Embedded Signup. */
+    public static function adminSetupFee(int $storeId, array $terms): array
+    {
+        static::ensureTables();
+
+        if (static::setupFeePaid($storeId)) {
+            return ['success' => false, 'message' => 'This store has already settled the onboarding fee.'];
+        }
+
+        $terms = static::adminTerms($terms, static::setupFee());
+
+        // Shares the ref with the gateway and wallet paths, so onboarding can never be
+        // collected twice by any route.
+        $settled = static::adminSettle(
+            $storeId,
+            'setup',
+            'WhatsApp Business Platform — one-time onboarding',
+            'wa_setup_' . $storeId,
+            $terms
+        );
+        if (!$settled['success']) {
+            return $settled;
+        }
+
+        $sub = static::subscription($storeId);
+        DB::table('wa_subscriptions')->updateOrInsert(
+            ['store_id' => $storeId],
+            [
+                'setup_fee_paid' => 1,
+                // Activation stays a separate decision — leaving current_period_end alone keeps
+                // isActive() false until a plan is actually put on the store.
+                'status'         => $sub->status ?? 'pending',
+                'updated_at'     => now(),
+                'created_at'     => $sub->created_at ?? now(),
+            ]
+        );
+
+        return [
+            'success' => true,
+            'message' => 'Onboarding fee recorded. The vendor can connect their WhatsApp number now.'
+                . ($terms['mode'] === self::ADMIN_MODE_BILLING ? ' Invoice raised for ' . _price($terms['total']) . '.' : ''),
+        ];
+    }
+
+    /** Hand the store extra message-template slots beyond the included quota. */
+    public static function adminTemplateSlots(int $storeId, int $slots, array $terms): array
+    {
+        static::ensureTables();
+
+        $slots = max(1, min(50, $slots));
+        $sub   = static::subscription($storeId);
+        $first = (int) ($sub->extra_template_slots ?? 0) + 1;
+        $last  = $first + $slots - 1;
+
+        $terms = static::adminTerms($terms, static::extraTemplateFee() * $slots);
+
+        $label = $slots === 1
+            ? 'WhatsApp extra message template (slot ' . $first . ')'
+            : 'WhatsApp extra message templates — ' . $slots . ' slots (' . $first . '–' . $last . ')';
+
+        $settled = static::adminSettle(
+            $storeId,
+            'template_slot',
+            $label,
+            'wa_tpl_slot_' . $storeId . '_' . $first . '_' . $last,
+            $terms
+        );
+        if (!$settled['success']) {
+            return $settled;
+        }
+
+        static::grantTemplateSlot($storeId, $slots);
+
+        return [
+            'success' => true,
+            'message' => $slots . ' template slot' . ($slots === 1 ? '' : 's') . ' added — this store can now create up to '
+                . static::templateAllowance($storeId) . ' templates.',
+        ];
+    }
+
+    /**
+     * Top up a store's AI token pool. Input and output are separate buckets that never lend to
+     * each other, so the direction has to be chosen.
+     *
+     * Allowed on any plan, Basic included: an admin topping a store up ahead of an upgrade is a
+     * normal thing to do, and purchased tokens carry over until there is a bot to spend them.
+     */
+    public static function adminTokens(int $storeId, string $direction, int $millions, array $terms): array
+    {
+        static::ensureTables();
+
+        $direction = $direction === self::DIR_OUT ? self::DIR_OUT : self::DIR_IN;
+        $millions  = max(1, min(50, $millions));
+        $terms     = static::adminTerms($terms, static::topupPerMillion($direction) * $millions);
+
+        $label = 'WhatsApp AI token top-up — ' . $millions . 'M '
+            . ($direction === self::DIR_OUT ? 'output' : 'input') . ' tokens';
+
+        $settled = static::adminSettle(
+            $storeId,
+            'topup_tokens_' . $direction,
+            $label,
+            // Nothing about a top-up makes one indistinguishable from the next, so each grant
+            // gets its own ref rather than a key that would silently swallow a second one.
+            'wa_admin_topup_' . $storeId . '_' . $direction . '_' . now()->format('YmdHis'),
+            $terms
+        );
+        if (!$settled['success']) {
+            return $settled;
+        }
+
+        static::ensureTokenWallet($storeId, self::POOL_PLAN);
+        DB::table('wa_token_wallets')
+            ->where('store_id', $storeId)->where('pool', self::POOL_PLAN)
+            ->increment('topup_tokens_' . $direction, self::ONE_MILLION * $millions, ['updated_at' => now()]);
+
+        $balance = static::tokenBalance($storeId, $direction);
+
+        return [
+            'success' => true,
+            'message' => number_format(self::ONE_MILLION * $millions) . ' '
+                . ($direction === self::DIR_OUT ? 'output' : 'input') . ' tokens added — balance is now '
+                . number_format($balance) . '.'
+                . (static::plan(static::storePlan($storeId))['bot'] ? '' : ' Note: this store is on Basic, which has no chatbot to spend them until it is upgraded.'),
+        ];
+    }
+
     /* ---------------------------------------------------------------- teardown */
 
     /**
@@ -1394,7 +1924,9 @@ class WhatsAppBilling
         float $base,
         float $tax,
         float $total,
-        ?string $txnId = null
+        ?string $txnId = null,
+        string $paymentMethod = 'Online',
+        string $paymentStatus = 'Paid'
     ): ?array {
         if ($total <= 0) {
             return null;
@@ -1409,10 +1941,10 @@ class WhatsAppBilling
             $invoice->bill_to_type   = 'vendor';
             $invoice->module_id      = DB::table('stores')->where('id', $storeId)->value('module_id');
             $invoice->total_amount   = $total;
-            $invoice->payment_method = 'Online';
+            $invoice->payment_method = $paymentMethod;
             $invoice->tax_type       = $tax > 0 ? 'gst' : 'non-gst';
-            $invoice->payment_status = 'Paid';
-            $invoice->payment_date   = now()->toDateString();
+            $invoice->payment_status = $paymentStatus;
+            $invoice->payment_date   = $paymentStatus === 'Paid' ? now()->toDateString() : null;
             $invoice->generated_by   = 'admin';
             $invoice->financial_year = _currentFinancialYear();
             $invoice->save();
@@ -1437,34 +1969,39 @@ class WhatsAppBilling
                 Log::warning('WhatsApp invoice PDF failed', ['invoice' => $invoice->id, 'error' => $e->getMessage()]);
             }
 
-            $voucher = _masterLedgerEntry(
-                [
-                    'date'         => now(),
-                    'amount'       => $total,
-                    'status'       => 'approved',
-                    'description'  => $itemName . ($txnId ? ' — ' . $txnId : ''),
-                    'voucher_type' => 'Purchase',
-                    'invoice_id'   => $invoice->getKey(),
-                ],
-                Helpers::ensureSubscriptionRevenueAccount(),
-                Helpers::ensurePurchaseAccount('WhatsApp Business Platform', $storeId),
-                'store',
-                'admin',
-                null,
-                $storeId
-            );
+            // Only a collected payment moves the books. An invoice raised as Unpaid is a
+            // receivable the admin will settle later — posting it here would report revenue
+            // and cash that has not arrived.
+            if ($paymentStatus === 'Paid') {
+                $voucher = _masterLedgerEntry(
+                    [
+                        'date'         => now(),
+                        'amount'       => $total,
+                        'status'       => 'approved',
+                        'description'  => $itemName . ($txnId ? ' — ' . $txnId : ''),
+                        'voucher_type' => 'Purchase',
+                        'invoice_id'   => $invoice->getKey(),
+                    ],
+                    Helpers::ensureSubscriptionRevenueAccount(),
+                    Helpers::ensurePurchaseAccount('WhatsApp Business Platform', $storeId),
+                    'store',
+                    'admin',
+                    null,
+                    $storeId
+                );
 
-            _saveDayBookEntry(
-                $total,
-                'debit',
-                $storeId,
-                $itemName,
-                $invoice->getKey(),
-                $voucher?->id,
-                null,
-                $txnId,
-                'Online'
-            );
+                _saveDayBookEntry(
+                    $total,
+                    'debit',
+                    $storeId,
+                    $itemName,
+                    $invoice->getKey(),
+                    $voucher?->id,
+                    null,
+                    $txnId,
+                    $paymentMethod
+                );
+            }
 
             return [
                 'id'  => (int) $invoice->getKey(),
@@ -1488,9 +2025,11 @@ class WhatsAppBilling
         float $base,
         float $tax,
         float $total,
-        ?string $txnId = null
+        ?string $txnId = null,
+        string $paymentMethod = 'Online',
+        string $paymentStatus = 'Paid'
     ): void {
-        $issued = static::issueTaxInvoice($storeId, $itemName, $base, $tax, $total, $txnId);
+        $issued = static::issueTaxInvoice($storeId, $itemName, $base, $tax, $total, $txnId, $paymentMethod, $paymentStatus);
         if (!$issued) {
             return;
         }

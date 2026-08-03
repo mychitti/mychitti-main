@@ -1649,6 +1649,16 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::get('whatsapp-report', 'BusinessSettingsController@whatsapp_report')->name('whatsapp-report');
                 Route::get('whatsapp-lead-notifications', 'BusinessSettingsController@whatsapp_lead_notifications')->name('whatsapp-lead-notifications');
                 Route::post('whatsapp-lead-notifications-toggle', 'BusinessSettingsController@whatsapp_lead_notification_toggle')->name('whatsapp-lead-notifications-toggle');
+                // Admin selling the WhatsApp platform to a vendor: plans, onboarding fee, extra
+                // template slots and AI token top-ups, billed to the store or granted retail.
+                Route::get('whatsapp-vendor-billing', 'WhatsAppVendorBillingController@index')->name('whatsapp-vendor-billing');
+                Route::get('whatsapp-vendor-billing/{store}', 'WhatsAppVendorBillingController@show')->name('whatsapp-vendor-billing.show');
+                Route::post('whatsapp-vendor-billing/{store}/plan', 'WhatsAppVendorBillingController@plan')->name('whatsapp-vendor-billing.plan');
+                Route::post('whatsapp-vendor-billing/{store}/setup-fee', 'WhatsAppVendorBillingController@setupFee')->name('whatsapp-vendor-billing.setup-fee');
+                Route::post('whatsapp-vendor-billing/{store}/template-slots', 'WhatsAppVendorBillingController@templateSlots')->name('whatsapp-vendor-billing.template-slots');
+                Route::post('whatsapp-vendor-billing/{store}/tokens', 'WhatsAppVendorBillingController@tokens')->name('whatsapp-vendor-billing.tokens');
+                Route::post('whatsapp-vendor-billing/{store}/cancel', 'WhatsAppVendorBillingController@cancel')->name('whatsapp-vendor-billing.cancel');
+                Route::post('whatsapp-vendor-billing/{store}/platform-fee', 'WhatsAppVendorBillingController@platformFee')->name('whatsapp-vendor-billing.platform-fee');
                 Route::get('whatsapp-template-presets', 'BusinessSettingsController@whatsapp_presets')->name('whatsapp-template-presets');
                 Route::post('whatsapp-preset-save', 'BusinessSettingsController@whatsapp_preset_save')->name('whatsapp-preset-save');
                 Route::post('whatsapp-preset-toggle', 'BusinessSettingsController@whatsapp_preset_toggle')->name('whatsapp-preset-toggle');

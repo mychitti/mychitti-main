@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\AccountTransaction;
 use App\Models\BusinessSetting;
-use App\Models\Store;
 use App\Models\StoreWallet;
+use App\Services\PlatformFee;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +44,13 @@ class DeductPlatformFee extends Command
 
                     if ($alreadyDeducted) {
                         $this->line("⏭ Already deducted for vendor {$vendorId}");
+                        continue;
+                    }
+
+                    // Admin-granted free trial or lifetime waiver. A lapsed trial falls straight
+                    // through to the normal fee, which is the point of dating it.
+                    if (PlatformFee::isWaived($vendorId)) {
+                        $this->line("🎁 Waived for vendor {$vendorId}");
                         continue;
                     }
 

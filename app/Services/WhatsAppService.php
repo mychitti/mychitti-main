@@ -381,6 +381,69 @@ class WhatsAppService
         return $p;
     }
 
+    /**
+     * What a preset stores in btn_phone to mean "this vendor's own number".
+     *
+     * A preset is written once and submitted by every vendor on the platform, so a literal number
+     * in one would point all of their customers at a single phone. This token is resolved per
+     * vendor at the moment they submit the template — see presetCallButton().
+     */
+    const STORE_PHONE_TOKEN = '{store_phone}';
+
+    /**
+     * The call button a preset asks for, resolved for one store — or null when there isn't one,
+     * or when the store has no number to dial.
+     *
+     * Returning null rather than a button with an empty number is deliberate: Meta would reject
+     * the whole template, and losing the button is better than losing the submission.
+     */
+    public static function presetCallButton($preset, ?int $storeId): ?array
+    {
+        $phone = trim((string) ($preset->btn_phone ?? ''));
+        if ($phone === '') {
+            return null;
+        }
+
+        if ($phone === self::STORE_PHONE_TOKEN) {
+            $phone = trim((string) (DB::table('stores')->where('id', $storeId)->value('phone') ?? ''));
+        }
+
+        if (strlen(preg_replace('/[^0-9]/', '', $phone) ?? '') < 10) {
+            return null;
+        }
+
+        return [
+            'type'  => 'PHONE_NUMBER',
+            'text'  => trim((string) ($preset->btn_phone_text ?? '')) ?: 'Call now',
+            'phone' => $phone,
+        ];
+    }
+
+    /**
+     * Full international form with the leading '+', for a template's call button.
+     *
+     * Separate from normalizePhone(): a recipient address is sent as bare digits, but the
+     * phone_number on a PHONE_NUMBER button is shown to a reviewer and dialled by the handset, and
+     * Meta rejects it without the country code. A number the vendor already typed with a '+' or a
+     * country code is left as it is.
+     */
+    public static function e164(string $phone, string $defaultCountryCode = '91'): string
+    {
+        $digits = preg_replace('/[^0-9]/', '', $phone) ?? '';
+        if ($digits === '') {
+            return '';
+        }
+        // A landline written the way it is dialled at home — 080 1234 5678 — carries the national
+        // prefix, which must come off before the country code goes on or the number is nonsense.
+        if (strlen($digits) === 11 && $digits[0] === '0') {
+            $digits = substr($digits, 1);
+        }
+        if (strlen($digits) <= 10) {
+            $digits = $defaultCountryCode . $digits;
+        }
+        return '+' . $digits;
+    }
+
     protected function endpoint(): string
     {
         return sprintf(
@@ -735,8 +798,9 @@ class WhatsAppService
             $components[] = ['type' => 'FOOTER', 'text' => $footer];
         }
 
-        // Two button shapes: a link that opens a page, and a quick reply whose label comes back
-        // to the vendor as an inbound message. A row with no text is simply an unused slot.
+        // Three button shapes: a link that opens a page, a call button that dials a number, and a
+        // quick reply whose label comes back to the vendor as an inbound message. A row with no
+        // text is simply an unused slot.
         $btnDefs = [];
         foreach ($buttons as $btn) {
             $text = trim((string) ($btn['text'] ?? ''));
@@ -747,6 +811,12 @@ class WhatsAppService
 
             if ($type === 'URL' && !empty($btn['url'])) {
                 $btnDefs[] = ['type' => 'URL', 'text' => $text, 'url' => $btn['url']];
+            } elseif ($type === 'PHONE_NUMBER' && !empty($btn['phone'])) {
+                $btnDefs[] = [
+                    'type'         => 'PHONE_NUMBER',
+                    'text'         => $text,
+                    'phone_number' => self::e164($btn['phone'], $this->cfg['default_country_code'] ?? '91'),
+                ];
             } elseif ($type === 'QUICK_REPLY') {
                 $btnDefs[] = ['type' => 'QUICK_REPLY', 'text' => $text];
             }
@@ -905,6 +975,17 @@ class WhatsAppService
             if (!Schema::hasColumn('wa_template_presets', 'header_format')) {
                 DB::statement("ALTER TABLE `wa_template_presets` ADD COLUMN `header_format` VARCHAR(20) NULL AFTER `header`");
             }
+            // A "Call now" button. Usually holds the STORE_PHONE_TOKEN rather than a number: one
+            // preset is submitted by every vendor, and a literal number would have all of their
+            // customers ringing whoever the admin typed in.
+            foreach ([
+                'btn_phone'      => 'VARCHAR(30) NULL',
+                'btn_phone_text' => 'VARCHAR(60) NULL',
+            ] as $col => $def) {
+                if (!Schema::hasColumn('wa_template_presets', $col)) {
+                    DB::statement("ALTER TABLE `wa_template_presets` ADD COLUMN `{$col}` {$def} AFTER `btn_replies`");
+                }
+            }
             static::ensureStaffForwardPreset();
             static::ensureHmisPresets();
             static::repairHmisPresetBodies();
@@ -926,6 +1007,8 @@ class WhatsAppService
             `btn_text` VARCHAR(60) NULL,
             `btn_url` VARCHAR(500) NULL,
             `btn_replies` VARCHAR(200) NULL,
+            `btn_phone` VARCHAR(30) NULL,
+            `btn_phone_text` VARCHAR(60) NULL,
             `active` TINYINT(1) NOT NULL DEFAULT 1,
             `created_at` TIMESTAMP NULL,
             `updated_at` TIMESTAMP NULL,

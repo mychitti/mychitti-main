@@ -134,15 +134,21 @@ class InvoicePayments
 
         return max(0, round($total - self::paidFor($type, (int) $invoice->id), 2));
     }
-
+ 
     /** Every receipt raised against an invoice, oldest first. */
     public static function receiptsFor(string $type, int $invoiceId)
     {
         try {
             self::ensureTable();
 
+            $type = self::normalizeType($type);
+
+            // Lazy retry: if any earlier receipt failed its PDF build, try once more now that the
+            // invoice is being viewed/rendered again — the transient cause may have cleared.
+            self::regenerateMissingPdfs($type, $invoiceId);
+
             return DB::table('invoice_payments')
-                ->where('invoice_type', self::normalizeType($type))
+                ->where('invoice_type', $type)
                 ->where('invoice_id', $invoiceId)
                 ->orderBy('id')
                 ->get();
@@ -434,6 +440,48 @@ class InvoicePayments
         } catch (\Throwable $e) {
             Log::error('Receipt PDF build failed: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Retry PDF generation for any receipts on this invoice whose pdf column is still NULL.
+     *
+     * Called lazily from receiptsFor() so the fix happens the next time somebody views the bill —
+     * no separate cron or manual action required. Each receipt gets exactly one retry per page
+     * render; if it fails again the row stays as-is and will try once more next time.
+     */
+    protected static function regenerateMissingPdfs(string $type, int $invoiceId): void
+    {
+        try {
+            $missing = DB::table('invoice_payments')
+                ->where('invoice_type', $type)
+                ->where('invoice_id', $invoiceId)
+                ->whereNull('pdf')
+                ->get();
+
+            if ($missing->isEmpty()) {
+                return;
+            }
+
+            $invoice = self::find($type, $invoiceId);
+            if (!$invoice) {
+                return;
+            }
+
+            foreach ($missing as $payment) {
+                try {
+                    $pdf = self::buildReceiptPdf($payment, $invoice, $type);
+                    if ($pdf) {
+                        DB::table('invoice_payments')->where('id', $payment->id)
+                            ->update(['pdf' => $pdf['name'], 'updated_at' => now()]);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Receipt PDF retry failed for payment #' . $payment->id . ': ' . $e->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            // Never let a retry break the page that triggered it.
+            Log::warning('regenerateMissingPdfs failed: ' . $e->getMessage());
         }
     }
 

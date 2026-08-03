@@ -111,13 +111,20 @@
                                         @forelse ($templates as $tpl)
                                             @php
                                                 $st = strtoupper($tpl['status'] ?? '');
-                                                $bodyText = ''; $btnText = ''; $btnUrl = '';
+                                                $bodyText = ''; $btnText = ''; $btnUrl = ''; $btnPhone = ''; $btnPhoneText = '';
                                                 foreach (($tpl['components'] ?? []) as $cmp) {
                                                     if (($cmp['type'] ?? '') === 'BODY') {
                                                         $bodyText = $cmp['text'] ?? '';
                                                     } elseif (($cmp['type'] ?? '') === 'BUTTONS') {
+                                                        // First of each kind: Meta allows only one call button, and the
+                                                        // edit modal has one row to put each of them back into.
                                                         foreach (($cmp['buttons'] ?? []) as $b) {
-                                                            if (($b['type'] ?? '') === 'URL') { $btnText = $b['text'] ?? ''; $btnUrl = $b['url'] ?? ''; break; }
+                                                            $bType = $b['type'] ?? '';
+                                                            if ($bType === 'URL' && $btnUrl === '') {
+                                                                $btnText = $b['text'] ?? ''; $btnUrl = $b['url'] ?? '';
+                                                            } elseif ($bType === 'PHONE_NUMBER' && $btnPhone === '') {
+                                                                $btnPhoneText = $b['text'] ?? ''; $btnPhone = $b['phone_number'] ?? '';
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -144,14 +151,16 @@
                                                     <button type="button" class="btn btn-sm btn-outline-secondary wa-tpl-view"
                                                             data-name="{{ $tpl['name'] ?? '' }}" data-category="{{ $tpl['category'] ?? '' }}"
                                                             data-language="{{ $tpl['language'] ?? '' }}" data-status="{{ $st }}"
-                                                            data-body="{{ $bodyText }}" data-btntext="{{ $btnText }}" data-btnurl="{{ $btnUrl }}">
+                                                            data-body="{{ $bodyText }}" data-btntext="{{ $btnText }}" data-btnurl="{{ $btnUrl }}"
+                                                            data-btnphone="{{ $btnPhone }}" data-btnphonetext="{{ $btnPhoneText }}">
                                                         <i class="tio-visible-outlined"></i>
                                                     </button>
                                                     @if ($editable)
                                                         <button type="button" class="btn btn-sm btn-outline-primary wa-tpl-edit"
                                                                 data-id="{{ $tpl['id'] ?? '' }}" data-name="{{ $tpl['name'] ?? '' }}"
                                                                 data-category="{{ $tpl['category'] ?? '' }}" data-body="{{ $bodyText }}"
-                                                                data-btntext="{{ $btnText }}" data-btnurl="{{ $btnUrl }}">
+                                                                data-btntext="{{ $btnText }}" data-btnurl="{{ $btnUrl }}"
+                                                                data-btnphone="{{ $btnPhone }}" data-btnphonetext="{{ $btnPhoneText }}">
                                                             <i class="tio-edit"></i>
                                                         </button>
                                                     @endif
@@ -480,6 +489,7 @@
                                                 <select class="form-control form-control-sm tpl-btn-type" name="tpl_btn[{{ $b }}][type]">
                                                     <option value="">—</option>
                                                     <option value="URL">Link</option>
+                                                    <option value="PHONE_NUMBER">Call now</option>
                                                     <option value="QUICK_REPLY">Quick reply</option>
                                                 </select>
                                             </div>
@@ -493,11 +503,22 @@
                                                 <input type="url" class="form-control form-control-sm" name="tpl_btn[{{ $b }}][url]"
                                                        placeholder="https://example.com/book">
                                             </div>
+                                            <div class="col-5 tpl-btn-phone-wrap" style="display:none;">
+                                                <label class="form-label mb-1" style="font-size:12px;">Phone number</label>
+                                                <input type="tel" class="form-control form-control-sm tpl-btn-phone"
+                                                       name="tpl_btn[{{ $b }}][phone]" data-default="{{ $storePhone ?? '' }}"
+                                                       placeholder="+91 98765 43210">
+                                            </div>
                                         </div>
                                     @endfor
                                     <small class="text-muted d-block">
-                                        A <b>link</b> button opens a web page; a <b>quick reply</b> sends its label back to
-                                        you as a message, which is how a customer answers without typing.
+                                        A <b>link</b> button opens a web page; <b>call now</b> dials a number straight from
+                                        the chat; a <b>quick reply</b> sends its label back to you as a message, which is
+                                        how a customer answers without typing.
+                                    </small>
+                                    <small class="text-muted d-block mt-1">
+                                        Include the country code on a call number, and use at most one call button per
+                                        template — Meta rejects the rest.
                                     </small>
                                 </div>
 
@@ -617,6 +638,10 @@
                         <label class="form-label text-muted">Button</label>
                         <div class="border rounded p-2 text-primary"><i class="tio-link"></i> <span id="wavBtnText"></span> — <small id="wavBtnUrl" class="text-muted"></small></div>
                     </div>
+                    <div id="wavCallWrap" style="display:none;">
+                        <label class="form-label text-muted">Call button</label>
+                        <div class="border rounded p-2 text-primary"><i class="tio-call-talking"></i> <span id="wavCallText"></span> — <small id="wavCallNumber" class="text-muted"></small></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -682,6 +707,7 @@
                                     <select class="form-control form-control-sm tpl-btn-type" name="tpl_btn[{{ $b }}][type]">
                                         <option value="">—</option>
                                         <option value="URL">Link</option>
+                                        <option value="PHONE_NUMBER">Call now</option>
                                         <option value="QUICK_REPLY">Quick reply</option>
                                     </select>
                                 </div>
@@ -694,6 +720,12 @@
                                     <label class="form-label mb-1" style="font-size:12px;">URL</label>
                                     <input type="url" class="form-control form-control-sm" name="tpl_btn[{{ $b }}][url]"
                                            placeholder="https://example.com/book">
+                                </div>
+                                <div class="col-5 tpl-btn-phone-wrap" style="display:none;">
+                                    <label class="form-label mb-1" style="font-size:12px;">Phone number</label>
+                                    <input type="tel" class="form-control form-control-sm tpl-btn-phone"
+                                           name="tpl_btn[{{ $b }}][phone]" data-default="{{ $storePhone ?? '' }}"
+                                           placeholder="+91 98765 43210">
                                 </div>
                             </div>
                         @endfor
@@ -735,6 +767,8 @@
         $('#wavBody').text(d.body || '');
         if (d.btnurl) { $('#wavButtonWrap').show(); $('#wavBtnText').text(d.btntext); $('#wavBtnUrl').text(d.btnurl); }
         else { $('#wavButtonWrap').hide(); }
+        if (d.btnphone) { $('#wavCallWrap').show(); $('#wavCallText').text(d.btnphonetext || 'Call now'); $('#wavCallNumber').text(d.btnphone); }
+        else { $('#wavCallWrap').hide(); }
         $('#waTplViewModal').modal('show');
     });
     $(document).on('click', '.wa-tpl-edit', function () {
@@ -744,17 +778,26 @@
         $('#waeBody').val(d.body || '');
         $('#waeBtnText').val(d.btntext || ''); $('#waeBtnUrl').val(d.btnurl || '');
 
-        // Show the template's existing button in the editable rows, so saving does not silently
-        // drop it. Only a link button survives the round trip today — the list view carries
-        // btnurl/btntext and nothing about quick replies.
+        // Show the template's existing buttons in the editable rows, so saving does not silently
+        // drop them. Link and call buttons survive the round trip; quick replies still don't —
+        // the list view carries no labels for them.
         var $rows = $('#waTplEditModal').find('.tpl-btn-type');
         $rows.val('').trigger('change');
         $('#waTplEditModal').find('input[name^="tpl_btn"]').val('');
+
+        var slot = 0;
         if (d.btntext) {
-            $rows.eq(0).val(d.btnurl ? 'URL' : 'QUICK_REPLY').trigger('change');
-            var $row = $rows.eq(0).closest('.row');
+            $rows.eq(slot).val(d.btnurl ? 'URL' : 'QUICK_REPLY').trigger('change');
+            var $row = $rows.eq(slot).closest('.row');
             $row.find('input[name$="[text]"]').val(d.btntext);
             $row.find('input[name$="[url]"]').val(d.btnurl || '');
+            slot++;
+        }
+        if (d.btnphone && slot < $rows.length) {
+            $rows.eq(slot).val('PHONE_NUMBER').trigger('change');
+            var $prow = $rows.eq(slot).closest('.row');
+            $prow.find('input[name$="[text]"]').val(d.btnphonetext || 'Call now');
+            $prow.find('input[name$="[phone]"]').val(d.btnphone);
         }
 
         $('#waTplEditModal').modal('show');
@@ -796,9 +839,23 @@
         $('#tplHeaderMedia').toggle(v === 'IMAGE' || v === 'DOCUMENT' || v === 'VIDEO');
     });
 
-    // A URL is only meaningful on a link button; a quick reply just sends its own label back.
+    // Each button type needs a different second field: a link needs a URL, a call button needs a
+    // number, a quick reply needs neither — it just sends its own label back.
     $(document).on('change', '.tpl-btn-type', function () {
-        $(this).closest('.row').find('.tpl-btn-url-wrap').toggle($(this).val() === 'URL');
+        var type = $(this).val();
+        var $row = $(this).closest('.row');
+        $row.find('.tpl-btn-url-wrap').toggle(type === 'URL');
+        $row.find('.tpl-btn-phone-wrap').toggle(type === 'PHONE_NUMBER');
+
+        // Offer the store's own number the first time a call button is picked. Only when the
+        // field is still empty, so it never overwrites a number the vendor typed or one loaded
+        // from the template being edited.
+        if (type === 'PHONE_NUMBER') {
+            var $phone = $row.find('.tpl-btn-phone');
+            if (!$phone.val()) {
+                $phone.val($phone.data('default') || '');
+            }
+        }
     });
 
     // One-click Interested / Not interested. Writes into the same two button rows the vendor
@@ -814,6 +871,7 @@
             var $row = $(this).closest('.row');
             $row.find('input[name^="tpl_btn"][name$="[text]"]').val(labels[i]);
             $row.find('input[name^="tpl_btn"][name$="[url]"]').val('');
+            $row.find('input[name^="tpl_btn"][name$="[phone]"]').val('');
         });
     });
 
@@ -821,6 +879,9 @@
         var $form = $(this).closest('form');
         $form.find('.tpl-btn-type').val('').trigger('change');
         $form.find('input[name^="tpl_btn"]').val('');
+        // The edit modal's legacy hidden pair is the fallback the server reads when no row is
+        // filled — leaving it behind would silently put the old link button back on save.
+        $form.find('#waeBtnText, #waeBtnUrl').val('');
     });
 
     // Meta rejects a body that starts or ends with a variable (error_subcode 2388299).

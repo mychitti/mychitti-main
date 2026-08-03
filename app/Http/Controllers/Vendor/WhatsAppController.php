@@ -1006,9 +1006,10 @@ class WhatsAppController extends Controller
                 continue;
             }
             $buttons[] = [
-                'type' => $type,
-                'text' => $text,
-                'url'  => trim((string) ($row['url'] ?? '')),
+                'type'  => $type,
+                'text'  => $text,
+                'url'   => trim((string) ($row['url'] ?? '')),
+                'phone' => trim((string) ($row['phone'] ?? '')),
             ];
         }
 
@@ -1022,6 +1023,39 @@ class WhatsAppController extends Controller
         }
 
         return $buttons;
+    }
+
+    /**
+     * What Meta will refuse about this set of buttons, said in advance.
+     *
+     * Graph rejects a second call button (and a call button with no number) with a bare
+     * "Invalid parameter", which tells the vendor nothing about which of the two rows to fix.
+     * Mirrors templateBodyError(): checked before the submit, reported as a Toastr.
+     */
+    private function templateButtonError(array $buttons): ?string
+    {
+        $phoneButtons = array_values(array_filter($buttons, fn($b) => ($b['type'] ?? '') === 'PHONE_NUMBER'));
+
+        if (count($phoneButtons) > 1) {
+            return 'A template can carry only one "Call now" button. Remove one of them.';
+        }
+
+        foreach ($phoneButtons as $btn) {
+            if (($btn['phone'] ?? '') === '') {
+                return 'Enter the phone number the "Call now" button should dial.';
+            }
+            if (strlen(preg_replace('/[^0-9]/', '', $btn['phone']) ?? '') < 10) {
+                return 'That "Call now" number does not look complete — enter the full number including area or country code.';
+            }
+        }
+
+        foreach ($buttons as $btn) {
+            if (($btn['type'] ?? '') === 'URL' && ($btn['url'] ?? '') === '') {
+                return 'Enter the web address the link button should open.';
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1748,7 +1782,11 @@ class WhatsAppController extends Controller
             'slot_fee'  => WhatsAppBilling::withTax(WhatsAppBilling::extraTemplateFee()),
         ];
 
-        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'trashed', 'templateError', 'presets', 'apptReminder', 'quota'));
+        // Prefilled into a "Call now" button: a vendor adding one is almost always handing out
+        // their own line, and a number typed without a country code is what Meta rejects.
+        $storePhone = (string) (DB::table('stores')->where('id', $storeId)->value('phone') ?? '');
+
+        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'trashed', 'templateError', 'presets', 'apptReminder', 'quota', 'storePhone'));
     }
 
     // Vendor picks how many hours before the appointment the reminder goes out (0 = off).
@@ -1805,6 +1843,11 @@ class WhatsAppController extends Controller
         $buttons = [];
         if ($preset->btn_text && $preset->btn_url) {
             $buttons[] = ['text' => $preset->btn_text, 'url' => $preset->btn_url];
+        }
+        // A call button on a preset almost always means "ring this vendor", so the number is
+        // resolved per store at submit time rather than baked into the preset.
+        if ($call = WhatsAppService::presetCallButton($preset, Helpers::get_store_id())) {
+            $buttons[] = $call;
         }
         // Quick replies come back as their own label when tapped, which is what makes a preset
         // able to ask a question rather than only link somewhere.
@@ -1890,6 +1933,11 @@ class WhatsAppController extends Controller
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
         $buttons = $this->templateButtons($request);
 
+        if ($buttonError = $this->templateButtonError($buttons)) {
+            Toastr::error($buttonError);
+            return back()->withInput();
+        }
+
         $header = $this->templateHeader($request, $wa);
         if ($header === false) {
             return back()->withInput();
@@ -1943,9 +1991,16 @@ class WhatsAppController extends Controller
         }
 
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
-        $buttons = [];
-        if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
-            $buttons[] = ['text' => trim((string) $request->tpl_btn_text), 'url' => trim((string) $request->tpl_btn_url)];
+
+        // The same rows the create form posts. This used to read only the legacy single-URL
+        // hidden fields, so anything the vendor typed into the visible button rows on the edit
+        // modal — a quick reply, a call button — was silently thrown away on save.
+        // templateButtons() still falls back to those hidden fields when the rows are empty.
+        $buttons = $this->templateButtons($request);
+
+        if ($buttonError = $this->templateButtonError($buttons)) {
+            Toastr::error($buttonError);
+            return back()->withInput();
         }
 
         $res = $wa->updateTemplate(
