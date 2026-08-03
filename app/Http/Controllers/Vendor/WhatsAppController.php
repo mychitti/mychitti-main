@@ -568,6 +568,7 @@ class WhatsAppController extends Controller
      */
     public function bulkSend(Request $request)
     {
+        echo 'f';
         $request->validate([
             'template'     => 'required|string',
             'language'     => 'required|string',
