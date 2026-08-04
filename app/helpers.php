@@ -5219,6 +5219,83 @@ if (!function_exists('_sellingPriceConversionFactor')) {
     }
 }
 if (!function_exists('_normalizeSellingPriceToBase')) {
+    /**
+     * How many times the selling price a purchase price may reach before it is treated as a unit
+     * mistake rather than a business decision. Deliberately generous: genuine clearance sales run
+     * under cost, and the error this catches is off by a factor of ten or more.
+     */
+    if (!defined('_INV_PRICE_SANITY_MULTIPLE')) {
+        define('_INV_PRICE_SANITY_MULTIPLE', 5);
+    }
+
+    /**
+     * What is wrong with the prices about to be saved on an item, said before they are.
+     *
+     * Both checks exist because of the same failure: a bag price typed into a per-kg field. The
+     * item then costs twenty-odd times what it really does, every sale of it reports a loss, and
+     * nothing says so until somebody reads a Profit & Loss months later — by which time every
+     * historical line has been costed wrong and needs revaluing by hand.
+     *
+     * Takes the values ALREADY normalised to the base unit, so it judges what will actually be
+     * stored rather than what was typed.
+     *
+     * Returns the problem, or null when the prices are plausible.
+     */
+    function _inventoryPriceProblem(
+        $landing,
+        $selling,
+        $basis = 'primary',
+        $primary_qty = null,
+        $secondary_qty = null,
+        $secondary_unit = null,
+        $mrp = null
+    ): ?string {
+        $landing = (float) $landing;
+        $selling = (float) $selling;
+        $mrp     = (float) $mrp;
+
+        // Priced per the alternate unit, but the conversion between the two units was never set —
+        // so "per bag" divides by one and stores the bag price as the kg price. Caught first
+        // because it is the cause, and the ratio below is only its symptom.
+        if ($basis === 'secondary' && $secondary_unit) {
+            $factor = _sellingPriceConversionFactor($primary_qty, $secondary_qty);
+            if ($factor == 1.0) {
+                return 'Prices are set per the alternate unit, but the conversion between the two units is missing '
+                    . '(it currently reads 1 = 1). Fill in the real conversion under Multi-UOM Setup — for example '
+                    . '25 kg = 1 bag — or switch "Prices are per" back to the base unit and enter base-unit prices.';
+            }
+        }
+
+        // MRP is the ceiling — the most this may legally be sold for. Selling above it, or having
+        // bought above it, is never a pricing decision; it means one of the three figures was
+        // typed in a different unit from the others, which is the same mistake the ratio check
+        // below catches from the other end. Skipped when MRP is blank, which is legitimate for
+        // items that have no printed retail price.
+        if ($mrp > 0 && $selling > $mrp) {
+            return 'Selling price (' . _price($selling) . ') is higher than the MRP (' . _price($mrp)
+                . '). MRP is the maximum an item may be sold for, so one of the two is wrong — check that '
+                . 'both are entered per the same unit.';
+        }
+
+        if ($mrp > 0 && $landing > $mrp) {
+            return 'Purchase price (' . _price($landing) . ') is higher than the MRP (' . _price($mrp)
+                . '), which would mean buying above the maximum retail price. Check that both are entered '
+                . 'per the same unit.';
+        }
+
+        // A purchase price several times the selling price is a unit mistake, not a business
+        // decision. Selling a little under cost is real and must stay allowed — that is a
+        // clearance sale, and budgeting for it is the vendor's business, not ours.
+        if ($selling > 0 && $landing > $selling * _INV_PRICE_SANITY_MULTIPLE) {
+            return 'Purchase price (' . _price($landing) . ') is more than '
+                . _INV_PRICE_SANITY_MULTIPLE . ' times the selling price (' . _price($selling)
+                . '). This usually means the price of a whole bag or box was entered against a single '
+                . 'unit. Check "Prices are per" and the Multi-UOM conversion before saving.';
+        }
+
+        return null;
+    }
+
     // The vendor may enter the selling price per alternate unit (e.g. "120 per tray").
     // selling_price is always stored per base unit (e.g. per kg) so all POS / billing / report
     // logic stays unchanged. When the basis is the alternate unit we divide by the conversion factor.

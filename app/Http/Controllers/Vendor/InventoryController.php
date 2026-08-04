@@ -1330,6 +1330,22 @@ class InventoryController extends Controller
         $sp_basis = $request->selling_price_basis === 'secondary' ? 'secondary' : 'primary';
         $inventory_item->selling_price = _normalizeSellingPriceToBase($request->main_selling_price, $sp_basis, $request->primary_qty, $secondary_qty);
         $inventory_item->selling_price_basis = $sp_basis;
+
+        // Checked on the normalised figures, so it judges what will actually be stored. A bag
+        // price saved against a per-kg item costs every future sale of it wrong, and the report
+        // that reveals it is read months later.
+        if ($priceProblem = _inventoryPriceProblem(
+            $inventory_item->landing_price,
+            $inventory_item->selling_price,
+            $sp_basis,
+            $request->primary_qty,
+            $secondary_qty,
+            $secondary_unit,
+            $inventory_item->mrp
+        )) {
+            Toastr::error($priceProblem);
+            return back()->withInput();
+        }
         $inventory_item->storage_unit_id = $request->storage_unit_id;
         $inventory_item->description = $request->description;
         $inventory_item->description_attributes = $this->buildDescriptionAttributes($request);
@@ -1575,6 +1591,21 @@ class InventoryController extends Controller
             $sp_basis = $request->selling_price_basis === 'secondary' ? 'secondary' : 'primary';
             $inventory_item->selling_price = _normalizeSellingPriceToBase($request->main_selling_price, $sp_basis, $request->primary_qty, $secondary_qty);
             $inventory_item->selling_price_basis = $sp_basis;
+
+            // Same gate as the create path — an edit can introduce the mistake just as easily.
+            if ($priceProblem = _inventoryPriceProblem(
+                $inventory_item->landing_price,
+                $inventory_item->selling_price,
+                $sp_basis,
+                $request->primary_qty,
+                $secondary_qty,
+                $secondary_unit,
+                $inventory_item->mrp
+            )) {
+                Toastr::error($priceProblem);
+                return back()->withInput();
+            }
+
             $inventory_item->storage_unit_id = $request->storage_unit_id;
             $inventory_item->description = $request->description;
             $inventory_item->description_attributes = $this->buildDescriptionAttributes($request);
