@@ -162,6 +162,40 @@ class WhatsAppService
     ];
 
     /**
+     * The jobs that send from the VENDOR's own number, and the template each one needs.
+     *
+     * A role is a contract, not a name. The automation fills the body by position, so a template
+     * can only stand in for a role if it takes exactly these variables in exactly this order —
+     * bind one with a different shape and the customer is greeted with the store's name, or the
+     * send fails outright on a parameter count Meta will not accept.
+     *
+     * `default` is the template the platform suggests and seeds as a preset. It is a starting
+     * point, not a requirement: a vendor may delete it and use their own wording, which is the
+     * whole reason bindings exist. Anything sent from the PLATFORM number (lead alerts, the test
+     * message) is deliberately absent — those are ours, not the vendor's, and are not bindable.
+     */
+    const TEMPLATE_ROLES = [
+        'welcome' => [
+            'label'   => 'Customer welcome',
+            'default' => self::DEFAULT_WELCOME_TEMPLATE,
+            'params'  => ['Customer name', 'Store name'],
+            'blurb'   => 'Sent once when a new customer is added to your customer book.',
+        ],
+        'appt_reminder' => [
+            'label'   => 'Appointment reminder',
+            'default' => self::DEFAULT_APPT_REMINDER_TEMPLATE,
+            'params'  => ['Patient name', 'Clinic name', 'Date', 'Time'],
+            'blurb'   => 'Sent before a booked appointment, on the schedule set in your reminder settings.',
+        ],
+        'staff_forward' => [
+            'label'   => 'Forward chat to staff',
+            'default' => 'staff_forward',
+            'params'  => ['Store name', 'Sender name', 'Sender phone', 'Message'],
+            'blurb'   => 'Sent to a staff member when you forward a customer chat to them.',
+        ],
+    ];
+
+    /**
      * Templates the vendor has trashed. The template itself stays at Meta — approved and still
      * occupying one of their slots — so this is only about hiding it from the working list.
      * That is what makes Restore instant: nothing was deleted, so nothing needs re-approving.
@@ -1449,8 +1483,13 @@ class WhatsAppService
             }
 
             static::ensurePresetsTable();
-            $preset = DB::table('wa_template_presets')->where('name', self::DEFAULT_WELCOME_TEMPLATE)->first();
-            $lang = $preset->language ?? 'en_US';
+            // Whichever template this store uses as its welcome — the suggested one, or their own
+            // if they replaced it. Null means they have neither, so there is nothing to send.
+            $tpl = static::templateFor($storeId, 'welcome');
+            if (!$tpl) {
+                static::noteMissingTemplate($storeId, 'welcome');
+                return;
+            }
             $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
 
             // Body vars: {{1}} customer name, {{2}} store name.
@@ -1462,7 +1501,7 @@ class WhatsAppService
                 ),
             ]];
 
-            $wa->sendTemplate($phone, self::DEFAULT_WELCOME_TEMPLATE, $lang, $components, 'welcome');
+            $wa->sendTemplate($phone, $tpl['name'], $tpl['language'], $components, 'welcome');
         } catch (\Throwable $e) {
             Log::warning('WA welcome send skipped: ' . $e->getMessage());
         }
@@ -2034,8 +2073,267 @@ class WhatsAppService
         }
     }
 
+    /* ------------------------------------------------------- template bindings */
+
+    /** Which of the store's own templates fulfils each automated role. */
+    public static function ensureBindingsTable(): void
+    {
+        if (Schema::hasTable('wa_template_bindings')) {
+            return;
+        }
+
+        DB::statement("CREATE TABLE `wa_template_bindings` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `store_id` BIGINT NOT NULL,
+            `role` VARCHAR(40) NOT NULL,
+            `template_name` VARCHAR(190) NOT NULL,
+            `language` VARCHAR(20) NOT NULL DEFAULT 'en_US',
+            `created_at` TIMESTAMP NULL,
+            `updated_at` TIMESTAMP NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `wa_tb_store_role` (`store_id`, `role`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    /** Every binding this store has made, keyed by role. */
+    public static function templateBindings(int $storeId): array
+    {
+        static::ensureBindingsTable();
+
+        return DB::table('wa_template_bindings')
+            ->where('store_id', $storeId)
+            ->get()
+            ->keyBy('role')
+            ->all();
+    }
+
+    /** How many positional variables a role's template must carry. */
+    public static function roleParamCount(string $role): int
+    {
+        return count(self::TEMPLATE_ROLES[$role]['params'] ?? []);
+    }
+
+    /**
+     * The template to send for one automated role: the store's binding if it has made one, else
+     * the platform default — but only when that default actually exists on their WABA.
+     *
+     * Returns null when there is nothing sendable, and the caller must treat that as "skip and
+     * tell somebody" rather than pressing on with a guess. A vendor who deleted the suggested
+     * template and wrote their own is the ordinary case this exists for: we cannot know which of
+     * their templates means "welcome", so we ask them once and remember the answer.
+     */
+    public static function templateFor(int $storeId, string $role): ?array
+    {
+        if (!isset(self::TEMPLATE_ROLES[$role])) {
+            return null;
+        }
+
+        static::ensureBindingsTable();
+        $binding = DB::table('wa_template_bindings')
+            ->where('store_id', $storeId)->where('role', $role)->first();
+
+        $name = $binding->template_name ?? self::TEMPLATE_ROLES[$role]['default'];
+
+        // A binding can rot the same way the default did — the vendor may delete the template it
+        // points at — so existence is checked either way rather than trusted.
+        if (!static::templateExists($storeId, $name)) {
+            return null;
+        }
+
+        return [
+            'name'     => $name,
+            'language' => static::templateLanguage($storeId, $name, $binding->language ?? null),
+            'bound'    => (bool) $binding,
+        ];
+    }
+
+    /** Is a template of this name on the store's WABA at all, in any language? */
+    public static function templateExists(int $storeId, string $name): bool
+    {
+        $statuses = static::templateStatuses($storeId);
+
+        // An unreadable list must not be read as "deleted" — a Graph blip would silently stop
+        // every automated message. Assume it is there and let the send report the truth.
+        return $statuses === [] || isset($statuses[strtolower($name)]);
+    }
+
+    /** Point a role at one of the store's templates. */
+    public static function bindTemplate(int $storeId, string $role, string $name, string $language): void
+    {
+        static::ensureBindingsTable();
+
+        DB::table('wa_template_bindings')->updateOrInsert(
+            ['store_id' => $storeId, 'role' => $role],
+            [
+                'template_name' => $name,
+                'language'      => $language ?: 'en_US',
+                'updated_at'    => now(),
+                'created_at'    => now(),
+            ]
+        );
+
+        static::clearMissingTemplate($storeId, $role);
+    }
+
+    /** Drop a binding, falling the role back to the platform default. */
+    public static function unbindTemplate(int $storeId, string $role): void
+    {
+        static::ensureBindingsTable();
+        DB::table('wa_template_bindings')->where('store_id', $storeId)->where('role', $role)->delete();
+    }
+
+    /**
+     * Record that a role had no usable template when something tried to send it.
+     *
+     * Without this the failure is invisible: a vendor who deletes the suggested template simply
+     * stops receiving welcomes, nothing errors anywhere a human looks, and it is found weeks
+     * later by reading an inbox. The flag is what the setup screen reads to say which roles are
+     * broken, and is cleared the moment one is bound.
+     */
+    public static function noteMissingTemplate(int $storeId, string $role): void
+    {
+        try {
+            Cache::put('wa_tpl_missing_' . $storeId . '_' . $role, now()->toDateTimeString(), 86400 * 30);
+            Log::warning('WhatsApp automation has no template for a role', [
+                'store' => $storeId,
+                'role'  => $role,
+            ]);
+        } catch (\Throwable $e) {
+            // Never let bookkeeping break a send path.
+        }
+    }
+
+    /** When this role last had nothing to send, or null if it has been fine. */
+    public static function missingTemplateSince(int $storeId, string $role): ?string
+    {
+        try {
+            return Cache::get('wa_tpl_missing_' . $storeId . '_' . $role);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    public static function clearMissingTemplate(int $storeId, string $role): void
+    {
+        try {
+            Cache::forget('wa_tpl_missing_' . $storeId . '_' . $role);
+        } catch (\Throwable $e) {
+            // Nothing to do.
+        }
+    }
+
+    /**
+     * Days Meta reserves a deleted template's NAME before it can be used again.
+     *
+     * This is the trap behind most "just re-create it" advice: deleting `customer_welcome` does
+     * not free the name, so the obvious fix is unavailable for a month and the vendor is left
+     * with automation that cannot be repaired by re-creating what they had. Binding a different
+     * template to the role is the only same-day fix — see TEMPLATE_ROLES.
+     */
+    const TEMPLATE_NAME_LOCK_DAYS = 30;
+
+    /**
+     * Alternative names for a template whose own name is locked, so a vendor who has just
+     * deleted one is not left guessing at something Meta will accept.
+     *
+     * Meta only allows lowercase letters, numbers and underscores, so every suggestion is
+     * already in that shape. Anything the store still has is filtered out — offering a name
+     * that is taken is as useless as offering the locked one.
+     */
+    public static function suggestTemplateNames(string $base, array $taken = []): array
+    {
+        $base = strtolower(preg_replace('/[^a-z0-9_]/i', '_', $base) ?? $base);
+        $base = trim(preg_replace('/_+/', '_', $base) ?? $base, '_') ?: 'template';
+
+        // Strip a trailing version marker so v2 does not become v2_v2 on the second attempt.
+        $stem = preg_replace('/_(v\d+|\d+|new|updated)$/', '', $base) ?: $base;
+        $year = now()->year;
+
+        $candidates = [
+            $stem . '_v2',
+            $stem . '_' . $year,
+            $stem . '_new',
+            'my_' . $stem,
+            $stem . '_v3',
+        ];
+
+        $taken = array_map('strtolower', $taken);
+        $out = [];
+        foreach ($candidates as $candidate) {
+            $candidate = mb_substr($candidate, 0, 60);
+            if ($candidate !== $base && !in_array($candidate, $taken, true) && !in_array($candidate, $out, true)) {
+                $out[] = $candidate;
+            }
+        }
+
+        return array_slice($out, 0, 4);
+    }
+
     /** Header formats that carry a file rather than text, and so need media at send time. */
     const MEDIA_HEADERS = ['IMAGE', 'VIDEO', 'DOCUMENT'];
+
+    /**
+     * The language this template is actually approved in on THIS store's WABA.
+     *
+     * The preset table says what language the platform blueprint was written in, but the vendor
+     * is the one who submitted the template to Meta, and Meta stores a template per language. Ask
+     * for a locale the vendor did not create and Graph answers
+     * "(#132001) Template name does not exist in the translation" — the template exists, just not
+     * in the language requested. So the preset's language is a preference, never an assertion.
+     *
+     * Prefers an exact match on $preferred, then any APPROVED language, then whatever exists.
+     * Falls back to $preferred unchanged when the list cannot be read, so a Graph outage behaves
+     * exactly as it did before rather than silently switching language.
+     */
+    public static function templateLanguage(int $storeId, string $name, ?string $preferred = null): string
+    {
+        $fallback = $preferred ?: 'en_US';
+
+        try {
+            $key = 'wa_tpl_lang_' . $storeId . '_' . md5(strtolower($name . '|' . $fallback));
+            return Cache::remember($key, 600, function () use ($storeId, $name, $fallback) {
+                $wa = static::make($storeId);
+                if ($wa->source() !== 'vendor' || !$wa->hasWaba()) {
+                    return $fallback;
+                }
+
+                $res = $wa->listTemplates();
+                if (!$res['success']) {
+                    return $fallback;
+                }
+
+                $languages = [];
+                foreach ($res['data'] as $tpl) {
+                    if (strtolower((string) data_get($tpl, 'name')) !== strtolower($name)) {
+                        continue;
+                    }
+                    $languages[] = [
+                        'language' => (string) data_get($tpl, 'language', ''),
+                        'approved' => strtoupper((string) data_get($tpl, 'status')) === 'APPROVED',
+                    ];
+                }
+
+                if (!$languages) {
+                    return $fallback;
+                }
+
+                foreach ($languages as $row) {
+                    if (strtolower($row['language']) === strtolower($fallback)) {
+                        return $row['language'];
+                    }
+                }
+                foreach ($languages as $row) {
+                    if ($row['approved'] && $row['language'] !== '') {
+                        return $row['language'];
+                    }
+                }
+
+                return $languages[0]['language'] ?: $fallback;
+            });
+        } catch (\Throwable $e) {
+            return $fallback;
+        }
+    }
 
     /**
      * The header format Meta approved this template with: TEXT, IMAGE, VIDEO, DOCUMENT, or null

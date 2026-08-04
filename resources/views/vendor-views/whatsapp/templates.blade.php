@@ -388,7 +388,13 @@
                                 <div class="form-group">
                                     <label class="form-label">Template Name</label>
                                     <input type="text" class="form-control" name="tpl_name" placeholder="order_reminder" required>
-                                    <small class="text-muted">Lowercase letters, numbers and underscores only.</small>
+                                    <small class="text-muted">
+                                        Lowercase letters, numbers and underscores only.
+                                        If you deleted a template, WhatsApp reserves that name for
+                                        {{ \App\Services\WhatsAppService::TEMPLATE_NAME_LOCK_DAYS }} days —
+                                        re-use it before then and it will be rejected, so add a suffix
+                                        like <code>_v2</code> or <code>_{{ now()->year }}</code>.
+                                    </small>
                                 </div>
                                 <div class="row">
                                     <div class="col-7">

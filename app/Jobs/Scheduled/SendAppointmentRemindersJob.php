@@ -105,9 +105,13 @@ class SendAppointmentRemindersJob implements ShouldQueue
             return;
         }
 
-        $preset = WhatsAppService::templatePresets(false)
-            ->firstWhere('name', WhatsAppService::DEFAULT_APPT_REMINDER_TEMPLATE);
-        $lang = $preset->language ?? 'en_US';
+        // Whichever template this store uses for reminders — the suggested one, or their own if
+        // they replaced it. Null means neither exists, so there is nothing to send today.
+        $tpl = WhatsAppService::templateFor((int) $store->id, 'appt_reminder');
+        if (!$tpl) {
+            WhatsAppService::noteMissingTemplate((int) $store->id, 'appt_reminder');
+            return;
+        }
 
         // Appointments already reminded, in one query.
         $contexts = $appointments->map(fn($a) => "appt reminder:{$a->id}")->all();
@@ -150,7 +154,7 @@ class SendAppointmentRemindersJob implements ShouldQueue
                 ),
             ]];
 
-            $wa->sendTemplate($patient->phone, WhatsAppService::DEFAULT_APPT_REMINDER_TEMPLATE, $lang, $components, $context);
+            $wa->sendTemplate($patient->phone, $tpl['name'], $tpl['language'], $components, $context);
         }
     }
 }

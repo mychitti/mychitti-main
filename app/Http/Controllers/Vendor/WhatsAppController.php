@@ -329,7 +329,10 @@ class WhatsAppController extends Controller
         $message     = trim((string) $request->message);
 
         WhatsAppService::ensurePresetsTable();
-        $lang = DB::table('wa_template_presets')->where('name', 'staff_forward')->value('language') ?: 'en_US';
+        $tpl = WhatsAppService::templateFor($storeId, 'staff_forward');
+        if (!$tpl) {
+            WhatsAppService::noteMissingTemplate($storeId, 'staff_forward');
+        }
 
         // Body vars: {{1}} store, {{2}} sender name, {{3}} phone, {{4}} message.
         $params = array_map(fn($v) => $this->sanitizeParam((string) $v), [$storeName, $senderName, $senderPhone, $message]);
@@ -338,7 +341,11 @@ class WhatsAppController extends Controller
             'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => $v], $params),
         ]];
 
-        $res  = $wa->sendTemplate($staff->phone, 'staff_forward', $lang, $components, 'forward to staff');
+        // No template is not fatal here — the free-text fallback below still reaches a staff
+        // member who has messaged the store in the last 24h.
+        $res  = $tpl
+            ? $wa->sendTemplate($staff->phone, $tpl['name'], $tpl['language'], $components, 'forward to staff')
+            : ['success' => false, 'error' => null];
         $sent = !empty($res['success']);
 
         // Free-text fallback mirrors the template and keeps the message's own line breaks.
@@ -791,6 +798,136 @@ class WhatsAppController extends Controller
             'skipped' => $skipped,
             'results' => $results,
         ]);
+    }
+
+    /**
+     * Which of the store's own templates each automation should use.
+     *
+     * The platform suggests a template per role and seeds it as a preset, but the vendor owns
+     * their WABA — they can delete the suggestion and write their own wording, which is exactly
+     * what breaks automation silently. This screen is where they say which template means
+     * "welcome", so the job has something to send.
+     */
+    public function templateRoles(Request $request)
+    {
+        $storeId = Helpers::get_store_id();
+        $wa = WhatsAppService::make($storeId);
+
+        $available = [];
+        $listError = null;
+        if ($wa->source() === 'vendor' && $wa->hasWaba()) {
+            $res = $wa->listTemplates();
+            if (!$res['success']) {
+                $listError = $res['error'];
+            }
+            // Only APPROVED templates can actually be sent, so offering anything else would be
+            // offering a choice that fails at send time.
+            foreach ($res['data'] as $tpl) {
+                if (strtoupper((string) data_get($tpl, 'status')) !== 'APPROVED') {
+                    continue;
+                }
+                $body = '';
+                foreach ((array) data_get($tpl, 'components', []) as $c) {
+                    if (strtoupper((string) data_get($c, 'type')) === 'BODY') {
+                        $body = (string) data_get($c, 'text', '');
+                    }
+                }
+                $available[] = [
+                    'name'     => (string) data_get($tpl, 'name'),
+                    'language' => (string) data_get($tpl, 'language', 'en_US'),
+                    'body'     => $body,
+                    'vars'     => WhatsAppService::positionalCount($body),
+                ];
+            }
+        }
+
+        $bindings = WhatsAppService::templateBindings($storeId);
+
+        // A role can only be filled by a template that takes exactly its variables, in order —
+        // the automation fills the body by position, so a mismatched template either fails on
+        // parameter count or puts the store's name where the customer's should be.
+        $roles = [];
+        foreach (WhatsAppService::TEMPLATE_ROLES as $role => $meta) {
+            $need = count($meta['params']);
+            $roles[$role] = $meta + [
+                'key'      => $role,
+                'need'     => $need,
+                'current'  => $bindings[$role]->template_name ?? null,
+                'resolved' => WhatsAppService::templateFor($storeId, $role),
+                'missing'  => WhatsAppService::missingTemplateSince($storeId, $role),
+                'options'  => array_values(array_filter($available, fn($t) => $t['vars'] === $need)),
+                'rejected' => array_values(array_filter($available, fn($t) => $t['vars'] !== $need)),
+                // Meta reserves a deleted template's name for a month, so a broken role usually
+                // cannot be fixed by re-creating what was deleted. Offer names that will work.
+                'suggested' => WhatsAppService::suggestTemplateNames(
+                    $meta['default'],
+                    array_column($available, 'name')
+                ),
+            ];
+        }
+
+        return view('vendor-views.whatsapp.template-roles', [
+            'roles'     => $roles,
+            'connected' => $wa->source() === 'vendor',
+            'listError' => $listError,
+            'lockDays'  => WhatsAppService::TEMPLATE_NAME_LOCK_DAYS,
+        ]);
+    }
+
+    /**
+     * Which automated messages this template was the last one standing for — the roles that stop
+     * working the moment it is gone. Read after a delete, so the vendor is told at the moment
+     * they break it rather than by noticing months of silence.
+     */
+    private function rolesLeftWithout(int $storeId, string $name): array
+    {
+        WhatsAppService::forgetTemplateStatuses($storeId);
+
+        $orphaned = [];
+        foreach (WhatsAppService::TEMPLATE_ROLES as $role => $meta) {
+            $bound = WhatsAppService::templateBindings($storeId)[$role]->template_name ?? $meta['default'];
+            if (strtolower($bound) !== strtolower($name)) {
+                continue;
+            }
+            if (!WhatsAppService::templateFor($storeId, $role)) {
+                $orphaned[] = strtolower($meta['label']);
+            }
+        }
+
+        return $orphaned;
+    }
+
+    /** Point one role at one of the store's approved templates, or clear it. */
+    public function templateRoleSave(Request $request)
+    {
+        $request->validate([
+            'role'     => 'required|in:' . implode(',', array_keys(WhatsAppService::TEMPLATE_ROLES)),
+            'template' => 'nullable|string|max:190',
+            'language' => 'nullable|string|max:20',
+        ]);
+
+        $storeId = Helpers::get_store_id();
+        $role    = $request->role;
+
+        if (!$request->filled('template')) {
+            WhatsAppService::unbindTemplate($storeId, $role);
+            Toastr::success('Reset to the suggested template for ' . WhatsAppService::TEMPLATE_ROLES[$role]['label'] . '.');
+            return back();
+        }
+
+        // Re-check the variable count server-side — the dropdown filters it, but a hand-posted
+        // form must not be able to bind a template that would misfill the message.
+        $body = WhatsAppService::templateBodyText($storeId, $request->template, $request->language);
+        $need = WhatsAppService::roleParamCount($role);
+        if ($body !== null && WhatsAppService::positionalCount($body) !== $need) {
+            Toastr::error('That template needs ' . WhatsAppService::positionalCount($body) . ' value(s), but this message sends '
+                . $need . '. Pick a template with exactly ' . $need . '.');
+            return back();
+        }
+
+        WhatsAppService::bindTemplate($storeId, $role, $request->template, $request->language ?: 'en_US');
+        Toastr::success(WhatsAppService::TEMPLATE_ROLES[$role]['label'] . ' will now use ' . $request->template . '.');
+        return back();
     }
 
     /**
@@ -2153,7 +2290,16 @@ class WhatsAppController extends Controller
             WhatsAppService::ensureTrashTable();
             DB::table('wa_trashed_templates')
                 ->where('store_id', $storeId)->where('name', $name)->delete();
-            Toastr::success('Template permanently deleted. That slot is free again.');
+            Toastr::success('Template permanently deleted. That slot is free again, but the NAME "'
+                . $name . '" is reserved by Meta for ' . WhatsAppService::TEMPLATE_NAME_LOCK_DAYS
+                . ' days — a new template must use a different name.');
+
+            // Deleting the template an automation depends on stops those messages dead, and
+            // nothing else would say so — the sends simply stop and are noticed weeks later.
+            if ($orphaned = $this->rolesLeftWithout($storeId, $name)) {
+                Toastr::warning('That template was sending your ' . implode(' and ', $orphaned)
+                    . ' messages. They have stopped — create a replacement and pick it under Automatic Messages.');
+            }
         } else {
             Toastr::error('Delete failed: ' . $res['error']);
         }

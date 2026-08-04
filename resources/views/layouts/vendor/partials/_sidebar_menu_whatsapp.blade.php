@@ -52,6 +52,12 @@
                 <span class="text-truncate">{{ translate('Message Templates') }}</span>
             </a>
         </li>
+        <li class="nav-item {{ Request::is('*whatsapp/template-roles*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.template-roles') }}" title="{{ translate('Automatic Message Templates') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Automatic Messages') }}</span>
+            </a>
+        </li>
         <li class="nav-item {{ Request::is('*whatsapp/knowledge*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.knowledge') }}" title="{{ translate('Auto-Reply Knowledge') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
