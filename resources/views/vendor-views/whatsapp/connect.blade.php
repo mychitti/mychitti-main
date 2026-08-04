@@ -560,6 +560,16 @@
                                             <div class="text-muted text-center p-3" style="font-size:13px;">Loading clients…</div>
                                         </div>
                                         <small id="wb-truncated" class="text-muted" style="display:none;"></small>
+                                        {{-- Same note as the MyChitti tab carries. Each tab has to state its
+                                             own rate: the two are priced differently, and a vendor picking
+                                             customers here should not have to open the other tab to find out
+                                             what this one costs. --}}
+                                        <small class="d-block mt-2" style="font-size:11px;">
+                                            <b>{{ _price($rates['own']) }}</b> per customer, GST included
+                                            <span class="text-muted">
+                                                — against {{ _price($rates['platform']) }} to reach a MyChitti user.
+                                            </span>
+                                        </small>
                                     </div>
 
                                     <div id="wb-pane-platform" style="display:none;">
@@ -588,6 +598,15 @@
                                                     received {{ \App\Http\Controllers\Vendor\WhatsAppController::NEARBY_MONTHLY_CAP }}
                                                     offers from any business this month is excluded automatically, so the
                                                     number moves as other vendors send.
+                                                </small>
+                                                {{-- The rate belongs next to the box that spends it. Reaching a MyChitti
+                                                     user costs more than messaging your own customer, and the vendor was
+                                                     typing a count with no price in front of them. --}}
+                                                <small class="d-block mt-1" style="font-size:11px;">
+                                                    <b>{{ _price($rates['platform']) }}</b> per MyChitti user, GST included
+                                                    <span class="text-muted">
+                                                        — against {{ _price($rates['own']) }} for your own customers.
+                                                    </span>
                                                 </small>
                                             @endif
                                         </div>
@@ -836,10 +855,18 @@
                 if (plat) parts.push('<b>' + plat + '</b> MyChitti user' + (plat === 1 ? '' : 's'));
 
                 var cost = own * (RATE.own || 0) + plat * (RATE.platform || 0);
+
+                // Always name the rate behind the total. The two audiences are priced differently,
+                // so a bare figure leaves the vendor unable to tell why adding MyChitti users moved
+                // it as much as it did.
+                var rates = [];
+                if (own) rates.push(money(RATE.own) + ' × ' + own + ' own');
+                if (plat) rates.push(money(RATE.platform) + ' × ' + plat + ' MyChitti');
+
                 $summary.innerHTML = 'This send goes to ' + parts.join(' <span class="text-muted">and</span> ') +
                     ' — <b>' + (own + plat) + '</b> message' + (own + plat === 1 ? '' : 's') + ' in one go.' +
-                    '<div class="text-muted mt-1">Costs about ' + money(cost) + ' from your wallet' +
-                    (own && plat ? ' (' + money(RATE.own) + ' per own customer, ' + money(RATE.platform) + ' per MyChitti user)' : '') +
+                    '<div class="text-muted mt-1">Costs about <b>' + money(cost) + '</b> from your wallet' +
+                    (rates.length ? ' (' + rates.join(' + ') + ')' : '') +
                     ', GST included.</div>';
                 $summary.style.display = 'block';
             }
