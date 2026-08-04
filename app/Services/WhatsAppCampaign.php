@@ -342,11 +342,22 @@ class WhatsAppCampaign
 
             $answer = strtoupper(trim((string) $resp->json('message')));
 
+            // Provider's own numbers when the AI service reports them — they include the RAG and
+            // memory context it adds on its side, which this estimate cannot see. See
+            // SendAutoReply for the same reckoning.
             if (WhatsAppBilling::aiMeteringApplies($storeId)) {
+                $usedIn  = (int) $resp->json('usage.input', 0);
+                $usedOut = (int) $resp->json('usage.output', 0);
+
+                if ($usedIn <= 0 && $usedOut <= 0) {
+                    $usedIn  = WhatsAppBilling::estimateTokens($system, $text);
+                    $usedOut = WhatsAppBilling::estimateTokens($answer);
+                }
+
                 WhatsAppBilling::recordTokenUsage(
                     $storeId,
-                    WhatsAppBilling::estimateTokens($system, $text),
-                    WhatsAppBilling::estimateTokens($answer),
+                    $usedIn,
+                    $usedOut,
                     self::AI_USAGE_CONTEXT,
                     $pool
                 );

@@ -38,9 +38,54 @@ class ClaudeService
         return $this->debugLog;
     }
 
+    /**
+     * What the provider actually charged for this request, both directions.
+     *
+     * Accumulated rather than overwritten: a tool call is two or more round-trips to the model,
+     * and every one of them is billed. The caller is metering a vendor's WhatsApp reply against a
+     * token allowance, so it needs the whole conversation's cost, not the last leg of it.
+     *
+     * Zeroes mean the provider returned no usage — the caller must fall back to its own estimate
+     * rather than reading it as a free request.
+     */
+    private array $usage = ['input' => 0, 'output' => 0];
+
+    public function getUsage(): array
+    {
+        return $this->usage;
+    }
+
+    /**
+     * Add one provider response's usage to the running total. Each provider names the two
+     * numbers differently; anything unrecognised contributes nothing rather than guessing.
+     */
+    private function recordUsage(?array $data): void
+    {
+        if (!$data) {
+            return;
+        }
+
+        // Anthropic: usage.input_tokens / output_tokens
+        // OpenAI:    usage.prompt_tokens / completion_tokens
+        // Gemini:    usageMetadata.promptTokenCount / candidatesTokenCount
+        $in = data_get($data, 'usage.input_tokens')
+            ?? data_get($data, 'usage.prompt_tokens')
+            ?? data_get($data, 'usageMetadata.promptTokenCount')
+            ?? 0;
+
+        $out = data_get($data, 'usage.output_tokens')
+            ?? data_get($data, 'usage.completion_tokens')
+            ?? data_get($data, 'usageMetadata.candidatesTokenCount')
+            ?? 0;
+
+        $this->usage['input']  += (int) $in;
+        $this->usage['output'] += (int) $out;
+    }
+
     public function chat(array $messages, string $system = '', int $maxTokens = 4096, ?array $modelConfig = null, ?int $userId = null, ?string $guard = null, ?int $agentId = null): string
     {
         $this->debugLog = []; // reset per request
+        $this->usage    = ['input' => 0, 'output' => 0];
 
         $provider = is_array($modelConfig) ? ($modelConfig['ai_provider'] ?? 'anthropic') : 'anthropic';
 
@@ -101,6 +146,7 @@ class ClaudeService
         }
 
         $data = $response->json();
+        $this->recordUsage($data);
 
         if (isset($data['stop_reason']) && $data['stop_reason'] === 'tool_use') {
             return $this->handleClaudeToolCall($data, $messages, $system, $maxTokens, $apiKey, $model, $userId, $guard, $agentId);
@@ -185,6 +231,7 @@ class ClaudeService
         }
 
         $data   = $response->json();
+        $this->recordUsage($data);
         $choice = $data['choices'][0] ?? [];
 
         // Handle tool calls (vendor_api_call)
@@ -228,7 +275,12 @@ class ClaudeService
             throw new \Exception('OpenAI API error: ' . $followResponse->body());
         }
 
-        return data_get($followResponse->json(), 'choices.0.message.content', '');
+        // The follow-up is a second billable round-trip — the tool result goes back to the model
+        // as new input, so it must be added to the total rather than replacing it.
+        $followData = $followResponse->json();
+        $this->recordUsage($followData);
+
+        return data_get($followData, 'choices.0.message.content', '');
     }
 
     // ── Google Gemini (via OpenAI-compatible endpoint) ────────────────────
@@ -277,7 +329,10 @@ class ClaudeService
             throw new \Exception('Gemini API error: ' . $response->body());
         }
 
-        return data_get($response->json(), 'candidates.0.content.parts.0.text', '');
+        $data = $response->json();
+        $this->recordUsage($data);
+
+        return data_get($data, 'candidates.0.content.parts.0.text', '');
     }
 
     // ── Claude tool-call follow-up ────────────────────────────────────────
@@ -341,6 +396,8 @@ class ClaudeService
         }
 
         $followUp = $followResponse->json();
+        // Second billable round-trip: the tool result is resent as input.
+        $this->recordUsage($followUp);
 
         return collect($followUp['content'] ?? [])
             ->where('type', 'text')

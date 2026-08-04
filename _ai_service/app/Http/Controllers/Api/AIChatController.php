@@ -164,10 +164,15 @@ class AIChatController extends Controller
             $this->memory->saveMessage($ownerId, 'assistant', $reply, 'text', $guard);
             $this->memory->maybeSummarize($ownerId, $guard);
 
-            return response()->json([ 
+            return response()->json([
                 'success'   => true,
                 'message'   => $reply,
                 'debug'     => $this->claude->getDebugLog(),
+                // What the provider actually billed, so the caller can charge the vendor for the
+                // whole request rather than an estimate of the part it composed. Everything added
+                // on this side — the RAG block above, the memory context, tool round-trips — is
+                // inside these numbers and nowhere in the caller's own reckoning.
+                'usage'     => $this->claude->getUsage(),
                 'server'    => gethostname(),
             ]);
 
@@ -241,7 +246,15 @@ class AIChatController extends Controller
 
         try {
             $reply = $this->claude->chat($history, $systemPrompt ?: '', 4096, $modelConfig ?: null);
-            return response()->json(['success' => true, 'message' => $reply]);
+            // This is the path the WhatsApp auto-reply takes (it calls in with guard=agent_test),
+            // and it is metered against the vendor's token allowance just like the chat path — so
+            // it has to report the provider's real counts too, tool round-trips included.
+            // Without this the caller sees no usage and silently bills its own estimate.
+            return response()->json([
+                'success' => true,
+                'message' => $reply,
+                'usage'   => $this->claude->getUsage(),
+            ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Claude error: ' . $e->getMessage()], 500);
         }

@@ -419,15 +419,28 @@ class SendAutoReply implements ShouldQueue
 
         $reply = trim(mb_substr((string) $resp->json('message'), 0, 1500));
 
-        // Meter what this reply cost the vendor. The AI service does not return provider usage,
-        // so both directions are estimated from what crossed the wire: everything we sent up
-        // (system prompt, thread history, the customer's message) is input, the reply is output.
+        // Meter what this reply cost the vendor. Everything a vendor's own conversation consumes
+        // is the vendor's to pay for, whatever added it — so the provider's own numbers are used
+        // when the AI service reports them. They cover what this side never sees: the second RAG
+        // block the service prepends, the memory context it builds, and every tool round-trip.
+        //
+        // The local estimate is the fallback for an AI service that predates `usage`, and it
+        // undercounts: it can only weigh the prompt this job composed, and chars/4 is generous to
+        // non-Latin scripts. Better a low figure than none — but the provider's count is the bill.
         if (!$this->isPlatform() && WhatsAppBilling::aiMeteringApplies($this->storeId)) {
-            $historyText = collect($history)->pluck('content')->implode(' ');
+            $usedIn  = (int) $resp->json('usage.input', 0);
+            $usedOut = (int) $resp->json('usage.output', 0);
+
+            if ($usedIn <= 0 && $usedOut <= 0) {
+                $historyText = collect($history)->pluck('content')->implode(' ');
+                $usedIn  = WhatsAppBilling::estimateTokens($system, $historyText, $this->body);
+                $usedOut = WhatsAppBilling::estimateTokens($reply);
+            }
+
             WhatsAppBilling::recordTokenUsage(
                 $this->storeId,
-                WhatsAppBilling::estimateTokens($system, $historyText, $this->body),
-                WhatsAppBilling::estimateTokens($reply),
+                $usedIn,
+                $usedOut,
                 'auto reply',
                 WhatsAppAgent::pool($this->storeId)
             );
