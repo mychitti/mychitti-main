@@ -59,6 +59,9 @@
             <div>
                 <h1 class="page-header-title mb-1"><i class="tio-android"></i> WhatsApp Chatbot</h1>
                 <span class="wc-sub">What your AI Agent is allowed to do, and what it may tell customers.</span>
+                <div class="text-muted mt-1" style="font-size:11px;">
+                    AI can make mistakes. Review the replies it sends in your inbox, and keep your knowledge base accurate.
+                </div>
             </div>
             <a href="{{ route('vendor.whatsapp.billing') }}" class="btn btn-sm btn-outline-secondary">
                 <i class="tio-wallet"></i> Plan &amp; Billing

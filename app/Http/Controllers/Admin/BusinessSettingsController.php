@@ -2830,7 +2830,6 @@ class BusinessSettingsController extends Controller
         $request->validate([
             'tpl_name'     => 'required|regex:/^[a-z0-9_]+$/',
             'tpl_category' => 'required',
-            'tpl_lang'     => 'required',
             'tpl_body'     => 'required',
         ], [
             'tpl_name.regex' => translate('Template name must be lowercase letters, numbers and underscores only.'),
@@ -2852,10 +2851,12 @@ class BusinessSettingsController extends Controller
         if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
             $buttons[] = ['text' => trim((string) $request->tpl_btn_text), 'url' => trim((string) $request->tpl_btn_url)];
         }
+        // English (US) only — the form no longer offers a choice, so it is not read from the
+        // request at all.
         $res = $wa->createTemplate(
             trim((string) $request->tpl_name),
             $request->tpl_category,
-            $request->tpl_lang ?: 'en_US',
+            'en_US',
             (string) $request->tpl_body,
             $example,
             $buttons,
@@ -2960,7 +2961,6 @@ class BusinessSettingsController extends Controller
             'title'    => 'required|max:120',
             'name'     => 'required|regex:/^[a-z0-9_]+$/|max:120',
             'category' => 'required|in:UTILITY,MARKETING,AUTHENTICATION',
-            'language' => 'required|max:12',
             'body'     => 'required',
         ], [
             'name.regex' => translate('Template name must be lowercase letters, numbers and underscores only.'),
@@ -3001,7 +3001,8 @@ class BusinessSettingsController extends Controller
             'title'          => trim((string) $request->title),
             'name'           => trim((string) $request->name),
             'category'       => $request->category,
-            'language'       => trim((string) $request->language) ?: 'en_US',
+            // English (US) only — presets are no longer offered a language to pick.
+            'language'       => 'en_US',
             'header'         => trim((string) $request->header) ?: null,
             'body'           => $body,
             'footer'         => trim((string) $request->footer) ?: null,

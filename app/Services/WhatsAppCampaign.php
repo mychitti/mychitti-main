@@ -28,6 +28,9 @@ class WhatsAppCampaign
     const TARGETS = [
         'interested_no_reply' => 'Interested + no reply (skip “not interested”)',
         'interested'          => 'Only those who replied Interested',
+        // Those people are dropped from the series when they answer, so a step aimed at them
+        // reaches past that — see eligibleQuery(). Use it sparingly: they said no once.
+        'not_interested'      => 'Only those who replied Not interested',
         'no_reply'            => 'Only those who never replied',
         'engaged'             => 'Anyone who replied at all',
         'all'                 => 'Everyone still in the series',
@@ -782,9 +785,14 @@ class WhatsAppCampaign
      */
     public static function eligibleQuery(int $campaignId, $step)
     {
+        // Saying "not interested" sets state='excluded', so a step aimed at those people has to
+        // look past the active filter — otherwise it matches nobody, every time. Every other
+        // target stays limited to recipients still in the series.
+        $targetsDeclined = ($step->target ?? '') === 'not_interested';
+
         $query = DB::table('wa_campaign_recipients as r')
             ->where('r.campaign_id', $campaignId)
-            ->where('r.state', 'active')
+            ->when(!$targetsDeclined, fn($q) => $q->where('r.state', 'active'))
             ->whereNotExists(function ($q) use ($step) {
                 $q->select(DB::raw(1))->from('wa_campaign_sends as s')
                     ->whereColumn('s.recipient_id', 'r.id')
@@ -796,6 +804,9 @@ class WhatsAppCampaign
         switch ($step->target) {
             case 'interested':
                 $query->where('r.reply', 'interested');
+                break;
+            case 'not_interested':
+                $query->where('r.reply', 'not_interested');
                 break;
             case 'no_reply':
                 $query->whereNull('r.reply');

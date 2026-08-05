@@ -337,16 +337,19 @@ max-height: 302px;
                         </div>
                     </div>
                     <div class="d-flex justify-content-between mt-5 form-bottom-row">
-                        <!-- Checkbox -->
-                        <div class="form-group">
-                            <div class="custom-control custom-checkbox">
-                                <input type="checkbox" class="custom-control-input" id="termsCheckbox"
-                                    {{ $password ? 'checked' : '' }} name="remember" checked>
-                                <label class="custom-control-label text-muted" for="termsCheckbox">
-                                    {{ translate('messages.remember_me') }}
-                                </label>
+                        <!-- Checkbox — not offered to staff: a counter machine is shared, and a
+                             remembered session would leave the last cashier signed in -->
+                        @if ($role !== 'vendor_employee')
+                            <div class="form-group">
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" id="termsCheckbox"
+                                        {{ $password ? 'checked' : '' }} name="remember" checked>
+                                    <label class="custom-control-label text-muted" for="termsCheckbox">
+                                        {{ translate('messages.remember_me') }}
+                                    </label>
+                                </div>
                             </div>
-                        </div>
+                        @endif
                         <!-- End Checkbox -->
                         <!-- forget password -->
                         <div class="form-group" id="forget-password"

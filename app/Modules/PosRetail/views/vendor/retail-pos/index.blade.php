@@ -374,8 +374,8 @@
                         <div id="cam-scan" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:1080; align-items:center; justify-content:center;">
                             <div style="background:#fff; border-radius:14px; padding:16px; width:340px; max-width:92vw; text-align:center;">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <b>Scan barcodes</b>
-                                    <a href="javascript:;" id="cam-close" class="text-danger font-weight-bold" style="font-size:13px;">Done &times;</a>
+                                    <b>Scan a barcode</b>
+                                    <a href="javascript:;" id="cam-close" class="text-danger" style="font-size:20px;">&times;</a>
                                 </div>
                                 <div id="cam-reader" style="width:100%;"></div>
                                 <div class="small text-muted mt-2" id="cam-msg">Point the camera at the product barcode.</div>
@@ -437,9 +437,18 @@
                                 <div id="cust-info" class="small text-muted mt-1" style="display:none;"></div>
                             </div>
 
-                            @if ($branchLocked)
+                            @if ($noBranchAllotted ?? false)
+                                {{-- No branch means no stock to sell from. Said here so the cashier
+                                     is not left building a cart that finalize() will refuse. --}}
+                                <input type="hidden" id="pos-branch" value="">
+                                <div class="cam-col">
+                                    <div class="rp-mini text-danger">
+                                        🏬 <b>No branch allotted</b> — you cannot bill. Ask the owner to assign you a branch or counter.
+                                    </div>
+                                </div>
+                            @elseif ($branchLocked)
                                 <input type="hidden" id="pos-branch" value="{{ $myBranchId }}">
-                                <div class="cam-col"><div class="rp-mini">🏬 Billing at <b>{{ optional($branches->firstWhere('id', $myBranchId))->name }}</b></div></div>
+                                <div class="cam-col"><div class="rp-mini">🏬 Billing at <b>{{ optional($branches->firstWhere('id', $myBranchId))->name ?: 'Main Store' }}</b></div></div>
                             @elseif ($branches->count())
                                 <div class="cam-col">
                                     <select id="pos-branch" class="form-control">
@@ -1752,11 +1761,11 @@
         (function () {
             const overlay = document.getElementById('cam-scan');
             const msg = document.getElementById('cam-msg');
-            let cam = null, lastCode = '', lastAt = 0, scanBusy = false, scanned = 0;
+            let cam = null, lastCode = '', lastAt = 0, scanBusy = false;
 
             function open() {
                 if (typeof Html5Qrcode === 'undefined') { (window.toastr ? toastr.error : alert)('Scanner library not loaded'); return; }
-                scanBusy = false; lastCode = ''; scanned = 0; msg.textContent = 'Point the camera at the product barcode.';
+                scanBusy = false; lastCode = ''; msg.textContent = 'Point the camera at the product barcode.';
                 overlay.style.display = 'flex';
                 cam = new Html5Qrcode('cam-reader');
                 cam.start({ facingMode: 'environment' }, { fps: 10, qrbox: 250 }, onScan, () => {})
@@ -1772,15 +1781,15 @@
                 if (scanBusy || (code === lastCode && now - lastAt < 1500)) return; // de-dupe rapid frames
                 lastCode = code; lastAt = now; scanBusy = true;
                 if (navigator.vibrate) navigator.vibrate(60);
-                // Exact match adds to cart, then the scanner stays open and re-arms for the next
-                // barcode — a basket is many items, not one. Only a prompt that needs the screen
-                // (variation picker / weight) closes it; nothing matched keeps scanning.
+                // One barcode, one item, then out of the way. close() puts the caret back in the
+                // search box, so the next product can be typed straight away without reaching for
+                // the field — and when the add opened a variation picker or weight prompt, focus
+                // is left to that instead.
+                // A barcode that matched nothing keeps the camera up, so the cashier can line the
+                // label up again rather than reopening the scanner.
                 lookup(code, true, true).then(item => {
                     if (!item) { msg.textContent = 'Not found: ' + code; scanBusy = false; return; }
-                    scanned++;
-                    if (promptOpen()) { msg.textContent = 'Added: ' + item.name; close(); return; }
-                    msg.textContent = '✅ ' + item.name + ' added (' + scanned + ') — scan the next barcode';
-                    setTimeout(() => { scanBusy = false; }, 600);
+                    close(); // lookup() has already raised the "added to cart" toast
                 }).catch(() => { scanBusy = false; });
             }
 

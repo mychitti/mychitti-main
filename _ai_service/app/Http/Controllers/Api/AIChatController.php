@@ -30,6 +30,7 @@ class AIChatController extends Controller
                 'page_structure'  => 'nullable|string|max:5000',
                 'agent_id'        => 'nullable|integer',
                 'system_prompt'   => 'nullable|string',
+                'system_cache_prefix' => 'nullable|string',
             ]);
             $guard = $request->string('guard')->toString();
 
@@ -214,6 +215,10 @@ class AIChatController extends Controller
     {
         $message      = trim($request->input('message', ''));
         $systemPrompt = trim($request->input('system_prompt', ''));
+        // The stable head of the system prompt, when the caller has separated one out: the part
+        // that is byte-identical between requests. It is marked cacheable and `system_prompt`
+        // carries the volatile remainder. Absent, everything behaves exactly as before.
+        $cachePrefix  = trim($request->input('system_cache_prefix', ''));
         $fileContent  = $request->input('attachment');
         $modelConfig  = $request->input('model_config');
         $historyInput = $request->input('history', []);
@@ -245,7 +250,16 @@ class AIChatController extends Controller
         $history[] = ['role' => 'user', 'content' => $userContent];
 
         try {
-            $reply = $this->claude->chat($history, $systemPrompt ?: '', 4096, $modelConfig ?: null);
+            $reply = $this->claude->chat(
+                $history,
+                $systemPrompt ?: '',
+                4096,
+                $modelConfig ?: null,
+                null,
+                null,
+                null,
+                $cachePrefix ?: null
+            );
             // This is the path the WhatsApp auto-reply takes (it calls in with guard=agent_test),
             // and it is metered against the vendor's token allowance just like the chat path — so
             // it has to report the provider's real counts too, tool round-trips included.

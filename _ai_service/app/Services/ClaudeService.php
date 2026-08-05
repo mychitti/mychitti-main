@@ -49,7 +49,7 @@ class ClaudeService
      * rather than reading it as a free request.
      */
     private array $usage = ['input' => 0, 'output' => 0];
-
+ 
     public function getUsage(): array
     {
         return $this->usage;
@@ -78,27 +78,47 @@ class ClaudeService
             ?? data_get($data, 'usageMetadata.candidatesTokenCount')
             ?? 0;
 
+        // Anthropic reports `input_tokens` as the UNCACHED remainder only — cached tokens are
+        // counted in their own fields. The vendor was served all three, so all three are billed;
+        // counting only the remainder would charge a well-cached conversation for a fraction of
+        // what it actually consumed. Anthropic is the only provider that splits them out:
+        // OpenAI's `prompt_tokens` and Gemini's `promptTokenCount` already include their cached
+        // portion, so there is nothing to add there and doing so would double-count.
+        $in += (int) (data_get($data, 'usage.cache_creation_input_tokens') ?? 0);
+        $in += (int) (data_get($data, 'usage.cache_read_input_tokens') ?? 0);
+
         $this->usage['input']  += (int) $in;
         $this->usage['output'] += (int) $out;
     }
 
-    public function chat(array $messages, string $system = '', int $maxTokens = 4096, ?array $modelConfig = null, ?int $userId = null, ?string $guard = null, ?int $agentId = null): string
+    /**
+     * `$cachePrefix` is the stable head of the system prompt — the part that is byte-identical
+     * across requests. Passed separately so it can be marked cacheable while the volatile
+     * remainder (retrieved knowledge, per-question context) is not.
+     *
+     * Caching is a PREFIX match: the cached span runs from the start of the prompt to the
+     * breakpoint, so anything that changes per request must sit after it or nothing caches.
+     * Anthropic only — the other providers take the two parts concatenated, as before.
+     */
+    public function chat(array $messages, string $system = '', int $maxTokens = 4096, ?array $modelConfig = null, ?int $userId = null, ?string $guard = null, ?int $agentId = null, ?string $cachePrefix = null): string
     {
         $this->debugLog = []; // reset per request
         $this->usage    = ['input' => 0, 'output' => 0];
 
         $provider = is_array($modelConfig) ? ($modelConfig['ai_provider'] ?? 'anthropic') : 'anthropic';
 
+        $joined = trim(trim((string) $cachePrefix) . "\n\n" . trim($system));
+
         return match (strtolower($provider)) {
-            'openai'    => $this->chatOpenAI($messages, $system, $maxTokens, $modelConfig, $userId, $guard, $agentId),
-            'gemini'    => $this->chatGemini($messages, $system, $maxTokens, $modelConfig),
-            default     => $this->chatClaude($messages, $system, $maxTokens, $modelConfig, $userId, $guard, $agentId),
+            'openai'    => $this->chatOpenAI($messages, $joined, $maxTokens, $modelConfig, $userId, $guard, $agentId),
+            'gemini'    => $this->chatGemini($messages, $joined, $maxTokens, $modelConfig),
+            default     => $this->chatClaude($messages, $system, $maxTokens, $modelConfig, $userId, $guard, $agentId, $cachePrefix),
         };
     }
 
     // ── Anthropic / Claude ────────────────────────────────────────────────
 
-    private function chatClaude(array $messages, string $system, int $maxTokens, ?array $cfg, ?int $userId = null, ?string $guard = null, ?int $agentId = null): string
+    private function chatClaude(array $messages, string $system, int $maxTokens, ?array $cfg, ?int $userId = null, ?string $guard = null, ?int $agentId = null, ?string $cachePrefix = null): string
     {
         $cfg       = $cfg ?? [];
         $model     = $cfg['ai_model']   ?? $this->model;
@@ -123,7 +143,23 @@ class ClaudeService
             'tools'      => $this->getTools($guard, $agentId),
         ];
 
-        if (!empty($system)) {
+        // A cache prefix turns `system` into blocks so the breakpoint can sit between the stable
+        // head and the volatile tail. Without one it stays a plain string, exactly as before.
+        //
+        // Marking a prefix that turns out to be shorter than the model's minimum cacheable span
+        // is harmless: the API silently declines to cache it and charges nothing extra.
+        $cachePrefix = trim((string) $cachePrefix);
+        if ($cachePrefix !== '') {
+            $payload['system'] = [[
+                'type'          => 'text',
+                'text'          => $cachePrefix,
+                'cache_control' => ['type' => 'ephemeral'],
+            ]];
+            // An empty text block is rejected, so the tail is only added when there is one.
+            if (trim($system) !== '') {
+                $payload['system'][] = ['type' => 'text', 'text' => $system];
+            }
+        } elseif (!empty($system)) {
             $payload['system'] = $system;
         }
         if (isset($cfg['temperature'])) {
@@ -149,7 +185,10 @@ class ClaudeService
         $this->recordUsage($data);
 
         if (isset($data['stop_reason']) && $data['stop_reason'] === 'tool_use') {
-            return $this->handleClaudeToolCall($data, $messages, $system, $maxTokens, $apiKey, $model, $userId, $guard, $agentId);
+            // Hand over the system field as it was actually built, blocks and breakpoint
+            // included — rebuilding it as a bare string here would change the prefix bytes and
+            // miss the cache on every follow-up, which is the half of the turn that reuses most.
+            return $this->handleClaudeToolCall($data, $messages, $payload['system'] ?? '', $maxTokens, $apiKey, $model, $userId, $guard, $agentId);
         }
 
         return data_get($data, 'content.0.text', '');
@@ -337,7 +376,8 @@ class ClaudeService
 
     // ── Claude tool-call follow-up ────────────────────────────────────────
 
-    private function handleClaudeToolCall(array $data, array $messages, string $system, int $maxTokens, string $apiKey, string $model, ?int $userId = null, ?string $guard = null, ?int $agentId = null): string
+    /** `$system` arrives as the caller built it — a plain string, or cache-marked text blocks. */
+    private function handleClaudeToolCall(array $data, array $messages, string|array $system, int $maxTokens, string $apiKey, string $model, ?int $userId = null, ?string $guard = null, ?int $agentId = null): string
     {
         $toolResults = [];
 

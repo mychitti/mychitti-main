@@ -27,6 +27,10 @@
                         </div>
                     </div>
 
+                    <small class="text-muted d-block mb-2" style="font-size:11px;">
+                        AI can make mistakes. Check important information before acting on it.
+                    </small>
+
                     <div id="attach-preview" style="display:none;flex-wrap:wrap;gap:4px;margin-bottom:8px"></div>
 
                     <div class="d-flex align-items-center gap-2">

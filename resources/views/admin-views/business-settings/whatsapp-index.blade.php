@@ -329,7 +329,9 @@
                                             <small class="text-muted">{{ translate('Lowercase letters, numbers and underscores only.') }}</small>
                                         </div>
                                         <div class="row">
-                                            <div class="col-7">
+                                            {{-- English (US) only — the language is set by the
+                                                 controller, so there is nothing to choose here. --}}
+                                            <div class="col-12">
                                                 <div class="form-group">
                                                     <label class="form-label">{{ translate('Category') }}</label>
                                                     <select class="form-control" name="tpl_category" required>
@@ -337,12 +339,6 @@
                                                         <option value="MARKETING">MARKETING</option>
                                                         <option value="AUTHENTICATION">AUTHENTICATION</option>
                                                     </select>
-                                                </div>
-                                            </div>
-                                            <div class="col-5">
-                                                <div class="form-group">
-                                                    <label class="form-label">{{ translate('Language') }}</label>
-                                                    <input type="text" class="form-control" name="tpl_lang" value="en_US" required>
                                                 </div>
                                             </div>
                                         </div>

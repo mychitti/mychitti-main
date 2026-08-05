@@ -26,6 +26,18 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Route::post('send-vendor-otp', 'MCVendorController@send_vendor_otp')->name('send-vendor-otp');
         Route::post('request-subscription-plan', 'MCVendorController@request_subscription_plan')->name('request-subscription-plan');
         Route::get('price-calculator', 'MCVendorController@price_calculator')->name('price-calculator');
+
+        // New website theme — preview only. Swap MCVendorController@index to theme_home to go live.
+        Route::group(['prefix' => 'preview', 'as' => 'theme.'], function () {
+            Route::get('/', 'MCVendorController@theme_home')->name('home');
+            Route::get('ai-employees', 'MCVendorController@theme_page')->defaults('page', 'ai-employees')->name('ai-employees');
+            Route::get('whatsapp-business-api', 'MCVendorController@theme_page')->defaults('page', 'whatsapp-business-api')->name('whatsapp');
+            Route::get('hmis', 'MCVendorController@theme_page')->defaults('page', 'hmis')->name('hmis');
+            Route::get('retail-pos', 'MCVendorController@theme_page')->defaults('page', 'retail-pos')->name('retail-pos');
+            Route::get('salon-software', 'MCVendorController@theme_page')->defaults('page', 'salon-software')->name('salon-software');
+            Route::get('school-management', 'MCVendorController@theme_page')->defaults('page', 'school-management')->name('school-management');
+            Route::get('laundry-management', 'MCVendorController@theme_page')->defaults('page', 'laundry-management')->name('laundry-management');
+        });
     });
 
     // Impersonation — no auth middleware, token is the auth

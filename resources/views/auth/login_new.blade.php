@@ -1115,12 +1115,16 @@ $log_email_succ = session()->get('log_email_succ');
                         </div>
                     </div>
                     <div class="form-group d-flex justify-content-between">
+                        {{-- Not offered to staff: a counter machine is shared, and a remembered
+                             session would leave the last cashier signed in. --}}
                         <div class="d-flex gap-2">
-                            <input type="checkbox" class="" id="termsCheckbox" {{ $password ? 'checked' : '' }}
-                                name="remember" checked>
-                            <label class="text-muted" for="termsCheckbox">
-                                {{ translate('messages.remember_me') }}
-                            </label>
+                            @if ($role !== 'vendor_employee')
+                                <input type="checkbox" class="" id="termsCheckbox" {{ $password ? 'checked' : '' }}
+                                    name="remember" checked>
+                                <label class="text-muted" for="termsCheckbox">
+                                    {{ translate('messages.remember_me') }}
+                                </label>
+                            @endif
                         </div>
                         <div class="">
                             <div class="form-group" id="forget-password"

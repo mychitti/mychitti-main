@@ -396,23 +396,15 @@
                                         like <code>_v2</code> or <code>_{{ now()->year }}</code>.
                                     </small>
                                 </div>
-                                <div class="row">
-                                    <div class="col-7">
-                                        <div class="form-group">
-                                            <label class="form-label">Category</label>
-                                            <select class="form-control" name="tpl_category" required>
-                                                <option value="UTILITY">UTILITY</option>
-                                                <option value="MARKETING">MARKETING</option>
-                                                <option value="AUTHENTICATION">AUTHENTICATION</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-5">
-                                        <div class="form-group">
-                                            <label class="form-label">Language</label>
-                                            <input type="text" class="form-control" name="tpl_lang" value="en_US" required>
-                                        </div>
-                                    </div>
+                                {{-- Templates are created in English (US) only, so there is nothing to
+                                     choose — the language is set by the controller, not posted. --}}
+                                <div class="form-group">
+                                    <label class="form-label">Category</label>
+                                    <select class="form-control" name="tpl_category" required>
+                                        <option value="UTILITY">UTILITY</option>
+                                        <option value="MARKETING">MARKETING</option>
+                                        <option value="AUTHENTICATION">AUTHENTICATION</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Body</label>

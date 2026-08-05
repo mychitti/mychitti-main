@@ -500,6 +500,9 @@ $countryCode = strtolower($country ? $country->value : 'auto');
                             </div> 
 <button class="badge badge-soft-danger my-1" type="button" id="ai-ask-human-btn" data-toggle="modal" data-target="#helpModal">Human Support</button>
                         </div>
+                        <div style="font-size:10.5px;color:#9ca3af;margin-top:4px;text-align:center">
+                            AI can make mistakes. Check important information.
+                        </div>
                     </form>
                 </div>
             </div>

@@ -1040,8 +1040,17 @@ class RetailPosController extends Controller
         // (defaulting to the last branch they billed from, else the first branch).
         $branches    = Branch::where('store_id', $storeId)->orderBy('name')->get();
         $counter     = $this->currentCounter();
-        $myBranchId  = $counter->branch_id ?? null;
-        $branchLocked = (bool) ($counter && $counter->branch_id);
+        // Staff sell from their allotted branch only — the counter's if they are signed in at
+        // one, else the branch on their staff record. The picker is hidden for them either way
+        // (branchLocked), so a cashier cannot bill against another branch's stock. Matches
+        // billingBranchId(), which enforces the same thing server-side at checkout.
+        $employeeId  = auth('vendor_employee')->id();
+        $staffBranch = $employeeId ? VendorEmployee::where('id', $employeeId)->value('branch_id') : null;
+        $myBranchId  = $counter->branch_id ?? ($staffBranch ? (int) $staffBranch : null);
+        $branchLocked = (bool) ($employeeId || ($counter && $counter->branch_id));
+        // Staff with no branch have no stock to sell from — say so on the screen rather than
+        // letting them build a cart and be refused at checkout. finalize() blocks it either way.
+        $noBranchAllotted = (bool) ($employeeId && !$myBranchId);
         $savedBranch = DB::table('stores')->where('id', $storeId)->value('pos_default_branch_id');
         // Default to the staff counter's branch, else the owner's last-used branch; otherwise
         // fall back to Main Store (no branch) rather than forcing the first branch.
@@ -1073,7 +1082,8 @@ class RetailPosController extends Controller
 
         return view('posretail::vendor.retail-pos.index', compact(
             'categories', 'quickItems', 'upiId', 'storeName', 'heldBills', 'uiTemplate',
-            'branches', 'myBranchId', 'branchLocked', 'defaultBranchId', 'shiftStatus', 'gstOn'
+            'branches', 'myBranchId', 'branchLocked', 'defaultBranchId', 'shiftStatus', 'gstOn',
+            'noBranchAllotted'
         ));
     }
 
@@ -1237,8 +1247,17 @@ class RetailPosController extends Controller
         $limit = $category === 'all' ? 200 : ($category ? 60 : 30);
         $rows = $query->orderBy('item_name')->limit($limit)->get();
 
-        // Stock shown for the billing branch: staff counter's branch, else owner-selected branch.
-        $branchId = $this->currentCounter()->branch_id ?? ((int) $request->get('branch') ?: null);
+        // Stock shown for the branch this sale will actually bill against: the staff counter's
+        // branch, else the staff member's own allotted branch, else the owner-selected one.
+        // Staff never fall through to the query parameter — the figures on screen have to be the
+        // stock billingBranchId() will draw the sale down from, or the cashier is shown one
+        // branch's availability and sells out of another's.
+        $branchId = $this->currentCounter()->branch_id ?? null;
+        if (!$branchId && ($employeeId = auth('vendor_employee')->id())) {
+            $branchId = (int) VendorEmployee::where('id', $employeeId)->value('branch_id') ?: null;
+        } elseif (!$branchId) {
+            $branchId = (int) $request->get('branch') ?: null;
+        }
         $branchStock = $branchId
             ? DB::table('pos_branch_stock')->where('branch_id', $branchId)
                 ->whereIn('inventory_item_id', $rows->pluck('id'))->pluck('stock', 'inventory_item_id')
@@ -1296,6 +1315,16 @@ class RetailPosController extends Controller
         // Null branch = sell directly from main-store stock (no branch). Staff remain
         // locked to their counter's branch via billingBranchId().
         $billingBranchId = $this->billingBranchId($request);
+
+        // A staff member with no branch on record has no stock to sell from — billing them
+        // through would draw the sale down from main-store stock, which is not theirs to move.
+        // Blocked here rather than in the UI alone, so it holds for a replayed request too.
+        if (!$billingBranchId && auth('vendor_employee')->id()) {
+            return response()->json([
+                'status' => false,
+                'msg'    => 'You have not been allotted a branch, so you cannot bill yet. Ask the store owner to assign you to a branch or a counter.',
+            ], 422);
+        }
 
         // Actor capabilities (owner always passes; staff via role).
         $canOverride   = hasPermission('pos_billing', 'price_override');
@@ -2177,9 +2206,28 @@ class RetailPosController extends Controller
 
         // A logged-in staff member only ever sees their own sales ("My Sales").
         $isStaff = (bool) auth('vendor_employee')->id();
+
+        // "My Billing" — only what the person signed in rang up themselves. A staff member is
+        // already held to their own sales, so for them it is the whole page and the tab is just
+        // what it is called. For the owner it means the bills with nobody else against them:
+        // finalize() stamps pos_staff_id with the employee who billed, or the counter's assigned
+        // staff, and leaves it null when the owner bills directly.
+        $mine = $request->boolean('mine');
+        $myBranchName = null;
         if ($isStaff) {
             $staff = auth('vendor_employee')->id();
             $terminal = null;
+            $mine = true;
+            // Filtering one person's own bills by branch is a choice with no answers: they billed
+            // from the counter they are assigned to, so the filter can only narrow to their own
+            // branch or to nothing. Dropped, and the branch is shown as context instead. Left
+            // unset rather than pinned, so a staff member moved between branches still sees
+            // everything they rang up.
+            $branch = null;
+            $counter = $this->currentCounter();
+            $myBranchName = $counter && ($counter->branch_id ?? null)
+                ? optional($branches->firstWhere('id', $counter->branch_id))->name
+                : null;
         }
 
         // Date-range picker (defaults to today).
@@ -2200,6 +2248,7 @@ class RetailPosController extends Controller
             ->whereNotNull('pos_status')
             ->when($branch, fn($q) => $q->where('pos_branch_id', $branch))
             ->when($staff, fn($q) => $q->where('pos_staff_id', $staff))
+            ->when(!$isStaff && $mine, fn($q) => $q->whereNull('pos_staff_id'))
             ->when($terminal, fn($q) => $q->where('pos_terminal_id', $terminal))
             ->orderByDesc('id')
             ->get();
@@ -2217,7 +2266,7 @@ class RetailPosController extends Controller
         $staffNames = $staffList->mapWithKeys(fn($s) => [$s->id => trim($s->f_name . ' ' . $s->l_name)]);
         $counterNames = $counters->mapWithKeys(fn($c) => [$c->id => $c->name]);
 
-        return view('posretail::vendor.retail-pos.today', compact('bills', 'branches', 'branch', 'from', 'to', 'preset', 'custom', 'customers', 'staff', 'terminal', 'staffList', 'counters', 'staffNames', 'counterNames', 'isStaff'));
+        return view('posretail::vendor.retail-pos.today', compact('bills', 'branches', 'branch', 'from', 'to', 'preset', 'custom', 'customers', 'staff', 'terminal', 'staffList', 'counters', 'staffNames', 'counterNames', 'isStaff', 'mine', 'myBranchName'));
     }
 
     // ── Void (counter-entry; never deleted) ───────────────────────────────────
@@ -2874,13 +2923,30 @@ class RetailPosController extends Controller
         return back();
     }
 
-    // The branch a sale is billed from: the staff's counter branch, else a posted branch_id.
+    /**
+     * The branch a sale is billed from, and therefore whose stock it draws down.
+     *
+     * Staff sell from the branch they are allotted to, and only that one: the counter they are
+     * signed in at first, else the branch on their own staff record. A posted `branch_id` is
+     * ignored for them outright — the branch picker is not shown to staff, so anything arriving
+     * in that field came from a hand-crafted request, and honouring it would let a cashier bill
+     * against another branch's stock.
+     *
+     * The owner has no counter and no staff record, so they keep the posted value — that is what
+     * the picker on their own screen sets.
+     */
     private function billingBranchId(Request $request = null): ?int
     {
         $counter = $this->currentCounter();
         if ($counter && $counter->branch_id) {
             return (int) $counter->branch_id;
         }
+
+        if ($employeeId = auth('vendor_employee')->id()) {
+            $branchId = VendorEmployee::where('id', $employeeId)->value('branch_id');
+            return $branchId ? (int) $branchId : null;
+        }
+
         if ($request && $request->input('branch_id')) {
             return (int) $request->input('branch_id');
         }

@@ -815,6 +815,9 @@
                     <button type="button" id="ai-stop-record" class="d-none"
                         style="border-radius:16px;font-size:12px;padding:3px 10px;background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;cursor:pointer">⏹ Stop</button>
                 </div>
+                <div style="font-size:10.5px;color:#9ca3af;margin-top:6px;text-align:center">
+                    AI can make mistakes. Check important information.
+                </div>
             </form>
         </div>
     </div>

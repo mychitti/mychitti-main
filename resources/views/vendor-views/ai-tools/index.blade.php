@@ -31,6 +31,9 @@
                                 </button>
                             </div>
                             <div class="mc-ai-text border rounded p-2 bg-light" style="white-space:pre-wrap; font-size:13.5px; max-height:320px; overflow:auto;"></div>
+                            <small class="text-muted d-block mt-1" style="font-size:11px;">
+                                AI can make mistakes. Review before you publish or send this.
+                            </small>
                         </div>
                         <div class="mc-ai-error text-danger small mt-2" style="display:none;"></div>
                     </div>

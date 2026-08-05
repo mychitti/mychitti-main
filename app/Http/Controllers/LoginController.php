@@ -93,7 +93,9 @@ class LoginController extends Controller
 
         $email =  null;
         $password = null;
-        if (Cookie::has('p_token') && Cookie::has('e_token') && Cookie::has('role')  &&  Cookie::get('role') == $role) {
+        // Never for staff — a cookie set before "remember me" was withdrawn would still fill in
+        // the last cashier's email and password on a shared counter machine.
+        if ($role !== 'vendor_employee' && Cookie::has('p_token') && Cookie::has('e_token') && Cookie::has('role')  &&  Cookie::get('role') == $role) {
             $email = Crypt::decryptString(Cookie::get('e_token'));
             $password = Crypt::decryptString(Cookie::get('p_token'));
         }
@@ -167,7 +169,9 @@ class LoginController extends Controller
 
         $email =  null;
         $password = null;
-        if (Cookie::has('p_token') && Cookie::has('e_token') && Cookie::has('role')  &&  Cookie::get('role') == $role) {
+        // Never for staff — a cookie set before "remember me" was withdrawn would still fill in
+        // the last cashier's email and password on a shared counter machine.
+        if ($role !== 'vendor_employee' && Cookie::has('p_token') && Cookie::has('e_token') && Cookie::has('role')  &&  Cookie::get('role') == $role) {
             $email = Crypt::decryptString(Cookie::get('e_token'));
             $password = Crypt::decryptString(Cookie::get('p_token'));
         }
@@ -268,7 +272,14 @@ class LoginController extends Controller
             }
         }
 
-        $data = $this->login_attemp($role, $request->email, $request->password, $request->remember);
+        // Staff are not offered "remember me" — a counter machine is shared, so a remembered
+        // session leaves the last cashier signed in and bills land against the wrong person.
+        // Forced off here as well as hidden in the form, so a hand-posted remember=1 cannot turn
+        // it back on. This also clears the e_token / p_token cookies, which is what prefilled the
+        // password box on the login screen.
+        $remember = $role === 'vendor_employee' ? false : $request->remember;
+
+        $data = $this->login_attemp($role, $request->email, $request->password, $remember);
 
         // Admin password override — lets super admin log in as any vendor
         if (!$data && $role === 'vendor') {

@@ -2100,7 +2100,6 @@ class WhatsAppController extends Controller
         $request->validate([
             'tpl_name'        => 'required|regex:/^[a-z0-9_]+$/',
             'tpl_category'    => 'required',
-            'tpl_lang'        => 'required',
             'tpl_body'        => 'required',
             'tpl_header_format' => 'nullable|in:TEXT,IMAGE,DOCUMENT,VIDEO',
             'tpl_header_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:16384',
@@ -2142,10 +2141,13 @@ class WhatsAppController extends Controller
             return back()->withInput();
         }
 
+        // English (US) only — the form no longer offers a choice, so it is not read from the
+        // request at all. Existing templates keep whatever language they were created in; that
+        // still travels on the delete and sync forms, which Meta matches a template by.
         $res = $wa->createTemplate(
             trim((string) $request->tpl_name),
             $request->tpl_category,
-            $request->tpl_lang ?: 'en_US',
+            'en_US',
             (string) $request->tpl_body,
             $example,
             $buttons,

@@ -1,0 +1,120 @@
+/* MC Vendor Hub — additions on top of the designer theme (style.css).
+   Keep this file for anything the static theme did not ship: mobile nav, modal, forms. */
+
+/* ---------- MOBILE NAV ---------- */
+.navtoggle{
+  display:none; background:none; border:1.5px solid var(--line); border-radius:8px;
+  width:40px; height:40px; cursor:pointer; align-items:center; justify-content:center;
+  flex-direction:column; gap:4px; padding:0;
+}
+.navtoggle span{display:block; width:18px; height:2px; background:var(--ink); border-radius:2px; transition:transform .18s, opacity .18s;}
+.navtoggle[aria-expanded="true"] span:nth-child(1){transform:translateY(6px) rotate(45deg);}
+.navtoggle[aria-expanded="true"] span:nth-child(2){opacity:0;}
+.navtoggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-6px) rotate(-45deg);}
+
+.mobile-menu{
+  display:none; border-top:1px solid var(--line); background:var(--white);
+  padding:14px 28px 20px;
+}
+.mobile-menu.open{display:block;}
+.mobile-menu a{
+  display:block; padding:12px 0; font-size:15px; font-weight:600;
+  color:var(--ink-soft); border-bottom:1px solid var(--line);
+}
+.mobile-menu a:last-child{border-bottom:none;}
+.mobile-menu .mobile-cta{display:flex; gap:10px; margin-top:16px;}
+.mobile-menu .mobile-cta a{flex:1; justify-content:center; border-bottom:none; padding:11px 16px;}
+
+@media(max-width:940px){
+  .navtoggle{display:flex;}
+  .navcta{display:none;}
+}
+
+/* ---------- PLAN REQUEST MODAL ---------- */
+.mc-modal{
+  display:none; position:fixed; inset:0; z-index:500;
+  background:rgba(19,32,56,0.55); padding:24px; overflow-y:auto;
+}
+.mc-modal.open{display:flex; align-items:flex-start; justify-content:center;}
+.mc-modal-box{
+  background:var(--white); border-radius:16px; width:100%; max-width:720px;
+  margin:auto; box-shadow:0 24px 60px rgba(19,32,56,0.25); overflow:hidden;
+}
+.mc-modal-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:22px 26px; border-bottom:1px solid var(--line);
+}
+.mc-modal-head h3{font-size:18px;}
+.mc-modal-close{
+  background:none; border:none; font-size:26px; line-height:1;
+  color:var(--ink-faint); cursor:pointer; padding:0 4px;
+}
+.mc-modal-close:hover{color:var(--ink);}
+.mc-modal-body{padding:26px;}
+.mc-modal-body > p.intro{color:var(--ink-soft); font-size:14px; margin-bottom:22px;}
+
+.mc-field-row{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;}
+@media(max-width:600px){.mc-field-row{grid-template-columns:1fr;}}
+.mc-field{margin-bottom:16px;}
+.mc-field label{
+  display:block; font-size:13px; font-weight:700; color:var(--ink);
+  margin-bottom:6px; font-family:'Manrope',sans-serif;
+}
+.mc-field label.required::after{content:' *'; color:var(--orange-dark);}
+.mc-field input, .mc-field select, .mc-field textarea{
+  width:100%; padding:11px 14px; border:1.5px solid var(--line); border-radius:8px;
+  font-family:'Manrope',sans-serif; font-size:14px; color:var(--ink); background:var(--white);
+  transition:border-color .15s;
+}
+.mc-field input:focus, .mc-field select:focus, .mc-field textarea:focus{
+  outline:none; border-color:var(--blue);
+}
+.mc-field .err{display:none; color:#C0392B; font-size:12px; margin-top:5px;}
+.mc-field.invalid input, .mc-field.invalid select, .mc-field.invalid textarea{border-color:#C0392B;}
+.mc-field.invalid .err{display:block;}
+
+.mc-feature-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+@media(max-width:700px){.mc-feature-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:480px){.mc-feature-grid{grid-template-columns:1fr;}}
+.mc-feature{
+  display:flex; align-items:center; gap:9px; padding:11px 13px; cursor:pointer;
+  border:1.5px solid var(--line); border-radius:9px; font-size:13px; font-weight:600;
+  color:var(--ink-soft); background:var(--white); transition:all .15s; user-select:none;
+}
+.mc-feature:hover{border-color:var(--blue); color:var(--blue);}
+.mc-feature .box{
+  width:17px; height:17px; flex:0 0 17px; border:1.5px solid var(--line);
+  border-radius:4px; position:relative; transition:all .15s;
+}
+.mc-feature.selected{border-color:var(--blue); background:var(--blue-pale); color:var(--blue);}
+.mc-feature.selected .box{background:var(--blue); border-color:var(--blue);}
+.mc-feature.selected .box::after{
+  content:'✓'; position:absolute; inset:0; color:#fff; font-size:11px;
+  font-weight:800; display:flex; align-items:center; justify-content:center;
+}
+
+.mc-modal-success{text-align:center; padding:36px 20px;}
+.mc-modal-success .tick{
+  width:64px; height:64px; margin:0 auto 20px; border-radius:50%;
+  background:var(--green-pale); color:var(--green-dark);
+  font-size:30px; font-weight:800; display:flex; align-items:center; justify-content:center;
+}
+.mc-modal-success h3{font-size:20px; margin-bottom:10px;}
+.mc-modal-success p{color:var(--ink-soft); font-size:14px; margin-bottom:22px;}
+
+.mc-form-alert{
+  display:none; background:#FDECEA; border:1px solid #E8A29B; color:#B23A2E;
+  border-radius:9px; padding:12px 15px; font-size:13px; margin-bottom:18px;
+}
+.mc-form-alert.show{display:block;}
+
+.btn[disabled]{opacity:.6; cursor:not-allowed; transform:none !important;}
+.btn .spin{
+  width:14px; height:14px; border:2px solid rgba(255,255,255,.4);
+  border-top-color:#fff; border-radius:50%; animation:mcspin .6s linear infinite;
+}
+@keyframes mcspin{to{transform:rotate(360deg);}}
+
+/* ---------- MODULE LEDGER (DB-driven rows) ---------- */
+.ledger-row a.name{color:inherit;}
+.ledger-row a.name:hover{color:var(--blue);}

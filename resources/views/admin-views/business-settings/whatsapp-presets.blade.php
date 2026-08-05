@@ -101,23 +101,15 @@
                                 <input type="text" class="form-control" name="name" value="{{ old('name') }}" placeholder="customer_welcome" required>
                                 <small class="text-muted">{{ translate('Lowercase letters, numbers and underscores only — this becomes the template name on the vendor\'s WABA.') }}</small>
                             </div>
-                            <div class="row">
-                                <div class="col-7">
-                                    <div class="form-group">
-                                        <label class="form-label">{{ translate('Category') }}</label>
-                                        <select class="form-control" name="category" required>
-                                            <option value="UTILITY">UTILITY</option>
-                                            <option value="MARKETING">MARKETING</option>
-                                            <option value="AUTHENTICATION">AUTHENTICATION</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-5">
-                                    <div class="form-group">
-                                        <label class="form-label">{{ translate('Language') }}</label>
-                                        <input type="text" class="form-control" name="language" value="{{ old('language', 'en_US') }}" required>
-                                    </div>
-                                </div>
+                            {{-- Presets are English (US) only — the language is set by the
+                                 controller, so there is nothing to choose here. --}}
+                            <div class="form-group">
+                                <label class="form-label">{{ translate('Category') }}</label>
+                                <select class="form-control" name="category" required>
+                                    <option value="UTILITY">UTILITY</option>
+                                    <option value="MARKETING">MARKETING</option>
+                                    <option value="AUTHENTICATION">AUTHENTICATION</option>
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">{{ translate('Header') }} <small class="text-muted">({{ translate('optional') }})</small></label>
@@ -224,23 +216,13 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label">{{ translate('Category') }}</label>
-                                    <select class="form-control" name="category" id="wapCategory">
-                                        <option value="UTILITY">UTILITY</option>
-                                        <option value="MARKETING">MARKETING</option>
-                                        <option value="AUTHENTICATION">AUTHENTICATION</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label">{{ translate('Language') }}</label>
-                                    <input type="text" class="form-control" name="language" id="wapLanguage" required>
-                                </div>
-                            </div>
+                        <div class="form-group">
+                            <label class="form-label">{{ translate('Category') }}</label>
+                            <select class="form-control" name="category" id="wapCategory">
+                                <option value="UTILITY">UTILITY</option>
+                                <option value="MARKETING">MARKETING</option>
+                                <option value="AUTHENTICATION">AUTHENTICATION</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label class="form-label">{{ translate('Header') }}</label>
@@ -333,7 +315,7 @@
     $(document).on('click', '.wa-preset-edit', function () {
         var d = $(this).data();
         $('#wapId').val(d.id); $('#wapTitle').val(d.title); $('#wapName').val(d.name);
-        $('#wapCategory').val(d.category || 'UTILITY'); $('#wapLanguage').val(d.language || 'en_US');
+        $('#wapCategory').val(d.category || 'UTILITY');
         $('#wapHeader').val(d.header || ''); $('#wapBody').val(d.body || '');
         $('#wapFooter').val(d.footer || ''); $('#wapExample').val(d.example || '');
         $('#wapBtnText').val(d.btntext || ''); $('#wapBtnUrl').val(d.btnurl || '');

@@ -14,6 +14,12 @@
         .rp .act-dd .dropdown-item i { font-size:15px; width:18px; text-align:center; color:var(--accent); }
         .rp .act-dd .dropdown-item.text-danger i { color:#dc3545; }
         .rp .act-dd form { margin:0; }
+
+        /* All Bills / My Billing */
+        .rp .rp-tabs { display:flex; gap:6px; margin:0 0 12px; }
+        .rp .rp-tab { font-size:13px; font-weight:600; padding:7px 15px; border-radius:9px; border:1px solid var(--line); background:#fff; color:#667085; text-decoration:none; }
+        .rp .rp-tab:hover { background:var(--soft); color:#344054; }
+        .rp .rp-tab.on { background:var(--accent); border-color:var(--accent); color:#fff; }
     </style>
 @endpush
 
@@ -25,10 +31,15 @@
         <div class="rp-head">
             <div>
                 <h1>{{ ($isStaff ?? false) ? 'My Sales' : 'Bills' }}</h1>
-                <div class="sub">{{ $from === $to ? \Carbon\Carbon::parse($from)->format('d M Y') : $from . ' → ' . $to }}{{ $branch ? ' · ' . optional($branches->firstWhere('id', $branch))->name : '' }}{{ !($isStaff ?? false) && ($staff ?? null) ? ' · ' . ($staffNames[$staff] ?? 'Staff') : '' }}{{ !($isStaff ?? false) && ($terminal ?? null) ? ' · ' . ($counterNames[$terminal] ?? 'Counter') : '' }}</div>
+                <div class="sub">{{ $from === $to ? \Carbon\Carbon::parse($from)->format('d M Y') : $from . ' → ' . $to }}{{ $branch ? ' · ' . optional($branches->firstWhere('id', $branch))->name : '' }}{{ $myBranchName ?? null ? ' · ' . $myBranchName : '' }}{{ !($isStaff ?? false) && ($staff ?? null) ? ' · ' . ($staffNames[$staff] ?? 'Staff') : '' }}{{ !($isStaff ?? false) && ($terminal ?? null) ? ' · ' . ($counterNames[$terminal] ?? 'Counter') : '' }}</div>
             </div>
             <form method="get" class="rp-filter date-range-form" action="{{ route('vendor.retail-pos.today') }}">
-                @if ($branches->count())
+                {{-- Carried through the filters, or changing the date range would drop the owner
+                     back to All Bills. --}}
+                @if (($mine ?? false) && !($isStaff ?? false))
+                    <input type="hidden" name="mine" value="1">
+                @endif
+                @if (!($isStaff ?? false) && $branches->count())
                     <select name="branch" class="rp-input" onchange="this.form.submit()">
                         <option value="">All branches</option>
                         @foreach ($branches as $b)
@@ -58,6 +69,20 @@
                     <a href="{{ route('vendor.retail-pos.index') }}" class="rp-btn p">+ New Sale</a>
                 @endif
             </form>
+        </div>
+
+        {{-- All Bills / My Billing. A staff member is already held to their own sales, so there is
+             nothing for them to switch between — they get the label without the choice. Both links
+             carry the current filters so switching tabs keeps the date range and branch. --}}
+        <div class="rp-tabs">
+            @if ($isStaff ?? false)
+                <span class="rp-tab on">My Billing</span>
+            @else
+                <a href="{{ request()->fullUrlWithQuery(['mine' => null]) }}"
+                    class="rp-tab {{ ($mine ?? false) ? '' : 'on' }}">All Bills</a>
+                <a href="{{ request()->fullUrlWithQuery(['mine' => 1, 'staff' => null]) }}"
+                    class="rp-tab {{ ($mine ?? false) ? 'on' : '' }}">My Billing</a>
+            @endif
         </div>
 
         <div class="rp-kpis">
