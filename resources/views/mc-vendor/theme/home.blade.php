@@ -1,6 +1,6 @@
 @extends('mc-vendor.theme.layout')
 
-@section('title', 'MC Vendor Hub — India\'s First Business Platform with AI Employees')
+@section('title', 'MC Vendor Hub — 2 India\'s First Business Platform with AI Employees')
 @section('meta_description', 'Manage Billing, POS, CRM, WhatsApp and hire AI Employees that work 24×7 for your business — all from one platform built for Indian MSMEs.')
 
 @section('content')
@@ -72,15 +72,13 @@
             <h2>One Login. One Platform. Everything Your Business Needs.</h2>
             <p class="sub">Not nine subscriptions stitched together — one system where every part already talks to every other part.</p>
             <div class="op-chip-grid">
-                <div class="op-chip"><span class="dot"></span> Billing</div>
-                <div class="op-chip"><span class="dot"></span> POS</div>
-                <div class="op-chip"><span class="dot"></span> CRM</div>
-                <div class="op-chip"><span class="dot"></span> Inventory</div>
-                <div class="op-chip"><span class="dot"></span> HRM</div>
-                <div class="op-chip"><span class="dot"></span> WhatsApp</div>
-                <div class="op-chip"><span class="dot"></span> AI Employees</div>
-                <div class="op-chip"><span class="dot"></span> Lead Generation</div>
-                <div class="op-chip"><span class="dot"></span> Dedicated Website</div>
+                @forelse ($vendor_modules->take(9) as $module)
+                    <div class="op-chip"><span class="dot"></span> {{ $module->name }}</div>
+                @empty
+                    @foreach (['Billing', 'POS', 'CRM', 'Inventory', 'HRM', 'WhatsApp', 'AI Employees', 'Lead Generation', 'Dedicated Website'] as $chip)
+                        <div class="op-chip"><span class="dot"></span> {{ $chip }}</div>
+                    @endforeach
+                @endforelse
             </div>
         </div>
     </section>
@@ -104,81 +102,37 @@
         </div>
     </section>
 
-    <section class="preview">
-        <div class="wrap">
-            <div class="section-head">
-                <span class="kicker">See It In Action</span>
-                <h2>The tools your team will actually use</h2>
-                <p>A look inside the dashboards that run your day-to-day — billing, inventory, CRM and your app on the go.</p>
-            </div>
-            <div class="preview-grid">
-                <div class="preview-card">
-                    <div class="preview-chrome"><span></span><span></span><span></span></div>
-                    <div class="preview-body">
-                        <div class="mock-bar" style="width:60%;"></div>
-                        <div class="mock-row"><span>Invoice #INV-1042</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Paid</span></div>
-                        <div class="mock-row"><span>Invoice #INV-1043</span><span class="mock-pill" style="background:#FFF3E6; color:var(--orange-dark);">Pending</span></div>
-                        <div class="mock-row"><span>Invoice #INV-1044</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Paid</span></div>
-                    </div>
-                    <div class="preview-label"><h4>Billing Dashboard</h4></div>
+    @php($mc_modules = collect($mc_modules ?? []))
+    @if ($mc_modules->count())
+        <section class="preview">
+            <div class="wrap">
+                <div class="section-head">
+                    <span class="kicker">What It Costs</span>
+                    <h2>Every module, and what it actually costs</h2>
+                    <p>Live pricing straight from the platform — nothing here is a sample. Switch on what you need; the rest stays off your bill.</p>
                 </div>
-                <div class="preview-card">
-                    <div class="preview-chrome"><span></span><span></span><span></span></div>
-                    <div class="preview-body">
-                        <div class="mock-bar" style="width:40%;"></div>
-                        <div style="display:flex; gap:8px; margin-top:14px;">
-                            <div style="flex:1; background:var(--blue-pale); border-radius:8px; padding:12px; text-align:center;">
-                                <div style="font-family:'Sora',sans-serif; font-weight:800; color:var(--blue); font-size:18px;">₹12,480</div>
-                                <div style="font-size:10.5px; color:var(--ink-faint);">Today's Sales</div>
-                            </div>
-                            <div style="flex:1; background:var(--green-pale); border-radius:8px; padding:12px; text-align:center;">
-                                <div style="font-family:'Sora',sans-serif; font-weight:800; color:var(--green-dark); font-size:18px;">38</div>
-                                <div style="font-size:10.5px; color:var(--ink-faint);">Bills Today</div>
-                            </div>
+                <div class="vert-grid">
+                    @foreach ($mc_modules as $module)
+                        <div class="vert-card">
+                            <h4>{{ $module['name'] }}</h4>
+                            <p>
+                                @if ($module['trial_days'] > 0)
+                                    {{ $module['trial_days'] }}-day free trial, then billed monthly.
+                                @else
+                                    Billed monthly, cancel when you no longer need it.
+                                @endif
+                                @if ($module['discount'] > 0)
+                                    Pay yearly and save {{ (float) $module['discount'] }}%.
+                                @endif
+                            </p>
+                            <span class="from">₹{{ number_format($module['monthly']) }}/mo</span>
                         </div>
-                    </div>
-                    <div class="preview-label"><h4>POS Screen</h4></div>
+                    @endforeach
                 </div>
-                <div class="preview-card">
-                    <div class="preview-chrome"><span></span><span></span><span></span></div>
-                    <div class="preview-body">
-                        <div class="mock-row"><span>👤 Ramesh Traders</span><span class="mock-pill" style="background:var(--blue-pale); color:var(--blue);">Hot Lead</span></div>
-                        <div class="mock-row"><span>👤 Priya Stores</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Converted</span></div>
-                        <div class="mock-row"><span>👤 Anand Retail</span><span class="mock-pill" style="background:#F1F1F1; color:var(--ink-faint);">Follow-up</span></div>
-                    </div>
-                    <div class="preview-label"><h4>CRM</h4></div>
-                </div>
-                <div class="preview-card">
-                    <div class="preview-chrome"><span></span><span></span><span></span></div>
-                    <div class="preview-body">
-                        <div class="mock-row"><span>📦 Rice Bags (25kg)</span><span class="mock-pill" style="background:#FFF3E6; color:var(--orange-dark);">Low Stock</span></div>
-                        <div class="mock-row"><span>📦 Cooking Oil (5L)</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">In Stock</span></div>
-                        <div class="mock-row"><span>📦 Wheat Flour (10kg)</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">In Stock</span></div>
-                    </div>
-                    <div class="preview-label"><h4>Inventory</h4></div>
-                </div>
-                <div class="preview-card">
-                    <div class="preview-chrome"><span></span><span></span><span></span></div>
-                    <div class="preview-body">
-                        <div class="mock-row"><span>💬 New WhatsApp lead</span><span class="mock-pill" style="background:var(--blue-pale); color:var(--blue);">2m ago</span></div>
-                        <div class="mock-row"><span>✅ Task completed</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Done</span></div>
-                        <div class="mock-row"><span>🔔 Staff checked in</span><span class="mock-pill" style="background:#F1F1F1; color:var(--ink-faint);">9:04 AM</span></div>
-                    </div>
-                    <div class="preview-label"><h4>Vendor Mobile App</h4></div>
-                </div>
-                <div class="preview-card">
-                    <div class="preview-chrome"><span></span><span></span><span></span></div>
-                    <div class="preview-body">
-                        <div class="mock-row"><span>🤖 Reception AI</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Online</span></div>
-                        <div class="mock-row"><span>🤖 Sales AI</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Online</span></div>
-                        <div class="mock-row"><span>👤 Human handover</span><span class="mock-pill" style="background:#F1F1F1; color:var(--ink-faint);">Standby</span></div>
-                    </div>
-                    <div class="preview-label"><h4>AI Employee Console</h4></div>
-                </div>
+                <p class="preview-note">Prices exclude GST and update automatically as plans change. <a href="{{ route('vendor.mc-vendor.price-calculator') }}" style="color:var(--blue); font-weight:700;">Price your exact combination →</a></p>
             </div>
-            <p class="preview-note">Illustrative previews — actual product screens available on request during a live demo.</p>
-        </div>
-    </section>
+        </section>
+    @endif
 
     <section class="ai-section" id="ai">
         <div class="wrap">
@@ -290,7 +244,7 @@
                         <li>Official Meta WhatsApp Business Platform, not a workaround</li>
                         <li>Automated booking, lead capture &amp; FAQ replies</li>
                         <li>Human handover to your own staff, anytime</li>
-                        <li>Payment reminders &amp; order updates, sent automatically</li>
+                        <li>Appointment reminders sent automatically, on your schedule</li>
                     </ul>
                     <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="btn" style="background:var(--white); color:var(--green-dark); border-color:var(--white); font-weight:800;">Set Up WhatsApp →</a>
                 </div>
@@ -317,7 +271,7 @@
                 <a href="{{ route('vendor.mc-vendor.theme.hmis') }}" class="vert-card"><h4>MC HMIS</h4><p>Hospital management for clinics through to multi-ward facilities.</p>@if ($hmis_from)<span class="from">From ₹{{ number_format($hmis_from) }}/mo</span>@endif</a>
                 <a href="{{ route('vendor.mc-vendor.theme.retail-pos') }}" class="vert-card"><h4>Retail POS</h4><p>Multi-counter billing built for high-footfall retail stores.</p>@if ($mc_pricing['retail'])<span class="from">From ₹{{ number_format($mc_pricing['retail']['monthly']) }}/mo</span>@endif</a>
                 <a href="{{ route('vendor.mc-vendor.theme.school-management') }}" class="vert-card"><h4>School Management</h4><p>Admissions, fees, attendance and parent communication.</p>@if ($school_from)<span class="from">From ₹{{ number_format($school_from) }}/mo</span>@endif</a>
-                <a href="{{ route('vendor.mc-vendor.theme.laundry-management') }}" class="vert-card"><h4>Laundry Management</h4><p>Order tracking, pickup/delivery scheduling, and billing.</p>@if ($mc_pricing['laundry'])<span class="from">From ₹{{ number_format($mc_pricing['laundry']['monthly']) }}/mo</span>@endif</a>
+                <a href="{{ route('vendor.mc-vendor.theme.laundry-management') }}" class="vert-card"><h4>Laundry Management</h4><p>Order tracking from drop-off to pickup, with itemised billing.</p>@if ($mc_pricing['laundry'])<span class="from">From ₹{{ number_format($mc_pricing['laundry']['monthly']) }}/mo</span>@endif</a>
             </div>
         </div>
     </section>
@@ -379,7 +333,6 @@
             <div class="partner-row">
                 <div class="partner-chip"><span class="sw" style="background:#25D366;">W</span> WhatsApp Business (Meta)</div>
                 <div class="partner-chip"><span class="sw" style="background:#0A2540;">R</span> Razorpay</div>
-                <div class="partner-chip"><span class="sw" style="background:var(--blue);">MC</span> Exotel Voice &amp; Messaging</div>
             </div>
         </div>
     </section>

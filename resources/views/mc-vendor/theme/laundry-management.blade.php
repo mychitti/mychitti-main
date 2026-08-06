@@ -1,7 +1,7 @@
 @extends('mc-vendor.theme.layout')
 
 @section('title', 'Laundry Management Software India | MC Vendor Hub')
-@section('meta_description', 'Laundry and dry-cleaning management software — order tracking, pickup and delivery scheduling, instant billing and WhatsApp ready-alerts for Indian laundry operators.')
+@section('meta_description', 'Laundry and dry-cleaning management software — order tracking from drop-off to pickup, itemised billing and customer order history for Indian laundry operators.')
 
 @section('content')
 
@@ -19,15 +19,25 @@
                 </div>
                 <p class="hero-note">@if ($mc_pricing['laundry'])India's most affordable laundry management software — from ₹{{ number_format($mc_pricing['laundry']['monthly']) }}/month @else Affordable laundry management software, built for Indian operators @endif</p>
             </div>
-            <div class="preview-card" style="max-width:380px;">
-                <div class="preview-chrome"><span></span><span></span><span></span></div>
-                <div class="preview-body">
-                    <div class="mock-bar" style="width:38%;"></div>
-                    <div class="mock-row"><span>👕 Order #L-2291</span><span class="mock-pill" style="background:var(--blue-pale); color:var(--blue);">In Wash</span></div>
-                    <div class="mock-row"><span>👔 Order #L-2292</span><span class="mock-pill" style="background:#FFF3E6; color:var(--orange-dark);">Ready for Pickup</span></div>
-                    <div class="mock-row"><span>🧺 Order #L-2293</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Delivered</span></div>
-                </div>
-                <div class="preview-label"><h4>Laundry — Order Tracker</h4></div>
+            @php($laundry_hero = $mc_pricing['laundry'] ?? null)
+            <div class="sticky-cta" style="position:static; max-width:380px;">
+                <h4>{{ $laundry_hero['name'] ?? 'Laundry Management' }} — at a glance</h4>
+                @if ($laundry_hero)
+                    <div class="big-price">₹{{ number_format($laundry_hero['monthly']) }}<span>/mo</span></div>
+                @else
+                    <div class="big-price">On request<span></span></div>
+                @endif
+                <ul>
+                    <li>Every order tracked from drop-off to pickup</li>
+                    <li>Itemised bills, challans and receipts</li>
+                    <li>Customer order history in one place</li>
+                    @if ($laundry_hero && $laundry_hero['discount'] > 0)
+                        <li>Save {{ (float) $laundry_hero['discount'] }}% paying yearly</li>
+                    @endif
+                </ul>
+                @if ($laundry_hero && $laundry_hero['trial_days'] > 0)
+                    <div class="setup-note">🎁 {{ $laundry_hero['trial_days'] }}-day free trial included</div>
+                @endif
             </div>
         </div>
     </section>
@@ -40,9 +50,9 @@
             </div>
             <div class="feature-grid">
                 <div class="feature-card"><div class="ic">🏷️</div><h3>Order Tracking</h3><p>Tag every order with status — washed, ironed, ready, delivered.</p></div>
-                <div class="feature-card"><div class="ic">🚚</div><h3>Pickup &amp; Delivery Scheduling</h3><p>Plan routes and delivery windows without a paper diary.</p></div>
-                <div class="feature-card"><div class="ic">🧾</div><h3>Instant Billing</h3><p>Generate customer bills by item, weight, or service type.</p></div>
-                <div class="feature-card"><div class="ic">💬</div><h3>WhatsApp Ready Alerts</h3><p>Notify customers automatically the moment their order is ready.</p></div>
+                <div class="feature-card"><div class="ic">🚚</div><h3>Drop-off &amp; Pickup Dates</h3><p>Record when an order came in, when it's due, and when it left — no paper diary.</p></div>
+                <div class="feature-card"><div class="ic">🧾</div><h3>Instant Billing</h3><p>Itemised bills, challans and receipts generated straight from the order.</p></div>
+                <div class="feature-card"><div class="ic">🧑‍🔧</div><h3>Staff Assignment</h3><p>Assign each order to the staff member handling it and track it from there.</p></div>
                 <div class="feature-card"><div class="ic">👥</div><h3>Customer History</h3><p>See every customer's past orders and preferences at a glance.</p></div>
                 <div class="feature-card"><div class="ic">💸</div><h3>Lowest Entry Price</h3><p>@if ($mc_pricing['laundry'])Starts at just ₹{{ number_format($mc_pricing['laundry']['monthly']) }}/month — one of the most affordable modules on the platform.@else One of the most affordable modules on the platform.@endif</p></div>
             </div>
@@ -77,7 +87,7 @@
                         <li>Order tracking end-to-end</li>
                         <li>Pickup &amp; delivery scheduling</li>
                         <li>Instant billing</li>
-                        <li>WhatsApp ready-alerts</li>
+                        <li>Customer order history</li>
                     </ul>
                     <a href="{{ $mc_signup_url }}" class="btn btn-primary" style="width:100%; justify-content:center;">Start Free Trial</a>
                     @if ($laundry && $laundry['trial_days'] > 0)
@@ -92,9 +102,9 @@
         <div class="wrap">
             <div class="section-head"><span class="kicker">FAQ</span><h2>Laundry Management — common questions</h2></div>
             <div class="faq-list">
-                <div class="faq-item"><button class="faq-q">Can I bill by weight instead of per item? <span class="plus">+</span></button><div class="faq-a">Yes — billing supports both per-item and weight-based pricing structures.</div></div>
-                <div class="faq-item"><button class="faq-q">Does it support multiple pickup/delivery staff? <span class="plus">+</span></button><div class="faq-a">Yes — you can assign orders to specific delivery staff and track their status.</div></div>
-                <div class="faq-item"><button class="faq-q">Can customers get notified automatically? <span class="plus">+</span></button><div class="faq-a">Yes, when paired with WhatsApp Business messaging, customers get automatic "ready for pickup" alerts.</div></div>
+                <div class="faq-item"><button class="faq-q">How are orders priced? <span class="plus">+</span></button><div class="faq-a">Each order is billed line by line — quantity × rate per garment or service — and the total flows straight into your invoice and accounts.</div></div>
+                <div class="faq-item"><button class="faq-q">Does it support multiple staff? <span class="plus">+</span></button><div class="faq-a">Yes — each order can be assigned to the staff member handling it, so you always know who has what.</div></div>
+                <div class="faq-item"><button class="faq-q">Can I see a customer's past orders? <span class="plus">+</span></button><div class="faq-a">Yes — every order is filed against the customer record, so their full history is one click away at the counter.</div></div>
                 <div class="faq-item"><button class="faq-q">Is there a limit on orders per month? <span class="plus">+</span></button><div class="faq-a">No order volume limit is applied on the Laundry Management plan.</div></div>
             </div>
         </div>
@@ -104,7 +114,7 @@
         <div class="wrap">
             <div class="section-head"><span class="kicker">Explore More</span><h2>Related solutions</h2></div>
             <div class="related-grid">
-                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Automatic ready-for-pickup alerts</p></a>
+                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Answer customer enquiries around the clock</p></a>
                 <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Customer support &amp; reminders</p></a>
                 <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Accounting</h4><p>Daily billing &amp; expense tracking</p></a>
                 <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>CRM</h4><p>Customer order history in one place</p></a>

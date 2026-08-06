@@ -19,15 +19,25 @@
                 </div>
                 <p class="hero-note">Priced by student count · {{ $studentTiers->count() ?: 'Flexible' }} {{ $studentTiers->count() ? \Illuminate\Support\Str::plural('plan', $studentTiers->count()) . ' to choose from' : 'plans' }}</p>
             </div>
-            <div class="preview-card" style="max-width:380px;">
-                <div class="preview-chrome"><span></span><span></span><span></span></div>
-                <div class="preview-body">
-                    <div class="mock-bar" style="width:45%;"></div>
-                    <div class="mock-row"><span>🎓 Fee Collection</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">82% Paid</span></div>
-                    <div class="mock-row"><span>🧑‍🎓 Attendance Today</span><span class="mock-pill" style="background:var(--blue-pale); color:var(--blue);">96%</span></div>
-                    <div class="mock-row"><span>📩 Parent Notices Sent</span><span class="mock-pill" style="background:#F1F1F1; color:var(--ink-faint);">124</span></div>
-                </div>
-                <div class="preview-label"><h4>School Dashboard</h4></div>
+            @php($school_hero = $mc_pricing['school'] ?? null)
+            <div class="sticky-cta" style="position:static; max-width:380px;">
+                <h4>{{ $school_hero['name'] ?? 'School Management' }} — at a glance</h4>
+                @if ($school_hero)
+                    <div class="big-price">₹{{ number_format($school_hero['monthly']) }}<span>/mo</span></div>
+                @else
+                    <div class="big-price">On request<span></span></div>
+                @endif
+                <ul>
+                    <li>Admissions, students, timetable and exams</li>
+                    <li>Fee dues, receipts and concessions</li>
+                    <li>Parent alerts on WhatsApp, SMS or push</li>
+                    @if ($school_hero && $school_hero['discount'] > 0)
+                        <li>Save {{ (float) $school_hero['discount'] }}% paying yearly</li>
+                    @endif
+                </ul>
+                @if ($school_hero && $school_hero['trial_days'] > 0)
+                    <div class="setup-note">🎁 {{ $school_hero['trial_days'] }}-day free trial included</div>
+                @endif
             </div>
         </div>
     </section>
@@ -40,7 +50,7 @@
             </div>
             <div class="feature-grid">
                 <div class="feature-card"><div class="ic">📝</div><h3>Admissions</h3><p>Track enquiries through to enrolment without losing a single lead.</p></div>
-                <div class="feature-card"><div class="ic">💰</div><h3>Fee Management</h3><p>Track dues, send reminders, and collect fees online or offline.</p></div>
+                <div class="feature-card"><div class="ic">💰</div><h3>Fee Management</h3><p>Track dues, send reminders, record collections and issue receipts.</p></div>
                 <div class="feature-card"><div class="ic">✅</div><h3>Attendance</h3><p>Daily attendance tracking, class-wise and student-wise.</p></div>
                 <div class="feature-card"><div class="ic">💬</div><h3>Parent Communication</h3><p>Notices, fee reminders, and updates sent straight to parents via WhatsApp.</p></div>
                 <div class="feature-card"><div class="ic">🧑‍🏫</div><h3>Staff Management</h3><p>Teacher records, attendance, and role-based access, all included.</p></div>

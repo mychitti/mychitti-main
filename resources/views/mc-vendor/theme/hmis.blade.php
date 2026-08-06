@@ -20,15 +20,25 @@
                 </div>
                 <p class="hero-note">DPDP Act &amp; data-protection aware patient records</p>
             </div>
-            <div class="preview-card" style="max-width:380px;">
-                <div class="preview-chrome"><span></span><span></span><span></span></div>
-                <div class="preview-body">
-                    <div class="mock-bar" style="width:50%;"></div>
-                    <div class="mock-row"><span>🛏️ Bed 4 — Ward A</span><span class="mock-pill" style="background:#FFF3E6; color:var(--orange-dark);">Occupied</span></div>
-                    <div class="mock-row"><span>🛏️ Bed 5 — Ward A</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Available</span></div>
-                    <div class="mock-row"><span>👤 Patient — OP #204</span><span class="mock-pill" style="background:var(--blue-pale); color:var(--blue);">In Queue</span></div>
-                </div>
-                <div class="preview-label"><h4>HMIS — Ward Dashboard</h4></div>
+            @php($hmis_hero = $mc_pricing['hmis'] ?? null)
+            <div class="sticky-cta" style="position:static; max-width:380px;">
+                <h4>{{ $hmis_hero['name'] ?? 'Hospital Management' }} — at a glance</h4>
+                @if ($hmis_hero)
+                    <div class="big-price">₹{{ number_format($hmis_hero['monthly']) }}<span>/mo</span></div>
+                @else
+                    <div class="big-price">On request<span></span></div>
+                @endif
+                <ul>
+                    <li>OP &amp; IP patient records, wards and beds</li>
+                    <li>OP/IP billing with pharmacy dispensing</li>
+                    <li>Doctor &amp; nursing staff with duty slots</li>
+                    @if ($hmis_hero && $hmis_hero['discount'] > 0)
+                        <li>Save {{ (float) $hmis_hero['discount'] }}% paying yearly</li>
+                    @endif
+                </ul>
+                @if ($hmis_hero && $hmis_hero['trial_days'] > 0)
+                    <div class="setup-note">🎁 {{ $hmis_hero['trial_days'] }}-day free trial included</div>
+                @endif
             </div>
         </div>
     </section>

@@ -156,10 +156,36 @@ class MCVendorController extends Controller
             'mc_signup_url' => 'https://mychitti.net/list-your-business',
             'mc_wa_url'     => 'https://wa.me/919951968473',
             'mc_pricing'    => $mc_pricing,
+            'mc_modules'    => $this->theme_module_board($sub_modules, $yearly),
             'base_plan'     => Plan::where('status', 1)->orderBy('price')->first(),
             'bedTiers'      => HospitalBedTier::where('is_active', true)->orderBy('sort_order')->get(),
             'studentTiers'  => \App\Models\SchoolStudentTier::where('is_active', true)->orderBy('sort_order')->get(),
         ];
+    }
+
+    /**
+     * Every priced module the platform actually sells, cheapest first. This is what the website
+     * shows in place of mocked-up dashboard screenshots — an admin price change lands on the
+     * public site with no one editing a blade. Discounts come from _moduleDiscount() so the board
+     * cannot disagree with the pricing tables further down the same page. Modules with no price
+     * set are left out rather than shown as ₹0.
+     */
+    private function theme_module_board($sub_modules, $yearly_duration)
+    {
+        return $sub_modules
+            ->filter(function ($m) {
+                return trim($m->name ?? '') !== '' && (float) ($m->price_per_month ?? 0) > 0;
+            })
+            ->map(function ($m) use ($yearly_duration) {
+                return [
+                    'name'       => $m->name,
+                    'monthly'    => (float) $m->price_per_month,
+                    'discount'   => $yearly_duration ? (float) _moduleDiscount($m->id, $yearly_duration->id) : 0,
+                    'trial_days' => (int) ($m->free_trial_days ?? 0),
+                ];
+            })
+            ->sortBy('monthly')
+            ->values();
     }
 
     public function theme_home(Request $request)

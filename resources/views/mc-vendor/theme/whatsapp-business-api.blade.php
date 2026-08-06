@@ -38,7 +38,7 @@
                 <div class="feature-card"><div class="ic">✅</div><h3>Meta-Verified, Not a Workaround</h3><p>Built on the official WhatsApp Business Platform via an authorised Business Solution Provider.</p></div>
                 <div class="feature-card"><div class="ic">🤖</div><h3>AI-Powered Replies</h3><p>Menu-based automation and AI Employees handle FAQs, bookings, and lead capture.</p></div>
                 <div class="feature-card"><div class="ic">🔁</div><h3>Human Handover</h3><p>Any conversation can be handed to your own staff, anytime.</p></div>
-                <div class="feature-card"><div class="ic">📦</div><h3>Order &amp; Payment Updates</h3><p>Automated order status and payment reminder messages, sent on schedule.</p></div>
+                <div class="feature-card"><div class="ic">📅</div><h3>Appointment Reminders</h3><p>Reminders go out automatically, however many hours ahead you choose.</p></div>
                 <div class="feature-card"><div class="ic">📋</div><h3>Template Approval Handled</h3><p>We manage the Meta template approval process for you during setup.</p></div>
                 <div class="feature-card"><div class="ic">📊</div><h3>Transparent Billing</h3><p>Actual Meta/BSP charges, shown clearly, plus a flat per-message platform fee.</p></div>
             </div>

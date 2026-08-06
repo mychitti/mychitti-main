@@ -19,25 +19,25 @@
                 </div>
                 <p class="hero-note">@if ($mc_pricing['retail'] && $mc_pricing['retail']['trial_days'] > 0){{ $mc_pricing['retail']['trial_days'] }}-day free trial · @endif Setup in under a day</p>
             </div>
-            <div class="preview-card" style="max-width:380px;">
-                <div class="preview-chrome"><span></span><span></span><span></span></div>
-                <div class="preview-body">
-                    <div class="mock-bar" style="width:40%;"></div>
-                    <div style="display:flex; gap:8px; margin-top:14px;">
-                        <div style="flex:1; background:var(--blue-pale); border-radius:8px; padding:14px; text-align:center;">
-                            <div style="font-family:'Sora',sans-serif; font-weight:800; color:var(--blue); font-size:20px;">₹18,240</div>
-                            <div style="font-size:11px; color:var(--ink-faint);">Today's Sales</div>
-                        </div>
-                        <div style="flex:1; background:var(--green-pale); border-radius:8px; padding:14px; text-align:center;">
-                            <div style="font-family:'Sora',sans-serif; font-weight:800; color:var(--green-dark); font-size:20px;">57</div>
-                            <div style="font-size:11px; color:var(--ink-faint);">Bills Today</div>
-                        </div>
-                    </div>
-                    <div class="mock-row" style="margin-top:14px;"><span>Counter 1</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Active</span></div>
-                    <div class="mock-row"><span>Counter 2</span><span class="mock-pill" style="background:var(--green-pale); color:var(--green-dark);">Active</span></div>
-                    <div class="mock-row"><span>Counter 3</span><span class="mock-pill" style="background:#F1F1F1; color:var(--ink-faint);">Idle</span></div>
-                </div>
-                <div class="preview-label"><h4>Retail POS — Live Counters</h4></div>
+            @php($retail_hero = $mc_pricing['retail'] ?? null)
+            <div class="sticky-cta" style="position:static; max-width:380px;">
+                <h4>{{ $retail_hero['name'] ?? 'Retail POS' }} — at a glance</h4>
+                @if ($retail_hero)
+                    <div class="big-price">₹{{ number_format($retail_hero['monthly']) }}<span>/mo</span></div>
+                @else
+                    <div class="big-price">On request<span></span></div>
+                @endif
+                <ul>
+                    <li>Barcode-ready billing across multiple counters</li>
+                    <li>Stock updated on every sale, no reconciliation</li>
+                    <li>Cash, UPI and card into one daily report</li>
+                    @if ($retail_hero && $retail_hero['discount'] > 0)
+                        <li>Save {{ (float) $retail_hero['discount'] }}% paying yearly</li>
+                    @endif
+                </ul>
+                @if ($retail_hero && $retail_hero['trial_days'] > 0)
+                    <div class="setup-note">🎁 {{ $retail_hero['trial_days'] }}-day free trial included</div>
+                @endif
             </div>
         </div>
     </section>
@@ -106,7 +106,7 @@
             </div>
             <div class="faq-list">
                 <div class="faq-item"><button class="faq-q">How many counters and staff logins do I get? <span class="plus">+</span></button><div class="faq-a">Your plan covers multiple counters and staff logins; additional users can be added on request. Contact sales for the exact allocation on your plan.</div></div>
-                <div class="faq-item"><button class="faq-q">Does it work offline during internet outages? <span class="plus">+</span></button><div class="faq-a">Billing continues locally and syncs automatically once connectivity is restored.</div></div>
+                <div class="faq-item"><button class="faq-q">What does Retail POS need to run? <span class="plus">+</span></button><div class="faq-a">Any browser on a desktop, laptop or tablet with an internet connection — nothing to install, and a barcode scanner works out of the box.</div></div>
                 <div class="faq-item"><button class="faq-q">Can I connect Retail POS to my inventory and accounting? <span class="plus">+</span></button><div class="faq-a">Yes — Retail POS is part of the MC Vendor Hub platform, so it syncs directly with Inventory, Accounting, and CRM.</div></div>
                 <div class="faq-item"><button class="faq-q">How long does setup take? <span class="plus">+</span></button><div class="faq-a">Most retail stores are fully set up and billing within a day of signup.</div></div>
             </div>
@@ -119,7 +119,7 @@
             <div class="related-grid">
                 <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Inventory</h4><p>Real-time stock tracking across your store</p></a>
                 <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Automate reordering &amp; customer replies</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Order updates sent automatically</p></a>
+                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Answer customer enquiries around the clock</p></a>
                 <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Accounting</h4><p>Invoices and expenses, synced with POS</p></a>
             </div>
         </div>
