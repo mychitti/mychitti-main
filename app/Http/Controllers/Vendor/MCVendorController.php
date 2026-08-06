@@ -228,7 +228,7 @@ class MCVendorController extends Controller
         $sub_modules = SubModule::all();
         $bedTiers = HospitalBedTier::where('is_active', true)->orderBy('sort_order')->get();
         $studentTiers = \App\Models\SchoolStudentTier::where('is_active', true)->orderBy('sort_order')->get();
-        return view('mc-vendor.price_calculator', compact('sub_modules', 'bedTiers', 'studentTiers'));
+        return view('mc-vendor.price_calculator', array_merge($this->theme_shared(), compact('sub_modules', 'bedTiers', 'studentTiers')));
     }
     public function contact()
     {

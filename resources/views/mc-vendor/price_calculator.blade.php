@@ -1,361 +1,318 @@
-<!DOCTYPE html>
+@extends('mc-vendor.theme.layout')
 
+@section('title', 'Price Calculator — Build Your Plan | MC Vendor Hub')
+@section('meta_description', 'Work out exactly what MC Vendor Hub costs for your business. Pick the modules you need, choose monthly, quarterly or yearly, and see the total with GST before you commit.')
 
-<html>
-
-<head>
-    <meta charset="utf-8" /> 
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MC Vendor Hub — Price Calculator</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="stylesheet" href="{{ asset('assets/admin/css/style.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/admin/vendor/icon-set/style.css') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('assets/admin') }}/css/toastr.css">
-    <link rel="stylesheet" href="{{ asset('assets/admin') }}/css/common.css">
-
-    <link href="{{ asset('assets/front/lib/owlcarousel/assets/owl.carousel.min.css') }}" rel="stylesheet">
+@section('styles')
     <style>
-        .pc-global-duration-card {
-            height: 100px;
-            padding: 10px;
-            background: #f3ffdf;
-            margin: 10px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-
-        .sidebar-card {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-        }
-
-        .sidebar-card h3 {
-            font-size: 16px;
-            margin: 0 0 12px 0;
-            color: #333;
-        }
-
-        .sidebar-card ul {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 15px 0;
-        }
-
-        .sidebar-card li {
-            font-size: 14px;
-            color: #666;
-            margin: 8px 0;
-            padding-left: 18px;
-            position: relative;
-        }
-
-        .sidebar-card li::before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: #81c408;
-        }
-
-        .sidebar-card a {
-            display: block;
-            text-align: center;
-            width: 100%;
-            text-decoration: none;
-            background: #81c408;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 4px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .sidebar-card a:hover {
-            background: #6fa607;
-        }
-
-        .pc-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .pc-panel {
-            display: none;
-            background: white;
-            border-radius: 6px;
-            padding: 15px;
-        }
-
-        .pc-panel.pc-active {
-            display: block;
-            animation: pcFadeIn 0.3s;
-        }
-
-        @keyframes pcFadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
+        /* Calculator-specific styling. Every pc-* class and id below is a hook the pricing
+           script depends on — restyled to the site theme, but never renamed. */
         .pc-heading {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 20px;
-        }
-
-        .pc-calc-section {
-            margin-top: 15px;
-        }
-
-        .pc-module-item {
-            background: #fafafa;
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 10px;
-            border: 1px solid #e0e0e0;
-            transition: all 0.3s;
-        }
-
-        .pc-module-item.pc-selected {
-            border-color: #81c408;
-            background: #f8fcf0;
-        }
-
-        .pc-module-top {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .pc-checkbox {
-            width: 18px;
-            height: 18px;
-            margin-right: 10px;
-            cursor: pointer;
-        }
-
-        .pc-module-name {
-            flex-grow: 1;
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .pc-price-amount {
-            color: #81c408;
+            font-family: 'Sora', sans-serif;
+            font-size: 15px;
             font-weight: 700;
-            font-size: 14px;
-        }
-
-        .pc-duration-wrap {
-            display: none;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
+            color: var(--ink);
+            margin-bottom: 14px;
         }
 
         .pc-label {
             display: block;
-            margin-bottom: 6px;
-            color: #555;
-            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--ink-soft);
+            font-weight: 600;
             font-size: 13px;
         }
 
         .pc-duration-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 8px;
+            gap: 10px;
             margin-top: 8px;
         }
 
+        .pc-global-duration {
+            margin-bottom: 34px;
+        }
+
+        .pc-global-duration-card {
+            padding: 18px 12px;
+            text-align: center;
+            background: var(--white);
+            border: 1.5px solid var(--line);
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14.5px;
+            color: var(--ink-soft);
+            cursor: pointer;
+            transition: border-color .2s, color .2s, box-shadow .2s;
+        }
+
+        .pc-global-duration-card:hover {
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
+        .pc-global-duration-card.pc-selected {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: var(--white);
+            box-shadow: 0 10px 22px rgba(19, 32, 56, 0.14);
+        }
+
+        .pc-module-item {
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        .pc-module-item:hover {
+            border-color: var(--blue);
+        }
+
+        .pc-module-item.pc-selected {
+            border-color: var(--blue);
+            box-shadow: 0 10px 24px rgba(19, 32, 56, 0.08);
+        }
+
+        .pc-module-top {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .pc-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--blue);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .pc-module-name {
+            flex: 1;
+            font-weight: 700;
+            font-size: 14.5px;
+            color: var(--ink);
+        }
+
+        .pc-price-amount {
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--blue);
+            font-weight: 700;
+            font-size: 13.5px;
+            white-space: nowrap;
+        }
+
+        /* Hidden by default; the script reveals it only for tiered modules. */
+        .pc-duration-wrap {
+            display: none;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--line);
+        }
+
+        /* The per-module duration cards carry the pricing data the script reads,
+           so they stay in the DOM but collapsed. */
         .height_0 {
             height: 0 !important;
+            overflow: hidden;
         }
 
         .pc-duration-card {
             padding: 10px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            transition: all 0.3s;
+            background: var(--white);
+            border: 1px solid var(--line);
+            border-radius: 8px;
             text-align: center;
+            transition: border-color .2s;
         }
 
         .pc-duration-card:hover {
-            border-color: #81c408;
+            border-color: var(--blue);
         }
 
-        .pc-global-duration-card.pc-selected,
         .pc-duration-card.pc-selected {
-            border-color: #81c408;
-            background: #81c408;
-            color: white;
+            border-color: var(--blue);
+            background: var(--blue-pale);
         }
 
-        .pc-duration-title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 4px;
+        .pc-bed-tier-wrap {
+            margin-top: 6px;
         }
 
-        .pc-duration-cost {
+        .pc-bed-tier-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .pc-bed-tier-card {
+            padding: 14px 12px;
+            background: var(--white);
+            border: 1.5px solid var(--line);
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        .pc-bed-tier-card:hover {
+            border-color: var(--blue);
+        }
+
+        .pc-bed-tier-card.pc-selected {
+            border-color: var(--blue);
+            background: var(--blue-pale);
+            box-shadow: 0 8px 18px rgba(19, 32, 56, 0.08);
+        }
+
+        .pc-bed-tier-name {
+            font-weight: 700;
+            font-size: 13.5px;
+            color: var(--ink);
+        }
+
+        .pc-bed-tier-range {
+            font-size: 12px;
+            color: var(--ink-faint);
+            margin-top: 2px;
+        }
+
+        .pc-bed-tier-price {
+            font-family: 'IBM Plex Mono', monospace;
             font-size: 13px;
+            font-weight: 700;
+            color: var(--blue);
+            margin-top: 6px;
         }
 
-        .pc-duration-save {
-            font-size: 11px;
-            margin-top: 4px;
-            color: #28a745;
+        .pc-bed-tier-contact {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--orange-dark);
+            margin-top: 6px;
         }
 
-        .pc-duration-card.pc-selected .pc-duration-save {
-            color: #d4f4dd;
-        }
-
-        .pc-summary {
-            background: #edffcd;
-            color: #090909;
-            padding: 15px;
-            border-radius: 6px;
-            height: fit-content;
-            margin-top: 46px;
+        .pc-tier-selected-bar {
+            display: none;
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: var(--ink);
+            color: var(--white);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .pc-summary-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 14px;
+            align-items: center;
+            padding: 9px 0;
+            font-size: 13.5px;
+            color: var(--ink-soft);
+        }
+
+        .pc-summary-row span:last-child {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 600;
+            color: var(--ink);
         }
 
         .pc-summary-row.pc-total {
-            border-top: 1px solid rgba(0,0,0,0.15);
-            padding-top: 10px;
-            margin-top: 10px;
-            font-size: 18px;
-            font-weight: 700;
+            border-top: 1px solid var(--line);
+            margin-top: 8px;
+            padding-top: 14px;
+            font-family: 'Sora', sans-serif;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .pc-summary-row.pc-total span:last-child {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--blue);
         }
 
         .pc-breakdown {
-            margin-top: 8px;
-            font-size: 12px;
-            opacity: 0.9;
+            margin-top: 4px;
         }
 
         .pc-breakdown-item {
-            background: white;
-            padding: 10px;
-            border: 1px solid #81c408;
-            border-radius: 7px;
-            margin: 4px 0;
+            font-size: 12.5px;
+            color: var(--ink-soft);
+            padding: 7px 0;
+            border-top: 1px dashed var(--line);
         }
 
-        .pc-breakdown-item.pc-tier-item {
-            border-color: #81c408;
-            background: #f3ffdf;
+        .pc-tier-item {
+            font-weight: 600;
         }
 
-        /* ── Bed tier (green theme) ── */
-        .pc-bed-tier-wrap {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #e0e0e0;
+        .pc-note {
+            margin-top: 16px;
+            padding: 12px 14px;
+            background: var(--bg-soft);
+            border-radius: 8px;
+            font-size: 12.5px;
+            color: var(--ink-soft);
+            line-height: 1.5;
         }
 
-        .pc-bed-tier-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 8px;
-            margin-top: 8px;
+        .pc-note a {
+            color: var(--blue);
+            font-weight: 700;
         }
 
-        .pc-bed-tier-card {
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 10px 12px;
+        .pc-empty {
             text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: #fff;
-        }
-
-        .pc-bed-tier-card:hover {
-            border-color: #81c408;
-            background: #f3ffdf;
-        }
-
-        .pc-bed-tier-card.pc-selected {
-            border-color: #81c408;
-            background: #81c408;
-            color: white;
-        }
-
-        .pc-bed-tier-card.pc-selected .pc-bed-tier-range,
-        .pc-bed-tier-card.pc-selected .pc-bed-tier-price { color: rgba(255,255,255,0.85); }
-
-        .pc-bed-tier-name  { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
-        .pc-bed-tier-range { font-size: 11px; color: #888; margin-bottom: 5px; }
-        .pc-bed-tier-price { font-size: 12px; font-weight: 600; color: #81c408; }
-        .pc-bed-tier-contact { font-size: 12px; color: #e65100; font-weight: 600; }
-        .pc-bed-tier-card.pc-selected .pc-bed-tier-contact { color: #ffe082; }
-
-        .pc-tier-selected-bar {
-            margin-top: 10px;
-            padding: 8px 14px;
-            background: #81c408;
-            color: white;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-            display: none;
+            padding: 48px 20px;
+            color: var(--ink-faint);
         }
     </style>
-</head>
+@endsection
 
-<body>
-    @include('mc-vendor.partials.nav')
+@section('content')
 
-    <div class="pc-container">
+    <div class="wrap breadcrumb"><a href="{{ mcv('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span>Price Calculator</div>
 
-        <!-- Calculator Panel -->
-        <div class="pc-panel pc-active" id="calculator">
-            @php $plan_durations = _planDurations(); @endphp
-            <h2 class="pc-heading">Module Price Calculator</h2>
-            <div class="pc-global-duration mb-3">
+    <section class="page-hero" style="padding-bottom:40px;">
+        <div class="wrap">
+            <span class="eyebrow"><span class="dot"></span> Transparent Pricing</span>
+            <h1>Build your plan and see <span>the real total</span>.</h1>
+            <p class="lede">Tick the modules you need, pick how long you want to pay for, and the total updates as you go — GST included, nothing hidden until checkout.</p>
+        </div>
+    </section>
+
+    <section style="padding-top:0;">
+        <div class="wrap">
+            @php($plan_durations = _planDurations())
+
+            <div class="pc-global-duration">
                 <label class="pc-label"><b>Select Plan Duration</b></label>
                 <div class="pc-duration-grid">
-                    @foreach($plan_durations as $i => $dur)
-                    <div class="pc-global-duration-card {{ $i == 0 ? 'pc-selected' : '' }}" data-months="{{ $dur->months }}">{{ $dur->label }}</div>
+                    @foreach ($plan_durations as $i => $dur)
+                        <div class="pc-global-duration-card {{ $i == 0 ? 'pc-selected' : '' }}" data-months="{{ $dur->months }}">{{ $dur->label }}</div>
                     @endforeach
                 </div>
             </div>
 
-            <div class="row">
-                <div class="pc-calc-section col-md-8">
-                    <h3 style="color: #81c408; margin-bottom: 12px; font-size: 16px;">Select Modules & Duration</h3>
+            <div class="content-split">
+                <div>
+                    <h3 class="pc-heading">Select Modules &amp; Duration</h3>
 
                     @if (isset($sub_modules) && count($sub_modules) > 0)
                         @foreach ($sub_modules as $module)
-                            @php
-                                $isHospital = $bedTiers->count() && stripos($module->name, 'hospital') !== false;
-                                $isSchool = isset($studentTiers) && $studentTiers->count()
-                                    && ((($module->Key ?? '') === 'school_manage') || stripos($module->name, 'school') !== false);
-                                $isTiered = $isHospital || $isSchool;
-                                $tierList = $isSchool ? $studentTiers : $bedTiers;
-                                $tierLabel = $isSchool ? 'Select School Plan:' : 'Select Hospital Tier:';
-                            @endphp
+                            @php($isHospital = $bedTiers->count() && stripos($module->name, 'hospital') !== false)
+                            @php($isSchool = isset($studentTiers) && $studentTiers->count() && ((($module->Key ?? '') === 'school_manage') || stripos($module->name, 'school') !== false))
+                            @php($isTiered = $isHospital || $isSchool)
+                            @php($tierList = $isSchool ? $studentTiers : $bedTiers)
+                            @php($tierLabel = $isSchool ? 'Select School Plan:' : 'Select Hospital Tier:')
                             <div class="pc-module-item" data-module-id="{{ $module->id }}" data-is-hospital="{{ $isTiered ? 1 : 0 }}">
                                 <div class="pc-module-top">
                                     <input type="checkbox" class="pc-checkbox pc-module-check"
@@ -364,14 +321,12 @@
                                     <div class="pc-price-amount">₹{{ number_format($module->price_per_month) }}/month</div>
                                 </div>
                                 <div class="pc-duration-wrap" data-module-id="{{ $module->id }}">
-                                    <div class="pc-duration-grid height_0" @if($isTiered) style="display:none" @endif>
+                                    <div class="pc-duration-grid height_0" @if ($isTiered) style="display:none" @endif>
                                         @foreach ($plan_durations as $duration)
-                                            @php
-                                                $dur_discount = _moduleDiscount($module->id, $duration->id);
-                                                $basePrice = $module->price_per_month * $duration->months;
-                                                $discountAmount = ($basePrice * $dur_discount) / 100;
-                                                $finalPrice = $basePrice - $discountAmount;
-                                            @endphp
+                                            @php($dur_discount = _moduleDiscount($module->id, $duration->id))
+                                            @php($basePrice = $module->price_per_month * $duration->months)
+                                            @php($discountAmount = ($basePrice * $dur_discount) / 100)
+                                            @php($finalPrice = $basePrice - $discountAmount)
                                             <div class="pc-duration-card" data-module-id="{{ $module->id }}"
                                                 data-price="{{ $finalPrice }}"
                                                 data-months="{{ $duration->months }}"
@@ -389,43 +344,44 @@
                                         @endforeach
                                     </div>
 
-                                    @if($isTiered)
-                                    <div class="pc-bed-tier-wrap">
-                                        <label class="pc-label"><b>{{ $tierLabel }}</b></label>
-                                        <div class="pc-bed-tier-grid">
-                                            @foreach($tierList as $tier)
-                                            @php $tierRange = $isSchool ? $tier->student_range : $tier->bed_range; @endphp
-                                            <div class="pc-bed-tier-card"
-                                                data-tier-id="{{ $tier->id }}"
-                                                data-tier-name="{{ $tier->tier_name }}"
-                                                data-bed-range="{{ $tierRange }}"
-                                                data-monthly="{{ $tier->price_monthly }}"
-                                                data-yearly="{{ $tier->price_yearly }}"
-                                                data-is-custom="{{ $tier->is_custom ? 1 : 0 }}"
-                                                onclick="selectBedTier(this, {{ $module->id }})">
-                                                <div class="pc-bed-tier-name">{{ $tier->tier_name }}</div>
-                                                <div class="pc-bed-tier-range">{{ $tierRange }}</div>
-                                                @if($tier->is_custom)
-                                                    <div class="pc-bed-tier-contact">Contact Us</div>
-                                                @else
-                                                    <div class="pc-bed-tier-price">₹{{ number_format($tier->price_monthly) }}/month</div>
-                                                @endif
+                                    @if ($isTiered)
+                                        <div class="pc-bed-tier-wrap">
+                                            <label class="pc-label"><b>{{ $tierLabel }}</b></label>
+                                            <div class="pc-bed-tier-grid">
+                                                @foreach ($tierList as $tier)
+                                                    @php($tierRange = $isSchool ? $tier->student_range : $tier->bed_range)
+                                                    <div class="pc-bed-tier-card"
+                                                        data-tier-id="{{ $tier->id }}"
+                                                        data-tier-name="{{ $tier->tier_name }}"
+                                                        data-bed-range="{{ $tierRange }}"
+                                                        data-monthly="{{ $tier->price_monthly }}"
+                                                        data-yearly="{{ $tier->price_yearly }}"
+                                                        data-is-custom="{{ $tier->is_custom ? 1 : 0 }}"
+                                                        onclick="selectBedTier(this, {{ $module->id }})">
+                                                        <div class="pc-bed-tier-name">{{ $tier->tier_name }}</div>
+                                                        <div class="pc-bed-tier-range">{{ $tierRange }}</div>
+                                                        @if ($tier->is_custom)
+                                                            <div class="pc-bed-tier-contact">Contact Us</div>
+                                                        @else
+                                                            <div class="pc-bed-tier-price">₹{{ number_format($tier->price_monthly) }}/month</div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
                                             </div>
-                                            @endforeach
+                                            <div class="pc-tier-selected-bar" id="tierBar_{{ $module->id }}"></div>
                                         </div>
-                                        <div class="pc-tier-selected-bar" id="tierBar_{{ $module->id }}"></div>
-                                    </div>
                                     @endif
                                 </div>
                             </div>
                         @endforeach
                     @else
-                        <p style="color: #666; text-align: center; padding: 40px;">No modules available yet. Please try again later.</p>
+                        <p class="pc-empty">No modules available yet. Please try again later.</p>
                     @endif
-
                 </div>
-                <div class="col-md-4">
-                    <div class="pc-summary">
+
+                <div>
+                    <div class="sticky-cta">
+                        <h4>Your plan</h4>
                         <div class="pc-summary-row">
                             <span>Subtotal (Base):</span>
                             <span id="pcSubtotal">₹0.00</span>
@@ -442,39 +398,34 @@
                             <span>Total:</span>
                             <span id="pcTotal">₹0.00</span>
                         </div>
-                        <div style="font-size: 12px;" class="bg-white p-2">
-                            <b>Note:</b> This plan supports only 10 users.
-                            Need for more users? <a href="{{ route('contact') }}">Contact us</a> for an upgrade.
-                        </div>
                         <div class="pc-breakdown" id="pcBreakdown"></div>
-                    </div>
-                    <div class="sidebar-card mt-4">
-                        <h3>Register for FREE on MC VENDOR HUB</h3>
-                        <ul>
-                            <li>Free Billing – up to 1000 bills</li>
-                            <li>Free Business Webpage</li>
-                        </ul>
-                        <a href="https://mychitti.net/list-your-business">Register Now</a>
+                        <div class="pc-note">
+                            <b>Note:</b> This plan supports only 10 users. Need more?
+                            <a href="{{ mcv('vendor.mc-vendor.contact') }}">Contact us</a> for an upgrade.
+                        </div>
+                        <a href="{{ $mc_signup_url }}" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:16px;">List Your Business — Free</a>
+                        <div class="setup-note">Free billing up to 1000 bills · Free business webpage</div>
                     </div>
                 </div>
             </div>
-
         </div>
-    </div>
+    </section>
 
+    <section class="final-cta">
+        <div class="wrap" style="text-align:center;">
+            <h2>Not sure which modules you need?</h2>
+            <p>Tell us how your business runs and we'll put together the combination that fits.</p>
+            <div class="hero-ctas" style="justify-content:center;">
+                <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-primary">Talk to Sales</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
+            </div>
+        </div>
+    </section>
 
-    {{-- footer section  --}}
-    @include('mc-vendor.partials.footer')
+@endsection
 
-    <script src="{{ asset('assets/admin') }}/js/vendor.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous">
-    </script>
-    <script src="{{ asset('assets/front/lib/owlcarousel/owl.carousel.min.js') }}"></script>
-
-    <!-- JS Front -->
-    <script src="{{ asset('assets/admin') }}/js/theme.min.js"></script>
-    <script src="{{ asset('assets/admin') }}/js/toastr.js"></script>
+@section('scripts')
+    <script src="{{ asset('assets/admin/vendor/jquery/jquery.min.js') }}"></script>
     <script>
         // Per-module bed tier selections, keyed by moduleId
         let selectedBedTiers = {};
@@ -661,8 +612,4 @@
             _recalculateAll = recalculateAll;
         });
     </script>
-
-
-</body>
-
-</html>
+@endsection
