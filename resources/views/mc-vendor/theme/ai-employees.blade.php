@@ -5,7 +5,7 @@
 
 @section('content')
 
-    <div class="wrap breadcrumb"><a href="{{ route('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span>AI Employees</div>
+    <div class="wrap breadcrumb"><a href="{{ mcv('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span>AI Employees</div>
 
     <section class="page-hero">
         <div class="page-hero-inner">
@@ -128,7 +128,7 @@
                 <div class="faq-item"><button class="faq-q">What happens if an AI Employee runs out of tokens? <span class="plus">+</span></button><div class="faq-a">Each role includes a monthly fair-usage token allocation. Usage beyond that is billed at the live market LLM rate plus an 18% platform margin.</div></div>
                 <div class="faq-item"><button class="faq-q">Can an AI Employee hand off to a real person? <span class="plus">+</span></button><div class="faq-a">Yes — every AI Employee can escalate a conversation to your own staff at any point.</div></div>
                 <div class="faq-item"><button class="faq-q">Do I need all 9 roles? <span class="plus">+</span></button><div class="faq-a">No — most businesses start with the Standard AI Employee and add specialised roles only as needed.</div></div>
-                <div class="faq-item"><button class="faq-q">How is AI-generated output verified? <span class="plus">+</span></button><div class="faq-a">AI Services are automated and should be reviewed before relying on them for business-critical decisions — see our <a href="{{ route('vendor.mc-vendor.mc-vendor-hub-tnc') }}" style="color:var(--blue); font-weight:700;">Terms &amp; Conditions</a> for full detail.</div></div>
+                <div class="faq-item"><button class="faq-q">How is AI-generated output verified? <span class="plus">+</span></button><div class="faq-a">AI Services are automated and should be reviewed before relying on them for business-critical decisions — see our <a href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-tnc') }}" style="color:var(--blue); font-weight:700;">Terms &amp; Conditions</a> for full detail.</div></div>
             </div>
         </div>
     </section>
@@ -137,10 +137,10 @@
         <div class="wrap">
             <div class="section-head"><span class="kicker">Explore More</span><h2>Related solutions</h2></div>
             <div class="related-grid">
-                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>The channel most AI Employees work on</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>CRM &amp; Client Mgmt</h4><p>Context your AI Employees use</p></a>
-                <a href="{{ route('vendor.mc-vendor.price-calculator') }}" class="related-card"><h4>Full Pricing</h4><p>See the complete pricing document</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#verticals" class="related-card"><h4>Industry Solutions</h4><p>HMIS, School, Retail &amp; more</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>The channel most AI Employees work on</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>CRM &amp; Client Mgmt</h4><p>Context your AI Employees use</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}" class="related-card"><h4>Full Pricing</h4><p>See the complete pricing document</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#verticals" class="related-card"><h4>Industry Solutions</h4><p>HMIS, School, Retail &amp; more</p></a>
             </div>
         </div>
     </section>
@@ -150,8 +150,8 @@
             <h2>Your first AI Employee is waiting to start.</h2>
             <p>List your business free. Add the tools — and the team — as you grow.</p>
             <div class="hero-ctas" style="justify-content:center;">
-                <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn btn-primary">Build Your AI Team</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
+                <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-primary">Build Your AI Team</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
             </div>
         </div>
     </section>

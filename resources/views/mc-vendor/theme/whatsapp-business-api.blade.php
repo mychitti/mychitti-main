@@ -5,7 +5,7 @@
 
 @section('content')
 
-    <div class="wrap breadcrumb"><a href="{{ route('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span>WhatsApp Business API</div>
+    <div class="wrap breadcrumb"><a href="{{ mcv('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span>WhatsApp Business API</div>
 
     <section class="page-hero" style="background:linear-gradient(180deg, var(--green-pale) 0%, var(--bg) 100%);">
         <div class="page-hero-inner">
@@ -14,7 +14,7 @@
                 <h1>Answer every customer, <span style="color:var(--green-dark);">even at midnight</span>.</h1>
                 <p class="lede">Meta-verified WhatsApp Business messaging with an AI Employee reading and replying before your first cup of chai — not a workaround, the real thing.</p>
                 <div class="hero-ctas">
-                    <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn" style="background:var(--green-dark); color:#fff;">Set Up WhatsApp</a>
+                    <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn" style="background:var(--green-dark); color:#fff;">Set Up WhatsApp</a>
                     <a href="#pricing" class="btn btn-ghost" style="border-color:var(--green-dark); color:var(--green-dark);">See Pricing →</a>
                 </div>
                 <p class="hero-note">@if ($mc_pricing['whatsapp'])Platform fee from ₹{{ number_format($mc_pricing['whatsapp']['monthly']) }}/month · @endif Official BSP-enabled messaging</p>
@@ -79,7 +79,7 @@
                         <li>Template approval assistance</li>
                         <li>24×7 basic support</li>
                     </ul>
-                    <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn" style="background:var(--green-dark); color:#fff; width:100%; justify-content:center;">Set Up WhatsApp</a>
+                    <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn" style="background:var(--green-dark); color:#fff; width:100%; justify-content:center;">Set Up WhatsApp</a>
                     @if ($wa && $wa['trial_days'] > 0)
                         <div class="setup-note">🎁 {{ $wa['trial_days'] }}-day free trial included</div>
                     @endif
@@ -111,7 +111,7 @@
             <div class="faq-list">
                 <div class="faq-item"><button class="faq-q">Is this the official WhatsApp Business API? <span class="plus">+</span></button><div class="faq-a">Yes — messaging is enabled through Meta's WhatsApp Business Platform via our authorised Business Solution Provider, not a third-party workaround.</div></div>
                 <div class="faq-item"><button class="faq-q">How is message billing calculated? <span class="plus">+</span></button><div class="faq-a">You're billed the actual Meta/BSP charge for each message, plus a flat platform usage fee — fully transparent, no hidden markup.</div></div>
-                <div class="faq-item"><button class="faq-q">What happens if a message fails to deliver? <span class="plus">+</span></button><div class="faq-a">Billing reflects messages sent/dispatched through the platform. We are not responsible for delivery failures caused by invalid numbers, recipient opt-outs, or Meta-side issues — see our <a href="{{ route('vendor.mc-vendor.mc-vendor-hub-return-policy') }}" style="color:var(--blue); font-weight:700;">Refund &amp; Cancellation Policy</a> for details.</div></div>
+                <div class="faq-item"><button class="faq-q">What happens if a message fails to deliver? <span class="plus">+</span></button><div class="faq-a">Billing reflects messages sent/dispatched through the platform. We are not responsible for delivery failures caused by invalid numbers, recipient opt-outs, or Meta-side issues — see our <a href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-return-policy') }}" style="color:var(--blue); font-weight:700;">Refund &amp; Cancellation Policy</a> for details.</div></div>
                 <div class="faq-item"><button class="faq-q">Can I connect an AI Employee to WhatsApp? <span class="plus">+</span></button><div class="faq-a">Yes — any AI Employee can be connected to answer and manage WhatsApp conversations automatically.</div></div>
             </div>
         </div>
@@ -121,10 +121,10 @@
         <div class="wrap">
             <div class="section-head"><span class="kicker">Explore More</span><h2>Related solutions</h2></div>
             <div class="related-grid">
-                <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Automate WhatsApp conversations</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Lead Management</h4><p>Every WhatsApp enquiry, captured</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.salon-software') }}" class="related-card"><h4>Salon &amp; Spa</h4><p>See WhatsApp booking in action</p></a>
-                <a href="{{ route('vendor.mc-vendor.price-calculator') }}" class="related-card"><h4>Full Pricing</h4><p>See the complete pricing document</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Automate WhatsApp conversations</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Lead Management</h4><p>Every WhatsApp enquiry, captured</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.salon-software') }}" class="related-card"><h4>Salon &amp; Spa</h4><p>See WhatsApp booking in action</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}" class="related-card"><h4>Full Pricing</h4><p>See the complete pricing document</p></a>
             </div>
         </div>
     </section>
@@ -134,8 +134,8 @@
             <h2>Ready to never miss a message again?</h2>
             <p>Official WhatsApp Business, set up and running in days.</p>
             <div class="hero-ctas" style="justify-content:center;">
-                <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn btn-primary" style="background:#fff; color:var(--green-dark); border-color:#fff;">Set Up WhatsApp</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost" style="color:#fff; border-color:#fff;">Back to Home</a>
+                <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-primary" style="background:#fff; color:var(--green-dark); border-color:#fff;">Set Up WhatsApp</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost" style="color:#fff; border-color:#fff;">Back to Home</a>
             </div>
         </div>
     </section>

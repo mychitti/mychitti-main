@@ -23,14 +23,14 @@
 
     <header>
         <nav>
-            <a href="{{ route('vendor.mc-vendor.theme.home') }}"><img src="{{ asset('assets/mcvendorhub/img/logo-full.png') }}" alt="MC Vendor Hub" class="logo-img"></a>
+            <a href="{{ mcv('vendor.mc-vendor.theme.home') }}"><img src="{{ asset('assets/mcvendorhub/img/logo-full.png') }}" alt="MC Vendor Hub" class="logo-img"></a>
             <div class="navlinks">
-                <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}">AI Employees</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules">Core Platform</a>
-                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}">WhatsApp</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#verticals">Industries</a>
-                <a href="{{ route('vendor.mc-vendor.price-calculator') }}">Pricing</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#faq">FAQ</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}">AI Employees</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules">Core Platform</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}">WhatsApp</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#verticals">Industries</a>
+                <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}">Pricing</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#faq">FAQ</a>
             </div>
             <div class="navcta">
                 <a href="{{ $mc_login_url }}" class="btn btn-ghost btn-sm">Log In</a>
@@ -41,13 +41,13 @@
             </button>
         </nav>
         <div class="mobile-menu" id="mobileMenu">
-            <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}">AI Employees</a>
-            <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules">Core Platform</a>
-            <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}">WhatsApp</a>
-            <a href="{{ route('vendor.mc-vendor.theme.home') }}#verticals">Industries</a>
-            <a href="{{ route('vendor.mc-vendor.price-calculator') }}">Pricing</a>
-            <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}">Blog</a>
-            <a href="{{ route('vendor.mc-vendor.contact') }}">Contact</a>
+            <a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}">AI Employees</a>
+            <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules">Core Platform</a>
+            <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}">WhatsApp</a>
+            <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#verticals">Industries</a>
+            <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}">Pricing</a>
+            <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}">Blog</a>
+            <a href="{{ mcv('vendor.mc-vendor.contact') }}">Contact</a>
             <div class="mobile-cta">
                 <a href="{{ $mc_login_url }}" class="btn btn-ghost btn-sm">Log In</a>
                 <a href="{{ $mc_signup_url }}" class="btn btn-primary btn-sm">List Business Free</a>
@@ -66,24 +66,24 @@
                 </div>
                 <div>
                     <h5>Platform</h5>
-                    <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}">AI Employees</a>
-                    <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules">Core Platform</a>
-                    <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}">WhatsApp Business</a>
-                    <a href="{{ route('vendor.mc-vendor.theme.home') }}#verticals">Industries</a>
-                    <a href="{{ route('vendor.mc-vendor.price-calculator') }}">Pricing</a>
+                    <a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}">AI Employees</a>
+                    <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules">Core Platform</a>
+                    <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}">WhatsApp Business</a>
+                    <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#verticals">Industries</a>
+                    <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}">Pricing</a>
                 </div>
                 <div>
                     <h5>Company</h5>
-                    <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}">Blog</a>
-                    <a href="{{ route('vendor.mc-vendor.contact') }}">Contact</a>
-                    <a href="{{ route('vendor.mc-vendor.price-calculator') }}">Price Calculator</a>
+                    <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}">Blog</a>
+                    <a href="{{ mcv('vendor.mc-vendor.contact') }}">Contact</a>
+                    <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}">Price Calculator</a>
                     <a href="{{ $mc_signup_url }}">List Your Business</a>
                 </div>
                 <div>
                     <h5>Legal</h5>
-                    <a href="{{ route('vendor.mc-vendor.mc-vendor-hub-tnc') }}">Terms &amp; Conditions</a>
-                    <a href="{{ route('vendor.mc-vendor.mc-vendor-hub-pp') }}">Privacy Policy</a>
-                    <a href="{{ route('vendor.mc-vendor.mc-vendor-hub-return-policy') }}">Refund &amp; Cancellation Policy</a>
+                    <a href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-tnc') }}">Terms &amp; Conditions</a>
+                    <a href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-pp') }}">Privacy Policy</a>
+                    <a href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-return-policy') }}">Refund &amp; Cancellation Policy</a>
                 </div>
             </div>
             <div class="footer-bottom">
@@ -94,7 +94,7 @@
     </footer>
 
     <div class="float-stack">
-        <a href="{{ route('vendor.mc-vendor.contact') }}" class="fab fab-demo">📅 Book Demo</a>
+        <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="fab fab-demo">📅 Book Demo</a>
         <a href="{{ $mc_wa_url }}" target="_blank" rel="noopener" class="fab fab-wa" aria-label="Chat on WhatsApp">💬</a>
     </div>
 

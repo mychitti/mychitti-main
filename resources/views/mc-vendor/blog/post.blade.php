@@ -41,8 +41,8 @@
         <div class="container">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-2">
-                    <li class="breadcrumb-item"><a href="{{ route('vendor.mc-vendor.home') }}" class="text-decoration-none" style="color:#81c408;">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="text-decoration-none" style="color:#81c408;">Blog</a></li>
+                    <li class="breadcrumb-item"><a href="{{ mcv('vendor.mc-vendor.home') }}" class="text-decoration-none" style="color:#81c408;">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="text-decoration-none" style="color:#81c408;">Blog</a></li>
                     <li class="breadcrumb-item active">{{ substr($blog->title, 0, 50) }}{{ strlen($blog->title) > 50 ? '...' : '' }}</li>
                 </ol>
             </nav>
@@ -61,7 +61,7 @@
                     {{ \Carbon\Carbon::parse($blog->created_at)->format('d M Y') }}
                     &nbsp;&bull;&nbsp;
                     <i class="fa-regular fa-folder me-1"></i>
-                    <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub.category', $blog->cat_slug) }}"
+                    <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub.category', $blog->cat_slug) }}"
                         class="text-decoration-none" style="color:#81c408;">{{ $blog->cat_name }}</a>
                 </p>
 
@@ -76,7 +76,7 @@
 
                 <hr class="my-5">
 
-                <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="text-decoration-none" style="color:#81c408;">
+                <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="text-decoration-none" style="color:#81c408;">
                     <i class="fa-solid fa-arrow-left me-1"></i> Back to all blogs
                 </a>
             </div>
@@ -89,7 +89,7 @@
                     <h6 class="fw-bold mb-3" style="color:#81c408;">Categories</h6>
                     <div class="category-sidebar">
                         @foreach ($all_categories as $ct)
-                            <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub.category', $ct->slug) }}">
+                            <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub.category', $ct->slug) }}">
                                 <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct->image, asset('storage/app/public/blog/category/') . '/' . $ct->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'blog/category/') }}"
                                     alt="{{ $ct->name }}"
                                     data-onerror-image="{{ asset('public/assets/admin/img/160x160/img1.jpg') }}">
@@ -105,7 +105,7 @@
                         <h6 class="fw-bold mb-3" style="color:#81c408;">More Posts</h6>
                         <div class="d-flex flex-column gap-3">
                             @foreach ($related_blogs as $rb)
-                                <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub.post', $rb->slug) }}"
+                                <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub.post', $rb->slug) }}"
                                     class="text-decoration-none text-dark">
                                     <div class="related-card d-flex overflow-hidden">
                                         <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($rb->image, asset('storage/app/public/blog/') . '/' . $rb->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'blog/') }}"
@@ -119,7 +119,7 @@
                                 </a>
                             @endforeach
                         </div>
-                        <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="d-block mt-3 text-decoration-none fw-semibold" style="color:#81c408;">+ View All</a>
+                        <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="d-block mt-3 text-decoration-none fw-semibold" style="color:#81c408;">+ View All</a>
                     </div>
                 @endif
 

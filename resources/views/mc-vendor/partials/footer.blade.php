@@ -16,13 +16,13 @@
                     <div class="col-lg-6">
                         <div class="d-flex gap-4 justify-content-end pt-3">
                             <a class="text-white text-decoration-none me-2"
-                                href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}">Blogs</a>
+                                href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}">Blogs</a>
                             <a class="text-white text-decoration-none me-2"
-                                href="{{ route('vendor.mc-vendor.mc-vendor-hub-tnc') }}">Terms and Conditions</a>
+                                href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-tnc') }}">Terms and Conditions</a>
                             <a class="text-white text-decoration-none me-2"
-                                href="{{ route('vendor.mc-vendor.mc-vendor-hub-pp') }}">Privacy Policy</a>
+                                href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-pp') }}">Privacy Policy</a>
                             <a class="text-white text-decoration-none me-2"
-                                href="{{ route('vendor.mc-vendor.mc-vendor-hub-return-policy') }}">Return Policy</a>
+                                href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-return-policy') }}">Return Policy</a>
                             <a class="text-white text-decoration-none me-2" href="https://mcvendorhub.com/price-calculator/contact">Contact</a>
                         </div>
                     </div>

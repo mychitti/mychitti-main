@@ -5,7 +5,7 @@
 
 @section('content')
 
-    <div class="wrap breadcrumb"><a href="{{ route('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span><a href="{{ route('vendor.mc-vendor.theme.home') }}#verticals">Industries</a><span>/</span>School Management</div>
+    <div class="wrap breadcrumb"><a href="{{ mcv('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span><a href="{{ mcv('vendor.mc-vendor.theme.home') }}#verticals">Industries</a><span>/</span>School Management</div>
 
     <section class="page-hero">
         <div class="page-hero-inner">
@@ -14,7 +14,7 @@
                 <h1>Run admissions, fees, and parent communication <span>without a spreadsheet</span> in sight.</h1>
                 <p class="lede">Everything a school office needs — admissions, fee collection, attendance, and parent updates — in one system built for Indian schools.</p>
                 <div class="hero-ctas">
-                    <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn btn-primary">Request a Demo</a>
+                    <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-primary">Request a Demo</a>
                     <a href="#pricing" class="btn btn-ghost">See Pricing →</a>
                 </div>
                 <p class="hero-note">Priced by student count · {{ $studentTiers->count() ?: 'Flexible' }} {{ $studentTiers->count() ? \Illuminate\Support\Str::plural('plan', $studentTiers->count()) . ' to choose from' : 'plans' }}</p>
@@ -102,7 +102,7 @@
                         <li>Admissions, fees &amp; attendance included</li>
                         <li>WhatsApp parent communication ready</li>
                     </ul>
-                    <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn btn-primary" style="width:100%; justify-content:center;">Request a Demo</a>
+                    <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-primary" style="width:100%; justify-content:center;">Request a Demo</a>
                     @if ($mc_pricing['school'] && $mc_pricing['school']['trial_days'] > 0)
                         <div class="setup-note">🎁 {{ $mc_pricing['school']['trial_days'] }}-day free trial included</div>
                     @endif
@@ -118,7 +118,7 @@
                 <div class="faq-item"><button class="faq-q">What if my school outgrows its plan? <span class="plus">+</span></button><div class="faq-a">Move up to the next student tier at any time — you only pay the difference from your renewal date. For very large schools, contact sales for a custom plan.</div></div>
                 <div class="faq-item"><button class="faq-q">Can parents receive fee reminders on WhatsApp? <span class="plus">+</span></button><div class="faq-a">Yes — fee reminders, notices, and attendance alerts can be sent directly via WhatsApp Business messaging.</div></div>
                 <div class="faq-item"><button class="faq-q">Is training provided for office staff? <span class="plus">+</span></button><div class="faq-a">Yes — onboarding includes free training sessions for your administrative staff.</div></div>
-                <div class="faq-item"><button class="faq-q">How is student data protected? <span class="plus">+</span></button><div class="faq-a">Student data is processed under our <a href="{{ route('vendor.mc-vendor.mc-vendor-hub-pp') }}" style="color:var(--blue); font-weight:700;">Privacy Policy</a>, with the school responsible for parental/guardian consent for enrolled minors.</div></div>
+                <div class="faq-item"><button class="faq-q">How is student data protected? <span class="plus">+</span></button><div class="faq-a">Student data is processed under our <a href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-pp') }}" style="color:var(--blue); font-weight:700;">Privacy Policy</a>, with the school responsible for parental/guardian consent for enrolled minors.</div></div>
             </div>
         </div>
     </section>
@@ -127,10 +127,10 @@
         <div class="wrap">
             <div class="section-head"><span class="kicker">Explore More</span><h2>Related solutions</h2></div>
             <div class="related-grid">
-                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Automated parent notifications</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Admissions enquiry automation</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Accounting</h4><p>Fee collection &amp; financial reporting</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>HRM</h4><p>Teacher &amp; staff management</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Automated parent notifications</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Admissions enquiry automation</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Accounting</h4><p>Fee collection &amp; financial reporting</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>HRM</h4><p>Teacher &amp; staff management</p></a>
             </div>
         </div>
     </section>
@@ -140,8 +140,8 @@
             <h2>Ready to simplify your school office?</h2>
             <p>See how MC Vendor Hub handles admissions to report cards.</p>
             <div class="hero-ctas" style="justify-content:center;">
-                <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn btn-primary">Request a Demo</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
+                <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-primary">Request a Demo</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
             </div>
         </div>
     </section>

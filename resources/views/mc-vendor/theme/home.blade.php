@@ -129,7 +129,7 @@
                         </div>
                     @endforeach
                 </div>
-                <p class="preview-note">Prices exclude GST and update automatically as plans change. <a href="{{ route('vendor.mc-vendor.price-calculator') }}" style="color:var(--blue); font-weight:700;">Price your exact combination →</a></p>
+                <p class="preview-note">Prices exclude GST and update automatically as plans change. <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}" style="color:var(--blue); font-weight:700;">Price your exact combination →</a></p>
             </div>
         </section>
     @endif
@@ -186,7 +186,7 @@
                 </div>
             </div>
 
-            <div class="ai-cta"><a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}" class="btn btn-orange">Build Your AI Team →</a></div>
+            <div class="ai-cta"><a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}" class="btn btn-orange">Build Your AI Team →</a></div>
         </div>
     </section>
 
@@ -203,7 +203,7 @@
                     @foreach ($vendor_modules as $key => $module)
                         <div class="ledger-row" style="animation-delay:{{ number_format(0.03 * ($key + 1), 2) }}s">
                             <span class="ic2">{{ $module_icons[$key % count($module_icons)] }}</span>
-                            <a class="name" href="{{ route('vendor.mc-vendor.mc-module', $module->slug) }}">{{ $module->name }}</a>
+                            <a class="name" href="{{ mcv('vendor.mc-vendor.mc-module', $module->slug) }}">{{ $module->name }}</a>
                             <span class="ledger-dots"></span>
                             <span class="desc">{{ \Illuminate\Support\Str::limit(trim(strip_tags($module->content ?? '')), 60) }}</span>
                             <span class="tag">Bundled</span>
@@ -246,7 +246,7 @@
                         <li>Human handover to your own staff, anytime</li>
                         <li>Appointment reminders sent automatically, on your schedule</li>
                     </ul>
-                    <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="btn" style="background:var(--white); color:var(--green-dark); border-color:var(--white); font-weight:800;">Set Up WhatsApp →</a>
+                    <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}" class="btn" style="background:var(--white); color:var(--green-dark); border-color:var(--white); font-weight:800;">Set Up WhatsApp →</a>
                 </div>
                 <div class="wa-panel">
                     <div class="chat-meta">Today, 11:47 PM</div>
@@ -268,10 +268,10 @@
             @php($hmis_from = $bedTiers->where('is_custom', false)->min('price_monthly') ?? ($mc_pricing['hmis']['monthly'] ?? null))
             @php($school_from = $studentTiers->where('is_custom', false)->min('price_monthly') ?? ($mc_pricing['school']['monthly'] ?? null))
             <div class="vert-grid">
-                <a href="{{ route('vendor.mc-vendor.theme.hmis') }}" class="vert-card"><h4>MC HMIS</h4><p>Hospital management for clinics through to multi-ward facilities.</p>@if ($hmis_from)<span class="from">From ₹{{ number_format($hmis_from) }}/mo</span>@endif</a>
-                <a href="{{ route('vendor.mc-vendor.theme.retail-pos') }}" class="vert-card"><h4>Retail POS</h4><p>Multi-counter billing built for high-footfall retail stores.</p>@if ($mc_pricing['retail'])<span class="from">From ₹{{ number_format($mc_pricing['retail']['monthly']) }}/mo</span>@endif</a>
-                <a href="{{ route('vendor.mc-vendor.theme.school-management') }}" class="vert-card"><h4>School Management</h4><p>Admissions, fees, attendance and parent communication.</p>@if ($school_from)<span class="from">From ₹{{ number_format($school_from) }}/mo</span>@endif</a>
-                <a href="{{ route('vendor.mc-vendor.theme.laundry-management') }}" class="vert-card"><h4>Laundry Management</h4><p>Order tracking from drop-off to pickup, with itemised billing.</p>@if ($mc_pricing['laundry'])<span class="from">From ₹{{ number_format($mc_pricing['laundry']['monthly']) }}/mo</span>@endif</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.hmis') }}" class="vert-card"><h4>MC HMIS</h4><p>Hospital management for clinics through to multi-ward facilities.</p>@if ($hmis_from)<span class="from">From ₹{{ number_format($hmis_from) }}/mo</span>@endif</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.retail-pos') }}" class="vert-card"><h4>Retail POS</h4><p>Multi-counter billing built for high-footfall retail stores.</p>@if ($mc_pricing['retail'])<span class="from">From ₹{{ number_format($mc_pricing['retail']['monthly']) }}/mo</span>@endif</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.school-management') }}" class="vert-card"><h4>School Management</h4><p>Admissions, fees, attendance and parent communication.</p>@if ($school_from)<span class="from">From ₹{{ number_format($school_from) }}/mo</span>@endif</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.laundry-management') }}" class="vert-card"><h4>Laundry Management</h4><p>Order tracking from drop-off to pickup, with itemised billing.</p>@if ($mc_pricing['laundry'])<span class="from">From ₹{{ number_format($mc_pricing['laundry']['monthly']) }}/mo</span>@endif</a>
             </div>
         </div>
     </section>
@@ -291,7 +291,7 @@
                 <div class="price-cell"><div class="label">First AI Employee</div><div class="amt">from ₹6,999<span>/mo</span></div></div>
             </div>
             <div class="hero-ctas" style="justify-content:center; margin-top:8px;">
-                <a href="{{ route('vendor.mc-vendor.price-calculator') }}" class="btn btn-orange">Open the Price Calculator →</a>
+                <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}" class="btn btn-orange">Open the Price Calculator →</a>
                 @if ($mc_plan_action)
                     <a href="#" class="btn btn-ghost" id="openPlanModal">Request a Custom Plan</a>
                 @endif
@@ -386,7 +386,7 @@
             <p>List your business free. Add the tools — and the team — as you grow.</p>
             <div class="hero-ctas" style="justify-content:center;">
                 <a href="{{ $mc_signup_url }}" class="btn btn-primary">List Your Business — Free</a>
-                <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn btn-ghost">Talk to Sales</a>
+                <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-ghost">Talk to Sales</a>
             </div>
         </div>
     </section>

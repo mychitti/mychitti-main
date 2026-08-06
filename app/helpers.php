@@ -8192,3 +8192,18 @@ if (!function_exists('store_whatsapp_link')) {
         return 'https://wa.me/' . $digits;
     }
 }
+
+if (!function_exists('mcv')) {
+    /**
+     * Link between MC Vendor Hub marketing pages without pinning a host.
+     *
+     * routes/vendor.php carries two products — the public marketing site and the store panel —
+     * but only one domain binding, so route() hands out the store-panel host (vendor.*) even to
+     * visitors on the apex marketing domain. Generating the path only keeps every link on the
+     * host the visitor is already browsing, whichever domain that turns out to be.
+     */
+    function mcv($name, $params = [])
+    {
+        return route($name, $params, false);
+    }
+}

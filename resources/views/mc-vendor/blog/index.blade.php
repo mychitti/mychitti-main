@@ -43,7 +43,7 @@
             <h1 class="fw-bold mb-1">Blog</h1>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="{{ route('vendor.mc-vendor.home') }}" class="text-decoration-none" style="color:#81c408;">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ mcv('vendor.mc-vendor.home') }}" class="text-decoration-none" style="color:#81c408;">Home</a></li>
                     <li class="breadcrumb-item active">Blog</li>
                     @isset($category)
                         <li class="breadcrumb-item active">{{ $category->name }}</li>
@@ -60,14 +60,14 @@
             <div class="col-lg-9">
                 @isset($category)
                     <h5 class="mb-4 text-muted">Category: <strong>{{ $category->name }}</strong>
-                        <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="ms-2 text-decoration-none" style="font-size:13px; color:#81c408;">× Clear filter</a>
+                        <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="ms-2 text-decoration-none" style="font-size:13px; color:#81c408;">× Clear filter</a>
                     </h5>
                 @endisset
 
                 <div class="row g-4">
                     @forelse ($blogs as $b)
                         <div class="col-md-6 col-xl-4">
-                            <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub.post', $b->slug) }}" class="text-decoration-none text-dark">
+                            <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub.post', $b->slug) }}" class="text-decoration-none text-dark">
                                 <div class="blog-card">
                                     <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($b->image, asset('storage/app/public/blog/') . '/' . $b->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'blog/') }}"
                                         alt="{{ substr($b->title, 0, 80) }}"
@@ -101,12 +101,12 @@
                 <div class="card border-0 shadow-sm p-3 mb-4">
                     <h6 class="fw-bold mb-3" style="color:#81c408;">Categories</h6>
                     <div class="category-sidebar">
-                        <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}"
+                        <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}"
                             class="{{ !isset($category) ? 'active' : '' }}">
                             <span>All Posts</span>
                         </a>
                         @foreach ($all_categories as $ct)
-                            <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub.category', $ct->slug) }}"
+                            <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub.category', $ct->slug) }}"
                                 class="{{ isset($category) && $category->slug === $ct->slug ? 'active' : '' }}">
                                 <img src="{{ \App\CentralLogics\Helpers::onerror_image_helper($ct->image, asset('storage/app/public/blog/category/') . '/' . $ct->image, asset('public/assets/admin/img/160x160/img1.jpg'), 'blog/category/') }}"
                                     alt="{{ $ct->name }}"

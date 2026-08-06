@@ -5,7 +5,7 @@
 
 @section('content')
 
-    <div class="wrap breadcrumb"><a href="{{ route('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span><a href="{{ route('vendor.mc-vendor.theme.home') }}#verticals">Industries</a><span>/</span>Salon &amp; Spa</div>
+    <div class="wrap breadcrumb"><a href="{{ mcv('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span><a href="{{ mcv('vendor.mc-vendor.theme.home') }}#verticals">Industries</a><span>/</span>Salon &amp; Spa</div>
 
     <section class="page-hero">
         <div class="page-hero-inner">
@@ -69,7 +69,7 @@
                 </table>
             </div>
             <div class="hero-ctas" style="justify-content:center; margin-top:26px;">
-                <a href="{{ route('vendor.mc-vendor.price-calculator') }}" class="btn btn-primary">Build Your Own Bundle →</a>
+                <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}" class="btn btn-primary">Build Your Own Bundle →</a>
             </div>
         </div>
     </section>
@@ -90,10 +90,10 @@
         <div class="wrap">
             <div class="section-head"><span class="kicker">Explore More</span><h2>Related solutions</h2></div>
             <div class="related-grid">
-                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Booking &amp; reminders automated</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>24×7 reception &amp; customer support</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>CRM &amp; Client Mgmt</h4><p>Every client, one record</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Billing &amp; POS</h4><p>Services, products &amp; packages</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Booking &amp; reminders automated</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>24×7 reception &amp; customer support</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>CRM &amp; Client Mgmt</h4><p>Every client, one record</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Billing &amp; POS</h4><p>Services, products &amp; packages</p></a>
             </div>
         </div>
     </section>
@@ -104,7 +104,7 @@
             <p>Start free with billing and CRM — add WhatsApp and AI when you're ready.</p>
             <div class="hero-ctas" style="justify-content:center;">
                 <a href="{{ $mc_signup_url }}" class="btn btn-primary">Start Free Trial</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
             </div>
         </div>
     </section>

@@ -5,7 +5,7 @@
 
 @section('content')
 
-    <div class="wrap breadcrumb"><a href="{{ route('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span><a href="{{ route('vendor.mc-vendor.theme.home') }}#verticals">Industries</a><span>/</span>Retail POS</div>
+    <div class="wrap breadcrumb"><a href="{{ mcv('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span><a href="{{ mcv('vendor.mc-vendor.theme.home') }}#verticals">Industries</a><span>/</span>Retail POS</div>
 
     <section class="page-hero">
         <div class="page-hero-inner">
@@ -117,10 +117,10 @@
         <div class="wrap">
             <div class="section-head"><span class="kicker">Explore More</span><h2>Related solutions</h2></div>
             <div class="related-grid">
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Inventory</h4><p>Real-time stock tracking across your store</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Automate reordering &amp; customer replies</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Answer customer enquiries around the clock</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Accounting</h4><p>Invoices and expenses, synced with POS</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Inventory</h4><p>Real-time stock tracking across your store</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Automate reordering &amp; customer replies</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Answer customer enquiries around the clock</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Accounting</h4><p>Invoices and expenses, synced with POS</p></a>
             </div>
         </div>
     </section>
@@ -131,7 +131,7 @@
             <p>Start free. Setup takes under a day.</p>
             <div class="hero-ctas" style="justify-content:center;">
                 <a href="{{ $mc_signup_url }}" class="btn btn-primary">Start Free Trial</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
             </div>
         </div>
     </section>

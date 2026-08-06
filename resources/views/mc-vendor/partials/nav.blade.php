@@ -23,7 +23,7 @@
                  <a href="https://mcvendorhub.com" class="my-nav-link nav-link ">Home</a>
                  <a href="https://mcvendorhub.com/#products_section" class="my-nav-link nav-link ">Products</a>
                  <a href="https://mcvendorhub.com/price-calculator" class="my-nav-link nav-link ">Price Calculator</a>
-                 <a href="{{ route('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="my-nav-link nav-link {{ Request::is('blog-mc-vendor-hub*') ? 'active' : '' }}">Blogs</a>
+                 <a href="{{ mcv('vendor.mc-vendor.blog-mc-vendor-hub') }}" class="my-nav-link nav-link {{ Request::is('blog-mc-vendor-hub*') ? 'active' : '' }}">Blogs</a>
                  <a href="https://mcvendorhub.com/#faq_section" class="my-nav-link nav-link">FAQs</a>
                  <a href="https://mcvendorhub.com/#review_section" class="my-nav-link nav-link">Reviews</a>
                  <a href="https://vendor.mcvendorhub.com/login" class="my-nav-link nav-link">Login</a>

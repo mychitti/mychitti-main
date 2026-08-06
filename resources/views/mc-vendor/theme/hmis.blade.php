@@ -5,7 +5,7 @@
 
 @section('content')
 
-    <div class="wrap breadcrumb"><a href="{{ route('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span><a href="{{ route('vendor.mc-vendor.theme.home') }}#verticals">Industries</a><span>/</span>HMIS</div>
+    <div class="wrap breadcrumb"><a href="{{ mcv('vendor.mc-vendor.theme.home') }}">Home</a><span>/</span><a href="{{ mcv('vendor.mc-vendor.theme.home') }}#verticals">Industries</a><span>/</span>HMIS</div>
 
     <section class="page-hero">
         <div class="page-hero-inner">
@@ -15,7 +15,7 @@
                 <h1>Hospital management software that <span>scales with your beds</span>, not against your budget.</h1>
                 <p class="lede">Patient records, billing, and staff workflows in one system — priced by bed count, so a small clinic isn't paying enterprise-hospital rates.</p>
                 <div class="hero-ctas">
-                    <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn btn-primary">Request a Demo</a>
+                    <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-primary">Request a Demo</a>
                     <a href="#pricing" class="btn btn-ghost">See Pricing →</a>
                 </div>
                 <p class="hero-note">DPDP Act &amp; data-protection aware patient records</p>
@@ -84,9 +84,9 @@
                     @endforelse
                 </table>
             </div>
-            <p class="note-banner">⚠️ Vendors operating HMIS are responsible for obtaining valid patient consent and complying with applicable healthcare data regulations. See our <a href="{{ route('vendor.mc-vendor.mc-vendor-hub-pp') }}" style="color:inherit; font-weight:800; text-decoration:underline;">Privacy Policy</a> for details on how patient data is handled.</p>
+            <p class="note-banner">⚠️ Vendors operating HMIS are responsible for obtaining valid patient consent and complying with applicable healthcare data regulations. See our <a href="{{ mcv('vendor.mc-vendor.mc-vendor-hub-pp') }}" style="color:inherit; font-weight:800; text-decoration:underline;">Privacy Policy</a> for details on how patient data is handled.</p>
             <div class="hero-ctas" style="justify-content:center; margin-top:26px;">
-                <a href="{{ route('vendor.mc-vendor.price-calculator') }}" class="btn btn-primary">Calculate Your Exact Price →</a>
+                <a href="{{ mcv('vendor.mc-vendor.price-calculator') }}" class="btn btn-primary">Calculate Your Exact Price →</a>
             </div>
         </div>
     </section>
@@ -107,10 +107,10 @@
         <div class="wrap">
             <div class="section-head"><span class="kicker">Explore More</span><h2>Related solutions</h2></div>
             <div class="related-grid">
-                <a href="{{ route('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Automated appointment reminders</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Reception &amp; scheduling automation</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>HRM</h4><p>Doctor &amp; nursing staff management</p></a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Accounting</h4><p>Facility-wide financial reporting</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.whatsapp') }}" class="related-card"><h4>WhatsApp Business</h4><p>Automated appointment reminders</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.ai-employees') }}" class="related-card"><h4>AI Employees</h4><p>Reception &amp; scheduling automation</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>HRM</h4><p>Doctor &amp; nursing staff management</p></a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}#modules" class="related-card"><h4>Accounting</h4><p>Facility-wide financial reporting</p></a>
             </div>
         </div>
     </section>
@@ -120,8 +120,8 @@
             <h2>Ready to modernise your facility's workflow?</h2>
             <p>Talk to our team about your bed count and rollout timeline.</p>
             <div class="hero-ctas" style="justify-content:center;">
-                <a href="{{ route('vendor.mc-vendor.contact') }}" class="btn btn-primary">Request a Demo</a>
-                <a href="{{ route('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
+                <a href="{{ mcv('vendor.mc-vendor.contact') }}" class="btn btn-primary">Request a Demo</a>
+                <a href="{{ mcv('vendor.mc-vendor.theme.home') }}" class="btn btn-ghost">Back to Home</a>
             </div>
         </div>
     </section>
