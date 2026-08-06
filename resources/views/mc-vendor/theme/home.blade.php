@@ -1,6 +1,6 @@
 @extends('mc-vendor.theme.layout')
 
-@section('title', 'MC Vendor Hub — 2 India\'s First Business Platform with AI Employees')
+@section('title', 'MC Vendor Hub — India\'s First Business Platform with AI Employees')
 @section('meta_description', 'Manage Billing, POS, CRM, WhatsApp and hire AI Employees that work 24×7 for your business — all from one platform built for Indian MSMEs.')
 
 @section('content')
