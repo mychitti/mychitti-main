@@ -13,7 +13,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
     // mc vendorhub routes  
     Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
-        Route::get('/', 'MCVendorController@index')->name('home');
+        // The new theme is live at '/'. To roll back, point '/' at MCVendorController@index
+        // again — index() and the old homepage view are both left intact behind /old-home.
+        Route::get('/', 'MCVendorController@theme_home')->name('theme.home');
+        Route::get('old-home', 'MCVendorController@index')->name('home');
         Route::get('mc-module/{module}', 'MCVendorController@module_info')->name('mc-module');
         Route::get('blog-mc-vendor-hub', 'MCVendorController@blog_mc_vendor')->name('blog-mc-vendor-hub');
         Route::get('blog-mc-vendor-hub/category/{slug}', 'MCVendorController@blog_mc_vendor_category')->name('blog-mc-vendor-hub.category');
@@ -27,17 +30,29 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('request-subscription-plan', 'MCVendorController@request_subscription_plan')->name('request-subscription-plan');
         Route::get('price-calculator', 'MCVendorController@price_calculator')->name('price-calculator');
 
-        // New website theme — preview only. Swap MCVendorController@index to theme_home to go live.
-        Route::group(['prefix' => 'preview', 'as' => 'theme.'], function () {
-            Route::get('/', 'MCVendorController@theme_home')->name('home');
+        // Theme sub-pages, now at the root alongside '/'. The old /preview/* URLs redirect
+        // below so anything already linked or bookmarked keeps working.
+        Route::group(['as' => 'theme.'], function () {
             Route::get('ai-employees', 'MCVendorController@theme_page')->defaults('page', 'ai-employees')->name('ai-employees');
             Route::get('whatsapp-business-api', 'MCVendorController@theme_page')->defaults('page', 'whatsapp-business-api')->name('whatsapp');
             Route::get('hmis', 'MCVendorController@theme_page')->defaults('page', 'hmis')->name('hmis');
-            Route::get('retail-pos', 'MCVendorController@theme_page')->defaults('page', 'retail-pos')->name('retail-pos');
+            // NOT 'retail-pos' — that path belongs to the POS Retail till in the store panel
+            // below, and these routes register first, so it would shadow the live module.
+            Route::get('retail-pos-software', 'MCVendorController@theme_page')->defaults('page', 'retail-pos')->name('retail-pos');
             Route::get('salon-software', 'MCVendorController@theme_page')->defaults('page', 'salon-software')->name('salon-software');
             Route::get('school-management', 'MCVendorController@theme_page')->defaults('page', 'school-management')->name('school-management');
             Route::get('laundry-management', 'MCVendorController@theme_page')->defaults('page', 'laundry-management')->name('laundry-management');
         });
+
+        // Left as a temporary 302 rather than a 301: a permanent redirect would sit in visitors'
+        // browser caches and make rolling back to preview-only painful.
+        Route::get('preview/{page?}', function ($page = null) {
+            // Resolve via the route name so pages whose path differs from their old preview
+            // slug (retail-pos → retail-pos-software) still land in the right place.
+            $name = 'vendor.mc-vendor.theme.' . ($page === 'whatsapp-business-api' ? 'whatsapp' : $page);
+
+            return redirect($page && \Illuminate\Support\Facades\Route::has($name) ? route($name, [], false) : '/');
+        })->where('page', '[a-z0-9-]+');
     });
 
     // Impersonation — no auth middleware, token is the auth
