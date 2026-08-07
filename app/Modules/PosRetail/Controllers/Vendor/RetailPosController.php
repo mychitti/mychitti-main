@@ -1133,7 +1133,7 @@ class RetailPosController extends Controller
             ->whereBetween(DB::raw('DATE(mi.created_at)'), [$from, $to])
             ->selectRaw('ii.name, MAX(ii.inv_id) as inv_id, SUM(ii.qty) as qty, SUM(ii.price*ii.qty) as amount'
                 . ($hasVarCol ? ', MAX(ii.variation_type) as variation_type' : ''))
-            ->groupBy('ii.name')->orderByDesc('qty')->limit(8)->get();
+            ->groupBy('ii.name')->orderByDesc('amount')->limit(8)->get();
         $topItems = $this->decorateTopItemUnits($topItems);
 
         // Last 14 days trend (for the line chart) — independent of the selected range.
@@ -1228,7 +1228,9 @@ class RetailPosController extends Controller
         $to   = \Carbon\Carbon::parse($to)->toDateString();
         $branch = (int) $request->get('branch') ?: null;
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
-        $sort = $request->get('sort') === 'amount' ? 'amount' : 'qty';
+        // Sales by default: qty cannot rank rows against each other once they are counted in
+        // different units — 64 bananas over 14.1 kg of onion is not a comparison.
+        $sort = $request->get('sort') === 'qty' ? 'qty' : 'amount';
 
         $hasVarCol = Schema::hasColumn('invoice_items', 'variation_type');
         $rows = DB::table('invoice_items as ii')
