@@ -48,7 +48,8 @@
 
         <div class="rp-card">
             <div class="hd">
-                <span class="accent">{{ count($rows) }} items · {{ rtrim(rtrim(number_format($totalQty, 2), '0'), '.') }} sold · ₹{{ number_format($totalAmount, 2) }}</span>
+                {{-- No combined qty here on purpose: kg, pieces and packs do not add up to one number. --}}
+                <span class="accent">{{ count($rows) }} items · ₹{{ number_format($totalAmount, 2) }}</span>
                 <span class="d-flex align-items-center" style="gap:6px;">
                     <a class="rp-btn {{ $sort === 'qty' ? 'p' : 'o' }} sm"
                         href="{{ route('vendor.retail-pos.top-items', ['from' => $from, 'to' => $to, 'branch' => $branch, 'sort' => 'qty']) }}">By Qty</a>
@@ -64,6 +65,7 @@
                             <th>Item</th>
                             <th>SKU</th>
                             <th class="text-right">Qty Sold</th>
+                            <th>Unit</th>
                             <th class="text-right">Bills</th>
                             <th class="text-right">Sales</th>
                             <th class="text-right">Share</th>
@@ -76,13 +78,19 @@
                                 <td class="text-muted">{{ $key + 1 }}</td>
                                 <td><b>{{ $r->name }}</b></td>
                                 <td>
-                                    @if (!empty($skus[$r->inv_id]))
-                                        <span class="rp-badge muted">{{ $skus[$r->inv_id] }}</span>
+                                    @if ($r->sku)
+                                        <span class="rp-badge muted">{{ $r->sku }}</span>
                                     @else
                                         <span class="text-muted">—</span>
                                     @endif
                                 </td>
                                 <td class="text-right">{{ rtrim(rtrim(number_format((float) $r->qty, 2), '0'), '.') }}</td>
+                                <td>
+                                    {{ $r->unit_label ?: '—' }}
+                                    @if ($r->pack_note)
+                                        <div class="text-muted" style="font-size:11px;">{{ $r->pack_note }}</div>
+                                    @endif
+                                </td>
                                 <td class="text-right">{{ $r->bills }}</td>
                                 <td class="text-right font-weight-bold">₹{{ number_format((float) $r->amount, 2) }}</td>
                                 <td class="text-right">
@@ -93,7 +101,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7"><div class="rp-empty">No sales in this period.</div></td></tr>
+                            <tr><td colspan="8"><div class="rp-empty">No sales in this period.</div></td></tr>
                         @endforelse
                     </tbody>
                 </table>

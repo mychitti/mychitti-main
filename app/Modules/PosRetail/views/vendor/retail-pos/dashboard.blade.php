@@ -110,7 +110,16 @@
                     <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Sales</th></tr></thead>
                     <tbody>
                         @forelse ($topItems as $it)
-                            <tr><td>{{ $it->name }}</td><td class="text-right">{{ rtrim(rtrim(number_format((float) $it->qty, 2), '0'), '.') }}</td><td class="text-right">₹{{ number_format((float) $it->amount, 2) }}</td></tr>
+                            <tr>
+                                <td>{{ $it->name }}</td>
+                                <td class="text-right">
+                                    {{ rtrim(rtrim(number_format((float) $it->qty, 2), '0'), '.') }}
+                                    @if ($it->unit_label)
+                                        <span class="text-muted" title="{{ $it->pack_note ?: '' }}">{{ $it->unit_label }}</span>
+                                    @endif
+                                </td>
+                                <td class="text-right">₹{{ number_format((float) $it->amount, 2) }}</td>
+                            </tr>
                         @empty
                             <tr><td colspan="3"><div class="rp-empty">No sales in this period.</div></td></tr>
                         @endforelse

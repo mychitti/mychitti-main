@@ -1125,13 +1125,16 @@ class RetailPosController extends Controller
         ];
         $stats['avg'] = $stats['bills'] ? $stats['sales'] / $stats['bills'] : 0;
 
+        $hasVarCol = Schema::hasColumn('invoice_items', 'variation_type');
         $topItems = DB::table('invoice_items as ii')
             ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
             ->where('mi.vendor_id', $storeId)->where('mi.pos_status', 'final')
             ->when($branch, fn($q) => $q->where('mi.pos_branch_id', $branch))
             ->whereBetween(DB::raw('DATE(mi.created_at)'), [$from, $to])
-            ->selectRaw('ii.name, SUM(ii.qty) as qty, SUM(ii.price*ii.qty) as amount')
+            ->selectRaw('ii.name, MAX(ii.inv_id) as inv_id, SUM(ii.qty) as qty, SUM(ii.price*ii.qty) as amount'
+                . ($hasVarCol ? ', MAX(ii.variation_type) as variation_type' : ''))
             ->groupBy('ii.name')->orderByDesc('qty')->limit(8)->get();
+        $topItems = $this->decorateTopItemUnits($topItems);
 
         // Last 14 days trend (for the line chart) — independent of the selected range.
         $trend = ManualInvoice::where('vendor_id', $storeId)->where('type', 'manual')
@@ -1227,20 +1230,20 @@ class RetailPosController extends Controller
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
         $sort = $request->get('sort') === 'amount' ? 'amount' : 'qty';
 
+        $hasVarCol = Schema::hasColumn('invoice_items', 'variation_type');
         $rows = DB::table('invoice_items as ii')
             ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
             ->where('mi.vendor_id', $storeId)->where('mi.type', 'manual')->where('mi.pos_status', 'final')
             ->when($branch, fn($q) => $q->where('mi.pos_branch_id', $branch))
             ->whereBetween(DB::raw('DATE(mi.created_at)'), [$from, $to])
             ->selectRaw('ii.name, MAX(ii.inv_id) as inv_id, SUM(ii.qty) as qty,
-                COUNT(DISTINCT ii.manual_invoice_id) as bills, SUM(ii.price*ii.qty) as amount')
+                COUNT(DISTINCT ii.manual_invoice_id) as bills, SUM(ii.price*ii.qty) as amount'
+                . ($hasVarCol ? ', MAX(ii.variation_type) as variation_type' : ''))
             ->groupBy('ii.name')->orderByDesc($sort)->get();
 
-        // SKU is not on the line item — resolve it from the inventory item the line pointed at.
-        $skus = InventoryItem::whereIn('id', $rows->pluck('inv_id')->filter()->unique())
-            ->pluck('sku_id', 'id');
+        $rows = $this->decorateTopItemUnits($rows);
 
-        $totalQty = (float) $rows->sum('qty');
+        // Deliberately no combined qty total — kg, pieces and packs share no scale.
         $totalAmount = (float) $rows->sum('amount');
 
         if ($request->get('export') === 'excel') {
@@ -1249,22 +1252,55 @@ class RetailPosController extends Controller
                 $data[] = [
                     $key + 1,
                     $r->name,
-                    $skus[$r->inv_id] ?? '',
+                    $r->sku,
                     (float) $r->qty,
+                    $r->unit_label . ($r->pack_note ? ' (' . $r->pack_note . ')' : ''),
                     (int) $r->bills,
                     round((float) $r->amount, 2),
                     $totalAmount > 0 ? round($r->amount / $totalAmount * 100, 2) : 0,
                 ];
             }
-            $headings = ['#', 'Item', 'SKU', 'Qty Sold', 'Bills', 'Sales', 'Share %'];
+            $headings = ['#', 'Item', 'SKU', 'Qty Sold', 'Unit', 'Bills', 'Sales', 'Share %'];
             $file = 'top-selling-items_' . $from . '_' . $to . '.xlsx';
             return Excel::download(new PosTopItemsExport($data, $headings), $file);
         }
 
         return view('posretail::vendor.retail-pos.top-items', compact(
-            'rows', 'skus', 'totalQty', 'totalAmount', 'from', 'to',
+            'rows', 'totalAmount', 'from', 'to',
             'branches', 'branch', 'preset', 'custom', 'sort'
         ));
+    }
+
+    /**
+     * Unit each top-selling row is counted in, plus its SKU.
+     *
+     * A plain or loose line is counted in the item's own unit — the POS keeps loose weights in
+     * stock units, its g/kg toggle being display-only (`entryToQty`). A measured-pack variation
+     * line counts PACKS, so borrowing the item's unit there would read "3 kg" where three 100gm
+     * packs were sold; those rows are labelled by the pack instead. Rows never mix the two:
+     * `invoice_items.name` carries the variation in brackets, so each group is one sold form.
+     */
+    private function decorateTopItemUnits($rows)
+    {
+        $items = InventoryItem::whereIn('id', $rows->pluck('inv_id')->filter()->unique())->get()->keyBy('id');
+
+        foreach ($rows as $row) {
+            $item = $items[$row->inv_id] ?? null;
+            $row->sku = $item->sku_id ?? '';
+            $row->unit_label = $item ? _unitLabelFor($item->unit) : '';
+            $row->pack_note = null;
+
+            $varType = $row->variation_type ?? null;
+            if ($item && $varType && ($var = _variationRow($item, $varType)) && _variationMode($item) === 'measured') {
+                $pack = _variationPack($item, $var);
+                if ($pack) {
+                    $row->unit_label = 'pack';
+                    $row->pack_note = rtrim(rtrim(number_format((float) $pack['qty'], 3), '0'), '.') . ' ' . $pack['code'] . ' each';
+                }
+            }
+        }
+
+        return $rows;
     }
 
     // Live product search / barcode-SKU scan. Returns JSON for the billing screen.
