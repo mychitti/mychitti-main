@@ -844,6 +844,20 @@
                                             href="{{ route('vendor.inventory.edit-item', [$item->id]) }}"
                                             title="{{ translate('messages.edit') }}"><i class="tio-edit"></i>
                                         </a>
+                                        @if (hasPermission('inventory_item', 'delete'))
+                                            <a class="btn action-btn btn--danger btn-outline-danger form-alert"
+                                                href="javascript:;" data-id="variation-{{ $key2 }}"
+                                                data-message="{{ translate('messages.Want to delete this variation') }}"
+                                                title="{{ translate('messages.delete') }}"><i
+                                                    class="tio-delete-outlined"></i>
+                                            </a>
+                                            <form action="{{ route('vendor.inventory.item.delete-variation') }}"
+                                                method="post" id="variation-{{ $key2 }}">
+                                                @csrf
+                                                <input type="hidden" name="item_id" value="{{ $item->id }}">
+                                                <input type="hidden" name="type" value="{{ $vr->type }}">
+                                            </form>
+                                        @endif
                                     </div>
                                     <div class="modal fade" id="detModal{{ $key2 }}" tabindex="-1"
                                         aria-labelledby="exampleModalLabel" aria-hidden="true">

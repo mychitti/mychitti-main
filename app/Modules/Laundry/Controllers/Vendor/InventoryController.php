@@ -483,6 +483,101 @@ class InventoryController extends Controller
         Toastr::success('Deleted Successfully');
         return back();
     }
+
+    // Drop one variation of an item: the row in the variations JSON, its detail record and, on a
+    // countable item, the stock it was holding — the main figure is the sum of what is left.
+    public function delete_variation(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required',
+            'type' => 'required',
+        ]);
+
+        $item = InventoryItem::where('id', $request->item_id)->where('store_id', Helpers::get_store_id())->first();
+        if (!$item) {
+            Toastr::error('Item not found');
+            return back();
+        }
+
+        $variations = json_decode($item->variations, true) ?: [];
+        $remaining = [];
+        $removed = false;
+        foreach ($variations as $variation) {
+            if (!$removed && ($variation['type'] ?? null) === $request->type) {
+                $removed = true;
+                continue;
+            }
+            $remaining[] = $variation;
+        }
+
+        if (!$removed) {
+            Toastr::error('Variation not found');
+            return back();
+        }
+
+        InvItemVariationDetail::where('item_id', $item->id)->where('type', $request->type)->delete();
+
+        $item->variations = json_encode($remaining);
+        $this->pruneChoiceOptions($item, $remaining);
+        // Measured packs draw from the item's own pool, so that figure stands whatever is deleted.
+        if (!empty($remaining) && _variationMode($item) !== 'measured') {
+            $sum = _sumCountableVariationStock($remaining);
+            if ($sum > 0) {
+                $item->stock = $sum;
+            }
+        }
+        $item->save();
+
+        if ($item->show_on_store_page) {
+            Helpers::_copyToItemTable($item, true);
+        }
+
+        Toastr::success('Variation deleted successfully');
+        return back();
+    }
+
+    /**
+     * Choice values exist only to name variations. Once a variation is deleted, a value no
+     * remaining variation uses has to go with it — left behind, the edit form still lists it as
+     * a tag and regenerates the row that was just deleted. `attributes` is positionally parallel
+     * to `choice_options` (_choices.blade.php reads them by the same index), so both are rebuilt
+     * from the surviving positions together.
+     */
+    private function pruneChoiceOptions(InventoryItem $item, array $variations): void
+    {
+        $choices = json_decode($item->choice_options, true) ?: [];
+        $attributes = json_decode($item->attributes, true) ?: [];
+
+        $used = [];
+        foreach ($variations as $variation) {
+            foreach (explode('-', $variation['type'] ?? '') as $part) {
+                $used[$part] = true;
+            }
+        }
+
+        $kept_choices = [];
+        $kept_attributes = [];
+        foreach ($choices as $index => $choice) {
+            $options = [];
+            foreach ($choice['options'] ?? [] as $option) {
+                if (isset($used[str_replace(' ', '', $option)])) {
+                    $options[] = $option;
+                }
+            }
+            if (empty($options)) {
+                continue;
+            }
+            $choice['options'] = $options;
+            $kept_choices[] = $choice;
+            if (isset($attributes[$index])) {
+                $kept_attributes[] = $attributes[$index];
+            }
+        }
+
+        $item->choice_options = json_encode($kept_choices);
+        $item->attributes = json_encode($kept_attributes);
+    }
+
     public function inventory_management(Request $request, $tab = null)
     {
 

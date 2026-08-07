@@ -97,7 +97,7 @@
                     <td  colspan="2">
                         <label class="control-label m-0">Images</label>
                         <input type="file" name="imgs_{{ $str }}[]" onchange="validateFileCount(this, 8)"
-                            multiple class="form-control" required>
+                            multiple class="form-control">
                     </td>
                 </tr>
             @endif

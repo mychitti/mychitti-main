@@ -14,9 +14,11 @@ use App\Models\ManualInvoice;
 use App\Models\StoreCustomer;
 use App\Models\VendorEmployee;
 use Brian2694\Toastr\Facades\Toastr;
+use App\Exports\PosTopItemsExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
 
 class RetailPosController extends Controller
 {
@@ -1196,6 +1198,72 @@ class RetailPosController extends Controller
         return view('posretail::vendor.retail-pos.dashboard', compact(
             'stats', 'topItems', 'trend', 'payModes', 'inv', 'creditOutstanding', 'recent', 'recentNames',
             'from', 'to', 'branches', 'branch', 'preset', 'custom', 'branchSales'
+        ));
+    }
+
+    /**
+     * Full top-selling list behind the dashboard's "Top items" card — same filters, no limit.
+     * `export=excel` streams the very rows on screen, so the sheet always matches what was seen.
+     */
+    public function topItems(Request $request)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+        $preset = $request->get('date_range', 'today');
+        $custom = $request->get('custom_date_range');
+        if ($request->filled('from') && $request->filled('to')) {
+            $from = $request->get('from');
+            $to   = $request->get('to');
+        } else {
+            $range = Helpers::calculatePresetDates($preset, $custom);
+            $from = $range['start'];
+            $to   = $range['end'];
+        }
+        // Presets hand back Carbon instances — flattened to plain dates so they survive a round
+        // trip through the filter links and cannot put a colon in the download filename.
+        $from = \Carbon\Carbon::parse($from)->toDateString();
+        $to   = \Carbon\Carbon::parse($to)->toDateString();
+        $branch = (int) $request->get('branch') ?: null;
+        $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
+        $sort = $request->get('sort') === 'amount' ? 'amount' : 'qty';
+
+        $rows = DB::table('invoice_items as ii')
+            ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
+            ->where('mi.vendor_id', $storeId)->where('mi.type', 'manual')->where('mi.pos_status', 'final')
+            ->when($branch, fn($q) => $q->where('mi.pos_branch_id', $branch))
+            ->whereBetween(DB::raw('DATE(mi.created_at)'), [$from, $to])
+            ->selectRaw('ii.name, MAX(ii.inv_id) as inv_id, SUM(ii.qty) as qty,
+                COUNT(DISTINCT ii.manual_invoice_id) as bills, SUM(ii.price*ii.qty) as amount')
+            ->groupBy('ii.name')->orderByDesc($sort)->get();
+
+        // SKU is not on the line item — resolve it from the inventory item the line pointed at.
+        $skus = InventoryItem::whereIn('id', $rows->pluck('inv_id')->filter()->unique())
+            ->pluck('sku_id', 'id');
+
+        $totalQty = (float) $rows->sum('qty');
+        $totalAmount = (float) $rows->sum('amount');
+
+        if ($request->get('export') === 'excel') {
+            $data = [];
+            foreach ($rows as $key => $r) {
+                $data[] = [
+                    $key + 1,
+                    $r->name,
+                    $skus[$r->inv_id] ?? '',
+                    (float) $r->qty,
+                    (int) $r->bills,
+                    round((float) $r->amount, 2),
+                    $totalAmount > 0 ? round($r->amount / $totalAmount * 100, 2) : 0,
+                ];
+            }
+            $headings = ['#', 'Item', 'SKU', 'Qty Sold', 'Bills', 'Sales', 'Share %'];
+            $file = 'top-selling-items_' . $from . '_' . $to . '.xlsx';
+            return Excel::download(new PosTopItemsExport($data, $headings), $file);
+        }
+
+        return view('posretail::vendor.retail-pos.top-items', compact(
+            'rows', 'skus', 'totalQty', 'totalAmount', 'from', 'to',
+            'branches', 'branch', 'preset', 'custom', 'sort'
         ));
     }
 

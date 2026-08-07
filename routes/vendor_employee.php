@@ -285,6 +285,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('remove-image/{item_id}/{photo}', 'InventoryController@remove_item_image')->name('remove-image')->middleware('permission:inventory_item,edit');
                 Route::get('show_on_website/{id}/{status}', 'InventoryController@show_on_website')->name('show_on_website')->middleware('permission:inventory_item,show_on_website');
                 Route::get('delete/{id}', 'InventoryController@item_delete')->name('delete')->middleware('permission:inventory_item,delete');
+                Route::post('delete-variation', 'InventoryController@delete_variation')->name('delete-variation')->middleware('permission:inventory_item,delete');
                 Route::post('bulk-delete', 'InventoryController@item_bulk_delete')->name('bulk-delete')->middleware('permission:inventory_item,delete');
                 Route::post('assign-storage-unit', 'InventoryController@assign_storage_unit')->name('assign-storage-unit')->middleware('permission:inventory_item,edit');
                 Route::get('export', 'InventoryController@item_export')->name('export')->middleware('permission:inventory_item,export');

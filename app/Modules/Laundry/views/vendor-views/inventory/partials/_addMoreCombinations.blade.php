@@ -62,7 +62,7 @@
                         <textarea id="specs_{{ $str }}" class="editor2"></textarea>
                     </td>
                     <td>
-                        <input type="file" name="imgs_{{ $str }}[]" multiple class="form-control" required>
+                        <input type="file" name="imgs_{{ $str }}[]" multiple class="form-control">
                     </td>
                 </tr>
             @endif

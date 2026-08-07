@@ -97,7 +97,15 @@
                 </div>
             @endif
             <div class="rp-card">
-                <div class="hd"><span class="accent">Top items</span></div>
+                <div class="hd">
+                    <span class="accent">Top items</span>
+                    <span class="d-flex align-items-center" style="gap:6px;">
+                        <a class="rp-btn o sm"
+                            href="{{ route('vendor.retail-pos.top-items', ['from' => $from, 'to' => $to, 'branch' => $branch, 'date_range' => $preset, 'custom_date_range' => $custom]) }}">View all</a>
+                        <a class="rp-btn p sm"
+                            href="{{ route('vendor.retail-pos.top-items', ['from' => $from, 'to' => $to, 'branch' => $branch, 'export' => 'excel']) }}">⬇ Excel</a>
+                    </span>
+                </div>
                 <table class="rp-table">
                     <thead><tr><th>Item</th><th class="text-right">Qty</th><th class="text-right">Sales</th></tr></thead>
                     <tbody>

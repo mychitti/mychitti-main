@@ -75,15 +75,17 @@
                 </tr>
                 <tr class="border border-2 border-top-0 mb-2 variant-extra-row">
                     <td colspan="2">
-                        <label class="control-label m-0">Description</label>
-                        <textarea name="descs_{{ $combination['type'] }}" class="form-control" required>{{ isset($combination['variations_table_id']) ? _getInvVrDetails($combination['variations_table_id'])->description : '' }}</textarea>
+                        <label class="control-label m-0">Highlights</label>
+                        <textarea name="descs_{{ $combination['type'] }}" class="form-control">{{ isset($combination['variations_table_id']) ? _getInvVrDetails($combination['variations_table_id'])->description : '' }}</textarea>
                     </td>
                     <td colspan="2">
                         <label class="control-label m-0">Specifications</label>
                         <textarea id="specs_{{ $combination['type'] }}" class="editor">{{ isset($combination['variations_table_id']) ? _getInvVrDetails($combination['variations_table_id'])->specifications : '' }}</textarea>
                     </td>
                     <td colspan="2" class="">
-                        <input type="file" name="imgs_{{ $combination['type'] }}[]" multiple class="form-control">
+                        <label class="control-label m-0">Images</label>
+                        <input type="file" name="imgs_{{ $combination['type'] }}[]" onchange="validateFileCount(this, 8)"
+                            multiple class="form-control">
                         <a type="button" data-toggle="modal" data-target="#imagesModal_{{ $key }}"
                             title="View Current Images" class="btn action-btn btn--warning btn-outline-warning"><i
                                 class="tio-visible"></i>

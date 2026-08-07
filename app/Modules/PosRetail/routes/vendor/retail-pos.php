@@ -18,6 +18,7 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
         Route::get('delete/{id}',       [InventoryOfferController::class, 'delete'])->name('delete');
     });
     Route::get('dashboard',    [RetailPosController::class, 'dashboard'])->name('dashboard')->middleware('permission:pos_bills,view');
+    Route::get('top-items',    [RetailPosController::class, 'topItems'])->name('top-items')->middleware('permission:pos_bills,view');
     Route::get('/',            [RetailPosController::class, 'index'])->name('index')->middleware('permission:pos_billing,create');
     Route::get('products',     [RetailPosController::class, 'products'])->name('products')->middleware('permission:pos_billing,create');
     Route::get('customers',    [RetailPosController::class, 'customers'])->name('customers')->middleware('permission:pos_billing,create');
