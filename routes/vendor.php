@@ -73,6 +73,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // One-time onboarding fee, collected before Embedded Signup links the number.
         Route::post('whatsapp/connect/setup-fee', 'WhatsAppController@connectSetupFee')->name('whatsapp.connect.setup-fee');
         Route::post('whatsapp/disconnect', 'WhatsAppController@disconnect')->name('whatsapp.disconnect');
+        Route::get('whatsapp/numbers', 'WhatsAppController@numbers')->name('whatsapp.numbers');
+        Route::post('whatsapp/numbers/label', 'WhatsAppController@numberLabel')->name('whatsapp.numbers.label');
+        Route::post('whatsapp/numbers/default', 'WhatsAppController@numberDefault')->name('whatsapp.numbers.default');
+        Route::post('whatsapp/numbers/bind', 'WhatsAppController@numberBind')->name('whatsapp.numbers.bind');
         Route::get('whatsapp/inbox', 'WhatsAppController@inbox')->name('whatsapp.inbox');
         Route::get('whatsapp/inbox/threads', 'WhatsAppController@inboxThreads')->name('whatsapp.inbox.threads');
         Route::get('whatsapp/inbox/thread', 'WhatsAppController@inboxThread')->name('whatsapp.inbox.thread');
@@ -102,6 +106,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('whatsapp/bulk/recipients', 'WhatsAppController@bulkRecipients')->name('whatsapp.bulk.recipients');
         Route::post('whatsapp/bulk/send', 'WhatsAppController@bulkSend')->name('whatsapp.bulk.send');
         // Sent-message record: which numbers each batch went to, and what they were sent.
+        // Bulk Message — composer, customer book and send history on one page. The history GET
+        // stays as a redirect into its tab so old links keep working.
+        Route::get('whatsapp/bulk', 'WhatsAppController@bulk')->name('whatsapp.bulk');
         Route::get('whatsapp/bulk/history', 'WhatsAppController@bulkHistory')->name('whatsapp.bulk.history');
         Route::get('whatsapp/bulk/history/{runId}', 'WhatsAppController@bulkHistoryRun')->name('whatsapp.bulk.history.run');
         Route::get('whatsapp/bulk/history/{runId}/export', 'WhatsAppController@bulkHistoryExport')->name('whatsapp.bulk.history.export');
@@ -119,6 +126,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Which of the store's own templates each automation sends.
         Route::get('whatsapp/template-roles', 'WhatsAppController@templateRoles')->name('whatsapp.template-roles');
         Route::post('whatsapp/template-roles', 'WhatsAppController@templateRoleSave')->name('whatsapp.template-roles.save');
+        // Automation — automatic message templates, the AI Agent's permissions and its knowledge
+        // base on one page. The three GETs below are kept as redirects into its tabs so existing
+        // links and bookmarks still land somewhere sensible.
+        Route::get('whatsapp/automation', 'WhatsAppController@automation')->name('whatsapp.automation');
         // What the AI Agent may do for customers, and what it may share with them.
         Route::get('whatsapp/bot', 'WhatsAppController@bot')->name('whatsapp.bot');
         Route::post('whatsapp/bot/shares', 'WhatsAppController@botShares')->name('whatsapp.bot.shares');
@@ -436,6 +447,12 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('batch-expiry', 'InventoryReportController@batchExpiry')->name('batch-expiry');
                 Route::post('sale-delete/{id}', 'InventoryReportController@sale_delete')->name('sale-delete');
                 Route::post('purchase-delete/{id}', 'InventoryReportController@purchase_delete')->name('purchase-delete');
+                Route::post('sale-bulk-delete', 'InventoryReportController@sale_bulk_delete')->name('sale-bulk-delete');
+                Route::post('purchase-bulk-delete', 'InventoryReportController@purchase_bulk_delete')->name('purchase-bulk-delete');
+                Route::post('gst-bulk-delete', 'InventoryReportController@gst_bulk_delete')->name('gst-bulk-delete');
+                Route::post('stock-bulk-delete', 'InventoryReportController@stock_bulk_delete')->name('stock-bulk-delete');
+                Route::post('profit-and-loss-bulk-delete', 'InventoryReportController@pnl_bulk_delete')->name('profit-and-loss-bulk-delete');
+                Route::post('batch-expiry-bulk-delete', 'InventoryReportController@batch_expiry_bulk_delete')->name('batch-expiry-bulk-delete');
             });
             Route::group(['prefix' => 'category', 'as' => 'category.'], function () {
                 Route::get('/', 'InventoryController@category')->name('index');

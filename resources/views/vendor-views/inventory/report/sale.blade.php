@@ -123,7 +123,7 @@
                      </form>
 
 
-                     @if (hasPermission('sale_report', 'export'))
+                     @if (hasPermission('sale_report', 'export') || hasPermission('sale_report', 'delete'))
                          <div class="badge badge-soft-success align-items-center"
                              style="    height: 39px;    display: flex;">
                              <div class="form-check mr-1">
@@ -132,7 +132,10 @@
                                      for="check_all">Select All</label>
                              </div>
                          </div>
-                         <!-- Delete Button -->
+                     @endif
+
+                     @if (hasPermission('sale_report', 'export'))
+                         <!-- Download Button -->
                          <div class="mr-1 delete_selected_btn" style="display:none;">
 
                              <button id="download_selected" style=" white-space: nowrap;"
@@ -140,6 +143,21 @@
                                  <i class="tio-download"></i> Download Selected
                              </button>
                          </div>
+                     @endif
+
+                     @if (hasPermission('sale_report', 'delete'))
+                         @include('vendor-views.inventory.report._bulk_delete', [
+                             'scope' => 'sale',
+                             'deleteRoute' => route('vendor.inventory.report.sale-bulk-delete'),
+                             'selectedText' => 'the selected sale invoices',
+                             'allText' => 'every sale invoice in this report',
+                             'checkAllId' => 'check_all',
+                             'renderSelectAll' => false,
+                             'restockLabel' => 'Add the sold stock back to inventory',
+                         ])
+                     @endif
+
+                     @if (hasPermission('sale_report', 'export'))
                          <a href="{{ route('vendor.inventory.report.sale', ['export', 'pdf']) }}"
                              class="btn text-dark border border-dark btn-outline-light">
                              <img src="{{ asset('storage/app/public/util/pdf-icon.jpg') }}" height="18px" alt="">

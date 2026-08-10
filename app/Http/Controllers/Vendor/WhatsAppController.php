@@ -78,16 +78,48 @@ class WhatsAppController extends Controller
         // presents the monthly — the vendor should recognise the same number on both screens.
         $setupPaid = WhatsAppBilling::setupFeePaid($storeId);
         $plans     = WhatsAppBilling::plans();
-        $pricing = [
-            'setup'         => WhatsAppBilling::setupFee(),
-            'setup_total'   => WhatsAppBilling::withTax(WhatsAppBilling::setupFee()),
-            // The connect screen quotes the entry price — the ladder itself is on Plan & Billing,
-            // where the vendor actually chooses a tier.
+
+        $tab = in_array($request->get('tab'), ['connection', 'numbers', 'billing'], true)
+            ? $request->get('tab') : 'connection';
+        // Nothing to manage on Numbers until one is linked, so a stale link lands on Connection.
+        if ($tab === 'numbers' && !$connected) {
+            $tab = 'connection';
+        }
+
+        $billing = $this->billingData();
+
+        // The two screens quoted the same setup fee and GST from the same source, so merging the
+        // arrays cannot disagree with itself. Connection additionally quotes the entry price —
+        // the ladder itself is in the Plan & Billing pane, where a tier is actually chosen.
+        $pricing = array_merge($billing['pricing'], [
             'monthly'       => $plans[WhatsAppBilling::DEFAULT_PLAN]['price'],
             'monthly_total' => WhatsAppBilling::withTax($plans[WhatsAppBilling::DEFAULT_PLAN]['price']),
             'plans'         => $plans,
-            'gst'           => WhatsAppBilling::gstPercent(),
-        ];
+        ]);
+        $billing['pricing'] = $pricing;
+
+        return view('vendor-views.whatsapp.connect', array_merge(
+            compact('es', 'store', 'connected', 'setupPaid', 'pricing', 'tab'),
+            $this->numbersData(),
+            $billing
+        ));
+    }
+
+    /**
+     * Bulk Message — composing a batch, the customer book it goes to, and the history of what
+     * previous batches did. History used to be its own menu item whose only action was "New bulk
+     * message", pointing back at the composer on a third page.
+     */
+    public function bulk(Request $request)
+    {
+        WhatsAppService::ensureStoreColumns();
+        $storeId = Helpers::get_store_id();
+        $store = DB::table('stores')->where('id', $storeId)
+            ->select('wa_enabled', 'wa_phone_number_id')->first();
+        $connected = (bool) ($store && $store->wa_enabled && $store->wa_phone_number_id);
+
+        $tab = in_array($request->get('tab'), ['compose', 'audience', 'history'], true)
+            ? $request->get('tab') : 'compose';
 
         // Bulk sending is only offered on the vendor's own connected number — Meta bills them
         // directly and a marketing blast must never burn the platform number's quality rating.
@@ -136,10 +168,12 @@ class WhatsAppController extends Controller
             'platform' => WhatsAppBilling::messageCost('platform'),
         ];
 
-        return view('vendor-views.whatsapp.connect', compact(
-            'es', 'store', 'connected', 'templates', 'templateError',
-            'clientCount', 'platformUserCount', 'optOutCount',
-            'setupPaid', 'pricing', 'customerStats', 'recentCustomers', 'rates'
+        return view('vendor-views.whatsapp.bulk', array_merge(
+            compact(
+                'connected', 'templates', 'templateError', 'clientCount', 'platformUserCount',
+                'optOutCount', 'customerStats', 'recentCustomers', 'rates', 'tab'
+            ),
+            $this->bulkHistoryData()
         ));
     }
 
@@ -810,6 +844,31 @@ class WhatsAppController extends Controller
      */
     public function templateRoles(Request $request)
     {
+        return redirect()->route('vendor.whatsapp.automation', ['tab' => 'automatic']);
+    }
+
+    /**
+     * Automation — one page for the three things that send or answer on their own: which template
+     * each automatic message uses, what the AI Agent may do, and the knowledge it answers from.
+     * They were three menu items, each too small to stand alone, and fixing one usually meant
+     * opening another.
+     */
+    public function automation(Request $request)
+    {
+        $tab = in_array($request->get('tab'), ['automatic', 'chatbot', 'knowledge'], true)
+            ? $request->get('tab') : 'automatic';
+
+        return view('vendor-views.whatsapp.automation', array_merge(
+            $this->templateRolesData(),
+            $this->botData(),
+            app(KnowledgeController::class)->knowledgeData($request),
+            ['tab' => $tab]
+        ));
+    }
+
+    /** Every automatic message role with the template it currently resolves to. */
+    private function templateRolesData(): array
+    {
         $storeId = Helpers::get_store_id();
         $wa = WhatsAppService::make($storeId);
 
@@ -866,12 +925,12 @@ class WhatsAppController extends Controller
             ];
         }
 
-        return view('vendor-views.whatsapp.template-roles', [
+        return [
             'roles'     => $roles,
             'connected' => $wa->source() === 'vendor',
             'listError' => $listError,
             'lockDays'  => WhatsAppService::TEMPLATE_NAME_LOCK_DAYS,
-        ]);
+        ];
     }
 
     /**
@@ -1018,6 +1077,12 @@ class WhatsAppController extends Controller
      */
     public function bulkHistory(Request $request)
     {
+        return redirect()->route('vendor.whatsapp.bulk', ['tab' => 'history']);
+    }
+
+    /** Every batch this store has sent, with the totals shown above the list. */
+    private function bulkHistoryData(): array
+    {
         WhatsAppService::ensureBulkSendTable();
         $storeId = Helpers::get_store_id();
 
@@ -1048,7 +1113,7 @@ class WhatsAppController extends Controller
                 SUM(CASE WHEN sent_at >= ? THEN 1 ELSE 0 END) as last30", [now()->subDays(30)])
             ->first();
 
-        return view('vendor-views.whatsapp.bulk-history', compact('runs', 'totals'));
+        return compact('runs', 'totals');
     }
 
     /**
@@ -1387,20 +1452,24 @@ class WhatsAppController extends Controller
      */
     public function billing(Request $request)
     {
-        $storeId = Helpers::get_store_id();
-        WhatsAppBilling::ensureTables();
-
-        // Back from Razorpay's mandate page, which returns razorpay_subscription_id &co, or from
-        // the one-off gateway with ?flag=. Acknowledge it and drop the query string — the mandate
-        // itself is confirmed by the subscription.activated webhook, not by this redirect, so the
-        // wording promises nothing the page can't back up.
+        // Razorpay's mandate page returns here with razorpay_subscription_id &co, and the one-off
+        // gateway with ?flag= — so this still has to say what happened before handing over to the
+        // merged page. The mandate itself is confirmed by the subscription.activated webhook, not
+        // by this redirect, so the wording promises nothing the page can't back up.
         if ($request->has('razorpay_subscription_id') || $request->has('flag')) {
             $request->query('flag') === 'fail'
                 ? Toastr::error('That payment didn’t go through, so nothing was charged. You can try again.')
                 : Toastr::success('Thanks — Razorpay has your authorisation. This page updates the moment the first month is collected.');
-
-            return redirect()->route('vendor.whatsapp.billing');
         }
+
+        return redirect()->route('vendor.whatsapp.connect', ['tab' => 'billing']);
+    }
+
+    /** Subscription state, AI token balance, template slots and the charge history. */
+    private function billingData(): array
+    {
+        $storeId = Helpers::get_store_id();
+        WhatsAppBilling::ensureTables();
 
         $subscription = WhatsAppBilling::subscription($storeId);
 
@@ -1430,7 +1499,7 @@ class WhatsAppController extends Controller
             'gst'            => WhatsAppBilling::gstPercent(),
         ];
 
-        return view('vendor-views.whatsapp.billing', [
+        return [
             'subscription'  => $subscription,
             'active'        => WhatsAppBilling::isActive($storeId),
             'plans'         => WhatsAppBilling::plans(),
@@ -1448,7 +1517,7 @@ class WhatsAppController extends Controller
             'usage'         => WhatsAppBilling::usageThisMonth($storeId),
             'feeOwn'        => WhatsAppBilling::messageFeeOwn(),
             'feePlatform'   => WhatsAppBilling::messageFeePlatform(),
-        ]);
+        ];
     }
 
     /**
@@ -1483,9 +1552,15 @@ class WhatsAppController extends Controller
     /** Chatbot settings — what the AI Agent may do and what it may tell customers. */
     public function bot(Request $request)
     {
+        return redirect()->route('vendor.whatsapp.automation', ['tab' => 'chatbot']);
+    }
+
+    /** What the AI Agent is allowed to do, and whether the plan includes it at all. */
+    private function botData(): array
+    {
         $storeId = Helpers::get_store_id();
 
-        return view('vendor-views.whatsapp.bot', [
+        return [
             'botIncluded'  => WhatsAppBilling::botIncluded($storeId),
             'agentActive'  => WhatsAppBilling::agentActive($storeId),
             'subscription' => WhatsAppBilling::subscription($storeId),
@@ -1495,7 +1570,7 @@ class WhatsAppController extends Controller
             'shares'       => WhatsAppAgent::shares($storeId),
             'shareItems'   => WhatsAppAgent::SHARE_ITEMS,
             'gst'          => WhatsAppBilling::gstPercent(),
-        ]);
+        ];
     }
 
     public function botShares(Request $request)
@@ -1842,7 +1917,25 @@ class WhatsAppController extends Controller
         ]);
 
         WhatsAppService::ensureStoreColumns();
+        WhatsAppService::ensureNumbersTable();
         $storeId = Helpers::get_store_id();
+
+        // The cap counts numbers the store already owns, but reconnecting one it owns is a token
+        // refresh rather than a new number — Meta returns the same phone_number_id — so that case
+        // is let through even at the limit. Otherwise an expired token would be unfixable.
+        $limit = WhatsAppService::numberLimit($storeId);
+        if ($limit > 0) {
+            $owned = collect(WhatsAppService::numbers($storeId));
+            $isReconnect = $owned->contains('phone_number_id', $request->phone_number_id);
+
+            if (!$isReconnect && $owned->count() >= $limit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You have connected the maximum of ' . $limit . ' WhatsApp '
+                        . ($limit === 1 ? 'number' : 'numbers') . '. Disconnect one before adding another.',
+                ], 422);
+            }
+        }
 
         // The onboarding fee gates the link-up, not the UI. Connecting costs us the Meta
         // onboarding the moment the WABA is attached, so this is checked here as well as on the
@@ -1890,13 +1983,32 @@ class WhatsAppController extends Controller
                 'pin'               => str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT),
             ]);
 
-            // 4) Persist on the store — WhatsAppService picks this up automatically.
-            DB::table('stores')->where('id', $storeId)->update([
-                'wa_enabled'             => 1,
-                'wa_phone_number_id'     => $request->phone_number_id,
-                'wa_token'               => $token,
-                'wa_business_account_id' => $request->waba_id,
-                'wa_api_version'         => $version,
+            // 4) Ask Meta what this number actually is, so the vendor sees a phone number in the
+            // list rather than an opaque id. Cosmetic — a failure here must not fail the connect.
+            $display = null;
+            $verified = null;
+            try {
+                $info = Http::withToken($token)->get("https://graph.facebook.com/{$version}/{$request->phone_number_id}", [
+                    'fields' => 'display_phone_number,verified_name',
+                ]);
+                if ($info->successful()) {
+                    $display  = data_get($info->json(), 'display_phone_number');
+                    $verified = data_get($info->json(), 'verified_name');
+                }
+            } catch (\Throwable $e) {
+                Log::info('WA ES number lookup failed: ' . $e->getMessage());
+            }
+
+            // 5) Persist. saveNumber() mirrors the default back onto stores.wa_*, so everything
+            // written against the single-number columns keeps working.
+            WhatsAppService::saveNumber($storeId, [
+                'phone_number_id'     => $request->phone_number_id,
+                'business_account_id' => $request->waba_id,
+                'token'               => $token,
+                'api_version'         => $version,
+                'display_phone'       => $display,
+                'verified_name'       => $verified,
+                'label'               => $request->input('label'),
             ]);
 
             return response()->json(['success' => true, 'message' => 'WhatsApp connected.']);
@@ -2308,16 +2420,133 @@ class WhatsAppController extends Controller
         return back();
     }
 
+    /**
+     * Disconnect one number, or the whole account when no number is named.
+     *
+     * The no-argument form is what the old single-number button posts, so it still means
+     * "disconnect everything" — anything else would quietly leave numbers connected.
+     */
     public function disconnect(Request $request)
     {
         WhatsAppService::ensureStoreColumns();
-        DB::table('stores')->where('id', Helpers::get_store_id())->update([
+        WhatsAppService::ensureNumbersTable();
+        $storeId = Helpers::get_store_id();
+
+        if ($request->filled('number_id')) {
+            $number = DB::table('wa_numbers')->where('store_id', $storeId)
+                ->where('id', $request->number_id)->first();
+
+            if (!$number) {
+                Toastr::error('That number is not connected to your store.');
+                return back();
+            }
+
+            WhatsAppService::removeNumber($storeId, (int) $request->number_id);
+            Toastr::success(($number->display_phone ?: 'The number') . ' has been disconnected.');
+            return back();
+        }
+
+        DB::table('wa_numbers')->where('store_id', $storeId)->delete();
+        DB::table('wa_number_bindings')->where('store_id', $storeId)->delete();
+        DB::table('stores')->where('id', $storeId)->update([
             'wa_enabled'             => 0,
             'wa_phone_number_id'     => null,
             'wa_token'               => null,
             'wa_business_account_id' => null,
         ]);
         Toastr::success('WhatsApp disconnected.');
+        return back();
+    }
+
+    /** Manage the store's connected numbers and what each one is in charge of sending. */
+    public function numbers(Request $request)
+    {
+        return redirect()->route('vendor.whatsapp.connect', ['tab' => 'numbers']);
+    }
+
+    /** The connected numbers and which kind of message each one sends. */
+    private function numbersData(): array
+    {
+        WhatsAppService::ensureNumbersTable();
+        $storeId = Helpers::get_store_id();
+
+        return [
+            'numbers'  => WhatsAppService::numbers($storeId),
+            'bindings' => WhatsAppService::numberBindings($storeId),
+            'limit'    => WhatsAppService::numberLimit($storeId),
+            // Shown apart from the effective limit so the screen can say whose ceiling was hit:
+            // Meta's lifts on business verification, ours does not.
+            'metaCap'  => WhatsAppService::metaNumberCap($storeId),
+            'purposes' => WhatsAppService::NUMBER_PURPOSES,
+        ];
+    }
+
+    /** Rename a number, so a vendor can tell "front desk" from "pharmacy" at a glance. */
+    public function numberLabel(Request $request)
+    {
+        $request->validate(['number_id' => 'required|integer', 'label' => 'nullable|string|max:120']);
+
+        WhatsAppService::ensureNumbersTable();
+        $storeId = Helpers::get_store_id();
+
+        $updated = DB::table('wa_numbers')->where('store_id', $storeId)->where('id', $request->number_id)
+            ->update(['label' => $request->label ?: null, 'updated_at' => now()]);
+
+        $updated ? Toastr::success('Name updated.') : Toastr::error('That number is not connected to your store.');
+
+        return back();
+    }
+
+    public function numberDefault(Request $request)
+    {
+        $request->validate(['number_id' => 'required|integer']);
+
+        WhatsAppService::ensureNumbersTable();
+        $storeId = Helpers::get_store_id();
+
+        $number = DB::table('wa_numbers')->where('store_id', $storeId)
+            ->where('id', $request->number_id)->where('status', 'active')->first();
+
+        if (!$number) {
+            Toastr::error('That number is not connected to your store.');
+            return back();
+        }
+
+        WhatsAppService::setDefaultNumber($storeId, (int) $request->number_id);
+        Toastr::success(($number->display_phone ?: 'That number') . ' is now your default.');
+
+        return back();
+    }
+
+    /** Point one kind of automated message at a specific number, or back at the default. */
+    public function numberBind(Request $request)
+    {
+        $request->validate([
+            'purpose'   => 'required|string|in:' . implode(',', array_keys(WhatsAppService::NUMBER_PURPOSES)),
+            'number_id' => 'nullable|integer',
+        ]);
+
+        WhatsAppService::ensureNumbersTable();
+        $storeId = Helpers::get_store_id();
+        $label   = WhatsAppService::NUMBER_PURPOSES[$request->purpose]['label'];
+
+        if (!$request->filled('number_id')) {
+            WhatsAppService::unbindNumber($storeId, $request->purpose);
+            Toastr::success($label . ' will use your default number.');
+            return back();
+        }
+
+        $number = DB::table('wa_numbers')->where('store_id', $storeId)
+            ->where('id', $request->number_id)->where('status', 'active')->first();
+
+        if (!$number) {
+            Toastr::error('That number is not connected to your store.');
+            return back();
+        }
+
+        WhatsAppService::bindNumber($storeId, $request->purpose, (int) $request->number_id);
+        Toastr::success($label . ' will now send from ' . ($number->display_phone ?: $number->label ?: 'that number') . '.');
+
         return back();
     }
 }

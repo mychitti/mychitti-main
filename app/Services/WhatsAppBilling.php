@@ -60,6 +60,11 @@ class WhatsAppBilling
      *   tokens_in  — input allowance (prompt: system, thread history, the customer's message)
      *   tokens_out — output allowance (the reply the model writes back)
      *
+     * Input gets the larger bucket because it is what a conversation actually burns: every turn
+     * re-sends the system prompt, the injected knowledge and the whole thread so far, while the
+     * reply written back is a few lines. Sizing them the other way round starved input first and
+     * left output allowance unspent.
+     *
      * The two allowances are separate buckets and are NOT interchangeable: running out of output
      * tokens stops replies even with input tokens to spare. Both reset at the start of each cycle
      * and neither carries over.
@@ -77,8 +82,8 @@ class WhatsAppBilling
         'starter' => [
             'label'      => 'AI Agent — Starter',
             'price'      => 3999,
-            'tokens_in'  => 300000,
-            'tokens_out' => 700000,
+            'tokens_in'  => 700000,
+            'tokens_out' => 300000,
             'bot'        => true,
             'agent'      => true,
             'blurb'      => 'Everything in Basic, plus the AI Agent answering, booking and rescheduling.',
@@ -86,8 +91,8 @@ class WhatsAppBilling
         'pro' => [
             'label'      => 'AI Agent — Pro',
             'price'      => 6999,
-            'tokens_in'  => 1000000,
-            'tokens_out' => 2000000,
+            'tokens_in'  => 2000000,
+            'tokens_out' => 1000000,
             'bot'        => true,
             'agent'      => true,
             'blurb'      => 'Everything in Starter, with three times the monthly token allowance.',

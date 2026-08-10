@@ -231,7 +231,7 @@ class RetailPosController extends Controller
     }
 
     // Bump this whenever ensureSchema() changes, to force the one-time introspection to re-run.
-    private const SCHEMA_VERSION = 2;
+    private const SCHEMA_VERSION = 3;
 
     private function ensureSchema(): void
     {
@@ -516,6 +516,15 @@ class RetailPosController extends Controller
         if (Schema::hasTable('pos_stock_gatepass_items') && !Schema::hasColumn('pos_stock_gatepass_items', 'variation_type')) {
             try {
                 DB::statement("ALTER TABLE `pos_stock_gatepass_items` ADD `variation_type` VARCHAR(100) NULL AFTER `inventory_item_id`");
+            } catch (\Throwable $e) {}
+        }
+        // Where the stock came from. NULL is the main store, which is what every gatepass written
+        // before branch-to-branch transfers existed was, so the column reads correctly on old rows
+        // without a backfill.
+        if (Schema::hasTable('pos_stock_gatepass') && !Schema::hasColumn('pos_stock_gatepass', 'from_branch_id')) {
+            try {
+                DB::statement("ALTER TABLE `pos_stock_gatepass` ADD `from_branch_id` BIGINT NULL AFTER `store_id`");
+                DB::statement("ALTER TABLE `pos_stock_gatepass` ADD INDEX `psg_from_branch_idx` (`from_branch_id`)");
             } catch (\Throwable $e) {}
         }
 
@@ -1105,12 +1114,12 @@ class RetailPosController extends Controller
             $from = $range['start'];
             $to   = $range['end'];
         }
-        $branch = (int) $request->get('branch') ?: null;
+        $branch = $this->posBranchFilter($request);
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
 
         $base = ManualInvoice::where('vendor_id', $storeId)->where('type', 'manual')
             ->whereNotNull('pos_status')
-            ->when($branch, fn($q) => $q->where('pos_branch_id', $branch))
+            ->where($this->posBranchScope($branch))
             ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to]);
 
         $final = (clone $base)->where('pos_status', 'final');
@@ -1129,7 +1138,7 @@ class RetailPosController extends Controller
         $topItems = DB::table('invoice_items as ii')
             ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
             ->where('mi.vendor_id', $storeId)->where('mi.pos_status', 'final')
-            ->when($branch, fn($q) => $q->where('mi.pos_branch_id', $branch))
+            ->where($this->posBranchScope($branch, 'mi.pos_branch_id'))
             ->whereBetween(DB::raw('DATE(mi.created_at)'), [$from, $to])
             ->selectRaw('ii.name, MAX(ii.inv_id) as inv_id, SUM(ii.qty) as qty, SUM(ii.price*ii.qty) as amount'
                 . ($hasVarCol ? ', MAX(ii.variation_type) as variation_type' : ''))
@@ -1139,7 +1148,7 @@ class RetailPosController extends Controller
         // Last 14 days trend (for the line chart) — independent of the selected range.
         $trend = ManualInvoice::where('vendor_id', $storeId)->where('type', 'manual')
             ->where('pos_status', 'final')
-            ->when($branch, fn($q) => $q->where('pos_branch_id', $branch))
+            ->where($this->posBranchScope($branch))
             ->where('created_at', '>=', now()->subDays(13)->startOfDay())
             ->selectRaw('DATE(created_at) as d, SUM(total_amount) as total')
             ->groupBy('d')->orderBy('d')->pluck('total', 'd');
@@ -1148,7 +1157,7 @@ class RetailPosController extends Controller
         $payModes = DB::table('pos_payment_legs as pl')
             ->join('manual_invoices as mi', 'mi.id', '=', 'pl.manual_invoice_id')
             ->where('mi.vendor_id', $storeId)->where('mi.pos_status', 'final')
-            ->when($branch, fn($q) => $q->where('mi.pos_branch_id', $branch))
+            ->where($this->posBranchScope($branch, 'mi.pos_branch_id'))
             ->whereBetween(DB::raw('DATE(mi.created_at)'), [$from, $to])
             ->selectRaw('pl.mode, SUM(pl.amount) as amount')
             ->groupBy('pl.mode')->pluck('amount', 'mode');
@@ -1226,7 +1235,7 @@ class RetailPosController extends Controller
         // trip through the filter links and cannot put a colon in the download filename.
         $from = \Carbon\Carbon::parse($from)->toDateString();
         $to   = \Carbon\Carbon::parse($to)->toDateString();
-        $branch = (int) $request->get('branch') ?: null;
+        $branch = $this->posBranchFilter($request);
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
         // Sales by default: qty cannot rank rows against each other once they are counted in
         // different units — 64 bananas over 14.1 kg of onion is not a comparison.
@@ -1236,7 +1245,7 @@ class RetailPosController extends Controller
         $rows = DB::table('invoice_items as ii')
             ->join('manual_invoices as mi', 'mi.id', '=', 'ii.manual_invoice_id')
             ->where('mi.vendor_id', $storeId)->where('mi.type', 'manual')->where('mi.pos_status', 'final')
-            ->when($branch, fn($q) => $q->where('mi.pos_branch_id', $branch))
+            ->where($this->posBranchScope($branch, 'mi.pos_branch_id'))
             ->whereBetween(DB::raw('DATE(mi.created_at)'), [$from, $to])
             ->selectRaw('ii.name, MAX(ii.inv_id) as inv_id, SUM(ii.qty) as qty,
                 COUNT(DISTINCT ii.manual_invoice_id) as bills, SUM(ii.price*ii.qty) as amount'
@@ -2305,7 +2314,7 @@ class RetailPosController extends Controller
         $this->ensureSchema();
         $storeId = $this->storeId();
 
-        $branch = (int) $request->get('branch') ?: null;
+        $branch = $this->posBranchFilter($request);
         $staff = (int) $request->get('staff') ?: null;
         $terminal = (int) $request->get('terminal') ?: null;
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
@@ -2352,7 +2361,7 @@ class RetailPosController extends Controller
             ->whereBetween(DB::raw('DATE(created_at)'), [$from, $to])
             ->where('type', 'manual')
             ->whereNotNull('pos_status')
-            ->when($branch, fn($q) => $q->where('pos_branch_id', $branch))
+            ->where($this->posBranchScope($branch))
             ->when($staff, fn($q) => $q->where('pos_staff_id', $staff))
             ->when(!$isStaff && $mine, fn($q) => $q->whereNull('pos_staff_id'))
             ->when($terminal, fn($q) => $q->where('pos_terminal_id', $terminal))
@@ -2676,7 +2685,7 @@ class RetailPosController extends Controller
             $from = $range['start'];
             $to   = $range['end'];
         }
-        $branch = (int) $request->get('branch') ?: null;
+        $branch = $this->posBranchFilter($request);
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
 
         $rows = DB::table('invoice_items as ii')
@@ -2684,7 +2693,7 @@ class RetailPosController extends Controller
             ->where('mi.vendor_id', $storeId)
             ->where('mi.type', 'manual')
             ->where('mi.pos_status', 'final')
-            ->when($branch, fn($q) => $q->where('mi.pos_branch_id', $branch))
+            ->where($this->posBranchScope($branch, 'mi.pos_branch_id'))
             ->whereBetween(DB::raw('DATE(mi.created_at)'), [$from, $to])
             ->selectRaw('ii.tax as rate,
                 SUM(CASE WHEN ii.gst_status = "including" AND ii.tax > 0
@@ -3269,13 +3278,18 @@ class RetailPosController extends Controller
         // No item list up front. A transfer is a handful of lines picked deliberately, the same
         // way a bill is built — rendering the whole catalogue with a quantity box on every row
         // made the operator hunt through hundreds of items to fill in three.
+        $hasSource = $this->gatepassHasSourceColumn();
         $gatepasses = DB::table('pos_stock_gatepass as g')
             ->leftJoin('branches as b', 'b.id', '=', 'g.branch_id')
+            ->when($hasSource, fn($q) => $q->leftJoin('branches as fb', 'fb.id', '=', 'g.from_branch_id'))
             ->where('g.store_id', $storeId)
             ->orderByDesc('g.id')->limit(100)
-            ->get(['g.id', 'g.gatepass_no', 'g.note', 'g.created_at', 'b.name as branch_name']);
+            ->get(array_merge(
+                ['g.id', 'g.gatepass_no', 'g.note', 'g.created_at', 'b.name as branch_name'],
+                $hasSource ? ['fb.name as from_branch_name'] : []
+            ));
 
-        return view('posretail::vendor.retail-pos.gatepass', compact('branches', 'gatepasses'));
+        return view('posretail::vendor.retail-pos.gatepass', compact('branches', 'gatepasses', 'hasSource'));
     }
 
     /** Item picker for the transfer form — name or SKU, including variation SKUs. */
@@ -3287,6 +3301,8 @@ class RetailPosController extends Controller
         $search = trim((string) $request->get('q', ''));
         $varItemIds = $this->itemIdsByVariationSku($storeId, $search, true);
 
+        $fromBranch = $this->gatepassSourceBranch($request, $storeId);
+
         $dbItems = InventoryItem::where('store_id', $storeId)->where('item_type', 'product')
             ->when($search, fn($q) => $q->where(fn($w) => $w->where('item_name', 'like', "%{$search}%")
                 ->orWhere('sku_id', 'like', "%{$search}%")
@@ -3294,11 +3310,107 @@ class RetailPosController extends Controller
             ->with('itemunit')->orderBy('item_name')->limit(25)
             ->get(['id', 'item_name', 'sku_id', 'stock', 'unit', 'variations']);
 
+        // Sending from a branch means the ceiling is that branch's pool, not the main store's, and
+        // an item the branch has never received simply isn't offered — a picker that lists the
+        // whole catalogue against a branch that holds three products is only a way to fail
+        // validation later.
+        if ($fromBranch) {
+            $pool = DB::table('pos_branch_stock')->where('branch_id', $fromBranch->id)
+                ->whereIn('inventory_item_id', $dbItems->pluck('id'))
+                ->pluck('stock', 'inventory_item_id');
+
+            $dbItems = $dbItems->filter(fn($it) => (float) ($pool[$it->id] ?? 0) > 0)
+                ->each(function ($it) use ($pool) {
+                    $it->stock = (float) ($pool[$it->id] ?? 0);
+                    // A branch holds one flat quantity per item, so there is no variation pool to
+                    // choose between — the source dropdown would be a lie. Empty JSON rather than
+                    // null so the payload builder's json_decode still gets a string.
+                    $it->variations = '[]';
+                })
+                ->values();
+        }
+
         $lastMoved = $this->gatepassLastTransfers($storeId, $dbItems->pluck('id')->all());
 
         return response()->json([
             'results' => $dbItems->map(fn($it) => $this->gatepassItemPayload($it, $lastMoved[$it->id] ?? null))->all(),
         ]);
+    }
+
+    /**
+     * The branch a report page is filtered to: null = every location, 0 = the main store, >0 = a branch.
+     *
+     * "Main store" needs a sentinel of its own because the reading these pages used —
+     * `(int) $request->get('branch') ?: null` — folds 0 back into null, so a plain 0 in the URL is
+     * indistinguishable from no filter at all. 'main' is the same token the inventory reports use.
+     */
+    private function posBranchFilter(Request $request)
+    {
+        $b = $request->get('branch');
+        if ($b === null || $b === '' || $b === 'all') {
+            return null;
+        }
+        if ($b === 'main' || (string) $b === '0') {
+            return 0;
+        }
+        return (int) $b ?: null;
+    }
+
+    /**
+     * That filter as a where-closure, so it drops into any query the same way.
+     *
+     * Bills rung up with no counter — the owner billing directly — carry a null pos_branch_id,
+     * which is exactly what "main store" means here. Adds nothing when no branch is selected;
+     * Laravel skips an empty nested group rather than emitting invalid SQL.
+     */
+    private function posBranchScope($branch, string $column = 'pos_branch_id'): \Closure
+    {
+        return function ($q) use ($branch, $column) {
+            if ($branch === null) {
+                return;
+            }
+            $branch === 0 ? $q->whereNull($column) : $q->where($column, $branch);
+        };
+    }
+
+    /**
+     * Whether pos_stock_gatepass can record where a transfer came from.
+     *
+     * The column is added by ensureSchema(), whose DDL is best-effort — a swallowed failure there
+     * would otherwise take the whole gatepass page down with an "unknown column" error, breaking
+     * main-store transfers that have nothing to do with this feature. Checked once per request.
+     */
+    private function gatepassHasSourceColumn(): bool
+    {
+        static $has = null;
+        if ($has === null) {
+            try {
+                $has = Schema::hasColumn('pos_stock_gatepass', 'from_branch_id');
+            } catch (\Throwable $e) {
+                $has = false;
+            }
+        }
+        return $has;
+    }
+
+    /**
+     * The branch a transfer is being sent FROM, or null for the main store.
+     *
+     * Resolved against this store's own branches, so a posted id can only ever name a branch the
+     * caller already owns.
+     */
+    private function gatepassSourceBranch(Request $request, int $storeId)
+    {
+        if (!$this->gatepassHasSourceColumn()) {
+            return null;
+        }
+
+        $id = (int) $request->input('from_branch_id');
+        if ($id <= 0) {
+            return null;
+        }
+
+        return Branch::where('store_id', $storeId)->where('id', $id)->first();
     }
 
     /**
@@ -3411,6 +3523,12 @@ class RetailPosController extends Controller
             return back();
         }
 
+        $fromBranch = $this->gatepassSourceBranch($request, $storeId);
+        if ($fromBranch && $fromBranch->id == $branchId) {
+            Toastr::error('Source and destination branch cannot be the same');
+            return back();
+        }
+
         // The form posts qty[{itemId}] alongside source[{itemId}], which is '' for the main
         // stock pool or a variation type. The legacy "{itemId}-var-{type}" qty key is still
         // honoured so a stale open tab keeps working.
@@ -3434,38 +3552,76 @@ class RetailPosController extends Controller
             return back();
         }
 
-        // Validate against main-store stock. A countable variation is checked against its own
-        // count; a measured pack against what it actually draws from the pool — 3 × 100gm needs
-        // 0.3 kg, not 3 kg, so the raw line quantity is the wrong thing to compare.
+        // A branch pool has no variation breakdown, so a variation posted by a stale tab would be
+        // recorded on the gatepass and printed on the note while the deduction ignored it.
+        if ($fromBranch) {
+            $lines = array_map(fn($l) => ['item_id' => $l['item_id'], 'var_type' => null, 'qty' => $l['qty']], $lines);
+        }
+
+        // Validate what is being sent against the pool it is coming out of. From the main store a
+        // countable variation is checked against its own count and a measured pack against what it
+        // actually draws — 3 × 100gm needs 0.3 kg, not 3 kg, so the raw line quantity is the wrong
+        // thing to compare.
         $items = InventoryItem::where('store_id', $storeId)
             ->whereIn('id', array_unique(array_column($lines, 'item_id')))->get()->keyBy('id');
 
-        foreach ($lines as $line) {
-            $item = $items->get($line['item_id']);
-            if (!$item) {
-                Toastr::error('Item not found');
-                return back();
-            }
+        // Sending from a branch is a different sum entirely: the branch holds one flat quantity per
+        // item in the item's own unit, with no variation breakdown, so the line quantity is checked
+        // straight against that pool and the main store is not consulted at all.
+        if ($fromBranch) {
+            $pool = DB::table('pos_branch_stock')->where('branch_id', $fromBranch->id)
+                ->whereIn('inventory_item_id', array_column($lines, 'item_id'))
+                ->pluck('stock', 'inventory_item_id');
 
-            if ($varErr = _variationSelectionError($item, $line['var_type'])) {
-                Toastr::error($varErr);
-                return back();
-            }
-
-            if (_variationMode($item) === 'countable') {
-                $var = _variationRow($item, $line['var_type']);
-                $have = (float) ($var['stock'] ?? 0);
-                if ($line['qty'] > $have) {
-                    Toastr::error("Insufficient stock for \"{$item->item_name} ({$line['var_type']})\" (have " . rtrim(rtrim(number_format($have, 3), '0'), '.') . ')');
+            $wanted = [];
+            foreach ($lines as $line) {
+                $item = $items->get($line['item_id']);
+                if (!$item) {
+                    Toastr::error('Item not found');
                     return back();
                 }
-                continue;
+                $wanted[$line['item_id']] = ($wanted[$line['item_id']] ?? 0) + $line['qty'];
             }
 
-            $needed = _stockQtyForLine($item, $line['qty'], $item->unit, $line['var_type']);
-            if ($needed > (float) $item->stock) {
-                Toastr::error("Insufficient main-store stock for \"{$item->item_name}\" (have " . rtrim(rtrim(number_format((float) $item->stock, 3), '0'), '.') . ')');
-                return back();
+            foreach ($wanted as $itemId => $qty) {
+                $have = (float) ($pool[$itemId] ?? 0);
+                if ($qty > $have) {
+                    $name = optional($items->get($itemId))->item_name ?? 'Item';
+                    Toastr::error("Insufficient stock at {$fromBranch->name} for \"{$name}\" (have "
+                        . rtrim(rtrim(number_format($have, 3), '0'), '.') . ')');
+                    return back();
+                }
+            }
+        }
+
+        if (!$fromBranch) {
+            foreach ($lines as $line) {
+                $item = $items->get($line['item_id']);
+                if (!$item) {
+                    Toastr::error('Item not found');
+                    return back();
+                }
+
+                if ($varErr = _variationSelectionError($item, $line['var_type'])) {
+                    Toastr::error($varErr);
+                    return back();
+                }
+
+                if (_variationMode($item) === 'countable') {
+                    $var = _variationRow($item, $line['var_type']);
+                    $have = (float) ($var['stock'] ?? 0);
+                    if ($line['qty'] > $have) {
+                        Toastr::error("Insufficient stock for \"{$item->item_name} ({$line['var_type']})\" (have " . rtrim(rtrim(number_format($have, 3), '0'), '.') . ')');
+                        return back();
+                    }
+                    continue;
+                }
+
+                $needed = _stockQtyForLine($item, $line['qty'], $item->unit, $line['var_type']);
+                if ($needed > (float) $item->stock) {
+                    Toastr::error("Insufficient main-store stock for \"{$item->item_name}\" (have " . rtrim(rtrim(number_format((float) $item->stock, 3), '0'), '.') . ')');
+                    return back();
+                }
             }
         }
 
@@ -3473,7 +3629,7 @@ class RetailPosController extends Controller
         try {
             $serial = DB::table('pos_stock_gatepass')->where('store_id', $storeId)->count() + 1;
             $gpNo = 'GP-' . str_pad((string) $serial, 4, '0', STR_PAD_LEFT);
-            $gatepassId = DB::table('pos_stock_gatepass')->insertGetId([
+            $header = [
                 'store_id'    => $storeId,
                 'branch_id'   => $branchId,
                 'gatepass_no' => $gpNo,
@@ -3481,7 +3637,11 @@ class RetailPosController extends Controller
                 'created_by'  => auth('vendor')->id() ?? auth('vendor_employee')->id(),
                 'created_at'  => now(),
                 'updated_at'  => now(),
-            ]);
+            ];
+            if ($this->gatepassHasSourceColumn()) {
+                $header['from_branch_id'] = $fromBranch?->id;
+            }
+            $gatepassId = DB::table('pos_stock_gatepass')->insertGetId($header);
 
             foreach ($lines as $line) {
                 $itemId = $line['item_id'];
@@ -3490,15 +3650,26 @@ class RetailPosController extends Controller
 
                 $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
 
-                // Deduct from main store through the shared helper, so a transfer takes exactly
-                // what the same line would take on a sale — one deduction, in the right place for
-                // the item's stock type. Deducting the variation and the umbrella separately, as
-                // this did before, took the quantity out twice.
-                _decrementInventoryStock($itemId, $qty, $item->unit, $varType);
+                if ($fromBranch) {
+                    // Branch to branch moves stock sideways: the store's total is unchanged, so
+                    // inventory_items.stock must not be touched. The quantity is already in the
+                    // item's own unit — a branch holds no variations to convert from.
+                    $branchQty = $qty;
+                    DB::table('pos_branch_stock')
+                        ->where('branch_id', $fromBranch->id)->where('inventory_item_id', $itemId)
+                        ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
+                } else {
+                    // Deduct from main store through the shared helper, so a transfer takes exactly
+                    // what the same line would take on a sale — one deduction, in the right place for
+                    // the item's stock type. Deducting the variation and the umbrella separately, as
+                    // this did before, took the quantity out twice.
+                    _decrementInventoryStock($itemId, $qty, $item->unit, $varType);
 
-                // …and add to the branch. Branch stock is held in the item's own unit, so a
-                // measured pack moves its converted weight, not its pack count.
-                $branchQty = _stockQtyForLine($item, $qty, $item->unit, $varType);
+                    // …and add to the branch. Branch stock is held in the item's own unit, so a
+                    // measured pack moves its converted weight, not its pack count.
+                    $branchQty = _stockQtyForLine($item, $qty, $item->unit, $varType);
+                }
+
                 $existing = DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)->first();
                 if ($existing) {
                     DB::table('pos_branch_stock')->where('id', $existing->id)->update(['stock' => DB::raw('stock + ' . $branchQty), 'updated_at' => now()]);
@@ -3521,7 +3692,8 @@ class RetailPosController extends Controller
             return back();
         }
 
-        Toastr::success('Stock transferred to ' . $branch->name . ' (' . $gpNo . ')');
+        Toastr::success('Stock transferred from ' . ($fromBranch->name ?? 'Main Store')
+            . ' to ' . $branch->name . ' (' . $gpNo . ')');
         return redirect()->route('vendor.retail-pos.gatepass.print', $gatepassId);
     }
 
@@ -3553,15 +3725,36 @@ class RetailPosController extends Controller
                     $itemId = $line->inventory_item_id;
                     $varType = $line->variation_type ?? null;
 
-                    // Return to main store — the exact mirror of the transfer, through the same
-                    // helper, so what comes back is what went out.
                     $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
-                    if ($item) {
-                        _incrementInventoryStock($itemId, $qty, $item->unit, $varType);
+                    $fromBranchId = $gp->from_branch_id ?? null;
+
+                    if ($fromBranchId) {
+                        // A branch-to-branch transfer never touched the main store, so reversing it
+                        // must not either — the quantity simply goes back the way it came, in the
+                        // item's own unit.
+                        $branchQty = $qty;
+                        $existing = DB::table('pos_branch_stock')
+                            ->where('branch_id', $fromBranchId)->where('inventory_item_id', $itemId)->first();
+                        if ($existing) {
+                            DB::table('pos_branch_stock')->where('id', $existing->id)
+                                ->update(['stock' => DB::raw('stock + ' . $branchQty), 'updated_at' => now()]);
+                        } else {
+                            DB::table('pos_branch_stock')->insert([
+                                'branch_id' => $fromBranchId, 'inventory_item_id' => $itemId,
+                                'store_id' => $storeId, 'stock' => $branchQty,
+                                'created_at' => now(), 'updated_at' => now(),
+                            ]);
+                        }
+                    } else {
+                        // Return to main store — the exact mirror of the transfer, through the same
+                        // helper, so what comes back is what went out.
+                        if ($item) {
+                            _incrementInventoryStock($itemId, $qty, $item->unit, $varType);
+                        }
+                        $branchQty = $item ? _stockQtyForLine($item, $qty, $item->unit, $varType) : $qty;
                     }
 
-                    // …and pull it back out of the branch, in the unit the branch holds.
-                    $branchQty = $item ? _stockQtyForLine($item, $qty, $item->unit, $varType) : $qty;
+                    // …and pull it back out of the destination branch, in the unit the branch holds.
                     DB::table('pos_branch_stock')
                         ->where('branch_id', $gp->branch_id)->where('inventory_item_id', $itemId)
                         ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
@@ -3589,6 +3782,7 @@ class RetailPosController extends Controller
             abort(404);
         }
         $branch = Branch::find($gatepass->branch_id);
+        $fromBranch = !empty($gatepass->from_branch_id) ? Branch::find($gatepass->from_branch_id) : null;
         $items = DB::table('pos_stock_gatepass_items as gi')
             ->leftJoin('inventory_items as ii', 'ii.id', '=', 'gi.inventory_item_id')
             ->leftJoin('units as u', 'u.id', '=', 'ii.unit')
@@ -3624,7 +3818,7 @@ class RetailPosController extends Controller
         }
 
         $store = Helpers::get_store_data();
-        return view('posretail::vendor.retail-pos.gatepass-print', compact('gatepass', 'branch', 'items', 'store'));
+        return view('posretail::vendor.retail-pos.gatepass-print', compact('gatepass', 'branch', 'fromBranch', 'items', 'store'));
     }
 
     // ── Damaged / Theft stock write-off ─────────────────────────────────────────

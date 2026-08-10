@@ -11,7 +11,7 @@
         <div class="rp-head">
             <div>
                 <h1>Stock Transfer — Gatepass</h1>
-                <div class="sub">Move stock from the main store to a branch. Branch stock can only be added here.</div>
+                <div class="sub">Move stock from the main store to a branch, or between two branches. Branch stock can only be added here.</div>
             </div>
         </div>
 
@@ -35,9 +35,20 @@
                         </div>
                         <div class="bd">
                             <div class="d-flex flex-wrap" style="gap:12px;">
+                                @if ($hasSource ?? false)
+                                    <div style="min-width:220px;">
+                                        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#555;">From <span style="color:#c0392b">*</span></label>
+                                        <select name="from_branch_id" id="gp-from-branch" class="rp-input" style="min-width:220px;">
+                                            <option value="">Main Store</option>
+                                            @foreach ($branches as $b)
+                                                <option value="{{ $b->id }}">{{ $b->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
                                 <div style="min-width:220px;">
                                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#555;">To Branch <span style="color:#c0392b">*</span></label>
-                                    <select name="branch_id" class="rp-input" required style="min-width:220px;">
+                                    <select name="branch_id" id="gp-to-branch" class="rp-input" required style="min-width:220px;">
                                         <option value="">Select branch</option>
                                         @foreach ($branches as $b)
                                             <option value="{{ $b->id }}">{{ $b->name }}</option>
@@ -66,7 +77,7 @@
                                 <thead>
                                     <tr>
                                         <th>Item</th><th>SKU</th>
-                                        <th class="text-right">Main store stock</th>
+                                        <th class="text-right"><span id="gp-stock-head">Main store stock</span></th>
                                         <th width="200">Deduct from</th>
                                         <th width="160">Transfer qty</th>
                                         <th width="40"></th>
@@ -82,13 +93,12 @@
                             </table>
                         </div>
                         <div class="bd d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
-                            <div class="text-muted" style="font-size:12px;">
+                            <div class="text-muted" style="font-size:12px;" id="gp-foot-note">
                                 The branch receives the main product, and the quantity always comes out of
                                 main-store stock. On an item with variations, pick which one is going so the
                                 gatepass records it.
                             </div>
-                            <button class="rp-btn p" id="gp-submit" disabled
-                                    onclick="return confirm('Transfer the entered quantities to the selected branch? This deducts main-store stock.')">
+                            <button class="rp-btn p" id="gp-submit" disabled>
                                 Transfer &amp; Generate Gatepass
                             </button>
                         </div>
@@ -115,7 +125,7 @@
                                     @if ($canDelete)
                                         <th width="36" class="text-center"><input type="checkbox" id="gp-check-all"></th>
                                     @endif
-                                    <th>Gatepass #</th><th>To Branch</th><th>Note</th><th>Date</th><th class="text-right">Action</th>
+                                    <th>Gatepass #</th><th>From</th><th>To Branch</th><th>Note</th><th>Date</th><th class="text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -127,6 +137,7 @@
                                             </td>
                                         @endif
                                         <td><b>{{ $g->gatepass_no }}</b></td>
+                                        <td>{{ $g->from_branch_name ?? 'Main Store' }}</td>
                                         <td>{{ $g->branch_name ?? '—' }}</td>
                                         <td class="text-muted">{{ $g->note }}</td>
                                         <td class="text-muted">{{ \Carbon\Carbon::parse($g->created_at)->format('d M Y, h:i A') }}</td>
@@ -136,7 +147,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="{{ $canDelete ? 6 : 5 }}"><div class="rp-empty">No transfers yet.</div></td></tr>
+                                    <tr><td colspan="{{ $canDelete ? 7 : 6 }}"><div class="rp-empty">No transfers yet.</div></td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -168,7 +179,7 @@
                     function gpConfirmDelete() {
                         var sel = document.querySelectorAll('.gp-check:checked').length;
                         if (sel === 0) { return false; }
-                        return confirm('Delete ' + sel + ' selected gatepass(es)? This returns the transferred stock to the main store and removes it from the branch.');
+                        return confirm('Delete ' + sel + ' selected gatepass(es)? Each transfer is reversed — the stock goes back to wherever it came from and is removed from the branch that received it.');
                     }
 
                 </script>
@@ -187,12 +198,17 @@
                         var SEARCH_URL = '{{ route('vendor.retail-pos.gatepass.search') }}';
                         var $picker = $('#gp-item-picker');
                         var $lines  = $('#gp-lines');
+                        var $from   = $('#gp-from-branch');
+                        var $to     = $('#gp-to-branch');
 
                         function esc(s) {
                             return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
                                 return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
                             });
                         }
+
+                        function fromId()   { return ($from.val() || '').trim(); }
+                        function fromName() { return fromId() ? $from.find('option:selected').text().trim() : 'Main Store'; }
 
                         $picker.select2({
                             placeholder: 'Search item name or SKU…',
@@ -202,7 +218,7 @@
                                 url: SEARCH_URL,
                                 dataType: 'json',
                                 delay: 250,
-                                data: function (params) { return { q: params.term }; },
+                                data: function (params) { return { q: params.term, from_branch_id: fromId() }; },
                                 processResults: function (data) {
                                     return {
                                         results: (data.results || []).map(function (it) {
@@ -234,7 +250,8 @@
                         // variation, base units for main stock.
                         function sourceCell(it) {
                             if (!it.variations || !it.variations.length) {
-                                return '<span class="text-muted">Main stock</span>';
+                                // A branch holds one flat pool per item, so there is nothing to pick.
+                                return '<span class="text-muted">' + esc(fromId() ? fromName() : 'Main stock') + '</span>';
                             }
                             var html = '<select name="source[' + it.id + ']" class="rp-input rp-gp-source" style="width:190px">'
                                 + '<option value="" data-max="' + it.stock + '" data-hint="' + esc(it.unit) + '">Main stock</option>';
@@ -279,9 +296,11 @@
                             refresh();
                         }
 
+                        var hasDestination = true;
+
                         function refresh() {
                             var rows = $lines.find('tr[data-item]').length;
-                            $('#gp-submit').prop('disabled', rows === 0);
+                            $('#gp-submit').prop('disabled', rows === 0 || !hasDestination);
                             if (rows === 0 && !$('#gp-empty-row').length) {
                                 $lines.append('<tr id="gp-empty-row"><td colspan="6">'
                                     + '<div class="rp-empty">No items yet — search above to add the first one.</div></td></tr>');
@@ -313,6 +332,56 @@
                             $row.find('.rp-gp-hint').text('max ' + (isNaN(max) ? '' : max) + (label ? ' ' + label : ''));
                         });
 
+                        // Changing the source invalidates every line already picked — the ceilings,
+                        // and on a branch even which items exist, come from the old pool. Clearing
+                        // is the honest move; silently keeping rows would post quantities validated
+                        // against stock that is somewhere else.
+                        function onSourceChange() {
+                            var id = fromId();
+
+                            if ($lines.find('tr[data-item]').length) {
+                                $lines.find('tr[data-item]').remove();
+                            }
+
+                            $('#gp-stock-head').text(id ? (fromName() + ' stock') : 'Main store stock');
+
+                            // A branch cannot send to itself.
+                            var open = 0;
+                            $to.find('option').each(function () {
+                                if (!this.value) { return; }
+                                var same = id && this.value === id;
+                                this.disabled = !!same;
+                                if (same && $to.val() === this.value) { $to.val(''); }
+                                if (!same) { open++; }
+                            });
+                            hasDestination = open > 0;
+
+                            $('#gp-foot-note').text(!hasDestination
+                                ? fromName() + ' is your only branch, so there is nowhere to send stock. '
+                                  + 'Add a second branch, or transfer from the Main Store instead.'
+                                : (id
+                                    ? 'Stock moves straight from ' + fromName() + ' to the destination branch. '
+                                      + 'The store total is unchanged and main-store stock is not touched.'
+                                    : 'The branch receives the main product, and the quantity always comes out of '
+                                      + 'main-store stock. On an item with variations, pick which one is going so '
+                                      + 'the gatepass records it.'));
+
+                            refresh();
+                        }
+
+                        $from.on('change', onSourceChange);
+
+                        $('#gp-submit').closest('form').on('submit', function () {
+                            if (fromId() && $to.val() === fromId()) {
+                                alert('Source and destination branch cannot be the same.');
+                                return false;
+                            }
+                            var dest = $to.find('option:selected').text().trim() || 'the selected branch';
+                            return confirm('Transfer the entered quantities from ' + fromName()
+                                + ' to ' + dest + '?');
+                        });
+
+                        onSourceChange();
                         refresh();
                     })();
                 </script>

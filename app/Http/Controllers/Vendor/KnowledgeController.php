@@ -15,6 +15,20 @@ class KnowledgeController extends Controller
 
     public function index(Request $request)
     {
+        // Carries ?type= through: the coverage chips filter by it, so dropping it here would turn
+        // an old bookmarked filter into the unfiltered list without saying so.
+        return redirect()->route('vendor.whatsapp.automation', array_filter([
+            'tab'  => 'knowledge',
+            'type' => $request->get('type'),
+        ]));
+    }
+
+    /**
+     * The knowledge pane's data. Public because it is read from the Automation page, which shows
+     * this alongside the chatbot settings it feeds — the two were split across menu items before.
+     */
+    public function knowledgeData(Request $request): array
+    {
         StoreKnowledgeDoc::ensureTable();
         $storeId = Helpers::get_store_id();
 
@@ -41,9 +55,7 @@ class KnowledgeController extends Controller
         $activeDocs = StoreKnowledgeDoc::where('store_id', $storeId)->where('active', 1)->count();
         $maxDocs = self::MAX_DOCS;
 
-        return view('vendor-views.knowledge.index', compact(
-            'docs', 'docTypes', 'typeCounts', 'totalDocs', 'activeDocs', 'maxDocs'
-        ));
+        return compact('docs', 'docTypes', 'typeCounts', 'totalDocs', 'activeDocs', 'maxDocs');
     }
 
     public function store(Request $request)

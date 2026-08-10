@@ -7,6 +7,7 @@ use App\Models\StoreKnowledgeDoc;
 use App\Services\NotificationPrefs;
 use App\Services\WhatsAppAgent;
 use App\Services\WhatsAppBilling;
+use App\Services\WhatsAppInternalAgent;
 use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -55,10 +56,16 @@ class SendAutoReply implements ShouldQueue
     /** Knowledge / prefs sentinel for the platform (store_id 0). */
     const PLATFORM_SCOPE = 0;
 
+    /**
+     * $numberId is the store's own number the message arrived on. Replying from the default
+     * instead would move the conversation to a different number mid-thread, which reads as a
+     * stranger answering. Null for the platform number and for stores on a single number.
+     */
     public function __construct(
         public ?int $storeId,
         public string $from,
-        public string $body
+        public string $body,
+        public ?int $numberId = null
     ) {
     }
 
@@ -93,7 +100,7 @@ class SendAutoReply implements ShouldQueue
                 return;
             }
 
-            $wa = WhatsAppService::make($this->storeId);
+            $wa = WhatsAppService::make($this->storeId, null, $this->numberId);
             if ($this->isPlatform()) {
                 if (!$wa->isConfigured()) {
                     return; // platform WABA not set up
@@ -102,15 +109,21 @@ class SendAutoReply implements ShouldQueue
                 return; // vendor hasn't connected their own number
             }
 
-            // No knowledge = auto-reply not set up. Stay silent rather than improvising
-            // answers about a business we know nothing about.
-            $docs = StoreKnowledgeDoc::activeForStore($this->scopeId());
-            if ($docs->isEmpty()) {
+            $key = substr(preg_replace('/[^0-9]/', '', $this->from) ?? '', -10);
+            if (strlen($key) < 10) {
                 return;
             }
 
-            $key = substr(preg_replace('/[^0-9]/', '', $this->from) ?? '', -10);
-            if (strlen($key) < 10) {
+            // The business messaging its own number: the owner or a staff member, recognised by
+            // the phone the store has on record. They get their own prompt further down, and the
+            // three customer guards below do not apply to them — see each one.
+            $who = $this->isPlatform() ? null : WhatsAppInternalAgent::identify($this->storeId, $key);
+
+            // No knowledge = auto-reply not set up. Stay silent rather than improvising answers
+            // about a business we know nothing about. The internal assistant answers from the
+            // business's own records instead, so it needs no knowledge documents.
+            $docs = StoreKnowledgeDoc::activeForStore($this->scopeId());
+            if ($docs->isEmpty() && !$who) {
                 return;
             }
 
@@ -122,7 +135,9 @@ class SendAutoReply implements ShouldQueue
             )->count();
             // Cap reached — hand the conversation to a human instead of going silent. escalate()
             // is deduped for 30 minutes per customer, so a burst of messages raises one alert.
-            if ($sentRecently >= self::MAX_PER_WINDOW) {
+            // Not applied to the business's own people: the cap exists to stop a bot arguing with
+            // a customer, and escalating here would alert the vendor to their own messages.
+            if (!$who && $sentRecently >= self::MAX_PER_WINDOW) {
                 $this->escalate($key, 'Auto-reply limit reached (' . self::MAX_PER_WINDOW . ' replies in ' . self::WINDOW_HOURS . 'h)');
                 return;
             }
@@ -155,7 +170,7 @@ class SendAutoReply implements ShouldQueue
                 ? 'MyChitti'
                 : (DB::table('stores')->where('id', $this->storeId)->value('name') ?: 'our store');
 
-            $reply = $this->generateReply($storeName, $docs, $key);
+            $reply = $this->generateReply($storeName, $docs, $key, $who);
 
             // AI unavailable — never leave the sender on silence: send a holding reply
             // and alert the team to take over.
@@ -173,7 +188,10 @@ class SendAutoReply implements ShouldQueue
             // Appointment action marker (book / reschedule). Only honoured when the vendor has
             // left booking on — the prompt withholds the markers in that case anyway, so this is
             // the belt to that braces.
-            $action = (!$this->isPlatform() && WhatsAppAgent::canBook($this->storeId))
+            // Never for the business's own people: an owner asking about tomorrow's diary is not
+            // a patient asking for a slot, and booking one against their own phone would put a
+            // spurious appointment in the calendar they were asking about.
+            $action = (!$this->isPlatform() && !$who && WhatsAppAgent::canBook($this->storeId))
                 ? \App\Services\WhatsAppAppointmentBot::tryHandle($reply, $this->scopeId(), $key, $this->from)
                 : null;
             if ($action !== null) {
@@ -206,7 +224,10 @@ class SendAutoReply implements ShouldQueue
                 $wa->sendText($this->from, $reply, false, 'auto reply');
             }
 
-            if ($needsHuman) {
+            // Not for internal senders: the alert goes to the vendor, and telling them a customer
+            // needs help because they themselves asked something is noise. Their prompt is never
+            // shown the marker anyway — this is the belt to that braces.
+            if ($needsHuman && !$who) {
                 $this->escalate($key, 'Auto-reply could not answer from the knowledge base');
             }
         } catch (\Throwable $e) {
@@ -300,7 +321,7 @@ class SendAutoReply implements ShouldQueue
         );
     }
 
-    protected function generateReply(string $storeName, $docs, string $key): string
+    protected function generateReply(string $storeName, $docs, string $key, ?array $who = null): string
     {
         // RAG first: semantic search over the indexed knowledge returns only the chunks
         // relevant to THIS question. Falls back to all active docs when RAG is unreachable.
@@ -327,6 +348,14 @@ class SendAutoReply implements ShouldQueue
             $knowledge = $docs->map(function ($d) {
                 return '### ' . StoreKnowledgeDoc::typeLabel($d->doc_type) . " — {$d->title}\n{$d->content}";
             })->implode("\n\n");
+        }
+
+        // The business's own owner or staff writing in. Everything below this point is built for
+        // a stranger — "answer only from the knowledge", "never share information about other
+        // vendors", this customer's records — which is exactly backwards for the people who own
+        // the data. They get their own prompt instead of an exception carved into this one.
+        if ($who) {
+            return $this->generateInternalReply($storeName, $knowledge, $key, $who);
         }
 
         $intro = $this->isPlatform()
@@ -365,6 +394,38 @@ class SendAutoReply implements ShouldQueue
             $system .= \App\Modules\SalesCRM\Services\WhatsAppSalesLead::promptSection();
         }
 
+        return $this->callAi($system, $key);
+    }
+
+    /**
+     * The reply to the business's own owner or staff.
+     *
+     * Built from the same pieces as a customer reply — one AI call, the same thread history, the
+     * same metering to the vendor's wallet — but with the internal context and rules in place of
+     * the customer ones. The knowledge base is still offered when there is one: an owner asking
+     * "what are our timings" should get the answer the customers get.
+     */
+    protected function generateInternalReply(string $storeName, string $knowledge, string $key, array $who): string
+    {
+        $system = "You are the WhatsApp assistant for \"{$storeName}\". You are talking to someone who "
+            . "works at this business, not to a customer.\n";
+
+        if (trim($knowledge) !== '') {
+            $system .= "\nWHAT CUSTOMERS ARE TOLD (the business's own knowledge base):\n\n{$knowledge}\n";
+        }
+
+        $system .= WhatsAppInternalAgent::promptSection($this->storeId, $who);
+
+        return $this->callAi($system, $key);
+    }
+
+    /**
+     * One AI call: thread history, the configured model, and the token metering that bills the
+     * store's own wallet. Shared so the internal assistant can never be billed differently, or
+     * quietly not billed at all.
+     */
+    protected function callAi(string $system, string $key): string
+    {
         // Thread history, oldest first. The webhook stored the current inbound before
         // dispatching this job, so drop the trailing user turn — it goes as `message`.
         $history = $this->applyMsgScope(

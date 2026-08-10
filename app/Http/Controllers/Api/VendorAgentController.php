@@ -36,7 +36,7 @@ class VendorAgentController extends Controller
                 'inventory'  => $this->handleInventory($action, $data, $storeId),
                 'invoice'    => $this->handleInvoice($action, $data, $vendorId, $storeId),
                 'leads'      => $this->handleLeads($action, $data, $vendorId, $storeId),
-                'crm'        => $this->handleCrm($action, $data, $vendorId),
+                'crm'        => $this->handleCrm($action, $data, $vendorId, $storeId),
                 'attendance' => $this->handleAttendance($action, $data, $vendorId),
                 'leave'      => $this->handleLeave($action, $data, $vendorId),
                 'salary'     => $this->handleSalary($action, $data, $vendorId),
@@ -440,48 +440,68 @@ class VendorAgentController extends Controller
     // ── CRM (vendor's own leads / clients) ───────────────────────────────
     // leads table: vendor_id, client_name, client_email, client_mobile, status, service, requirements
 
-    private function handleCrm(string $action, array $data, int $vendorId)
+    private function handleCrm(string $action, array $data, int $vendorId, int $storeId)
     {
         switch ($action) {
             case 'list':
                 $status = $data['status'] ?? null;
-                $q = DB::table('leads')->where('vendor_id', $vendorId)->orderByDesc('created_at')->limit(20);
-                if ($status) $q->where('status', $status);
-                $leads = $q->get(['id', 'client_name', 'client_mobile', 'service', 'status', 'follow_up_date', 'created_at']);
+                $q = $this->crmLeadQuery($storeId)->orderByDesc('leads.created_at')->limit(20);
+                if ($status) $q->where('leads.status', $status);
+                $leads = $q->get(['leads.id', 'leads.client_name', 'leads.client_mobile', 'items.name as service_name',
+                    'leads.status', 'leads.follow_up_date', 'leads.created_at']);
                 if ($leads->isEmpty()) return response()->json(['success' => true, 'message' => 'No CRM leads found.']);
-                $lines = $leads->map(fn($l) => "- [#{$l->id}] {$l->client_name} | {$l->client_mobile} | {$l->service} | {$l->status}")->implode("\n");
+                $lines = $leads->map(fn($l) => "- [#{$l->id}] {$l->client_name} | {$l->client_mobile} | {$l->service_name} | {$l->status}")->implode("\n");
                 return response()->json(['success' => true, 'message' => "CRM Leads ({$leads->count()}):\n{$lines}"]);
 
             case 'get':
-                $q = DB::table('leads')->where('vendor_id', $vendorId);
-                if (!empty($data['id']))   $q->where('id', $data['id']);
-                if (!empty($data['name'])) $q->where('client_name', 'like', '%' . $data['name'] . '%');
-                $l = $q->first();
+                $q = $this->crmLeadQuery($storeId);
+                if (!empty($data['id']))   $q->where('leads.id', $data['id']);
+                if (!empty($data['name'])) $q->where('leads.client_name', 'like', '%' . $data['name'] . '%');
+                $l = $q->first(['leads.*', 'items.name as service_name']);
                 if (!$l) return response()->json(['success' => false, 'message' => 'Lead not found.']);
-                return response()->json(['success' => true, 'message' => "Lead #{$l->id} | {$l->client_name} | {$l->client_mobile} | {$l->client_email} | Service: {$l->service} | Status: {$l->status} | Notes: {$l->requirements}"]);
+                return response()->json(['success' => true, 'message' => "Lead #{$l->id} | {$l->client_name} | {$l->client_mobile} | {$l->client_email} | Service: {$l->service_name} | Status: {$l->status} | Notes: {$l->requirements}"]);
 
             case 'add':
                 if (empty($data['client_name'])) return response()->json(['success' => false, 'message' => 'client_name is required.']);
+
+                // `leads.service` is an items.id, not a service name — the Leads screen INNER
+                // JOINs it. Free text here inserted a row the vendor could never see.
+                $serviceId = $this->resolveServiceItemId($data['service'] ?? null, $storeId);
+
                 $id = DB::table('leads')->insertGetId([
-                    'vendor_id'      => $vendorId,
+                    'vendor_id'      => $storeId,
                     'client_name'    => $data['client_name'],
                     'client_email'   => $data['email'] ?? $data['client_email'] ?? null,
                     'client_mobile'  => $data['phone'] ?? $data['mobile'] ?? $data['client_mobile'] ?? null,
                     'client_address' => $data['address'] ?? null,
-                    'service'        => $data['service'] ?? null,
+                    'service'        => $serviceId,
                     'requirements'   => $data['requirements'] ?? $data['notes'] ?? null,
                     'status'         => $data['status'] ?? 'New',
                     'follow_up_date' => $data['follow_up_date'] ?? null,
                     'channel'        => 'WEB',
                     'created_at'     => now(), 'updated_at' => now(),
                 ]);
-                return response()->json(['success' => true, 'message' => "CRM lead added for {$data['client_name']}. ID: #{$id}"]);
+
+                // Said plainly rather than reporting a clean success: without a service the lead
+                // exists but will not appear on the Leads screen, and the vendor should know now
+                // rather than when they go looking for it.
+                $note = $serviceId
+                    ? ''
+                    : ' Note: no matching service was found for this store, so it will not show on the Leads screen until a service is set on it.';
+
+                return response()->json(['success' => true, 'message' => "CRM lead added for {$data['client_name']}. ID: #{$id}." . $note]);
 
             case 'update_status':
             case 'status':
                 $id = $data['id'] ?? null;
                 if (!$id) return response()->json(['success' => false, 'message' => 'Lead ID is required.']);
-                DB::table('leads')->where('id', $id)->where('vendor_id', $vendorId)->update([
+
+                // Scoped through the same join as the reads, so a lead this store cannot see is
+                // also one it cannot edit.
+                $owned = $this->crmLeadQuery($storeId)->where('leads.id', $id)->exists();
+                if (!$owned) return response()->json(['success' => false, 'message' => "Lead #{$id} not found for this store."]);
+
+                DB::table('leads')->where('id', $id)->update([
                     'status'     => $data['status'] ?? 'New',
                     'remarks'    => $data['remarks'] ?? null,
                     'updated_at' => now(),
@@ -489,6 +509,37 @@ class VendorAgentController extends Controller
                 return response()->json(['success' => true, 'message' => "Lead #{$id} status updated to '{$data['status']}'."]);
         }
         return response()->json(['success' => false, 'message' => "Unknown CRM action: {$action}. Available: list, get, add, update_status."]);
+    }
+
+    /**
+     * The store's CRM leads, scoped exactly as the Leads screen scopes them.
+     *
+     * The screen reaches the store through the service: leads.service → items.id →
+     * items.store_id (LeadController::index). It does not filter on leads.vendor_id at all, so
+     * matching that join is the only way the assistant lists what the vendor actually sees —
+     * filtering by the vendor's user id, as this did before, matched nothing.
+     */
+    private function crmLeadQuery(int $storeId)
+    {
+        return DB::table('leads')
+            ->join('items', 'leads.service', '=', 'items.id')
+            ->where('items.store_id', $storeId);
+    }
+
+    /** A service name or id resolved to one of this store's items, or null when there is no match. */
+    private function resolveServiceItemId($service, int $storeId): ?int
+    {
+        if (empty($service)) {
+            return null;
+        }
+
+        $q = DB::table('items')->where('store_id', $storeId);
+
+        $id = is_numeric($service)
+            ? (clone $q)->where('id', (int) $service)->value('id')
+            : (clone $q)->where('name', 'like', '%' . $service . '%')->value('id');
+
+        return $id ? (int) $id : null;
     }
 
     // ── Attendance ────────────────────────────────────────────────────────

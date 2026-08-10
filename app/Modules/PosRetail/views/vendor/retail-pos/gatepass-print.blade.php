@@ -42,7 +42,7 @@
         <div class="gp-title">STOCK TRANSFER NOTE</div>
 
         <div class="gp-meta">
-            <div><b>From:</b> Main Store</div>
+            <div><b>From:</b> {{ optional($fromBranch ?? null)->name ?? 'Main Store' }}</div>
             <div><b>To:</b> {{ optional($branch)->name ?? '—' }}</div>
             <div><b>Date:</b> {{ \Carbon\Carbon::parse($gatepass->created_at)->format('d M Y, h:i A') }}</div>
         </div>

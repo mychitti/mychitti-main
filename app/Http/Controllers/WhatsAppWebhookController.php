@@ -38,6 +38,18 @@ class WhatsAppWebhookController extends Controller
                 foreach (data_get($entry, 'changes', []) as $change) {
                     $value = data_get($change, 'value', []);
 
+                    // 0) How many numbers Meta will let this business connect. It starts at 2 and
+                    // becomes 20 once the business is verified or clears a 2,000 messaging limit;
+                    // Meta announces the new ceiling here rather than answering a query for it, so
+                    // this callback is the only way to know. The entry id is the WABA.
+                    if (data_get($change, 'field') === 'business_capability_update') {
+                        WhatsAppService::recordNumberCap(
+                            data_get($entry, 'id'),
+                            (int) data_get($value, 'max_phone_numbers_per_business', 0)
+                        );
+                        continue;
+                    }
+
                     // 1) Delivery/read status callbacks — update the matching outbound row.
                     foreach (data_get($value, 'statuses', []) as $st) {
                         $wamid  = $st['id'] ?? null;
@@ -155,7 +167,12 @@ class WhatsAppWebhookController extends Controller
                         // knowledge.
                         $text = trim((string) data_get($msg, 'text.body'));
                         if ($from && !$optOut && $type === 'text' && $text !== '') {
-                            \App\Jobs\SendAutoReply::dispatch($storeId ?: null, (string) $from, $text)->afterResponse();
+                            \App\Jobs\SendAutoReply::dispatch(
+                                $storeId ?: null,
+                                (string) $from,
+                                $text,
+                                WhatsAppService::numberIdByPhoneNumberId($phoneNumberId)
+                            )->afterResponse();
                         }
                     }
                 }

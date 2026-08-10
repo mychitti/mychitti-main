@@ -130,7 +130,7 @@
                  </form>
 
                  <div class="d-flex gap-1 flex-wrap">
-                     @if (hasPermission('purchase_report', 'export'))
+                     @if (hasPermission('purchase_report', 'export') || hasPermission('purchase_report', 'delete'))
                          <div class="badge badge-soft-success align-items-center"
                              style="    height: 39px;    display: flex;">
                              <div class="form-check mr-1">
@@ -139,13 +139,28 @@
                                      for="check_all">Select All</label>
                              </div>
                          </div>
-                         <!-- Delete Button -->
+                     @endif
+
+                     @if (hasPermission('purchase_report', 'export'))
+                         <!-- Download Button -->
                          <div class="mr-1 delete_selected_btn" style="display:none;">
                              <button id="download_selected" style=" white-space: nowrap;"
                                  class="btn btn-sm btn-outline-primary px-3 py-2 btn_sm " title="Download Selected">
                                  <i class="tio-download"></i> Download Selected
                              </button>
                          </div>
+                     @endif
+
+                     @if (hasPermission('purchase_report', 'delete'))
+                         @include('vendor-views.inventory.report._bulk_delete', [
+                             'scope' => 'purchase',
+                             'deleteRoute' => route('vendor.inventory.report.purchase-bulk-delete'),
+                             'selectedText' => 'the selected purchase bills',
+                             'allText' => 'every purchase bill in this report',
+                             'checkAllId' => 'check_all',
+                             'renderSelectAll' => false,
+                             'restockLabel' => 'Remove the purchased stock from inventory',
+                         ])
                      @endif
                      {{-- Search --}}
                      <form action="">

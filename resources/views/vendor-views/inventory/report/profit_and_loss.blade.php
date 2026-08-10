@@ -173,6 +173,16 @@
                              Excel</a>
                      </div>
                      @endif
+
+                     @if (hasPermission('profit_loss_summary', 'delete'))
+                         @include('vendor-views.inventory.report._bulk_delete', [
+                             'scope' => 'pnl',
+                             'deleteRoute' => route('vendor.inventory.report.profit-and-loss-bulk-delete'),
+                             'selectedText' => 'the sale lines behind the selected items, for this date range',
+                             'allText' => 'the sale lines behind every row in this report, for this date range',
+                             'restockLabel' => 'Add the sold stock back to inventory',
+                         ])
+                     @endif
                  </div>
 
              </div>
@@ -185,6 +195,9 @@
                      class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
                      <thead class="thead-light">
                          <tr>
+                             @if (hasPermission('profit_loss_summary', 'delete'))
+                                 <th class="border-0"></th>
+                             @endif
                              <th class="border-0">{{ translate('sl') }}</th>
                              <th class="border-0">Item Name</th>
                              <th class="border-0">Category</th>
@@ -200,7 +213,13 @@
                              @php   $pnl_status = $orderItem->total_revenue - $orderItem->total_cost > 0 ? 'Profit' : 'Loss'; @endphp
 
                              <tr>
-                                 <td>{{ $key + 1 }}</td> 
+                                 @if (hasPermission('profit_loss_summary', 'delete'))
+                                     <td class="text-center">
+                                         <input type="checkbox" onclick="event.stopPropagation()" name="item_id[]"
+                                             value="{{ $orderItem->item_id }}" class="check_select">
+                                     </td>
+                                 @endif
+                                 <td>{{ $key + 1 }}</td>
                                  <td>
                                      <div style="white-space: normal; min-width: 150px; max-width: 250px; word-break: break-word;">
                                          <a href="{{ route('vendor.inventory.item.detail', [$orderItem->item_id]) }}">

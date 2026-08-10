@@ -81,6 +81,14 @@
                                         <small class="text-muted">{{ translate('Prefixed to local numbers without a country code.') }}</small>
                                     </div>
                                 </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        <label class="form-label">{{ translate('Max Numbers Per Store') }}</label>
+                                        <input type="number" min="0" class="form-control" name="max_numbers_per_store"
+                                               value="{{ $config['max_numbers_per_store'] ?? 0 }}" placeholder="0">
+                                        <small class="text-muted">{{ translate('How many WhatsApp numbers one vendor may connect. 0 means no limit. Reconnecting an existing number to refresh its token is always allowed.') }}</small>
+                                    </div>
+                                </div>
                                 <div class="col-12"><hr class="my-2"><b class="text-muted" style="font-size:12px;">{{ translate('WEBHOOK (delivery status & replies)') }}</b></div>
                                 <div class="col-sm-6">
                                     <div class="form-group">

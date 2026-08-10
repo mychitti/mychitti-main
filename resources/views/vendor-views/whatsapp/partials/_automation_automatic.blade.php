@@ -1,31 +1,5 @@
-@extends('layouts.vendor.app')
-
-@section('title', translate('Automatic Message Templates'))
-
-@push('css_or_js')
-    <style>
-        .tr-card { border-left: 3px solid #e7eaf3; }
-        .tr-card.tr-broken { border-left-color: #de4437; }
-        .tr-card.tr-bound { border-left-color: #00c9a7; }
-        .tr-slot { font-size: 11px; background: #f8fafd; border: 1px solid #e7eaf3; border-radius: 3px; padding: 1px 6px; }
-    </style>
-@endpush
-
-@section('content')
-    {{-- Built by concatenation: a literal pair of braces sitting next to each other in the
-         source is read by Blade as an echo and breaks the whole file. --}}
     @php($ob = '{' . '{')
     @php($cb = '}' . '}')
-    <div class="content container-fluid">
-        <div class="page-header">
-            <h1 class="page-header-title">
-                <span class="page-header-icon"><i class="tio-message" style="font-size:22px;"></i></span>
-                <span>{{ translate('Automatic Message Templates') }}</span>
-            </h1>
-            <p class="text-muted mb-0" style="font-size:13px;">
-                {{ translate('Some messages are sent for you automatically. Tell us which of your approved templates each one should use — if you deleted a suggested template and wrote your own, pick it here.') }}
-            </p>
-        </div>
 
         @if (!$connected)
             <div class="alert alert-warning">
@@ -154,22 +128,3 @@
                 </div>
             </div>
         @endforeach
-    </div>
-@endsection
-
-@push('script_2')
-    <script>
-        // Carry the chosen template's language along with its name — Meta stores a template per
-        // language, and sending the wrong one is answered with error 132001.
-        document.querySelectorAll('.js-tr-select').forEach(function (select) {
-            var sync = function () {
-                var opt = select.options[select.selectedIndex];
-                var lang = opt ? opt.getAttribute('data-lang') : '';
-                var field = select.form.querySelector('.js-tr-lang');
-                if (field) { field.value = lang || ''; }
-            };
-            sync();
-            select.addEventListener('change', sync);
-        });
-    </script>
-@endpush

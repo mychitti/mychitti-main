@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AIChatMessage;
+use App\Services\AdminAiPersona;
 use App\Services\OpenAIService;
 use App\Services\AiServiceClient;
 use Illuminate\Http\Request;
@@ -12,9 +13,28 @@ use Illuminate\Support\Facades\DB;
 class AIChatController extends Controller  
 { 
     public function __construct(
-        private OpenAIService $openai,
         private AiServiceClient $aiService
     ) {}
+
+    /**
+     * OpenAI is used here for two things only: Whisper transcription and text-to-speech. It was
+     * a constructor dependency, which meant the container resolved \OpenAI\Client — and through
+     * it \OpenAI\Factory — before any action ran, so a missing openai-php/client package took the
+     * whole chat page down rather than just voice. Resolved on demand and guarded instead.
+     */
+    private function openai(): ?OpenAIService
+    {
+        if (!class_exists(\OpenAI\Factory::class)) {
+            return null;
+        }
+
+        try {
+            return app(OpenAIService::class);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('OpenAI unavailable: ' . $e->getMessage());
+            return null;
+        }
+    }
  
     public function index()  
     {
@@ -27,9 +47,11 @@ class AIChatController extends Controller
             'message' => 'nullable|string|max:10000',
             'file'    => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:30720',
             'voice'   => 'nullable|file|mimes:webm,wav,mp3,m4a|max:30720',
+            'persona' => 'nullable|string',
         ]);
 
         $adminId     = auth('admin')->id();
+        $persona     = AdminAiPersona::resolve($request->input('persona'));
         $message     = $request->input('message') ?? '';
         $fileContent = null;
 
@@ -67,7 +89,15 @@ class AIChatController extends Controller
             copy($voiceFile->getRealPath(), $tmpPath);
 
             try {
-                $transcript = $this->openai->audio()->transcribe([
+                $openai = $this->openai();
+                if (!$openai) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Voice messages need the OpenAI package installed on this server. Type your message instead.',
+                    ], 503);
+                }
+
+                $transcript = $openai->audio()->transcribe([
                     'model' => 'whisper-1',
                     'file'  => fopen($tmpPath, 'r'),
                 ]);
@@ -88,7 +118,36 @@ class AIChatController extends Controller
         }
 
         $msgType = $request->hasFile('voice') ? 'voice' : ($request->hasFile('file') ? 'file' : 'text');
-        $result = $this->aiService->chat($adminId, 'admin', $finalMessage, $fileContent, type: $msgType);
+
+        if ($persona) {
+            // The agent must be resolved here rather than left to the client. Its auto-resolve
+            // maps the guard to a user_type, and a persona guard ("admin_ceo") is not "admin" —
+            // it would fall through to the default and answer as the *user* agent, on the user
+            // agent's model. Passing the id explicitly skips that branch entirely.
+            $agent = $this->personaAgent();
+
+            $result = $this->aiService->chat(
+                AdminAiPersona::memoryUserId($persona, $adminId),
+                AdminAiPersona::guard($persona),
+                $finalMessage,
+                $fileContent,
+                agentId: $agent->id ?? null,
+                systemPrompt: AdminAiPersona::systemPrompt($persona),
+                // Mirrors what vendor chat sends, key included, so the personas bill the account
+                // that has credit. The persona's own brief still comes from systemPrompt above.
+                modelConfig: $agent ? [
+                    'ai_provider'      => $agent->ai_provider ?: 'anthropic',
+                    'ai_model'         => $agent->ai_model ?: null,
+                    'max_tokens'       => $agent->max_tokens ?: null,
+                    'temperature'      => strlen((string) $agent->temperature) ? (float) $agent->temperature : null,
+                    'top_p'            => strlen((string) $agent->top_p) ? (float) $agent->top_p : null,
+                    'api_key_override' => $agent->api_key_override ?: null,
+                ] : null,
+                type: $msgType
+            );
+        } else {
+            $result = $this->aiService->chat($adminId, 'admin', $finalMessage, $fileContent, type: $msgType);
+        }
 
         if ($request->hasFile('voice') && !empty($result['success']) && !empty($result['message'])) {
             try {
@@ -98,17 +157,58 @@ class AIChatController extends Controller
                     ->where('status', 'active')
                     ->orderByDesc('updated_at')
                     ->value('tts_voice') ?? 'nova';
-                $filename = $this->openai->textToSpeech(mb_substr($plainText, 0, 4096), $ttsVoice);
-                $result['audio_url'] = asset('storage/tts/' . $filename);
+                // Already inside a try/catch that swallows failures — a missing package simply
+                // means the reply comes back as text with no audio, which is the same outcome.
+                // Only published when a file actually came back: a null here would otherwise be
+                // returned as a URL pointing at storage/tts/ with nothing on the end of it.
+                $filename = $this->openai()?->textToSpeech(mb_substr($plainText, 0, 4096), $ttsVoice);
+                if ($filename) {
+                    $result['audio_url'] = asset('storage/tts/' . $filename);
+                }
             } catch (\Exception $e) {} 
         }
 
         return response()->json($result);
     } 
 
-    public function history()
+    /**
+     * The agent whose provider, model and API key the personas run on.
+     *
+     * Deliberately the VENDOR agent — the same one vendor chat uses — not the admin one. The
+     * admin agent resolves to an Anthropic key that is out of credits, and the personas are a
+     * new brief on an existing assistant rather than a reason to fund a second account. The AI
+     * service prefers a caller-supplied model_config over the agent row's, so whatever is set
+     * here is what actually gets billed.
+     *
+     * Falls back to the admin agent if no vendor agent is active, so this cannot end up with
+     * nothing at all.
+     */
+    private function personaAgent()
     {
-        $result = $this->aiService->history(auth('admin')->id(), 'admin');
+        $columns = ['id', 'ai_provider', 'ai_model', 'max_tokens', 'temperature', 'top_p', 'api_key_override'];
+
+        return DB::table('system_prompts')
+            ->where('user_type', 'vendor')
+            ->where('status', 'active')
+            ->orderByDesc('updated_at')
+            ->first($columns)
+            ?: DB::table('system_prompts')
+                ->where('user_type', 'admin')
+                ->where('status', 'active')
+                ->orderByDesc('updated_at')
+                ->first($columns);
+    }
+
+    public function history(Request $request)
+    {
+        $adminId = auth('admin')->id();
+        $persona = AdminAiPersona::resolve($request->input('persona'));
+
+        $result = $this->aiService->history(
+            $persona ? AdminAiPersona::memoryUserId($persona, $adminId) : $adminId,
+            'admin'
+        );
+
         return response()->json($result);
     }
 
@@ -122,7 +222,15 @@ class AIChatController extends Controller
                 ->where('status', 'active')
                 ->orderByDesc('updated_at')
                 ->value('tts_voice') ?? 'nova';
-            $filename = $this->openai->textToSpeech($request->input('text'), $ttsVoice);
+            $openai = $this->openai();
+            if (!$openai) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Text-to-speech needs the OpenAI package installed on this server.',
+                ], 503);
+            }
+
+            $filename = $openai->textToSpeech($request->input('text'), $ttsVoice);
             return response()->json([
                 'success'   => true,
                 'audio_url' => asset('storage/tts/' . $filename),
@@ -132,9 +240,18 @@ class AIChatController extends Controller
         }
     }
 
-    public function clearMemory()
+    public function clearMemory(Request $request)
     {
-        $result = $this->aiService->clearMemory(auth('admin')->id(), 'admin');
+        // Scoped to the persona being cleared — wiping one assistant's thread must not wipe the
+        // other two, which is what the shared admin id would have done.
+        $adminId = auth('admin')->id();
+        $persona = AdminAiPersona::resolve($request->input('persona'));
+
+        $result = $this->aiService->clearMemory(
+            $persona ? AdminAiPersona::memoryUserId($persona, $adminId) : $adminId,
+            'admin'
+        );
+
         return response()->json($result);
     }
 

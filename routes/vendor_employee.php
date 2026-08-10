@@ -331,6 +331,14 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::get('purchase/{export?}/{file_type?}', 'InventoryReportController@purchase')->name('purchase');
                 Route::get('stock/{export?}/{file_type?}', 'InventoryReportController@stock')->name('stock');
                 Route::get('batch-expiry', 'InventoryReportController@batchExpiry')->name('batch-expiry');
+                Route::post('sale-delete/{id}', 'InventoryReportController@sale_delete')->name('sale-delete');
+                Route::post('purchase-delete/{id}', 'InventoryReportController@purchase_delete')->name('purchase-delete');
+                Route::post('sale-bulk-delete', 'InventoryReportController@sale_bulk_delete')->name('sale-bulk-delete');
+                Route::post('purchase-bulk-delete', 'InventoryReportController@purchase_bulk_delete')->name('purchase-bulk-delete');
+                Route::post('gst-bulk-delete', 'InventoryReportController@gst_bulk_delete')->name('gst-bulk-delete');
+                Route::post('stock-bulk-delete', 'InventoryReportController@stock_bulk_delete')->name('stock-bulk-delete');
+                Route::post('profit-and-loss-bulk-delete', 'InventoryReportController@pnl_bulk_delete')->name('profit-and-loss-bulk-delete');
+                Route::post('batch-expiry-bulk-delete', 'InventoryReportController@batch_expiry_bulk_delete')->name('batch-expiry-bulk-delete');
             });
             Route::group(['prefix' => 'category', 'as' => 'category.'], function () {
                 Route::get('/', 'InventoryController@category')->name('index');

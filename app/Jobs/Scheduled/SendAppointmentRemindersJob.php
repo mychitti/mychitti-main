@@ -99,8 +99,9 @@ class SendAppointmentRemindersJob implements ShouldQueue
             return;
         }
 
-        // Reminders only go out on the vendor's own number — never the platform number.
-        $wa = WhatsAppService::make((int) $store->id);
+        // Reminders only go out on the vendor's own number — never the platform number — and on
+        // whichever of their numbers they put in charge of reminders, else their default.
+        $wa = WhatsAppService::make((int) $store->id, 'appt_reminder');
         if ($wa->source() !== 'vendor') {
             return;
         }

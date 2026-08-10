@@ -617,7 +617,7 @@ class WhatsAppCampaign
         }
 
         $storeId = (int) $campaign->store_id;
-        $wa = WhatsAppService::make($storeId);
+        $wa = WhatsAppService::make($storeId, 'campaign');
 
         if ($wa->source() !== 'vendor') {
             self::setStatus($campaign->id, self::STATUS_PAUSED, 'Paused: no connected WhatsApp number.');

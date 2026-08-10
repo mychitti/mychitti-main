@@ -51,15 +51,24 @@ class InventoryReportController extends Controller
         return \App\Models\Branch::where('store_id', Helpers::get_store_id())->orderBy('name')->get();
     }
 
-    public function gst(Request $request, $export  = false)
+    // The date window a report page is showing. Shared so a bulk delete resolves the same rows
+    // the page rendered rather than re-deriving the range and drifting from it.
+    private function reportRange(string $default): array
+    {
+        $preset = request('date_range') ?? $default;
+        $custom = request('custom_date_range') ?? null;
+        $range = Helpers::calculatePresetDates($preset, $custom);
+
+        return [$preset, $range['start'], $range['end']];
+    }
+
+    // The three invoice sets behind the GST report, already narrowed to the page's date range and
+    // branch. Shared with the bulk delete so both agree on what "the current report" contains.
+    private function gstReportInvoices(Request $request): array
     {
         $storeId = Helpers::get_store_id();
         $branchId = $this->reportBranchId($request);
-        $preset = request('date_range') ?? 'this_month';
-        $custom = request('custom_date_range') ?? null;
-        $range = Helpers::calculatePresetDates($preset, $custom);
-        $formatted_from  = $range['start'];
-        $formatted_to = $range['end'];
+        [, $formatted_from, $formatted_to] = $this->reportRange('this_month');
 
         $purchaseInvoices = ManualInvoice::with(['seller', 'invoiceItems'])
             ->where('bill_to_type', 'vendor')
@@ -109,24 +118,32 @@ class InventoryReportController extends Controller
         $saleInvoices = $saleInvoices
             ->merge($serviceInvoices);
 
-        if ($export != 'export') {
-            $invoices = $invoices->filter(function ($invoice) use ($formatted_from, $formatted_to) {
+        $inRange = function ($collection) use ($formatted_from, $formatted_to) {
+            return $collection->filter(function ($invoice) use ($formatted_from, $formatted_to) {
                 $date = $invoice->invoice_date ?? $invoice->created_at;
                 return $date >= $formatted_from && $date <= $formatted_to;
             });
-            $saleInvoices = $saleInvoices->filter(function ($invoice) use ($formatted_from, $formatted_to) {
-                $date = $invoice->invoice_date ?? $invoice->created_at;
-                return $date >= $formatted_from && $date <= $formatted_to;
-            });
-            $purchaseInvoices = $purchaseInvoices->filter(function ($invoice) use ($formatted_from, $formatted_to) {
-                $date = $invoice->invoice_date ?? $invoice->created_at;
-                return $date >= $formatted_from && $date <= $formatted_to;
-            });
-            $serviceInvoices = $serviceInvoices->filter(function ($invoice) use ($formatted_from, $formatted_to) {
-                $date = $invoice->invoice_date ?? $invoice->created_at;
-                return $date >= $formatted_from && $date <= $formatted_to;
-            });
-        }
+        };
+
+        return [
+            'invoices' => $inRange($invoices),
+            'sale' => $inRange($saleInvoices),
+            'purchase' => $inRange($purchaseInvoices),
+            'service' => $inRange($serviceInvoices),
+            'branchId' => $branchId,
+        ];
+    }
+
+    public function gst(Request $request, $export = false)
+    {
+        [$preset, $formatted_from, $formatted_to] = $this->reportRange('this_month');
+
+        $sets = $this->gstReportInvoices($request);
+        $invoices = $sets['invoices'];
+        $saleInvoices = $sets['sale'];
+        $purchaseInvoices = $sets['purchase'];
+        $serviceInvoices = $sets['service'];
+        $branchId = $sets['branchId'];
 
         $data['formatted_from'] = \Carbon\Carbon::parse($formatted_from)->format('Y-m-d');
         $data['formatted_to'] = \Carbon\Carbon::parse($formatted_to)->format('Y-m-d');
@@ -161,34 +178,39 @@ class InventoryReportController extends Controller
         $branches = $this->reportBranches();
         return view('vendor-views.inventory.report.gst', compact('preset', 'serviceInvoices', 'invoices', 'saleInvoices', 'purchaseInvoices', 'branches', 'branchId'));
     }
+    // Every row the Sale Report is currently showing, filters and all.
+    private function saleReportQuery(Request $request)
+    {
+        [, $formatted_from, $formatted_to] = $this->reportRange('last_30_days');
+        $search = $request->search ?? '';
+        $ids = $request->invoice_ids ?? null;
+        $branchId = $this->reportBranchId($request);
+
+        return InventoryOrder::with(['invoice',  'invoice.storeCustomer'])
+            ->where('store_id', Helpers::get_store_id())
+            ->when($search, function ($q) use ($search) {
+                $q->where('invoice_id', 'like', '%' . $search . '%');
+            })
+            ->when($ids, function ($q) use ($ids) {
+                $q->whereIn('id', $ids);
+            })
+            ->when($branchId !== null, function ($q) use ($branchId) {
+                $q->whereHas('invoice', function ($i) use ($branchId) {
+                    $branchId === 0 ? $i->whereNull('pos_branch_id') : $i->where('pos_branch_id', $branchId);
+                });
+            })
+            ->whereBetween('created_at', [$formatted_from, $formatted_to]);
+    }
+
     public function sale(Request $request, $export = null, $export_type = null)
     {
         if (hasPermission('sale_report', 'list') || hasPermission('sale_report', 'export')) {
 
-            $preset = request('date_range') ?? 'last_30_days';
-            $custom = request('custom_date_range') ?? null;
-            $range = Helpers::calculatePresetDates($preset, $custom);
-            $formatted_from  = $range['start'];
-            $formatted_to = $range['end'];
-            $search = $request->search ?? '';
-            $ids = $request->invoice_ids ?? null;
+            [$preset, $formatted_from, $formatted_to] = $this->reportRange('last_30_days');
 
             $storeId = Helpers::get_store_id();
             $branchId = $this->reportBranchId($request);
-            $query = InventoryOrder::with(['invoice',  'invoice.storeCustomer'])
-                ->where('store_id', $storeId)
-                ->when($search, function ($q) use ($search) {
-                    $q->where('invoice_id', 'like', '%' . $search . '%');
-                })
-                ->when($ids, function ($q) use ($ids) {
-                    $q->whereIn('id', $ids);
-                })
-                ->when($branchId !== null, function ($q) use ($branchId) {
-                    $q->whereHas('invoice', function ($i) use ($branchId) {
-                        $branchId === 0 ? $i->whereNull('pos_branch_id') : $i->where('pos_branch_id', $branchId);
-                    });
-                })
-                ->whereBetween('created_at', [$formatted_from, $formatted_to]);
+            $query = $this->saleReportQuery($request);
 
             $invoices = $query->orderBy('created_at', 'desc')->get();
             $data['unique_items_sold'] = InventoryOrderDetail::whereHas('order', function ($q) use ($storeId) {
@@ -445,46 +467,50 @@ class InventoryReportController extends Controller
         $fileUrl = Helpers::savePdfToPublic($mpdf, 'store_reports/sale/', $fileName);
         return ['success' => true, 'file_name' => $fileName,  'url'  => asset('storage/app/public/store_reports/sale/' . $fileName)];
     }
+    // Every purchase bill the Purchase Report is currently showing, filters and all.
+    private function purchaseReportQuery(Request $request)
+    {
+        [, $formatted_from, $formatted_to] = $this->reportRange('last_30_days');
+        $ids = $request->invoice_ids ?? null;
+        $search = $request->search ?? '';
+        $vendor = ($request->vendor && $request->vendor !== 'all') ? $request->vendor : '';
+        $status = ($request->status && $request->status !== 'all') ? $request->status : '';
+
+        return $this->purchaseReportBaseQuery()
+            ->when($search, function ($q) use ($search) {
+                $q->where('invoice_id', 'like', '%' . $search . '%');
+            })
+            ->when($ids, function ($q) use ($ids) {
+                $q->whereIn('id', $ids);
+            })
+            ->when($status, function ($q) use ($status) {
+                $q->whereRaw('LOWER(payment_status) = ?', [strtolower($status)]);
+            })
+            ->when($vendor, function ($query) use ($vendor) {
+                $query->whereHas('store', function ($q) use ($vendor) {
+                    $q->where('id', $vendor);
+                });
+            })
+            ->whereBetween('created_at', [$formatted_from, $formatted_to]);
+    }
+
+    private function purchaseReportBaseQuery()
+    {
+        return ManualInvoice::withCount('invoiceItems')->with('seller')
+            ->where('bill_to', Helpers::get_store_id())
+            ->where('user_type', 'store_vendor')
+            ->where('bill_to_type', 'vendor');
+    }
+
     public function purchase(Request $request, $export = null, $export_type = null)
     {
         if (hasPermission('purchase_report', 'list') || hasPermission('purchase_report', 'export')) {
 
-            $preset = request('date_range') ?? 'last_30_days';
-            $custom = request('custom_date_range') ?? null;
-            $range = Helpers::calculatePresetDates($preset, $custom);
-            $formatted_from  = $range['start'];
-            $formatted_to = $range['end'];
+            [$preset, $formatted_from, $formatted_to] = $this->reportRange('last_30_days');
 
-            $ids = $request->invoice_ids ?? null;
-            $search = $request->search ?? '';
-            $vendor = ($request->vendor && $request->vendor !== 'all') ? $request->vendor : '';
-            $status = ($request->status && $request->status !== 'all') ? $request->status : '';
-            // prx($vendor);
+            $query = $this->purchaseReportBaseQuery();
+            $invoices = $this->purchaseReportQuery($request)->orderBy('invoice_date', 'desc')->get();
 
-            $storeId = Helpers::get_store_id();
-            // prx($storeId);
-            $query = ManualInvoice::withCount('invoiceItems')->with('seller')
-                ->where('bill_to', $storeId)
-                ->where('user_type', 'store_vendor')
-                ->where('bill_to_type', 'vendor');
-            $invoices =  (clone $query)->where('bill_to', $storeId)->where('bill_to_type', 'vendor')
-                ->when($search, function ($q) use ($search) {
-                    $q->where('invoice_id', 'like', '%' . $search . '%');
-                })
-                ->when($ids, function ($q) use ($ids) {
-                    $q->whereIn('id', $ids);
-                })
-                ->when($status, function ($q) use ($status) {
-                    $q->whereRaw('LOWER(payment_status) = ?', [strtolower($status)]);
-                })
-                ->when($vendor, function ($query) use ($vendor) {
-                    $query->whereHas('store', function ($q) use ($vendor) {
-                        $q->where('id', $vendor);
-                    });
-                })
-
-                ->whereBetween('created_at', [$formatted_from, $formatted_to])->orderBy('invoice_date', 'desc')->get();
-            // prx($invoices);
             $data['formatted_from'] = \Carbon\Carbon::parse($formatted_from)->format('Y-m-d');
             $data['formatted_to'] = \Carbon\Carbon::parse($formatted_to)->format('Y-m-d');
             $data['preset'] = $preset;
@@ -544,65 +570,73 @@ class InventoryReportController extends Controller
         }
         return Excel::download(new \App\Exports\Vendor\PurchaseReportExport($rows, $headings), $fileName);
     }
+    // Every item the Stock Report is currently showing, including the branch-stock substitution,
+    // so a bulk delete acts on exactly the rows on screen.
+    private function stockReportItems(Request $request)
+    {
+        $ids = $request->item_ids ?? null;
+        $search = $request->search ?? '';
+        $stock_status = ($request->stock_staus && $request->stock_staus !== 'all') ? $request->stock_staus : '';
+        $category = ($request->category && $request->category !== 'all') ? $request->category : '';
+        $storeId = Helpers::get_store_id();
+        $branchId = $this->reportBranchId($request);
+        $branchStockMode = is_int($branchId) && $branchId > 0; // showing a specific branch's stock pool
+        $items = InventoryItem::with('category')
+            ->where('store_id', $storeId)
+            ->when($category, function ($query) use ($category) {
+                $query->whereHas('category', function ($q) use ($category) {
+                    $q->where('category_id', $category);
+                });
+            })
+            ->when($ids, function ($q) use ($ids) {
+                $q->whereIn('id', $ids);
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->where('item_name', $search);
+            })
+            // Stock-status filter on the main-store stock (skipped for a branch — applied below on branch stock).
+            ->when($stock_status && !$branchStockMode, function ($q) use ($stock_status) {
+                if ($stock_status == 'low_stock') {
+                    $q->whereBetween('stock', [1, 5]);
+                } elseif ($stock_status == 'out_of_stock') {
+                    $q->where('stock', '<', 1);
+                } elseif ($stock_status == 'in_stock') {
+                    $q->where('stock', '>', 5);
+                }
+            })
+            ->get();
+
+        // For a specific branch, replace each item's displayed stock with that branch's pool, then
+        // apply the stock-status filter on the branch quantity.
+        if ($branchStockMode) {
+            $branchStock = \Illuminate\Support\Facades\DB::table('pos_branch_stock')
+                ->where('branch_id', $branchId)->pluck('stock', 'inventory_item_id');
+            $items->each(fn($i) => $i->stock = (float) ($branchStock[$i->id] ?? 0));
+            if ($stock_status) {
+                $items = $items->filter(function ($i) use ($stock_status) {
+                    $s = (float) $i->stock;
+                    if ($stock_status == 'low_stock') return $s >= 1 && $s <= 5;
+                    if ($stock_status == 'out_of_stock') return $s < 1;
+                    if ($stock_status == 'in_stock') return $s > 5;
+                    return true;
+                })->values();
+            }
+        }
+
+        return $items;
+    }
+
     public function stock(Request $request, $export = null, $export_type = null)
     {
         if (hasPermission('stock_report', 'list') || hasPermission('stock_report', 'export')) {
 
-            $preset = request('date_range') ?? 'last_30_days';
-            $custom = request('custom_date_range') ?? null;
-            $range = Helpers::calculatePresetDates($preset, $custom);
-            $formatted_from = $range['start'];
-            $formatted_to = $range['end'];
+            [$preset, $formatted_from, $formatted_to] = $this->reportRange('last_30_days');
 
-            $ids = $request->item_ids ?? null;
-            $search = $request->search ?? '';
             $stock_status = ($request->stock_staus && $request->stock_staus !== 'all') ? $request->stock_staus : '';
             $category = ($request->category && $request->category !== 'all') ? $request->category : '';
-            // prx($category);
-            $storeId = Helpers::get_store_id();
             $branchId = $this->reportBranchId($request);
-            $branchStockMode = is_int($branchId) && $branchId > 0; // showing a specific branch's stock pool
-            $items = InventoryItem::with('category')
-                ->where('store_id', $storeId)
-                ->when($category, function ($query) use ($category) {
-                    $query->whereHas('category', function ($q) use ($category) {
-                        $q->where('category_id', $category);
-                    });
-                })
-                ->when($ids, function ($q) use ($ids) {
-                    $q->whereIn('id', $ids);
-                })
-                ->when($search, function ($q) use ($search) {
-                    $q->where('item_name', $search);
-                })
-                // Stock-status filter on the main-store stock (skipped for a branch — applied below on branch stock).
-                ->when($stock_status && !$branchStockMode, function ($q) use ($stock_status) {
-                    if ($stock_status == 'low_stock') {
-                        $q->whereBetween('stock', [1, 5]);
-                    } elseif ($stock_status == 'out_of_stock') {
-                        $q->where('stock', '<', 1);
-                    } elseif ($stock_status == 'in_stock') {
-                        $q->where('stock', '>', 5);
-                    }
-                })
-                ->get();
+            $items = $this->stockReportItems($request);
 
-            // For a specific branch, replace each item's displayed stock with that branch's pool, then
-            // apply the stock-status filter on the branch quantity.
-            if ($branchStockMode) {
-                $branchStock = \Illuminate\Support\Facades\DB::table('pos_branch_stock')
-                    ->where('branch_id', $branchId)->pluck('stock', 'inventory_item_id');
-                $items->each(fn($i) => $i->stock = (float) ($branchStock[$i->id] ?? 0));
-                if ($stock_status) {
-                    $items = $items->filter(function ($i) use ($stock_status) {
-                        $s = (float) $i->stock;
-                        if ($stock_status == 'low_stock') return $s >= 1 && $s <= 5;
-                        if ($stock_status == 'out_of_stock') return $s < 1;
-                        if ($stock_status == 'in_stock') return $s > 5;
-                        return true;
-                    })->values();
-                }
-            }
             $data['category'] = optional(
                 ModelsCategory::where('id', $category)->first()
             )->name ?? 'All';
@@ -735,66 +769,73 @@ class InventoryReportController extends Controller
         return "({$gross} - COALESCE(inventory_order_details.line_discount, 0))";
     }
 
+    // The order lines behind the Profit & Loss rows. The report groups them per item; a bulk delete
+    // removes the underlying lines, so both start from this one query.
+    private function pnlReportQuery(Request $request)
+    {
+        [, $formatted_from, $formatted_to] = $this->reportRange('last_30_days');
+
+        $storeId = Helpers::get_store_id();
+        $branchId = $this->reportBranchId($request);
+        $search = $request->search ?? '';
+        $status = ($request->status && $request->status !== 'all') ? $request->status : '';
+        $category = ($request->category && $request->category !== 'all') ? $request->category : '';
+
+        // Left join on categories: an item with no category (category_id 0 — the sentinel
+        // _saveCategoryIfNotExists returns for a blank category) or one whose category row is
+        // gone was dropped by the inner join, taking its whole revenue off the report with no
+        // sign that anything was missing. The row now shows with "Deleted" as its category.
+        return InventoryOrderDetail::with(['order', 'item', 'item.category'])
+            ->join('inventory_items', 'inventory_items.id', '=', 'inventory_order_details.item_id')
+            ->leftJoin('categories', 'categories.id', '=', 'inventory_items.category_id')
+            ->whereBetween('inventory_order_details.created_at', [$formatted_from, $formatted_to])
+            ->whereHas('order', function ($q) use ($storeId) {
+                $q->where('store_id', $storeId);
+            })
+            // A voided bill is not a sale. Voiding restores the stock but leaves the sale-order
+            // mirror in place, so its revenue and cost kept counting here.
+            ->when(Schema::hasColumn('manual_invoices', 'pos_status'), function ($q) {
+                $q->whereDoesntHave('order.invoice', function ($i) {
+                    $i->where('pos_status', 'void');
+                });
+            })
+            ->when($branchId !== null, function ($q) use ($branchId) {
+                $q->whereHas('order.invoice', function ($i) use ($branchId) {
+                    $branchId === 0 ? $i->whereNull('pos_branch_id') : $i->where('pos_branch_id', $branchId);
+                });
+            })
+            ->when($category, function ($q) use ($category) {
+                $q->whereHas('item', function ($query) use ($category) {
+                    $query->where('category_id', $category);
+                });
+            })
+            ->when($search, function ($q) use ($search) {
+                $q->whereHas('item', function ($query) use ($search) {
+                    $query->where('item_name', 'like', '%' . $search . '%');
+                });
+            })
+            ->when($status, function ($q) use ($status) {
+                $cost = $this->cogsExpression();
+                $revenue = $this->revenueExpression();
+                if ($status == 'profit') {
+                    $q->whereRaw("{$revenue} - {$cost} > 0");
+                } elseif ($status == 'loss') {
+                    $q->whereRaw("{$revenue} - {$cost} < 0");
+                }
+            });
+    }
+
     public function profit_and_loss(Request $request, $export = null, $export_type = null)
     {
         Helpers::_ensureInvOrderCostColumns();
 
         if (hasPermission('profit_loss_summary', 'list') || hasPermission('profit_loss_summary', 'export')) {
 
-            $preset = request('date_range') ?? 'last_30_days';
-            $custom = request('custom_date_range') ?? null;
-            $range = Helpers::calculatePresetDates($preset, $custom);
-            $formatted_from  = $range['start'];
-            $formatted_to = $range['end'];
+            [$preset, $formatted_from, $formatted_to] = $this->reportRange('last_30_days');
 
             $storeId = Helpers::get_store_id();
             $branchId = $this->reportBranchId($request);
-            $search = $request->search ?? '';
-            $status = ($request->status && $request->status !== 'all') ? $request->status : '';
-            $category = ($request->category && $request->category !== 'all') ? $request->category : '';
-
-            // Left join on categories: an item with no category (category_id 0 — the sentinel
-            // _saveCategoryIfNotExists returns for a blank category) or one whose category row is
-            // gone was dropped by the inner join, taking its whole revenue off the report with no
-            // sign that anything was missing. The row now shows with "Deleted" as its category.
-            $invQuery = InventoryOrderDetail::with(['order', 'item', 'item.category'])
-                ->join('inventory_items', 'inventory_items.id', '=', 'inventory_order_details.item_id')
-                ->leftJoin('categories', 'categories.id', '=', 'inventory_items.category_id')
-                ->whereBetween('inventory_order_details.created_at', [$formatted_from, $formatted_to])
-                ->whereHas('order', function ($q) use ($storeId) {
-                    $q->where('store_id', $storeId);
-                })
-                // A voided bill is not a sale. Voiding restores the stock but leaves the sale-order
-                // mirror in place, so its revenue and cost kept counting here.
-                ->when(Schema::hasColumn('manual_invoices', 'pos_status'), function ($q) {
-                    $q->whereDoesntHave('order.invoice', function ($i) {
-                        $i->where('pos_status', 'void');
-                    });
-                })
-                ->when($branchId !== null, function ($q) use ($branchId) {
-                    $q->whereHas('order.invoice', function ($i) use ($branchId) {
-                        $branchId === 0 ? $i->whereNull('pos_branch_id') : $i->where('pos_branch_id', $branchId);
-                    });
-                })
-                ->when($category, function ($q) use ($category) {
-                    $q->whereHas('item', function ($query) use ($category) {
-                        $query->where('category_id', $category);
-                    });
-                })
-                ->when($search, function ($q) use ($search) {
-                    $q->whereHas('item', function ($query) use ($search) {
-                        $query->where('item_name', 'like', '%' . $search . '%');
-                    });
-                })
-                ->when($status, function ($q) use ($status) {
-                    $cost = $this->cogsExpression();
-                    $revenue = $this->revenueExpression();
-                    if ($status == 'profit') {
-                        $q->whereRaw("{$revenue} - {$cost} > 0");
-                    } elseif ($status == 'loss') {
-                        $q->whereRaw("{$revenue} - {$cost} < 0");
-                    }
-                });
+            $invQuery = $this->pnlReportQuery($request);
 
             $cost = $this->cogsExpression();
             $revenue = $this->revenueExpression();
@@ -922,7 +963,9 @@ class InventoryReportController extends Controller
         $fileUrl = Helpers::savePdfToPublic($mpdf, 'store_reports/profit_and_loss', $fileName);
         return ['success' => true, 'file_name' => $fileName,  'url'  => asset('storage/app/public/store_reports/profit_and_loss/' . $fileName)];
     }
-    public function batchExpiry(Request $request)
+    // Batches matching the page's filter. Paginated on screen, so a "delete all" has to come back
+    // through here rather than off the checkboxes of the visible page.
+    private function batchExpiryQuery(Request $request)
     {
         $store_id = Helpers::get_store_id();
         $filter   = $request->get('filter', 'all'); // all | expired | expiring_soon | active
@@ -933,7 +976,7 @@ class InventoryReportController extends Controller
             ->join('inventory_items', 'inventory_items.id', '=', 'item_entries.item_id')
             ->select('item_entries.*', 'inventory_items.item_name', 'inventory_items.sku_id');
 
-        if ($filter === 'expired') { 
+        if ($filter === 'expired') {
             $query->whereNotNull('expiry_date')->whereDate('expiry_date', '<', now());
         } elseif ($filter === 'expiring_soon') {
             $query->whereNotNull('expiry_date')
@@ -945,7 +988,15 @@ class InventoryReportController extends Controller
             });
         }
 
-        $batches = $query->orderBy('expiry_date')->paginate(30);
+        return $query;
+    }
+
+    public function batchExpiry(Request $request)
+    {
+        $store_id = Helpers::get_store_id();
+        $filter   = $request->get('filter', 'all'); // all | expired | expiring_soon | active
+
+        $batches = $this->batchExpiryQuery($request)->orderBy('expiry_date')->paginate(30);
 
         $expiredCount      = ItemEntry::where('store_id', $store_id)->whereNotNull('batch_number')->whereNotNull('expiry_date')->whereDate('expiry_date', '<', now())->count();
         $expiringSoonCount = ItemEntry::where('store_id', $store_id)->whereNotNull('batch_number')->whereNotNull('expiry_date')->whereDate('expiry_date', '>=', now())->whereDate('expiry_date', '<=', now()->addDays(90))->count();
@@ -985,25 +1036,7 @@ class InventoryReportController extends Controller
             return back();
         }
 
-        $details = InventoryOrderDetail::where('order_id', $order->order_id)->get();
-        if (function_exists('_ensureDecimalStockColumns')) {
-            _ensureDecimalStockColumns();
-        }
-        if ($request->restock == '1') {
-            foreach ($details as $d) {
-                if (in_array($d->status, ['returned', 'cancelled'])) {
-                    continue;
-                }
-                $item = InventoryItem::find($d->item_id);
-                if ($item) {
-                    $item->stock = (float) $item->stock + (float) $d->qty;
-                    $item->save();
-                }
-            }
-        }
-
-        InventoryOrderDetail::where('order_id', $order->order_id)->delete();
-        $order->delete();
+        $this->deleteSaleOrders([$order], $request->restock == '1');
 
         Toastr::success('Sale invoice deleted');
         return back();
@@ -1020,34 +1053,335 @@ class InventoryReportController extends Controller
             return back();
         }
 
-        $items = \App\Models\InvoiceItem::where('manual_invoice_id', $invoice->id)
-            ->orWhere('rand_invoice_id', $invoice->invoice_id)->get();
+        $this->deleteManualInvoices([$invoice], $request->restock == '1');
+
+        Toastr::success('Purchase invoice deleted');
+        return back();
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Bulk delete from the report pages
+     |--------------------------------------------------------------------------
+     | Each endpoint takes either an explicit `ids` list (Delete Selected) or `delete_all`,
+     | in which case the rows are resolved server-side from the same query that rendered the
+     | page — the filters ride along on the query string. Resolving server-side keeps
+     | "delete all" honest on a paginated report and avoids posting thousands of ids.
+     */
+
+    private function bulkDeleteResponse(int $deleted, string $done = 'deleted')
+    {
+        return response()->json([
+            'success' => true,
+            'deleted' => $deleted,
+            'message' => $deleted . ' record(s) ' . $done,
+        ]);
+    }
+
+    private function deniedResponse()
+    {
+        return response()->json(['success' => false, 'message' => 'Access Denied'], 403);
+    }
+
+    private function deleteSaleOrders($orders, bool $restock): int
+    {
+        if (function_exists('_ensureDecimalStockColumns')) {
+            _ensureDecimalStockColumns();
+        }
+
+        $deleted = 0;
+        foreach ($orders as $order) {
+            if ($restock) {
+                $details = InventoryOrderDetail::where('order_id', $order->order_id)->get();
+                foreach ($details as $d) {
+                    if (in_array($d->status, ['returned', 'cancelled'])) {
+                        continue;
+                    }
+                    $item = InventoryItem::find($d->item_id);
+                    if ($item) {
+                        $item->stock = (float) $item->stock + (float) $d->qty;
+                        $item->save();
+                    }
+                }
+            }
+
+            InventoryOrderDetail::where('order_id', $order->order_id)->delete();
+            $order->delete();
+            $deleted++;
+        }
+
+        return $deleted;
+    }
+
+    private function deleteManualInvoices($invoices, bool $restock): int
+    {
+        if (function_exists('_ensureDecimalStockColumns')) {
+            _ensureDecimalStockColumns();
+        }
+
+        $deleted = 0;
+        foreach ($invoices as $invoice) {
+            if ($restock) {
+                $items = \App\Models\InvoiceItem::where('manual_invoice_id', $invoice->id)
+                    ->orWhere('rand_invoice_id', $invoice->invoice_id)->get();
+                foreach ($items as $it) {
+                    if (!$it->inv_id) {
+                        continue;
+                    }
+                    $item = InventoryItem::find($it->inv_id);
+                    if ($item) {
+                        $item->stock = max(0, (float) $item->stock - (float) $it->qty);
+                        $item->save();
+                    }
+                }
+            }
+
+            \App\Models\InvoiceItem::where('manual_invoice_id', $invoice->id)
+                ->orWhere('rand_invoice_id', $invoice->invoice_id)->delete();
+
+            if ($invoice->pdf && Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
+                Storage::disk('public')->delete('invoice/' . $invoice->pdf);
+            }
+            $invoice->delete();
+            $deleted++;
+        }
+
+        return $deleted;
+    }
+
+    // An order whose every line has gone is a shell that would still show up on the Sale Report,
+    // so it goes with the last of its lines.
+    private function pruneEmptyOrders($orderIds): void
+    {
+        foreach (collect($orderIds)->unique() as $orderId) {
+            if (!InventoryOrderDetail::where('order_id', $orderId)->exists()) {
+                InventoryOrder::where('order_id', $orderId)->delete();
+            }
+        }
+    }
+
+    public function sale_bulk_delete(Request $request)
+    {
+        if (!hasPermission('sale_report', 'delete')) {
+            return $this->deniedResponse();
+        }
+
+        $query = $this->saleReportQuery($request);
+        if (!$request->boolean('delete_all')) {
+            $query->whereIn('id', (array) $request->input('ids', []));
+        }
+
+        return $this->bulkDeleteResponse(
+            $this->deleteSaleOrders($query->get(), $request->restock == '1')
+        );
+    }
+
+    public function purchase_bulk_delete(Request $request)
+    {
+        if (!hasPermission('purchase_report', 'delete')) {
+            return $this->deniedResponse();
+        }
+
+        $query = $this->purchaseReportQuery($request);
+        if (!$request->boolean('delete_all')) {
+            $query->whereIn('id', (array) $request->input('ids', []));
+        }
+
+        return $this->bulkDeleteResponse(
+            $this->deleteManualInvoices($query->get(), $request->restock == '1')
+        );
+    }
+
+    // The GST report lists ManualInvoice and ServiceInvoice rows side by side, so a checkbox
+    // carries "manual:12" / "service:5". Ids are matched against the report's own sets, which
+    // is also what keeps one store from reaching another's invoice by guessing an id.
+    public function gst_bulk_delete(Request $request)
+    {
+        if (!hasPermission('gst_report', 'delete')) {
+            return $this->deniedResponse();
+        }
+
+        $side = $request->input('side') === 'purchase' ? 'purchase' : 'sale';
+        $sets = $this->gstReportInvoices($request);
+        $rows = $sets[$side];
+
+        if (!$request->boolean('delete_all')) {
+            $wanted = array_map('strval', (array) $request->input('ids', []));
+            $rows = $rows->filter(function ($invoice) use ($wanted) {
+                $type = ($invoice->invoice_type ?? 'Manual') === 'Service' ? 'service' : 'manual';
+                return in_array($type . ':' . $invoice->id, $wanted, true);
+            });
+        }
+
+        $restock = $request->restock == '1';
+        $storeId = Helpers::get_store_id();
+        $deleted = 0;
+
+        foreach ($rows as $invoice) {
+            if ($invoice instanceof ServiceInvoice) {
+                \App\Models\InvoiceItem::where('rand_invoice_id', $invoice->invoice_id)->delete();
+                if ($invoice->pdf && Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
+                    Storage::disk('public')->delete('invoice/' . $invoice->pdf);
+                }
+                $invoice->delete();
+                $deleted++;
+                continue;
+            }
+
+            if ($side === 'sale') {
+                // A sale bill is mirrored into inventory_orders; dropping the bill without the
+                // mirror would leave the Sale Report and P&L quoting an invoice that is gone.
+                // Restocking a sale means putting the sold stock back, which the mirror handles —
+                // so the bill itself is removed without touching stock a second time.
+                $orders = InventoryOrder::where('store_id', $storeId)
+                    ->where('invoice_id', $invoice->invoice_id)->get();
+                $this->deleteSaleOrders($orders, $restock);
+                $deleted += $this->deleteManualInvoices([$invoice], false);
+                continue;
+            }
+
+            $deleted += $this->deleteManualInvoices([$invoice], $restock);
+        }
+
+        return $this->bulkDeleteResponse($deleted);
+    }
+
+    /**
+     * Clear the stock behind the selected Stock Report rows.
+     *
+     * The item itself is never touched — not its price, category, sale history or batches. A stock
+     * figure is what this report is about, so that is all this clears; removing an item from the
+     * catalogue is a separate, far more destructive act and belongs on the Items page.
+     *
+     * What gets zeroed follows the page's own branch filter: viewing a branch clears that branch's
+     * pool alone, leaving the main store and every other branch as they were.
+     */
+    public function stock_bulk_delete(Request $request)
+    {
+        if (!hasPermission('stock_report', 'delete')) {
+            return $this->deniedResponse();
+        }
+
+        $items = $this->stockReportItems($request);
+        if (!$request->boolean('delete_all')) {
+            $ids = array_map('strval', (array) $request->input('ids', []));
+            $items = $items->filter(fn($i) => in_array((string) $i->id, $ids, true));
+        }
 
         if (function_exists('_ensureDecimalStockColumns')) {
             _ensureDecimalStockColumns();
         }
+
+        $branchId = $this->reportBranchId($request);
+        $branchMode = is_int($branchId) && $branchId > 0;
+        $itemIds = $items->pluck('id')->all();
+        if (empty($itemIds)) {
+            return $this->bulkDeleteResponse(0);
+        }
+
+        if ($branchMode) {
+            $cleared = DB::table('pos_branch_stock')
+                ->where('branch_id', $branchId)
+                ->whereIn('inventory_item_id', $itemIds)
+                ->update(['stock' => 0, 'updated_at' => now()]);
+
+            return $this->bulkDeleteResponse($cleared, "cleared");
+        }
+
+        $cleared = 0;
+        foreach (InventoryItem::where('store_id', Helpers::get_store_id())->whereIn('id', $itemIds)->get() as $item) {
+            $item->stock = 0;
+
+            // A countable item's real counts live per variation and the main figure is their sum,
+            // so zeroing only the main figure would leave the item page still showing stock and the
+            // next save adding it straight back.
+            $variations = _itemVariations($item);
+            if (!empty($variations) && _variationMode($item) === 'countable') {
+                foreach ($variations as $i => $var) {
+                    $variations[$i]['stock'] = 0;
+                }
+                $item->variations = json_encode(array_values($variations));
+            }
+
+            $item->save();
+            $cleared++;
+        }
+
+        return $this->bulkDeleteResponse($cleared, "cleared");
+    }
+
+    // A P&L row is a group of order lines for one item, so deleting it deletes those lines within
+    // the report's date range — not the item, and not anything sold outside the range.
+    public function pnl_bulk_delete(Request $request)
+    {
+        if (!hasPermission('profit_loss_summary', 'delete')) {
+            return $this->deniedResponse();
+        }
+
+        Helpers::_ensureInvOrderCostColumns();
+
+        $query = $this->pnlReportQuery($request);
+        if (!$request->boolean('delete_all')) {
+            $query->whereIn('inventory_order_details.item_id', (array) $request->input('ids', []));
+        }
+
+        $detailIds = (clone $query)->pluck('inventory_order_details.id');
+        $orderIds = (clone $query)->pluck('inventory_order_details.order_id');
+
         if ($request->restock == '1') {
-            foreach ($items as $it) {
-                if (!$it->inv_id) {
+            if (function_exists('_ensureDecimalStockColumns')) {
+                _ensureDecimalStockColumns();
+            }
+            $lines = InventoryOrderDetail::whereIn('id', $detailIds)->get();
+            foreach ($lines as $d) {
+                if (in_array($d->status, ['returned', 'cancelled'])) {
                     continue;
                 }
-                $item = InventoryItem::find($it->inv_id);
+                $item = InventoryItem::find($d->item_id);
                 if ($item) {
-                    $item->stock = max(0, (float) $item->stock - (float) $it->qty);
+                    $item->stock = (float) $item->stock + (float) $d->qty;
                     $item->save();
                 }
             }
         }
 
-        \App\Models\InvoiceItem::where('manual_invoice_id', $invoice->id)
-            ->orWhere('rand_invoice_id', $invoice->invoice_id)->delete();
+        $deleted = InventoryOrderDetail::whereIn('id', $detailIds)->delete();
+        $this->pruneEmptyOrders($orderIds);
 
-        if ($invoice->pdf && Storage::disk('public')->exists('invoice/' . $invoice->pdf)) {
-            Storage::disk('public')->delete('invoice/' . $invoice->pdf);
+        return $this->bulkDeleteResponse($deleted);
+    }
+
+    public function batch_expiry_bulk_delete(Request $request)
+    {
+        if (!hasPermission('inventory_item_entry', 'delete')) {
+            return $this->deniedResponse();
         }
-        $invoice->delete();
 
-        Toastr::success('Purchase invoice deleted');
-        return back();
+        $query = $this->batchExpiryQuery($request);
+        if (!$request->boolean('delete_all')) {
+            $query->whereIn('item_entries.id', (array) $request->input('ids', []));
+        }
+
+        $batches = $query->get();
+        $restock = $request->restock == '1';
+
+        if ($restock && function_exists('_ensureDecimalStockColumns')) {
+            _ensureDecimalStockColumns();
+        }
+
+        $deleted = 0;
+        foreach ($batches as $batch) {
+            if ($restock) {
+                $item = InventoryItem::find($batch->item_id);
+                if ($item) {
+                    $item->stock = max(0, (float) $item->stock - (float) $batch->quantity);
+                    $item->save();
+                }
+            }
+            ItemEntry::where('id', $batch->id)->delete();
+            $deleted++;
+        }
+
+        return $this->bulkDeleteResponse($deleted);
     }
 }

@@ -256,12 +256,25 @@
                          <div class="d-flex justify-content-between align-items-center m-2">
 
                              <h2>Sale Invoices</h2>
-                             @if(hasPermission('gst_report', 'export'))
-                             <a class="btn btn-outline-primary mr-1"
-                                 href="{{ route('vendor.inventory.report.gst', ['export-sale']) }}">
-                                 Export
-                             </a>
-                             @endif
+                             <div class="d-flex gap-1 flex-wrap align-items-center">
+                                 @if (hasPermission('gst_report', 'delete'))
+                                     @include('vendor-views.inventory.report._bulk_delete', [
+                                         'scope' => 'gstsale',
+                                         'deleteRoute' => route('vendor.inventory.report.gst-bulk-delete', ['side' => 'sale']),
+                                         'checkboxClass' => 'check_select_gst_sale',
+                                         'selectedText' => 'the selected sale invoices',
+                                         'allText' => 'every sale invoice in this report',
+                                         'restockLabel' => 'Add the sold stock back to inventory',
+                                     ])
+                                 @endif
+
+                                 @if (hasPermission('gst_report', 'export'))
+                                     <a class="btn btn-outline-primary mr-1"
+                                         href="{{ route('vendor.inventory.report.gst', ['export-sale']) }}">
+                                         Export
+                                     </a>
+                                 @endif
+                             </div>
                          </div>
                          <div class="table-responsive">
                              <table id="datatable"
@@ -273,6 +286,9 @@
                     }'>
                                  <thead class="thead-light">
                                      <tr>
+                                         @if (hasPermission('gst_report', 'delete'))
+                                             <th class="border-0"></th>
+                                         @endif
                                          <th class="border-0">{{ translate('messages.#') }}</th>
                                          <th class="border-0">{{ translate('messages.Date') }}</th>
                                          <th class="border-0">{{ translate('messages.Invoice Id') }}</th>
@@ -293,6 +309,14 @@
                                      @foreach ($saleInvoices as $k => $e)
                                          @php $key++; @endphp
                                          <tr>
+                                             @if (hasPermission('gst_report', 'delete'))
+                                                 <td class="text-center">
+                                                     {{-- Manual and Service invoices share this table, so the id carries its type --}}
+                                                     <input type="checkbox" onclick="event.stopPropagation()"
+                                                         class="check_select_gst_sale"
+                                                         value="{{ ($e['invoice_type'] ?? 'Manual') === 'Service' ? 'service' : 'manual' }}:{{ $e->id }}">
+                                                 </td>
+                                             @endif
                                              <td>{{ $key }}</td>
                                              <td>{{ $e['invoice_date'] ?? date('Y-m-d', strtotime($e['created_at'])) }}
                                              </td>
@@ -408,13 +432,25 @@
                      <div class="card-body p-0">
                          <div class="d-flex justify-content-between align-items-center m-2">
                              <h2>Purchase Invoices</h2>
-                             @if(hasPermission('gst_report', 'export'))
+                             <div class="d-flex gap-1 flex-wrap align-items-center">
+                                 @if (hasPermission('gst_report', 'delete'))
+                                     @include('vendor-views.inventory.report._bulk_delete', [
+                                         'scope' => 'gstpurchase',
+                                         'deleteRoute' => route('vendor.inventory.report.gst-bulk-delete', ['side' => 'purchase']),
+                                         'checkboxClass' => 'check_select_gst_purchase',
+                                         'selectedText' => 'the selected purchase bills',
+                                         'allText' => 'every purchase bill in this report',
+                                         'restockLabel' => 'Remove the purchased stock from inventory',
+                                     ])
+                                 @endif
 
-                             <a class="btn btn-outline-primary mr-1"
-                                 href="{{ route('vendor.inventory.report.gst', ['export-purchase']) }}">
-                                 Export
-                             </a>
-                             @endif
+                                 @if (hasPermission('gst_report', 'export'))
+                                     <a class="btn btn-outline-primary mr-1"
+                                         href="{{ route('vendor.inventory.report.gst', ['export-purchase']) }}">
+                                         Export
+                                     </a>
+                                 @endif
+                             </div>
                          </div>
                          <div class="table-responsive">
                              <table id="datatable"
@@ -426,6 +462,9 @@
                     }'>
                                  <thead class="thead-light">
                                      <tr>
+                                         @if (hasPermission('gst_report', 'delete'))
+                                             <th class="border-0"></th>
+                                         @endif
                                          <th class="border-0">{{ translate('messages.#') }}</th>
                                          <th class="border-0">{{ translate('messages.Date') }}</th>
                                          <th class="border-0">{{ translate('messages.Invoice Id') }}</th>
@@ -448,6 +487,12 @@
                                          @php $key ++ ; @endphp
 
                                          <tr>
+                                             @if (hasPermission('gst_report', 'delete'))
+                                                 <td class="text-center">
+                                                     <input type="checkbox" onclick="event.stopPropagation()"
+                                                         class="check_select_gst_purchase" value="manual:{{ $e->id }}">
+                                                 </td>
+                                             @endif
                                              <td>{{ $key }}</td>
                                              <td>{{ $e['invoice_date'] ?? date('Y-m-d', strtotime($e['created_at'])) }}
                                              </td>

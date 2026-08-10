@@ -322,20 +322,56 @@ class WhatsAppService
     protected ?int $storeId;
     protected array $cfg;
 
-    public function __construct(?int $storeId = null)
+    protected ?string $purpose;
+    protected ?int $numberId;
+
+    /**
+     * $purpose routes the send to whichever number the store put in charge of it; $numberId
+     * pins one explicitly (replying from the number a customer actually messaged). Both are
+     * optional, so every existing caller keeps resolving the store's default exactly as before.
+     */
+    public function __construct(?int $storeId = null, ?string $purpose = null, ?int $numberId = null)
     {
         $this->storeId = $storeId;
+        $this->purpose = $purpose;
+        $this->numberId = $numberId;
         $this->cfg = $this->resolveConfig($storeId);
     }
 
-    public static function make(?int $storeId = null): self
+    public static function make(?int $storeId = null, ?string $purpose = null, ?int $numberId = null): self
     {
-        return new self($storeId);
+        return new self($storeId, $purpose, $numberId);
+    }
+
+    /** Which of the store's numbers this instance is sending from, when it is sending from one. */
+    public function numberId(): ?int
+    {
+        return $this->cfg['number_id'] ?? null;
     }
 
     protected function resolveConfig(?int $storeId): array
     {
-        // 1) Per-vendor override (only when the store opted in and the columns exist).
+        // 1) One of the store's own connected numbers: pinned, bound to this purpose, or default.
+        if ($storeId && Schema::hasTable('wa_numbers')) {
+            $number = $this->numberId
+                ? DB::table('wa_numbers')->where('store_id', $storeId)->where('id', $this->numberId)
+                    ->where('status', 'active')->first()
+                : static::numberFor($storeId, $this->purpose);
+
+            if ($number && $number->phone_number_id && $number->token) {
+                return [
+                    'phone_number_id'      => $number->phone_number_id,
+                    'token'                => $number->token,
+                    'business_account_id'  => $number->business_account_id,
+                    'api_version'          => $number->api_version ?: config('services.whatsapp.api_version', 'v21.0'),
+                    'default_country_code' => config('services.whatsapp.default_country_code', '91'),
+                    'source'               => 'vendor',
+                    'number_id'            => $number->id,
+                ];
+            }
+        }
+
+        // 2) Legacy single-number columns, for stores connected before wa_numbers existed.
         if ($storeId && static::storeColumnsExist()) {
             $store = DB::table('stores')->where('id', $storeId)
                 ->select('wa_enabled', 'wa_phone_number_id', 'wa_token', 'wa_business_account_id', 'wa_api_version')
@@ -352,7 +388,7 @@ class WhatsAppService
             }
         }
 
-        // 2) Global config saved by admin in business_settings.
+        // 3) Global config saved by admin in business_settings.
         $global = Helpers::get_business_settings('whatsapp_config');
         if (is_array($global) && !empty($global['status']) && !empty($global['phone_number_id']) && !empty($global['token'])) {
             return [
@@ -365,7 +401,7 @@ class WhatsAppService
             ];
         }
 
-        // 3) .env / config fallback.
+        // 4) .env / config fallback.
         return [
             'phone_number_id'      => config('services.whatsapp.phone_number_id'),
             'token'                => config('services.whatsapp.token'),
@@ -981,6 +1017,11 @@ class WhatsAppService
             // Kept so the column definition survives a fresh install identically; drop it when
             // you are happy no reporting still joins on it.
             'wa_bot_mode'            => "VARCHAR(20) NULL",
+            // Meta's own ceiling on how many numbers this business may connect — 2 until the
+            // business is verified (or it clears a 2,000 messaging limit), then 20. It is not
+            // ours to choose: Meta pushes it on the business_capability_update webhook as
+            // max_phone_numbers_per_business. NULL = never heard, so no ceiling is enforced.
+            'wa_max_numbers'         => 'INT NULL',
         ];
         foreach ($cols as $name => $def) {
             if (!Schema::hasColumn('stores', $name)) {
@@ -1908,10 +1949,36 @@ class WhatsAppService
     /** Resolve which store owns an inbound message, by its Cloud API phone_number_id. */
     public static function storeByPhoneNumberId(?string $phoneNumberId): ?int
     {
-        if (!$phoneNumberId || !static::storeColumnsExist()) {
+        if (!$phoneNumberId) {
             return null;
         }
+
+        // wa_numbers first: it knows every number a store owns, where stores.wa_* only ever
+        // holds the default. Without this, messages to a second number resolve to no store.
+        if (Schema::hasTable('wa_numbers')) {
+            $storeId = DB::table('wa_numbers')->where('phone_number_id', $phoneNumberId)->value('store_id');
+            if ($storeId) {
+                return (int) $storeId;
+            }
+        }
+
+        if (!static::storeColumnsExist()) {
+            return null;
+        }
+
         return DB::table('stores')->where('wa_phone_number_id', $phoneNumberId)->value('id');
+    }
+
+    /** Which of a store's numbers an inbound phone_number_id belongs to, for replying in kind. */
+    public static function numberIdByPhoneNumberId(?string $phoneNumberId): ?int
+    {
+        if (!$phoneNumberId || !Schema::hasTable('wa_numbers')) {
+            return null;
+        }
+
+        $id = DB::table('wa_numbers')->where('phone_number_id', $phoneNumberId)->value('id');
+
+        return $id ? (int) $id : null;
     }
 
     /** Creates the delivery-log table once (no migration files, per project rules). */
@@ -2071,6 +2138,364 @@ class WhatsAppService
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    /* ----------------------------------------------------------- phone numbers */
+
+    /**
+     * What a number can be put in charge of.
+     *
+     * The three template roles are here so a store can send appointment reminders from the
+     * clinic line and welcomes from the front desk; 'campaign' and 'transactional' cover the
+     * sends that no template role describes. Anything left unbound falls back to the store's
+     * default number, so a vendor with one number never has to touch this.
+     */
+    const NUMBER_PURPOSES = [
+        'appt_reminder' => ['label' => 'Appointment reminders', 'blurb' => 'Reminders sent before a booked appointment.'],
+        'welcome'       => ['label' => 'Customer welcome',      'blurb' => 'Sent once when a customer joins your customer book.'],
+        'staff_forward' => ['label' => 'Forwarded staff chats', 'blurb' => 'Sent to a staff member when you forward a chat.'],
+        'campaign'      => ['label' => 'Campaigns & bulk',      'blurb' => 'Marketing campaigns and bulk sends.'],
+        'transactional' => ['label' => 'Invoices & receipts',   'blurb' => 'Invoice links, receipts and other one-off sends.'],
+    ];
+
+    /**
+     * A store's connected numbers, and which purpose each one answers for.
+     *
+     * Kept out of `stores` because that table can hold exactly one number, and a vendor running
+     * a clinic line and a reception line needs both live at once. The default row is mirrored
+     * back onto stores.wa_* so every caller written against the single-number columns — billing
+     * queries, the older jobs — keeps working untouched.
+     */
+    public static function ensureNumbersTable(): void
+    {
+        if (!Schema::hasTable('wa_numbers')) {
+            DB::statement("CREATE TABLE `wa_numbers` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NOT NULL,
+                `phone_number_id` VARCHAR(64) NOT NULL,
+                `business_account_id` VARCHAR(64) NULL,
+                `token` TEXT NULL,
+                `api_version` VARCHAR(12) NULL,
+                `display_phone` VARCHAR(32) NULL,
+                `verified_name` VARCHAR(190) NULL,
+                `label` VARCHAR(120) NULL,
+                `is_default` TINYINT(1) NOT NULL DEFAULT 0,
+                `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `wa_num_pni` (`phone_number_id`),
+                KEY `wa_num_store` (`store_id`, `status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+
+        if (!Schema::hasTable('wa_number_bindings')) {
+            DB::statement("CREATE TABLE `wa_number_bindings` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `store_id` BIGINT NOT NULL,
+                `purpose` VARCHAR(40) NOT NULL,
+                `wa_number_id` BIGINT UNSIGNED NOT NULL,
+                `created_at` TIMESTAMP NULL,
+                `updated_at` TIMESTAMP NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `wa_nb_store_purpose` (`store_id`, `purpose`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+    }
+
+    /**
+     * How many numbers one store may connect. 0 = no limit.
+     *
+     * Two independent ceilings, and the lower one wins:
+     *   - Meta's, per business — 2 until the business is verified or clears a 2,000 messaging
+     *     limit, then 20. Pushed to us on the business_capability_update webhook. We cannot
+     *     raise it, and trying to add past it fails inside Meta's own signup window, so it is
+     *     worth enforcing here where we can say why.
+     *   - ours, an optional global admin cap (whatsapp_config.max_numbers_per_store).
+     *
+     * Store-scoped because Meta's cap differs per business; omit $storeId for the admin cap only.
+     */
+    public static function numberLimit(?int $storeId = null): int
+    {
+        $config = Helpers::get_business_settings('whatsapp_config');
+        $adminCap = (int) (is_array($config) ? ($config['max_numbers_per_store'] ?? 0) : 0);
+
+        $metaCap = $storeId ? (int) static::metaNumberCap($storeId) : 0;
+
+        $caps = array_filter([$adminCap, $metaCap], fn($cap) => $cap > 0);
+
+        return $caps ? min($caps) : 0;
+    }
+
+    /** Meta's max_phone_numbers_per_business for this store, 0 when it has never been sent. */
+    public static function metaNumberCap(int $storeId): int
+    {
+        static::ensureStoreColumns();
+
+        return (int) (DB::table('stores')->where('id', $storeId)->value('wa_max_numbers') ?? 0);
+    }
+
+    /**
+     * Record the cap Meta just told us about. Written from the webhook, keyed by the WABA the
+     * change arrived for, so a store with several numbers under one business is updated once.
+     */
+    public static function recordNumberCap(?string $wabaId, ?int $cap): void
+    {
+        if (!$wabaId || !$cap || $cap < 1) {
+            return;
+        }
+
+        static::ensureStoreColumns();
+        static::ensureNumbersTable();
+
+        $storeIds = DB::table('wa_numbers')->where('business_account_id', $wabaId)
+            ->distinct()->pluck('store_id')->all();
+
+        if (!$storeIds) {
+            $storeIds = DB::table('stores')->where('wa_business_account_id', $wabaId)->pluck('id')->all();
+        }
+
+        if ($storeIds) {
+            DB::table('stores')->whereIn('id', $storeIds)->update(['wa_max_numbers' => $cap]);
+        }
+    }
+
+    /**
+     * Bring a pre-wa_numbers connection into the table.
+     *
+     * A store connected before wa_numbers existed keeps its number only in stores.wa_*. Sending
+     * still finds it — resolveConfig() falls back to those columns — so the header reads "Number
+     * connected" while the Numbers screen, which reads the table, showed "No number connected
+     * yet" beside it.
+     *
+     * The cosmetic half is the lesser problem. wa_numbers being empty also means the next number
+     * added becomes row one, and saveNumber() makes row one the default, which mirrors onto
+     * stores.wa_* — every send would have silently moved to the newly added number. Insert-only
+     * and keyed on phone_number_id, so running it repeatedly cannot duplicate a row.
+     */
+    public static function adoptLegacyNumber(int $storeId): void
+    {
+        if (!Schema::hasTable('wa_numbers') || !static::storeColumnsExist()) {
+            return;
+        }
+
+        $store = DB::table('stores')->where('id', $storeId)
+            ->select('wa_enabled', 'wa_phone_number_id', 'wa_token', 'wa_business_account_id', 'wa_api_version')
+            ->first();
+
+        if (!$store || !$store->wa_enabled || !$store->wa_phone_number_id || !$store->wa_token) {
+            return;
+        }
+
+        if (DB::table('wa_numbers')->where('phone_number_id', $store->wa_phone_number_id)->exists()) {
+            return;
+        }
+
+        DB::table('wa_numbers')->insert([
+            'store_id'            => $storeId,
+            'phone_number_id'     => $store->wa_phone_number_id,
+            'business_account_id' => $store->wa_business_account_id,
+            'token'               => $store->wa_token,
+            'api_version'         => $store->wa_api_version,
+            // It was the store's only number, so it keeps being the default unless one already
+            // claimed the flag — never demote a number that is currently carrying the sends.
+            'is_default'          => DB::table('wa_numbers')->where('store_id', $storeId)
+                ->where('is_default', 1)->exists() ? 0 : 1,
+            'status'              => 'active',
+            'created_at'          => now(),
+            'updated_at'          => now(),
+        ]);
+    }
+
+    /** Every number this store has connected, default first. */
+    public static function numbers(int $storeId): array
+    {
+        static::ensureNumbersTable();
+        static::adoptLegacyNumber($storeId);
+
+        return DB::table('wa_numbers')
+            ->where('store_id', $storeId)
+            ->orderByDesc('is_default')
+            ->orderBy('id')
+            ->get()
+            ->all();
+    }
+
+    /** The store's default number row, or null when it has none. */
+    public static function defaultNumber(int $storeId)
+    {
+        static::ensureNumbersTable();
+        static::adoptLegacyNumber($storeId);
+
+        return DB::table('wa_numbers')
+            ->where('store_id', $storeId)
+            ->where('status', 'active')
+            ->orderByDesc('is_default')
+            ->orderBy('id')
+            ->first();
+    }
+
+    /** Purpose => binding row, for the settings screen. */
+    public static function numberBindings(int $storeId): array
+    {
+        static::ensureNumbersTable();
+
+        return DB::table('wa_number_bindings')
+            ->where('store_id', $storeId)
+            ->get()
+            ->keyBy('purpose')
+            ->all();
+    }
+
+    /**
+     * The number a given purpose should send from: its binding when one exists and still points
+     * at an active number, otherwise the store default. A binding pointing at a disconnected
+     * number resolves to the default rather than failing — losing a number should degrade the
+     * routing, not stop the messages.
+     */
+    public static function numberFor(int $storeId, ?string $purpose)
+    {
+        static::ensureNumbersTable();
+
+        if ($purpose && isset(self::NUMBER_PURPOSES[$purpose])) {
+            $bound = DB::table('wa_number_bindings as b')
+                ->join('wa_numbers as n', 'n.id', '=', 'b.wa_number_id')
+                ->where('b.store_id', $storeId)
+                ->where('b.purpose', $purpose)
+                ->where('n.status', 'active')
+                ->select('n.*')
+                ->first();
+
+            if ($bound) {
+                return $bound;
+            }
+        }
+
+        return static::defaultNumber($storeId);
+    }
+
+    /** Point a purpose at one of the store's numbers. */
+    public static function bindNumber(int $storeId, string $purpose, int $numberId): void
+    {
+        static::ensureNumbersTable();
+
+        DB::table('wa_number_bindings')->updateOrInsert(
+            ['store_id' => $storeId, 'purpose' => $purpose],
+            ['wa_number_id' => $numberId, 'updated_at' => now(), 'created_at' => now()]
+        );
+    }
+
+    /** Drop a binding, falling the purpose back to the default number. */
+    public static function unbindNumber(int $storeId, string $purpose): void
+    {
+        static::ensureNumbersTable();
+        DB::table('wa_number_bindings')->where('store_id', $storeId)->where('purpose', $purpose)->delete();
+    }
+
+    /**
+     * Record a freshly connected number, or refresh the token on one already connected.
+     *
+     * Reconnecting the same phone_number_id must not create a second row — Meta hands back the
+     * same id, and a duplicate would leave inbound routing picking between two rows with
+     * different tokens. The first number a store connects becomes its default.
+     */
+    public static function saveNumber(int $storeId, array $data): int
+    {
+        static::ensureNumbersTable();
+        // Before is_default is decided below: on a store whose original number was never in this
+        // table, the number being added now would otherwise count as the first and take default.
+        static::adoptLegacyNumber($storeId);
+
+        $existing = DB::table('wa_numbers')->where('phone_number_id', $data['phone_number_id'])->first();
+
+        $row = [
+            'store_id'            => $storeId,
+            'phone_number_id'     => $data['phone_number_id'],
+            'business_account_id' => $data['business_account_id'] ?? null,
+            'token'               => $data['token'] ?? null,
+            'api_version'         => $data['api_version'] ?? null,
+            'display_phone'       => $data['display_phone'] ?? null,
+            'verified_name'       => $data['verified_name'] ?? null,
+            'status'              => 'active',
+            'updated_at'          => now(),
+        ];
+
+        if ($existing) {
+            DB::table('wa_numbers')->where('id', $existing->id)->update($row);
+            $id = $existing->id;
+        } else {
+            $row['label']      = $data['label'] ?? null;
+            $row['is_default'] = DB::table('wa_numbers')->where('store_id', $storeId)->count() === 0 ? 1 : 0;
+            $row['created_at'] = now();
+            $id = DB::table('wa_numbers')->insertGetId($row);
+        }
+
+        static::mirrorDefaultToStore($storeId);
+
+        return $id;
+    }
+
+    /** Make one number the store's default, demoting whichever held it. */
+    public static function setDefaultNumber(int $storeId, int $numberId): void
+    {
+        static::ensureNumbersTable();
+
+        DB::table('wa_numbers')->where('store_id', $storeId)->update(['is_default' => 0]);
+        DB::table('wa_numbers')->where('store_id', $storeId)->where('id', $numberId)
+            ->update(['is_default' => 1, 'updated_at' => now()]);
+
+        static::mirrorDefaultToStore($storeId);
+    }
+
+    /** Disconnect one number, promoting another to default if this one held it. */
+    public static function removeNumber(int $storeId, int $numberId): void
+    {
+        static::ensureNumbersTable();
+
+        $number = DB::table('wa_numbers')->where('store_id', $storeId)->where('id', $numberId)->first();
+        if (!$number) {
+            return;
+        }
+
+        DB::table('wa_number_bindings')->where('store_id', $storeId)->where('wa_number_id', $numberId)->delete();
+        DB::table('wa_numbers')->where('id', $numberId)->delete();
+
+        if ($number->is_default) {
+            $next = DB::table('wa_numbers')->where('store_id', $storeId)->orderBy('id')->first();
+            if ($next) {
+                DB::table('wa_numbers')->where('id', $next->id)->update(['is_default' => 1]);
+            }
+        }
+
+        static::mirrorDefaultToStore($storeId);
+    }
+
+    /**
+     * Copy the default number back onto stores.wa_*.
+     *
+     * Everything written before numbers were a table reads those columns — the billing rollups,
+     * the older scheduled jobs, the admin screens. Mirroring keeps them all correct without
+     * touching a line of them. When the last number goes, the columns are cleared so the store
+     * reads as disconnected rather than pointing at a number it no longer owns.
+     */
+    public static function mirrorDefaultToStore(int $storeId): void
+    {
+        static::ensureStoreColumns();
+
+        $default = static::defaultNumber($storeId);
+
+        DB::table('stores')->where('id', $storeId)->update($default ? [
+            'wa_enabled'             => 1,
+            'wa_phone_number_id'     => $default->phone_number_id,
+            'wa_token'               => $default->token,
+            'wa_business_account_id' => $default->business_account_id,
+            'wa_api_version'         => $default->api_version,
+        ] : [
+            'wa_enabled'             => 0,
+            'wa_phone_number_id'     => null,
+            'wa_token'               => null,
+            'wa_business_account_id' => null,
+        ]);
     }
 
     /* ------------------------------------------------------- template bindings */

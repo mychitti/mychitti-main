@@ -16,7 +16,7 @@
         <div class="rp-head">
             <div>
                 <h1>Top Selling Items</h1>
-                <div class="sub">{{ $from }} → {{ $to }}{{ $branch ? ' · ' . optional($branches->firstWhere('id', $branch))->name : '' }}</div>
+                <div class="sub">{{ $from }} → {{ $to }}{{ $branch === null ? '' : ' · ' . ($branch === 0 ? 'Main Store' : (optional($branches->firstWhere('id', $branch))->name ?? 'Branch')) }}</div>
             </div>
             <div class="d-flex align-items-center" style="gap:8px;">
                 <a href="{{ route('vendor.retail-pos.dashboard', ['from' => $from, 'to' => $to, 'branch' => $branch, 'date_range' => $preset, 'custom_date_range' => $custom]) }}"
@@ -33,6 +33,7 @@
                     @if ($branches->count())
                         <select name="branch" class="rp-input" onchange="this.form.submit()">
                             <option value="">All branches</option>
+                            <option value="main" {{ $branch === 0 ? 'selected' : '' }}>Main Store</option>
                             @foreach ($branches as $b)
                                 <option value="{{ $b->id }}" {{ $branch == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                             @endforeach

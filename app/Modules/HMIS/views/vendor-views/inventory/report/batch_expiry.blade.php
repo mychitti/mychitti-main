@@ -39,12 +39,27 @@
                     <option value="active"       {{ $filter === 'active'       ? 'selected' : '' }}>Active / No Expiry</option>
                 </select>
             </form>
+
+            @if (hasPermission('inventory_item_entry', 'delete'))
+                <div class="d-flex gap-1 flex-wrap align-items-center">
+                    @include('vendor-views.inventory.report._bulk_delete', [
+                        'scope' => 'batch',
+                        'deleteRoute' => route('vendor.inventory.report.batch-expiry-bulk-delete'),
+                        'selectedText' => 'the selected batches',
+                        'allText' => 'every batch matching the current filter (all pages)',
+                        'restockLabel' => 'Remove these batch quantities from item stock',
+                    ])
+                </div>
+            @endif
         </div>
 
         <div class="table-responsive">
             <table class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
                 <thead class="thead-light">
                     <tr>
+                        @if (hasPermission('inventory_item_entry', 'delete'))
+                            <th></th>
+                        @endif
                         <th>#</th>
                         <th>Item Name</th>
                         <th>SKU</th>
@@ -79,6 +94,12 @@
                             }
                         @endphp
                         <tr>
+                            @if (hasPermission('inventory_item_entry', 'delete'))
+                                <td class="text-center">
+                                    <input type="checkbox" onclick="event.stopPropagation()" name="batch_id[]"
+                                        value="{{ $batch->id }}" class="check_select">
+                                </td>
+                            @endif
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $batch->item_name }}</td>
                             <td><span class="badge badge-soft-dark">{{ $batch->sku_id }}</span></td>
@@ -97,7 +118,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-4">
+                            <td colspan="{{ hasPermission('inventory_item_entry', 'delete') ? 10 : 9 }}"
+                                class="text-center py-4">
                                 <img src="{{ asset('/public/assets/admin/svg/illustrations/sorry.svg') }}" height="60" alt="">
                                 <p class="mt-2 text-muted">No batch records found.</p>
                             </td>

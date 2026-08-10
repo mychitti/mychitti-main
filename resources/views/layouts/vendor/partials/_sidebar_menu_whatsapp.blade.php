@@ -28,16 +28,16 @@
                 <span class="text-truncate">{{ translate('Chats') }}</span>
             </a>
         </li>
-        <li class="nav-item {{ Request::is('*whatsapp/connect*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vendor.whatsapp.connect') }}" title="{{ translate('Connection & Bulk Message') }}">
+        <li class="nav-item {{ Request::is('*whatsapp/connect*') || Request::is('*whatsapp/numbers*') || Request::is('*whatsapp/billing*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.connect') }}" title="{{ translate('Connection & Plan') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
-                <span class="text-truncate">{{ translate('Connection & Bulk Message') }}</span>
+                <span class="text-truncate">{{ translate('Connection & Plan') }}</span>
             </a>
         </li>
-        <li class="nav-item {{ Request::is('*whatsapp/bulk/history*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vendor.whatsapp.bulk.history') }}" title="{{ translate('Bulk Send History') }}">
+        <li class="nav-item {{ Request::is('*whatsapp/bulk*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.bulk') }}" title="{{ translate('Bulk Message') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
-                <span class="text-truncate">{{ translate('Bulk Send History') }}</span>
+                <span class="text-truncate">{{ translate('Bulk Message') }}</span>
             </a>
         </li>
         <li class="nav-item {{ Request::is('*whatsapp/campaigns*') ? 'active' : '' }}">
@@ -52,28 +52,10 @@
                 <span class="text-truncate">{{ translate('Message Templates') }}</span>
             </a>
         </li>
-        <li class="nav-item {{ Request::is('*whatsapp/template-roles*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vendor.whatsapp.template-roles') }}" title="{{ translate('Automatic Message Templates') }}">
+        <li class="nav-item {{ Request::is('*whatsapp/automation*') || Request::is('*whatsapp/knowledge*') || Request::is('*whatsapp/bot*') || Request::is('*whatsapp/template-roles*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.automation') }}" title="{{ translate('Automation') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
-                <span class="text-truncate">{{ translate('Automatic Messages') }}</span>
-            </a>
-        </li>
-        <li class="nav-item {{ Request::is('*whatsapp/knowledge*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vendor.whatsapp.knowledge') }}" title="{{ translate('Auto-Reply Knowledge') }}">
-                <span class="tio-circle nav-indicator-icon"></span>
-                <span class="text-truncate">{{ translate('Auto-Reply Knowledge') }}</span>
-            </a>
-        </li>
-        <li class="nav-item {{ Request::is('*whatsapp/bot*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vendor.whatsapp.bot') }}" title="{{ translate('Chatbot') }}">
-                <span class="tio-circle nav-indicator-icon"></span>
-                <span class="text-truncate">{{ translate('Chatbot') }}</span>
-            </a>
-        </li>
-        <li class="nav-item {{ Request::is('*whatsapp/billing*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vendor.whatsapp.billing') }}" title="{{ translate('Plan & Billing') }}">
-                <span class="tio-circle nav-indicator-icon"></span>
-                <span class="text-truncate">{{ translate('Plan & Billing') }}</span>
+                <span class="text-truncate">{{ translate('Automation') }}</span>
             </a>
         </li>
     </ul>

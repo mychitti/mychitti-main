@@ -1,53 +1,4 @@
-@extends('layouts.vendor.app')
-
-@section('title', 'WhatsApp Chatbot')
-
-@push('css_or_js')
-    <style>
-        .wc { --wc-green:#25d366; --wc-green-d:#128c7e; --wc-ink:#0f172a; --wc-ink-2:#334155;
-              --wc-mute:#7c8798; --wc-line:#e9edf3; --wc-soft:#f6f8fb; }
-        .wc-card { border:1px solid var(--wc-line); border-radius:16px; background:#fff;
-                   margin-bottom:20px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
-        .wc-card-h { padding:16px 22px; border-bottom:1px solid var(--wc-line); display:flex;
-                     align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
-        .wc-card-t { font-weight:700; font-size:14.5px; color:var(--wc-ink); margin:0; }
-        .wc-card-b { padding:22px; }
-        .wc-sub { font-size:12px; color:var(--wc-mute); line-height:1.6; }
-
-        .wc-chip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; padding:4px 11px;
-                   border-radius:999px; font-weight:650; }
-        .wc-chip-ok { background:#e7f9ef; color:#0f7a43; }
-        .wc-chip-off { background:#eef1f6; color:#5b6675; }
-
-        /* live status banner */
-        .wc-live { display:flex; align-items:flex-start; gap:14px; padding:18px 20px; border-radius:14px;
-                   background:linear-gradient(135deg,#f4fdf8,#fff); border:1.5px solid var(--wc-green); }
-        .wc-live.off { background:var(--wc-soft); border-color:var(--wc-line); }
-        .wc-live-i { width:42px; height:42px; border-radius:12px; flex-shrink:0; display:flex;
-                     align-items:center; justify-content:center; font-size:20px;
-                     background:var(--wc-green); color:#fff; }
-        .wc-live.off .wc-live-i { background:#cbd5e1; }
-        .wc-live-t { font-weight:700; font-size:14px; color:var(--wc-ink); }
-
-        /* permission rows */
-        .wc-item { display:flex; align-items:flex-start; gap:14px; padding:16px 0;
-                   border-bottom:1px solid #f2f5f9; margin:0; cursor:pointer; }
-        .wc-item:last-of-type { border-bottom:0; }
-        .wc-item input { margin-top:3px; width:16px; height:16px; flex-shrink:0; cursor:pointer; }
-        .wc-item-l { font-size:13.5px; font-weight:650; color:var(--wc-ink); }
-        .wc-item-d { font-size:12px; color:var(--wc-mute); line-height:1.6; margin-top:3px; }
-        .wc-item.is-action { background:var(--wc-soft); border-radius:12px; padding:16px;
-                             border-bottom:0; margin-bottom:6px; }
-
-        .wc-note { font-size:11.5px; color:var(--wc-mute); line-height:1.6; background:var(--wc-soft);
-                   border-radius:10px; padding:12px 14px; }
-        .wc-empty { text-align:center; padding:34px 16px; color:var(--wc-mute); }
-        .wc-empty i { font-size:30px; color:#cbd5e1; display:block; margin-bottom:10px; }
-    </style>
-@endpush
-
-@section('content')
-    <div class="content container-fluid wc">
+<div class="wc">
         @php
             $planMeta = $plans[$currentPlan];
             $endsOn   = $subscription && $subscription->current_period_end
@@ -55,18 +6,6 @@
                 : null;
         @endphp
 
-        <div class="page-header d-flex align-items-center justify-content-between flex-wrap mb-3" style="gap:12px;">
-            <div>
-                <h1 class="page-header-title mb-1"><i class="tio-android"></i> WhatsApp Chatbot</h1>
-                <span class="wc-sub">What your AI Agent is allowed to do, and what it may tell customers.</span>
-                <div class="text-muted mt-1" style="font-size:11px;">
-                    AI can make mistakes. Review the replies it sends in your inbox, and keep your knowledge base accurate.
-                </div>
-            </div>
-            <a href="{{ route('vendor.whatsapp.billing') }}" class="btn btn-sm btn-outline-secondary">
-                <i class="tio-wallet"></i> Plan &amp; Billing
-            </a>
-        </div>
 
         {{-- ── Is the agent live? ────────────────────────────────────── --}}
         <div class="wc-card">
@@ -82,7 +21,7 @@
                             <div class="wc-sub mt-1">
                                 On <b>{{ $planMeta['label'] }}</b>@if ($endsOn), active until {{ $endsOn }}@endif.
                                 It answers from your
-                                <a href="{{ route('vendor.whatsapp.knowledge') }}">Auto-Reply Knowledge</a>
+                                <a href="{{ route('vendor.whatsapp.automation', ['tab' => 'knowledge']) }}">Auto-Reply Knowledge</a>
                                 and handles leads and appointments — within the limits you set below.
                             </div>
                         </div>
@@ -151,5 +90,4 @@
                 @endif
             </div>
         </div>
-    </div>
-@endsection
+</div>

@@ -1,49 +1,3 @@
-@extends('layouts.vendor.app')
-
-@section('title', 'Auto-Reply Knowledge')
-
-@push('css_or_js')
-    @include('vendor-views.whatsapp.partials._ui')
-    <style>
-        /* Coverage chips double as the type filter — one control, two jobs. */
-        .kn-cov {
-            display:flex; align-items:center; gap:7px; padding:9px 12px; border:1px solid var(--wa-line);
-            border-radius:10px; background:#fff; font-size:12.5px; color:var(--wa-ink);
-            text-decoration:none; transition:border-color .15s, background .15s;
-        }
-        .kn-cov:hover { border-color:var(--wa-green); color:var(--wa-ink); }
-        .kn-cov.active { border-color:var(--wa-green); background:#f0fdf4; }
-        .kn-cov.empty { color:var(--wa-mute); background:var(--wa-bg); }
-        .kn-cov b { font-size:13px; }
-        .kn-cov-n { min-width:22px; height:22px; border-radius:6px; display:inline-flex; align-items:center;
-            justify-content:center; font-size:11px; font-weight:700; background:rgba(37,211,102,.16); color:#15803d; }
-        .kn-cov.empty .kn-cov-n { background:#e9edf2; color:#94a3b8; }
-        .kn-doc-body {
-            font-size:12.5px; color:#667781; line-height:1.55; white-space:pre-wrap;
-            max-height:60px; overflow:hidden; position:relative;
-        }
-    </style>
-@endpush
-
-@section('content')
-    <div class="content container-fluid">
-        <div class="page-header d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
-            <div>
-                <h1 class="page-header-title mb-0"><i class="tio-book-opened"></i> Auto-Reply Knowledge</h1>
-                <span class="wa-sub">
-                    What your chatbot knows. Answers are drawn only from documents that are <b>in use</b>.
-                </span>
-            </div>
-            <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-                <span class="wa-chip badge-soft-{{ $activeDocs ? 'success' : 'secondary' }}">
-                    {{ $activeDocs }} in use
-                </span>
-                <span class="wa-chip badge-soft-secondary">{{ $totalDocs }} / {{ $maxDocs }} documents</span>
-                <a href="{{ route('vendor.whatsapp.bot') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="tio-android"></i> Chatbot settings
-                </a>
-            </div>
-        </div>
 
         @if (!$activeDocs && $totalDocs)
             <div class="wa-card wa-col">
@@ -62,7 +16,7 @@
             <div class="wa-card-h">
                 <span>Coverage</span>
                 @if (request('type'))
-                    <a href="{{ route('vendor.whatsapp.knowledge') }}" class="wa-sub">Clear filter ✕</a>
+                    <a href="{{ route('vendor.whatsapp.automation', ['tab' => 'knowledge']) }}" class="wa-sub">Clear filter ✕</a>
                 @else
                     <span class="wa-sub">Tap a type to filter</span>
                 @endif
@@ -74,7 +28,7 @@
                             $row = $typeCounts[$key] ?? null;
                             $n = (int) ($row->total ?? 0);
                         @endphp
-                        <a href="{{ $n ? route('vendor.whatsapp.knowledge', ['type' => $key]) : '#tab-add' }}"
+                        <a href="{{ $n ? route('vendor.whatsapp.automation', ['tab' => 'knowledge', 'type' => $key]) : '#tab-add' }}"
                            @if (!$n) data-toggle="tab" @endif
                            class="kn-cov {{ request('type') === $key ? 'active' : '' }} {{ $n ? '' : 'empty' }}">
                             <span class="kn-cov-n">{{ $n }}</span>
@@ -272,18 +226,3 @@
                 </form>
             </div>
         </div>
-    </div>
-@endsection
-
-@push('script_2')
-<script>
-    $(document).on('click', '.kn-edit', function () {
-        var d = $(this).data();
-        $('#knId').val(d.id);
-        $('#knType').val(d.type);
-        $('#knTitle').val(d.title);
-        $('#knContent').val(d.content);
-        $('#knEditModal').modal('show');
-    });
-</script>
-@endpush

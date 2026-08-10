@@ -31,7 +31,7 @@
         <div class="rp-head">
             <div>
                 <h1>{{ ($isStaff ?? false) ? 'My Sales' : 'Bills' }}</h1>
-                <div class="sub">{{ $from === $to ? \Carbon\Carbon::parse($from)->format('d M Y') : $from . ' → ' . $to }}{{ $branch ? ' · ' . optional($branches->firstWhere('id', $branch))->name : '' }}{{ $myBranchName ?? null ? ' · ' . $myBranchName : '' }}{{ !($isStaff ?? false) && ($staff ?? null) ? ' · ' . ($staffNames[$staff] ?? 'Staff') : '' }}{{ !($isStaff ?? false) && ($terminal ?? null) ? ' · ' . ($counterNames[$terminal] ?? 'Counter') : '' }}</div>
+                <div class="sub">{{ $from === $to ? \Carbon\Carbon::parse($from)->format('d M Y') : $from . ' → ' . $to }}{{ $branch === null ? '' : ' · ' . ($branch === 0 ? 'Main Store' : (optional($branches->firstWhere('id', $branch))->name ?? 'Branch')) }}{{ $myBranchName ?? null ? ' · ' . $myBranchName : '' }}{{ !($isStaff ?? false) && ($staff ?? null) ? ' · ' . ($staffNames[$staff] ?? 'Staff') : '' }}{{ !($isStaff ?? false) && ($terminal ?? null) ? ' · ' . ($counterNames[$terminal] ?? 'Counter') : '' }}</div>
             </div>
             <form method="get" class="rp-filter date-range-form" action="{{ route('vendor.retail-pos.today') }}">
                 {{-- Carried through the filters, or changing the date range would drop the owner
@@ -42,6 +42,7 @@
                 @if (!($isStaff ?? false) && $branches->count())
                     <select name="branch" class="rp-input" onchange="this.form.submit()">
                         <option value="">All branches</option>
+                        <option value="main" {{ $branch === 0 ? 'selected' : '' }}>Main Store</option>
                         @foreach ($branches as $b)
                             <option value="{{ $b->id }}" {{ $branch == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                         @endforeach

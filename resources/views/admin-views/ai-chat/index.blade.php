@@ -6,11 +6,33 @@
     <div class="content container-fluid">
 
         <div class="page-header">
-            <h4 class="page-title">AI Assistant</h4> 
-        </div> 
+            <h4 class="page-title">AI Assistant</h4>
+        </div>
 
         <div class="card">
-            <div class="card-body"> 
+            <div class="card-body">
+
+                {{-- One assistant per brief. Each keeps its own thread — switching reloads that
+                     persona's history rather than continuing the last one's conversation. --}}
+                <ul class="nav nav-pills mb-3" id="persona-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="javascript:;" data-persona="">
+                            General
+                        </a>
+                    </li>
+                    @foreach (\App\Services\AdminAiPersona::PERSONAS as $key => $meta)
+                        <li class="nav-item">
+                            <a class="nav-link" href="javascript:;" data-persona="{{ $key }}"
+                               title="{{ $meta['blurb'] }}">
+                                <i class="{{ $meta['icon'] }}"></i> {{ $meta['label'] }}
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+                <p class="text-muted mb-3" id="persona-blurb" style="font-size:12px;">
+                    Ask anything about the platform.
+                </p>
+
 
                 <div id="chat-box"
                     style="height:420px;overflow-y:auto;border:1px solid #e5e5e5;padding:15px;border-radius:6px;margin-bottom:15px;background:#fafafa">
@@ -146,6 +168,14 @@ $('#stopRecord').on('click', function () {
 });
 
 /* submit */
+// Enter sends, Shift+Enter starts a new line. Ignored while an IME is composing, or picking a
+// character in a non-Latin keyboard would send the half-typed word instead of choosing it.
+$('#message').off('keydown').on('keydown', function(e){
+    if (e.key !== 'Enter' || e.shiftKey || e.originalEvent?.isComposing) return;
+    e.preventDefault();
+    $('#chat-form').submit();
+});
+
 $('#chat-form').off('submit').on('submit', function(e){
     e.preventDefault();
 
@@ -154,6 +184,7 @@ $('#chat-form').off('submit').on('submit', function(e){
 
     formData.append('_token', "{{ csrf_token() }}");
     formData.append('message', message);
+    formData.append('persona', activePersona);
 
     const file = $('#fileInput')[0].files[0];
     if (file) formData.append('file', file);
@@ -257,9 +288,25 @@ $('#chat-form').off('submit').on('submit', function(e){
         });
     });
 
+    // Which assistant is being talked to. Sent with every call so the reply, the thread it is
+    // stored in and the memory it is cleared from all refer to the same one.
+    var activePersona = '';
+    var personaBlurbs = @json(collect(\App\Services\AdminAiPersona::PERSONAS)->map(fn($m) => $m['blurb']));
+
+    $('#persona-tabs').on('click', 'a[data-persona]', function() {
+        var next = $(this).data('persona') || '';
+        if (next === activePersona) return;
+
+        activePersona = next;
+        $('#persona-tabs .nav-link').removeClass('active');
+        $(this).addClass('active');
+        $('#persona-blurb').text(personaBlurbs[activePersona] || 'Ask anything about the platform.');
+        loadHistory();
+    });
+
     function loadHistory() {
         chatBox.html('<div class="text-muted text-center">Loading chat…</div>');
-        $.get("{{ route('admin.ai-chat.history') }}", function(res) {
+        $.get("{{ route('admin.ai-chat.history') }}", { persona: activePersona }, function(res) {
             chatBox.html('');
             if (res.success && res.messages.length) {
                 res.messages.forEach(function(row) {
@@ -274,9 +321,11 @@ $('#chat-form').off('submit').on('submit', function(e){
     loadHistory();
 
     $('#clear-memory').on('click', function() {
-        if (!confirm('Are you sure you want to clear all AI memory?')) return;
+        var which = activePersona ? (personaBlurbs[activePersona] ? $('#persona-tabs .nav-link.active').text().trim() : 'this assistant') : 'the general assistant';
+        if (!confirm('Clear the memory of ' + which + '? The other assistants keep theirs.')) return;
         $.post("{{ route('admin.ai-chat.clear') }}", {
-            _token: "{{ csrf_token() }}"
+            _token: "{{ csrf_token() }}",
+            persona: activePersona
         }, function(res) {
             if (res.success) {
                 chatBox.html('<div class="text-muted text-center">Memory cleared.</div>');

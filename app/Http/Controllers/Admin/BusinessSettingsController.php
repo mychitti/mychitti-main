@@ -3094,6 +3094,8 @@ class BusinessSettingsController extends Controller
             'lead_template_lang' => trim((string) $request->lead_template_lang) ?: 'en_US',
             // MyChitti platform WhatsApp auto-reply on/off.
             'auto_reply' => $request->has('auto_reply') ? 1 : 0,
+            // How many numbers one store may connect. 0 (or blank) means no limit.
+            'max_numbers_per_store' => max(0, (int) $request->max_numbers_per_store),
         ]);
 
         DB::table('business_settings')->updateOrInsert(['key' => 'whatsapp_config'], [

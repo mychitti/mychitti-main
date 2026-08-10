@@ -24,6 +24,7 @@
                     @if ($branches->count())
                         <select name="branch" class="rp-input" onchange="this.form.submit()">
                             <option value="">All branches</option>
+                            <option value="main" {{ $branch === 0 ? 'selected' : '' }}>Main Store</option>
                             @foreach ($branches as $b)
                                 <option value="{{ $b->id }}" {{ $branch == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
                             @endforeach

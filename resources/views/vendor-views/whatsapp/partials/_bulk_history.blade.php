@@ -1,24 +1,3 @@
-@extends('layouts.vendor.app')
-
-@section('title', 'WhatsApp Bulk Send History')
-
-@push('css_or_js')
-    @include('vendor-views.whatsapp.partials._ui')
-@endpush
-
-@section('content')
-    <div class="content container-fluid">
-        <div class="page-header d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
-            <div>
-                <h1 class="page-header-title mb-0"><i class="tio-history"></i> Bulk Send History</h1>
-                <span class="wa-sub">
-                    Every batch you have sent — what went out, when, and to which numbers.
-                </span>
-            </div>
-            <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">
-                <i class="tio-send"></i> New bulk message
-            </a>
-        </div>
 
         <div class="row" style="row-gap:12px;">
             <div class="col-sm-6 col-lg-3 wa-col">
@@ -74,7 +53,7 @@
                         <div class="wa-empty-s mb-3">
                             Once you send a batch from the composer, every number in it is listed here.
                         </div>
-                        <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">
+                        <a href="{{ route('vendor.whatsapp.bulk') }}" class="btn btn-sm btn--primary">
                             Send a bulk message
                         </a>
                     </div>
@@ -135,5 +114,3 @@
                 @endif
             </div>
         </div>
-    </div>
-@endsection

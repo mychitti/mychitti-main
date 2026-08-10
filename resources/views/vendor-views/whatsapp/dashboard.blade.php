@@ -20,7 +20,7 @@
             <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
                 @if ($connected)
                     <span class="wa-chip badge-soft-success">Sending from your own number</span>
-                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">
+                    <a href="{{ route('vendor.whatsapp.bulk') }}" class="btn btn-sm btn--primary">
                         <i class="tio-send"></i> Send a message
                     </a>
                 @else
