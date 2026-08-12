@@ -171,7 +171,7 @@ Route::post('verify-login-otp', [FrontUserController::class, 'verify_login_otp']
 Route::get('/auth/google', [GoogleController::class, 'redirectToGoogle'])->name('google.login');
 Route::get('/auth/google/callback', [GoogleController::class, 'handleGoogleCallback']);
 
-Route::get('registration-successfull', [FrontController::class, 'registration_success'])->name('registration-successfull');
+// Business Listing moved to MC Vendor Hub (mcvendorhub.com/list-your-business).
 Route::get('testing', [FrontController::class, 'testing'])->name('testing');
 Route::post('testing/save', [FrontController::class, 'testingSave'])->name('testing.save');
 Route::post('testing/upload-image', [FrontController::class, 'testingUploadImage'])->name('testing.upload-image');
@@ -218,8 +218,7 @@ Route::get('forgot-password', [FrontUserController::class, 'forgot_password'])->
 Route::post('forgot-password', [FrontUserController::class, 'reset_password_request'])->name('forgot-password.post');
 Route::get('update-password', [FrontUserController::class, 'update_password'])->name('update-password');
 Route::post('reset-password', [FrontUserController::class, 'reset_password_submit'])->name('reset-password');
-Route::post('send-opt', [FrontController::class, 'send_otp'])->name('send-otp');
-Route::post('verify-vendor-otp', [FrontController::class, 'verify_otp'])->name('verify-vendor-otp');
+// send-opt / verify-vendor-otp moved to MC Vendor Hub with the Business Listing flow.
 Route::post('send-vendor-otp', [FrontController::class, 'send_vendor_otp'])->name('send-vendor-otp');
 Route::post('save-recent-search', [FrontUserController::class, 'save_recent_search'])->name('save-recent-search');
 Route::get('/recent-searches', [FrontUserController::class, 'getRecent'])->name('get-recent-searches');
@@ -229,7 +228,7 @@ Route::get('gatepass-details/{id}', [FrontUserController::class, 'gatepass_detai
 Route::get('quotation-details/{id}', [FrontUserController::class, 'quotation_details'])->name('quotation-details');
 Route::get('unavailable-provider-check', [CronController::class, 'unavailable_provider']);
     
-Route::post('check-business', [ControllersVendorController::class, 'check_business'])->name('check-business');
+// check-business moved to MC Vendor Hub with the Business Listing flow.
 
 // modul pages for vendor reg 
 Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->name('mc-module');
@@ -245,6 +244,8 @@ Route::get('contact-us', [FrontController::class, 'contact'])->name('contact-us'
 Route::get('privacy-policy', [FrontController::class, 'privacy_policy'])->name('privacy-policy');
 Route::get('terms-and-conditions', [FrontController::class, 'terms_n_conditions'])->name('user-terms-and-conditions');
 Route::get('vendor-terms-conditions/{v_id}', [FrontController::class, 'vendor_terms_conditions'])->name('vendor-terms-conditions');
+// Kept on mychitti: the invoice templates link to it via _termsAndConditionsUrl('admin_to_vendor').
+// MC Vendor Hub serves its own copy for the Business Listing wizard.
 Route::get('store-terms-and-conditions/{type}', [FrontController::class, 'store_terms_and_conditions'])->name('store-terms-and-conditions');
 Route::get('refund-policy', [FrontController::class, 'refund_policy'])->name('refund-policy');
 Route::get('cancellation-policy', [FrontController::class, 'cancellation_policy'])->name('cancellation-policy');
@@ -255,7 +256,7 @@ Route::get('searchbar', [FrontController::class, 'search'])->name('searchbar-web
 Route::post('update-location', [FrontController::class, 'update_location'])->name('update-location');
 Route::post('change-module', [FrontController::class, 'change_module'])->name('change-module');
 Route::get('all-stores/{type?}', [FrontController::class, 'all_stores'])->name('all-stores');
-Route::post('missing-zone-request', [FrontController::class, 'missing_zone_request'])->name('missing-zone-request');
+// missing-zone-request moved to MC Vendor Hub with the Business Listing flow.
 Route::post('test-notification/{type?}', [FrontController::class, 'send_test_notification'])->name('send-test-notification');
 
 Route::get('testing', [FrontController::class, 'testing'])->name('testing');
@@ -271,7 +272,7 @@ Route::get('cancel-order', 'CronController@cancel_order')->name('cancel-order');
 Route::get('test_dbbackup', 'CronController@test_dbbackup')->name('test_dbbackup');
 Route::get('unavailable-provider', 'CronController@unavailable_provider')->name('unavailable-provider');
 Route::get('fetch-subcategory', [FrontController::class, 'fetch_subcategory'])->name('fetch-subcategory');
-Route::get('fetch-categories', [FrontController::class, 'fetch_categories'])->name('fetch-categories');
+// fetch-categories moved to MC Vendor Hub with the Business Listing flow.
 Route::get('zone/get-coordinates/{id}', [ZoneController::class, 'getCoordinates'])->name('zone.get-coordinates');
 
 Route::get('change-variation', [FrontController::class, 'change_variation'])->name('change-variation');
@@ -642,14 +643,12 @@ Route::get('test-vendor-notif/{store_id}', function ($store_id) {
     return response()->json(['sent' => true, 'store_id' => $store_id]);
 });
 
-Route::get('list-your-business', 'VendorController@create')->name('new-store.create');
+// Business Listing (list-your-business + store/apply + store_ajax) moved to MC Vendor Hub —
+// mcvendorhub.com/list-your-business. get-all-modules stays: the admin vendor views call it.
 Route::get('send_confirmation_sms', 'VendorController@send_confirmation_sms')->name('send_confirmation_sms');
 
-//Restaurant Registration 
 Route::group(['prefix' => 'store', 'as' => 'restaurant.'], function () {
-    Route::get('apply', 'VendorController@create')->name('create');
     Route::post('apply', 'VendorController@store')->name('store');
-    Route::post('store_ajax', 'VendorController@store_ajax')->name('store_ajax');
     Route::get('get-all-modules', 'VendorController@get_all_modules')->name('get-all-modules');
 });
 
