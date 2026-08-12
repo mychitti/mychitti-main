@@ -141,7 +141,7 @@ $countryCode= strtolower($country?$country->value:'auto');
                         <ul class="dropdown-list">
                             @if ($toggle_store_registration)
                             <li>
-                                <a class="" href="https://mcvendorhub.com/list-your-business">
+                                <a class="" href="{{ route('restaurant.create') }}">
                                     {{ translate('messages.store_registration') }}
                                 </a>
                             </li>

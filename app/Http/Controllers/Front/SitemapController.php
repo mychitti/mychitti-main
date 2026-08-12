@@ -37,6 +37,7 @@ class SitemapController extends Controller
         // Static pages
         $xml .= $this->urlTag($baseUrl . '/about-us', '2025-01-01', 'monthly', '0.4');
         $xml .= $this->urlTag($baseUrl . '/contact', '2025-01-01', 'monthly', '0.4');
+        $xml .= $this->urlTag($baseUrl . '/list-your-business', '2025-01-01', 'monthly', '0.6');
         $xml .= $this->urlTag($baseUrl . '/blog', $today, 'weekly', '0.7');
 
         // Category pages — module 6 (services) is gated to real supply: only emit a URL for a
