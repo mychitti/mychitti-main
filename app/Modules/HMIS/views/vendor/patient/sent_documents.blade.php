@@ -11,6 +11,7 @@
         'prescription_pdf' => 'Prescription (PDF)',
         'medicines'        => 'Medicine instructions',
         'lab'              => 'Lab report',
+        'radiology'        => 'Radiology report',
         'document'         => 'Document (sent by hand)',
     ];
     $kindColour = [
@@ -19,6 +20,7 @@
         'prescription_pdf' => '#d1fae5',
         'medicines'        => '#fef3c7',
         'lab'              => '#e0e7ff',
+        'radiology'        => '#cffafe',
         'document'         => '#ede9fe',
     ];
 @endphp

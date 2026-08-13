@@ -33,4 +33,7 @@ Route::group(['prefix' => 'hmis-whatsapp', 'as' => 'hmis-whatsapp.'], function (
 
     Route::post('lab/{id}/report', [HmisWhatsAppController::class, 'labReport'])
         ->name('lab-report')->middleware('permission:lab_report,send');
+
+    Route::post('radiology/{id}/report', [HmisWhatsAppController::class, 'radiologyReport'])
+        ->name('radiology-report')->middleware('permission:radiology_report,send');
 });

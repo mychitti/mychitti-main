@@ -36,6 +36,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorEmployee;
+use App\Services\InvoiceShare;
 use App\Traits\Payment;
 use Brian2694\Toastr\Facades\Toastr;
 use Carbon\Carbon;
@@ -1428,10 +1429,20 @@ class BillingController extends Controller
     $invoice->update(['pdf' => $data['pdf']]);
     _auditLogs('Created Bill (Advanced) : ' . $invoice->invoice_id);
 
+    // WhatsApp the customer their bill, if this store turned that on. Only new bills go out —
+    // update_invoice() rebuilds the same PDF and deliberately does not call this, so correcting a
+    // typo on a bill does not message the customer a second time.
+    $wa = InvoiceShare::auto($invoice, 'manual', $data['url'] ?? null);
+
     try {
       if ($request->form_type == 'ajax') {
         return response()->json(['status' => true, 'msg' => "Added  Successfully"]);
       } else {
+        // Toastr only on the non-ajax path — the ajax caller renders its own message and would
+        // otherwise queue this one up to appear on some unrelated page later.
+        if ($wa['message']) {
+          $wa['status'] === 'sent' ? Toastr::success($wa['message']) : Toastr::warning($wa['message']);
+        }
         if (hasPermission('billing', 'view')) {
           return redirect()->route('vendor.invoice.view-invoice', ['invoice_id' => $invoice->id]);
         } else {

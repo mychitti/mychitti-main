@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Vendor;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Services\HmisWhatsAppShare;
+use App\Services\ServiceRecallReminder;
 use App\Services\NotificationPrefs;
 use App\Services\WhatsAppService;
 use Brian2694\Toastr\Facades\Toastr;
@@ -36,13 +37,18 @@ class NotificationSettingController extends Controller
         // Paid add-on status — lead alerts need it on top of the toggle.
         $leadFeature = WhatsAppService::receivingFeatureStatus($storeId)['leads'] ?? null;
 
+        // How long after a completed job this store invites the customer back. NULL = never,
+        // which is why the input shows blank rather than a number nobody chose.
+        ServiceRecallReminder::ensureColumn();
+        $serviceRecallDays = DB::table('stores')->where('id', $storeId)->value('wa_service_recall_days');
+
         // Timing for the two hospital messages whose value depends on when they arrive.
         $feedbackDelay = HmisWhatsAppShare::feedbackDelayHours($storeId);
         $followupLead  = HmisWhatsAppShare::followUpLeadDays($storeId);
 
         return view('vendor-views.notification-settings.index', compact(
             'direction', 'channels', 'waConnected', 'apptReminder', 'leadFeature',
-            'feedbackDelay', 'followupLead'
+            'feedbackDelay', 'followupLead', 'serviceRecallDays'
         ));
     }
 
@@ -80,6 +86,28 @@ class NotificationSettingController extends Controller
         Toastr::success($value === 0
             ? 'Follow-ups will be confirmed as soon as you book them.'
             : 'Follow-up reminders will go out ' . $value . ' day' . ($value === 1 ? '' : 's') . ' before the visit.');
+
+        return back();
+    }
+
+    /**
+     * How many days after a completed service request this store invites the customer back.
+     * Blank or 0 clears it, which takes the store out of the sweep altogether.
+     */
+    public function serviceRecall(Request $request)
+    {
+        $request->validate(['days' => 'nullable|integer|min:0|max:1095']);
+
+        ServiceRecallReminder::ensureColumn();
+        $days = $request->input('days');
+        $days = ($days === null || $days === '' || (int) $days === 0) ? null : (int) $days;
+
+        DB::table('stores')->where('id', Helpers::get_store_id())
+            ->update(['wa_service_recall_days' => $days]);
+
+        Toastr::success($days
+            ? 'Customers will be invited back ' . $days . ' days after a completed service.'
+            : 'Service recall turned off — no invitations will be sent.');
 
         return back();
     }

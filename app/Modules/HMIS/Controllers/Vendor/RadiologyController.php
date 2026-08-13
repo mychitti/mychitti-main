@@ -370,6 +370,14 @@ class RadiologyController extends Controller
         }
         $study->save();
 
+        // Verified is the first moment this report may reach a patient — a draft is one
+        // radiologist's working notes. Only fires for hospitals that turned the radiology report
+        // on under Send Notifications, and only once per study.
+        if ($request->boolean('finalize')) {
+            \App\Services\HmisWhatsAppShare::auto('radiology', (int) $study->store_id, (int) $study->id,
+                fn() => \App\Services\HmisWhatsAppShare::radiologyReport($study));
+        }
+
         return $request->boolean('finalize') ? redirect()->route('vendor.radiology.reports') : back();
     }
 

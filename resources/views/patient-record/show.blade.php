@@ -7,6 +7,7 @@
         'prescription' => 'Prescription',
         'medicines'    => 'How to take your medicines',
         'lab'          => 'Lab Report',
+        'radiology'    => 'Radiology Report',
     ];
     $title = $titles[$kind] ?? 'Health Record';
 @endphp
@@ -281,6 +282,60 @@
             <div class="note">
                 A result outside the normal range does not by itself mean something is wrong. Please discuss this
                 report with your doctor before acting on it.
+            </div>
+        </div>
+    @endif
+
+    @if ($kind === 'radiology')
+        <div class="card">
+            <h2>Scan done</h2>
+            <div>{{ trim(($record->modality ?? '') . ' ' . ($record->study_name ?? '')) ?: '—' }}</div>
+            @php
+                $studyMeta = array_filter([
+                    $record->body_part ? 'Body part: ' . $record->body_part : null,
+                    $record->study_no ? 'Study ' . $record->study_no : null,
+                    $record->radiologist ? 'Reported by ' . $record->radiologist : null,
+                ]);
+            @endphp
+            @if ($studyMeta)
+                <div class="sub">{{ implode(' · ', $studyMeta) }}</div>
+            @endif
+        </div>
+
+        {{-- Clinical history first, then findings, then the impression — the order a radiologist
+             writes in, so the report reads the same here as it does on the printed copy. --}}
+        @if (filled($record->clinical_history))
+            <div class="card">
+                <h2>Clinical history</h2>
+                <div>{!! nl2br(e($record->clinical_history)) !!}</div>
+            </div>
+        @endif
+
+        @if (filled($record->findings))
+            <div class="card">
+                <h2>Findings</h2>
+                <div>{!! nl2br(e($record->findings)) !!}</div>
+            </div>
+        @endif
+
+        @if (filled($record->impression))
+            <div class="card">
+                <h2>Impression</h2>
+                <div class="note">{!! nl2br(e($record->impression)) !!}</div>
+            </div>
+        @endif
+
+        @if (filled($record->recommendations))
+            <div class="card">
+                <h2>Recommended next steps</h2>
+                <div>{!! nl2br(e($record->recommendations)) !!}</div>
+            </div>
+        @endif
+
+        <div class="card">
+            <div class="note">
+                An imaging report is read alongside your symptoms and your other results. Please go through it
+                with your doctor before acting on anything in it.
             </div>
         </div>
     @endif

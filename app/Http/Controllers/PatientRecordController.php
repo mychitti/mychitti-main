@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LabOrder;
 use App\Models\OpdVisit;
 use App\Models\Prescription;
+use App\Models\RadiologyStudy;
 use App\Services\HmisWhatsAppShare;
 use Illuminate\Support\Facades\DB;
 
@@ -86,6 +87,10 @@ class PatientRecordController extends Controller
 
             case 'lab':
                 return LabOrder::with('patient', 'doctorProfile.employee', 'items', 'results')
+                    ->where('store_id', $storeId)->find($id);
+
+            case 'radiology':
+                return RadiologyStudy::with('patient', 'doctorProfile.employee')
                     ->where('store_id', $storeId)->find($id);
         }
 

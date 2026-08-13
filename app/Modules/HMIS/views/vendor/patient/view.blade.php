@@ -55,6 +55,15 @@
                         </div>
                     @endif
 
+                    @if (!empty($patient->phone))
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                onclick="waNote(@json($patient->phone), @json($patient->name))">
+                                <i class="tio-chat"></i> Send a note
+                            </button>
+                        </div>
+                    @endif
+
                     <hr>
 
                     <table class=" table-sm table-borderless text-left">
@@ -1026,6 +1035,11 @@ function deleteDoc(docId, btn) {
     .catch(() => { btn.disabled = false; alert('Failed to delete document.'); });
 }
 </script>
+@endpush
+
+{{-- Pushed with the scripts so jQuery and toastr are already loaded when it binds. --}}
+@push('script_2')
+    @include('vendor-views.whatsapp.partials._note_modal')
 @endpush
 
 @endsection

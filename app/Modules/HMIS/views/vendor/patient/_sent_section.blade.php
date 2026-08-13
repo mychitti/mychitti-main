@@ -7,6 +7,7 @@
         'prescription_pdf' => ['Prescription (PDF)', '#d1fae5'],
         'medicines'        => ['Medicine instructions', '#fef3c7'],
         'lab'              => ['Lab report', '#e0e7ff'],
+        'radiology'        => ['Radiology report', '#cffafe'],
         'document'         => ['Document', '#ede9fe'],
     ];
 

@@ -77,6 +77,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/numbers/label', 'WhatsAppController@numberLabel')->name('whatsapp.numbers.label');
         Route::post('whatsapp/numbers/default', 'WhatsAppController@numberDefault')->name('whatsapp.numbers.default');
         Route::post('whatsapp/numbers/bind', 'WhatsAppController@numberBind')->name('whatsapp.numbers.bind');
+        // A note typed by hand to one customer — shared by every module's customer screen.
+        Route::get('whatsapp/note/quote', 'WhatsAppController@noteQuote')->name('whatsapp.note.quote');
+        Route::post('whatsapp/note/send', 'WhatsAppController@noteSend')->name('whatsapp.note.send');
         Route::get('whatsapp/inbox', 'WhatsAppController@inbox')->name('whatsapp.inbox');
         Route::get('whatsapp/inbox/threads', 'WhatsAppController@inboxThreads')->name('whatsapp.inbox.threads');
         Route::get('whatsapp/inbox/thread', 'WhatsAppController@inboxThread')->name('whatsapp.inbox.thread');
@@ -96,6 +99,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         // Per-action notification preferences — one page per direction, tabbed by channel.
         Route::post('notification-settings/toggle', 'NotificationSettingController@toggle')->name('notification-settings.toggle');
         Route::post('notification-settings/timing', 'NotificationSettingController@timing')->name('notification-settings.timing');
+        Route::post('notification-settings/service-recall', 'NotificationSettingController@serviceRecall')->name('notification-settings.service-recall');
         Route::get('notification-settings/{direction?}', 'NotificationSettingController@index')->name('notification-settings');
         Route::post('whatsapp/templates/update', 'WhatsAppController@templateUpdate')->name('whatsapp.templates.update');
         // Trash hides a template but leaves it at Meta; only delete removes it there.

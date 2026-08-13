@@ -8,6 +8,7 @@ use App\Models\LabOrder;
 use App\Models\OpdVisit;
 use App\Models\Patient;
 use App\Models\Prescription;
+use App\Models\RadiologyStudy;
 use Carbon\Carbon;
 use Illuminate\Http\File;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,7 @@ class HmisWhatsAppShare
         'followup_reminder'     => 'Powers “Send follow-up” on a prescription and “Send reminder” on an appointment.',
         'visit_feedback'        => 'Powers “Ask for feedback” after an OPD visit or a completed appointment.',
         'lab_report_ready'      => 'Powers “WhatsApp” on Lab → Reports, once a report is verified.',
+        'radiology_report_ready' => 'Powers “WhatsApp” on Radiology → Reports, once a study is verified.',
         'patient_document'      => 'Powers “Send a document” on a patient — attaches any file from their record to the chat.',
     ];
 
@@ -108,6 +110,14 @@ class HmisWhatsAppShare
             'template' => 'lab_report_ready',
             'context'  => 'lab report',
         ],
+        // Imaging, kept apart from 'lab' rather than folded into it. The two share a shape but not
+        // a table, and the dedupe key is (store, kind, record_id) with no table in it — lab order
+        // #12 and radiology study #12 filed under one kind would silently suppress each other.
+        'radiology' => [
+            'label'    => 'Radiology report',
+            'template' => 'radiology_report_ready',
+            'context'  => 'radiology report',
+        ],
         // Anything the hospital decides to send that this system did not generate — a discharge
         // summary typed in Word, an insurance form, a scan a patient brought in from elsewhere.
         // Manual only: there is no rule that could decide on its own when to send one.
@@ -136,6 +146,7 @@ class HmisWhatsAppShare
         // distinct kind keeps the two id spaces apart.
         'feedback_opd' => 'hmis_feedback',
         'lab'          => 'hmis_lab_report',
+        'radiology'    => 'hmis_radiology_report',
     ];
 
     /** Hours after a completed visit before the feedback request goes, when the vendor hasn't chosen. */
@@ -690,6 +701,34 @@ class HmisWhatsAppShare
     }
 
     /**
+     * Radiology report — findings and impression behind the link, never in the message body.
+     *
+     * A scan result is exactly the kind of thing a patient should read sitting down with the whole
+     * report in front of them, not as a WhatsApp preview on a lock screen, which is why the message
+     * names the study and nothing else about what it found.
+     */
+    public static function radiologyReport(RadiologyStudy $study, ?string $phone = null): array
+    {
+        $study->loadMissing('patient');
+        $patient = $study->patient;
+        if (!$patient) {
+            return self::fail('This study has no patient on it.');
+        }
+
+        // "MRI Brain", or whichever half of it the department actually filled in.
+        $scan = trim(implode(' ', array_filter([
+            trim((string) $study->modality),
+            trim((string) $study->study_name),
+        ])));
+
+        return self::dispatch('radiology', (int) $study->store_id, $patient, $phone, (int) $study->id, [
+            self::name($patient),
+            self::storeName((int) $study->store_id),
+            self::oneLine($scan) ?: 'your scan',
+        ], true);
+    }
+
+    /**
      * Any file the hospital chooses to send this patient — a discharge summary, an insurance
      * form, a scan they brought in from another clinic. Not every document a patient needs is one
      * this system generated, and the ones it didn't generate used to have no way out of the panel.
@@ -1025,6 +1064,8 @@ class HmisWhatsAppShare
                     return route('vendor.prescription.show', $recordId);
                 case 'lab':
                     return route('vendor.lab.orders.report', $recordId);
+                case 'radiology':
+                    return route('vendor.radiology.studies.print', $recordId);
             }
         } catch (\Throwable $e) {
             return null;
@@ -1044,7 +1085,7 @@ class HmisWhatsAppShare
         try {
             HospitalActivityLog::record(
                 $storeId,
-                $kind === 'lab' ? 'lab_order' : $kind,
+                ['lab' => 'lab_order', 'radiology' => 'radiology_study'][$kind] ?? $kind,
                 $recordId,
                 'whatsapp_sent',
                 (self::KINDS[$kind]['label'] ?? 'Record') . ' sent on WhatsApp to ' . $patient->name . ' (' . self::maskPhone($phone) . ')',

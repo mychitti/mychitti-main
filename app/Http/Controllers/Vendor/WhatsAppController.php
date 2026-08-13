@@ -12,6 +12,7 @@ use App\Models\BusinessSetting;
 use App\Models\StoreWallet;
 use App\Models\TmpWhatsAppSetup;
 use App\Models\UserNotificationPreference;
+use App\Services\CustomerNote;
 use App\Services\HmisWhatsAppShare;
 use App\Services\WhatsAppAgent;
 use App\Services\WhatsAppBilling;
@@ -573,6 +574,41 @@ class WhatsAppController extends Controller
         }
 
         return back();
+    }
+
+    /**
+     * What sending a note to this number would cost, asked before the sender commits.
+     *
+     * A reply inside the customer's own 24h window is free and reads as an ordinary message; once
+     * that window shuts the same note has to travel on a template and is billed. The sender should
+     * see which of the two they are about to do.
+     */
+    public function noteQuote(Request $request)
+    {
+        $request->validate(['phone' => 'required|string|max:32']);
+
+        return response()->json(
+            CustomerNote::quote(Helpers::get_store_id(), (string) $request->input('phone'))
+        );
+    }
+
+    /** Send one hand-written note to one customer. */
+    public function noteSend(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string|max:32',
+            'name'  => 'nullable|string|max:190',
+            'note'  => 'required|string|max:2000',
+        ]);
+
+        $result = CustomerNote::send(
+            Helpers::get_store_id(),
+            $request->input('name'),
+            (string) $request->input('phone'),
+            (string) $request->input('note')
+        );
+
+        return response()->json($result, empty($result['success']) ? 422 : 200);
     }
 
     /** Client list for the bulk composer's recipient picker. */

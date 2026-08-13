@@ -1028,6 +1028,9 @@ class WhatsAppService
             // Picture for templates whose header carries an image (a welcome with a banner, say).
             // NULL falls back to the store's own cover or logo — see headerImageUrl().
             'wa_welcome_image'       => 'VARCHAR(255) NULL',
+            // Days after a completed service request before the customer is invited back.
+            // NULL means this store never chases — see ServiceRecallReminder.
+            'wa_service_recall_days' => 'INT NULL',
         ];
         foreach ($cols as $name => $def) {
             if (!Schema::hasColumn('stores', $name)) {
@@ -1069,10 +1072,14 @@ class WhatsAppService
             }
             static::ensureStaffForwardPreset();
             static::ensureWelcomeImagePreset();
+            static::ensureAdviceNotePreset();
+            static::ensureServiceRecallPreset();
             static::ensureHmisPresets();
             static::repairHmisPresetBodies();
             static::ensureRepeatPreset();
-        static::ensurePaymentReceiptPreset();
+            static::ensurePaymentReceiptPreset();
+            static::ensureInvoicePreset();
+            static::ensureRadiologyPreset();
             return;
         }
         DB::statement("CREATE TABLE `wa_template_presets` (
@@ -1137,6 +1144,8 @@ class WhatsAppService
         static::repairHmisPresetBodies();
         static::ensureRepeatPreset();
         static::ensurePaymentReceiptPreset();
+        static::ensureInvoicePreset();
+        static::ensureRadiologyPreset();
     }
 
     /**
@@ -1416,6 +1425,82 @@ class WhatsAppService
     }
 
     /**
+     * "Due for a service again?" — the invitation ServiceRecallReminder sends a set number of
+     * days after a job is completed.
+     *
+     * MARKETING, like rebook_reminder and for the same reason: it is a nudge to buy again, and
+     * filing that as UTILITY is how a WABA gets its category corrected the hard way.
+     */
+    public static function ensureServiceRecallPreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('wa_template_presets')->where('name', 'service_recall')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Service Due Again',
+            'name'          => 'service_recall',
+            'category'      => 'MARKETING',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => null,
+            'body'          => "Hi {{1}}, it has been a while since {{2}} looked after your {{3}}. If it is due again, reply to this message and we will book you in.",
+            'footer'        => 'Reply STOP to unsubscribe',
+            'example'       => 'Ramesh | Sri Electricals | Washing Machine Repair and Services',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
+     * The fallback for a note typed by hand, when the customer has not messaged recently enough
+     * for plain text to reach them. See CustomerNote, which picks between the two.
+     *
+     * UTILITY: it answers or advises one person about their own visit or order. That keeps notes
+     * clear of the per-user marketing cap, which a note nobody can rely on arriving would fail —
+     * and it is why the sending screen must say plainly that this is not for offers. A vendor who
+     * types marketing copy into a UTILITY template puts their own WABA at risk, not ours.
+     */
+    public static function ensureAdviceNotePreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('wa_template_presets')->where('name', 'advice_note')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Note to a customer',
+            'name'          => 'advice_note',
+            'category'      => 'UTILITY',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => null,
+            'body'          => "Hi {{1}}, a note from {{2}}: {{3}}",
+            'footer'        => 'Reply to this message if you have any questions',
+            'example'       => 'Ramesh | Krishna Hospital | Please continue the tablets for three more days and come back if the pain returns',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
      * The slip a patient gets as they are booked in: token, doctor, and a link to the visit.
      *
      * UTILITY, and genuinely so — it confirms something the patient just did at the counter, which
@@ -1515,6 +1600,89 @@ class WhatsAppService
             'body'          => "Hi {{1}}, we have received {{2}} towards invoice {{3}} at {{4}}. {{5}} Your receipt is attached to this message — please keep it for your records.",
             'footer'        => 'Reply here if anything looks wrong',
             'example'       => 'Ramesh | ₹2,000.00 | KHB_M_26-27_234 | Krishna Hospital | Balance still due: ₹500.00.',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
+     * Preset behind the imaging report a patient gets once a radiology study is verified.
+     *
+     * Deliberately the same shape as lab_report_ready — name, hospital, what was done, link — so a
+     * hospital running both departments reads one message pattern rather than two. The findings
+     * themselves are never in the body: a scan result is behind the link, where it can be read in
+     * full rather than skimmed off a lock screen.
+     *
+     * Its own preset rather than reusing the lab one because a WABA holds one template per name,
+     * and a hospital with imaging but no pathology should not have to submit a template that talks
+     * about lab tests.
+     */
+    public static function ensureRadiologyPreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('wa_template_presets')->where('name', 'radiology_report_ready')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Radiology Report Ready (Hospital)',
+            'name'          => 'radiology_report_ready',
+            'category'      => 'UTILITY',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => null,
+            'body'          => "Hi {{1}}, your imaging report from {{2}} is ready. Scan done: {{3}}. Open {{4}} to view or download the full report, including the radiologist's findings and impression. This link works for 30 days.",
+            'footer'        => 'Please review the report with your doctor',
+            'example'       => 'Ramesh | Krishna Hospital | MRI Brain | https://mychitti.net/health-record/abc123',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
+     * Preset behind the bill a customer gets the moment it is raised.
+     *
+     * A media template, because the bill IS the attachment — a message saying what someone owes,
+     * with nothing they can save or show, is worse than no message. {{5}} carries a whole sentence
+     * rather than a bare balance so a settled bill reads as a thank-you and an open one as an
+     * amount due; a naked "0" would read as a demand.
+     *
+     * Distinct from payment_receipt, which goes out later when money actually changes hands. One is
+     * the ask, the other the acknowledgement, and a customer should be able to tell them apart.
+     */
+    public static function ensureInvoicePreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('wa_template_presets')->where('name', 'invoice_ready')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Bill / Invoice',
+            'name'          => 'invoice_ready',
+            'category'      => 'UTILITY',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => 'DOCUMENT',
+            'body'          => "Hi {{1}}, here is your bill from {{2}} — invoice {{3}} for {{4}}. {{5}} The bill is attached to this message; please keep it for your records.",
+            'footer'        => 'Reply here if anything looks wrong',
+            'example'       => 'Ramesh | Krishna Hospital | KHB_H_26-27_12 | ₹1,250.00 | Payment received in full, thank you.',
             'btn_text'      => null,
             'btn_url'       => null,
             'active'        => 1,

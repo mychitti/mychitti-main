@@ -17,6 +17,7 @@ use App\Jobs\Scheduled\RunWhatsAppCampaignsJob;
 use App\Jobs\Scheduled\SendDueHmisMessagesJob;
 use App\Jobs\Scheduled\SendAppointmentRebookRemindersJob;
 use App\Jobs\Scheduled\SendRepeatPurchaseRemindersJob;
+use App\Jobs\Scheduled\SendServiceRecallRemindersJob;
 use App\Jobs\Scheduled\SendAppointmentRemindersJob;
 use App\Jobs\Scheduled\SendPaymentRemindersJob;
 use App\Jobs\Scheduled\UnavailableProviderNotificationJob;
@@ -89,6 +90,14 @@ class Kernel extends ConsoleKernel
         $schedule->job(new SendAppointmentRebookRemindersJob)->dailyAt('11:00')
             ->timezone($tz)
             ->name('appointment-rebook-reminders')
+            ->withoutOverlapping();
+
+        // "Due for a service again?" — service customers past their store's chosen recall gap.
+        // Last of the three sweeps: anyone already messaged by the two above is on the shared
+        // fortnight cooldown by now, so nobody hears from the same store twice in one morning.
+        $schedule->job(new SendServiceRecallRemindersJob)->dailyAt('11:30')
+            ->timezone($tz)
+            ->name('service-recall-reminders')
             ->withoutOverlapping();
 
         // Feedback requests and follow-up reminders the vendor asked to delay.

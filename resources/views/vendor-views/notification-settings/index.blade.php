@@ -173,6 +173,33 @@
                             {{ $apptReminder > 0 ? 'ON' : 'OFF' }}
                         </span>
                     </div>
+
+                    {{-- Service recall: the toggle above turns it on, this decides how long the
+                         store waits. Blank means never, so the sweep skips this store entirely. --}}
+                    <div class="d-flex justify-content-between align-items-start py-2 border-top" style="gap:12px;">
+                        <div style="min-width:0;">
+                            <b style="font-size:14px;">Service due again — how long to wait</b>
+                            <small class="text-muted d-block" style="font-size:12px;">
+                                Counted from the day a service request is completed. Switch the message itself
+                                on with the "Service due again" toggle above.
+                            </small>
+                            <form action="{{ route('vendor.notification-settings.service-recall') }}" method="post"
+                                  class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
+                                @csrf
+                                <label class="mb-0 text-muted" style="font-size:12px;">Invite back after</label>
+                                <input type="number" name="days" class="form-control form-control-sm" style="width:80px;"
+                                       min="0" max="1095" placeholder="—" value="{{ $serviceRecallDays }}">
+                                <span class="text-muted" style="font-size:12px;">day(s)</span>
+                                <button type="submit" class="btn btn-sm btn-outline-primary py-0">Save</button>
+                                <small class="text-muted d-block w-100" style="font-size:11px;">
+                                    e.g. 180 for six months, 365 for a year. Leave blank or 0 to never chase.
+                                </small>
+                            </form>
+                        </div>
+                        <span class="badge badge-{{ (int) $serviceRecallDays > 0 ? 'success' : 'secondary' }} px-3 py-2 flex-shrink-0">
+                            {{ (int) $serviceRecallDays > 0 ? 'ON' : 'OFF' }}
+                        </span>
+                    </div>
                 @endif
             </div>
         </div>

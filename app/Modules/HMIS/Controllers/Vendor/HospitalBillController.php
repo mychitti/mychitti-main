@@ -14,6 +14,7 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\RadiologyInvoice;
 use App\Models\RadiologyStudy;
+use App\Services\InvoiceShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -304,6 +305,15 @@ class HospitalBillController extends Controller
         try {
             $data = _createBillPdf($invoice, 'vendor');
             $invoice->update(['pdf' => $data['pdf']]);
+
+            // WhatsApp the patient their bill, if this hospital turned that on. Never blocks the
+            // redirect: the bill is raised either way, and only something the staff member can
+            // actually act on (a missing phone number, a refused send) is worth a message.
+            $wa = InvoiceShare::auto($invoice, 'manual', $data['url'] ?? null);
+            if ($wa['message']) {
+                $wa['status'] === 'sent' ? Toastr::success($wa['message']) : Toastr::warning($wa['message']);
+            }
+
             return redirect(route('vendor.invoice.view-invoice', $invoice->id));
         } catch (\Throwable $e) {
             // The bill is already committed — only the PDF failed. Reporting plain success and

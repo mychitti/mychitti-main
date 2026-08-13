@@ -51,6 +51,16 @@ class NotificationPrefs
                     'template' => 'repeat_purchase_reminder',
                 ],
 
+                // Off by default, and for the same reason as the repeat purchase reminder above:
+                // it messages past customers unprompted, each one is billed, and it sends nothing
+                // at all until the store chooses how long after a job to chase.
+                'service_recall' => [
+                    'label'    => 'Service due again',
+                    'desc'     => 'Invites a customer to book again a set time after their service request was completed — you choose how many months under Store Settings (needs your approved service_recall template). At most one message a fortnight per customer, shared with the other reminders.',
+                    'default'  => false,
+                    'template' => 'service_recall',
+                ],
+
                 // On by default: this only ever fires when a human has just taken money from this
                 // customer at the counter, and a receipt is what they expect to walk away with.
                 'payment_receipt' => [
@@ -58,6 +68,16 @@ class NotificationPrefs
                     'desc'     => 'Sends the customer their receipt as a PDF each time a payment is recorded against one of their bills, part payment or full (needs your approved payment_receipt template).',
                     'default'  => true,
                     'template' => 'payment_receipt',
+                ],
+
+                // Off by default, unlike the receipt above it. A receipt acknowledges money the
+                // customer has just handed over; a bill that lands unasked can be an amount still
+                // owed, and chasing someone on WhatsApp is a decision a business makes on purpose.
+                'invoice_ready' => [
+                    'label'    => 'Bill on WhatsApp',
+                    'desc'     => 'Sends the customer their bill as a PDF the moment it is raised, on the sales billing and hospital billing screens (needs your approved invoice_ready template). Only new bills — editing one later never re-sends it.',
+                    'default'  => false,
+                    'template' => 'invoice_ready',
                 ],
 
                 // Hospital records. All default OFF, unlike everything above: these send a
@@ -128,6 +148,13 @@ class NotificationPrefs
                     'desc'    => 'Sent when a lab report is verified and finalized (needs your approved lab_report_ready template). Never sent for unverified results.',
                     'default' => false,
                     'template' => 'lab_report_ready',
+                    'module'  => 'hospital_manage',
+                ],
+                'hmis_radiology_report' => [
+                    'label'   => 'Radiology report',
+                    'desc'    => 'Sent when a radiology study is verified and finalized (needs your approved radiology_report_ready template). Never sent for a draft report.',
+                    'default' => false,
+                    'template' => 'radiology_report_ready',
                     'module'  => 'hospital_manage',
                 ],
             ],

@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\LabOrder;
 use App\Models\OpdVisit;
 use App\Models\Prescription;
+use App\Models\RadiologyStudy;
 use App\Services\HmisWhatsAppShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
@@ -142,5 +143,22 @@ class HmisWhatsAppController extends Controller
         }
 
         return $this->done(HmisWhatsAppShare::labReport($order, $this->phone($request)));
+    }
+
+    public function radiologyReport(Request $request, $id)
+    {
+        $study = RadiologyStudy::where('store_id', $this->storeId())->findOrFail($id);
+
+        // Same rule as a lab report: 'reported' means a radiologist has typed the findings but
+        // nobody has verified them, and a patient acting on an unverified scan is the one outcome
+        // this screen must not enable.
+        if (!in_array($study->status, ['verified', 'sent'], true)) {
+            Toastr::error($study->status === 'reported'
+                ? 'Finalize and verify this report before sending it to the patient.'
+                : 'This study is still ' . str_replace('_', ' ', (string) $study->status) . ' — it can be sent once verified.');
+            return back();
+        }
+
+        return $this->done(HmisWhatsAppShare::radiologyReport($study, $this->phone($request)));
     }
 }

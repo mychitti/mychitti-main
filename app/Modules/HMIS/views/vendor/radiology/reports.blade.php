@@ -28,6 +28,15 @@
                     <div style="display:flex;gap:4px">
                         <a href="{{ route('vendor.radiology.studies.print', $s->id) }}" target="_blank" class="btn btn-ghost btn-xs">View</a>
                         @if($canSend)<a href="{{ route('vendor.radiology.studies.send', $s->id) }}" class="btn btn-primary btn-xs">{{ $s->status==='sent'?'Resend':'Send' }}</a>@endif
+                        {{-- "Send" above goes to the referring doctor; this one goes to the patient,
+                             which is why it needs a number on file rather than just the permission. --}}
+                        @if($canSend && filled($s->patient->phone ?? null))
+                            <form method="post" action="{{ route('vendor.hmis-whatsapp.radiology-report', $s->id) }}" class="mb-0"
+                                  onsubmit="return confirm('Send this report to {{ addslashes($s->patient->name ?? 'the patient') }} on WhatsApp?')">
+                                @csrf
+                                <button type="submit" class="btn btn-outline btn-xs" title="Send to patient on WhatsApp">WhatsApp</button>
+                            </form>
+                        @endif
                         <a href="{{ route('vendor.radiology.studies.print', $s->id) }}" target="_blank" class="btn btn-outline btn-xs">🖨</a>
                     </div>
                 </div>
