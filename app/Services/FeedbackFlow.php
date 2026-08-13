@@ -219,8 +219,9 @@ class FeedbackFlow
     /** Happy answer: thank them, and ask for the review while they are pleased enough to leave one. */
     protected static function thankAndAskForReview(int $storeId, string $to, string $rating): bool
     {
-        $store  = DB::table('stores')->where('id', $storeId)->first(['name', 'slug', 'zone_id', 'insta_url']);
-        $name   = $store->name ?? 'our team';
+        $store = DB::table('stores')->where('id', $storeId)
+            ->first(['name', 'slug', 'zone_id', 'insta_url', 'fb_url']);
+        $name = $store->name ?? 'our team';
 
         $lines = [
             $rating === 'good'
@@ -231,8 +232,15 @@ class FeedbackFlow
         if ($url = self::storeUrl($store)) {
             $lines[] = "If you have a moment, a review really helps other patients find us: {$url}";
         }
-        if (!empty($store->insta_url)) {
-            $lines[] = "Follow us for updates: {$store->insta_url}";
+
+        // Whichever socials the store has filled in under Website Settings — a store with neither
+        // simply gets a shorter message rather than a line pointing nowhere.
+        $socials = array_filter([
+            !empty($store->insta_url) ? "Instagram: {$store->insta_url}" : null,
+            !empty($store->fb_url) ? "Facebook: {$store->fb_url}" : null,
+        ]);
+        if ($socials) {
+            $lines[] = "Follow us for updates —\n" . implode("\n", $socials);
         }
 
         return self::say($storeId, $to, implode("\n\n", $lines));

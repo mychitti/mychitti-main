@@ -28,6 +28,14 @@
                 <span class="text-truncate">{{ translate('Chats') }}</span>
             </a>
         </li>
+        {{-- Beside Chats rather than buried under reports: a complaint is work to pick up, and
+             the point of taking it off the inbox was that an inbox gets scrolled past. --}}
+        <li class="nav-item {{ Request::is('*whatsapp/complaints*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.complaints') }}" title="{{ translate('Feedback & Complaints') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Feedback & Complaints') }}</span>
+            </a>
+        </li>
         <li class="nav-item {{ Request::is('*whatsapp/connect*') || Request::is('*whatsapp/numbers*') || Request::is('*whatsapp/billing*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.connect') }}" title="{{ translate('Connection & Plan') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
