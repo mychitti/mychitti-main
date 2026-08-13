@@ -772,12 +772,76 @@ class PatientController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Everything that records something having happened to a patient — clinical or financial.
+     *
+     * Six of these hold the row down at the database with ON DELETE RESTRICT (appointments,
+     * opd_visits, ipd_admissions, prescriptions, lab_test_requests, ot_schedules); the rest carry
+     * a patient_id with no constraint behind it and would simply be orphaned. Both are treated
+     * the same way here: a patient who has any history is not deleted, because a hospital may not
+     * quietly destroy visit, prescription or billing records to tidy up a list.
+     *
+     * Deliberately NOT in this list: patient_documents and patient_medical_history, which cascade
+     * at the database and belong to the patient rather than recording an event.
+     */
+    const PATIENT_HISTORY_TABLES = [
+        'appointments'              => 'appointment',
+        'opd_visits'                => 'OPD visit',
+        'ipd_admissions'            => 'IPD admission',
+        'prescriptions'             => 'prescription',
+        'lab_test_requests'         => 'lab test request',
+        'lab_orders'                => 'lab order',
+        'lab_invoices'              => 'lab invoice',
+        'ot_schedules'              => 'surgery schedule',
+        'preop_cases'               => 'pre-op case',
+        'radiology_studies'         => 'radiology study',
+        'radiology_invoices'        => 'radiology invoice',
+        'opd_consultation_receipts' => 'consultation receipt',
+        'nursing_notes'             => 'nursing note',
+        'nursing_vitals'            => 'vitals record',
+        'nursing_mar_orders'        => 'medication order',
+        'nursing_fluid_entries'     => 'fluid entry',
+        'diet_charts'               => 'diet chart',
+        'patient_consents'          => 'consent form',
+    ];
+
     public function destroy($id)
     {
         if (!auth('vendor')->check() && !hasPermission('patient', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
-        $patient->delete();
+
+        // Without this the RESTRICT constraints surface as a raw SQLSTATE 23000 dump, which tells
+        // the receptionist nothing about which record is in the way.
+        $blocking = [];
+        foreach (self::PATIENT_HISTORY_TABLES as $table => $label) {
+            if (!Schema::hasTable($table)) {
+                continue;
+            }
+            $count = DB::table($table)->where('patient_id', $patient->id)->count();
+            if ($count > 0) {
+                $blocking[] = $count . ' ' . $label . ($count === 1 ? '' : 's');
+            }
+        }
+
+        if (!empty($blocking)) {
+            Toastr::error(
+                $patient->name . ' has ' . implode(', ', $blocking) . ' on record and cannot be '
+                . 'deleted. Those are part of the patient\'s history — edit the patient instead.'
+            );
+            return back();
+        }
+
+        DB::transaction(function () use ($patient) {
+            // patient_documents cascades, but the files it points at do not — deleting the row
+            // without this leaves the uploads behind on the disk for good.
+            foreach (PatientDocument::where('patient_id', $patient->id)->get() as $doc) {
+                if ($doc->file_path) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($doc->file_path);
+                }
+            }
+            $patient->delete();
+        });
 
         Toastr::success('Patient deleted');
         return redirect()->route('vendor.patient.list');
