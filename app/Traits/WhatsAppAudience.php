@@ -90,20 +90,15 @@ trait WhatsAppAudience
         // phones on every send — the rest of the audience was unreachable until the front of the
         // list burnt through the shared cap.
         //
-        // A correlated subquery, not a list pulled into PHP: the pool runs to tens of thousands
-        // and this query is also what the displayed audience count is built from.
-        if (Schema::hasTable('whatsapp_messages')) {
-            $reached = $this->collatedPhone($this->phone10Sql('m.recipient'));
-            $candidate = $this->collatedPhone($phone10);
-
-            $query->whereNotExists(function ($q) use ($storeId, $reached, $candidate) {
-                $q->select(DB::raw(1))->from('whatsapp_messages as m')
-                    ->where('m.store_id', $storeId)
-                    ->where('m.direction', 'out')
-                    ->whereIn('m.context', WhatsAppService::PLATFORM_AUDIENCE_CONTEXTS)
-                    ->where('m.sent_at', '>=', now()->subDays(WhatsAppService::PLATFORM_ROTATION_DAYS))
-                    ->whereRaw("{$reached} = {$candidate}");
-            });
+        // A bound list, like the two exclusions above it. This was a correlated NOT EXISTS on the
+        // grounds that "the pool runs to tens of thousands" — but that is the size of the
+        // CANDIDATE pool, not of this list, which is only what one store sent in one 30-day
+        // window. Re-running that subquery per candidate, with both sides wrapped in
+        // CONVERT/COLLATE so no index could ever be used, took the audience count from 0.8s to
+        // 65s and was the whole reason Bulk Message timed out.
+        $reached = $this->recentlyReachedPhones($storeId);
+        if (!empty($reached)) {
+            $query->whereNotIn(DB::raw($phone10), $reached);
         }
 
         return $query;
@@ -236,6 +231,39 @@ trait WhatsAppAudience
                 ->pluck('users.phone');
         } catch (\Throwable $e) {
             Log::warning('offers opt-out lookup failed: ' . $e->getMessage());
+            return [];
+        }
+
+        return array_values(array_unique(array_filter($phones
+            ->map(fn($p) => substr(preg_replace('/[^0-9]/', '', (string) $p) ?? '', -10))
+            ->all())));
+    }
+
+    /**
+     * Last-10-digit forms of the platform numbers THIS store has already reached inside the
+     * rotation window — the people it should walk past rather than message again.
+     *
+     * Bounded by one store's own outbound pool sends over PLATFORM_ROTATION_DAYS, so it stays
+     * small where the candidate pool it filters does not. Compared against a bound list rather
+     * than column-to-column, which is why it needs none of collatedPhone()'s conversion.
+     */
+    protected function recentlyReachedPhones(int $storeId): array
+    {
+        if (!Schema::hasTable('whatsapp_messages')) {
+            return [];
+        }
+
+        try {
+            $phones = DB::table('whatsapp_messages')
+                ->where('store_id', $storeId)
+                ->where('direction', 'out')
+                ->whereIn('context', WhatsAppService::PLATFORM_AUDIENCE_CONTEXTS)
+                ->where('sent_at', '>=', now()->subDays(WhatsAppService::PLATFORM_ROTATION_DAYS))
+                ->whereNotNull('recipient')
+                ->distinct()
+                ->pluck('recipient');
+        } catch (\Throwable $e) {
+            Log::warning('recently reached lookup failed: ' . $e->getMessage());
             return [];
         }
 
