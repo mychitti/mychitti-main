@@ -758,7 +758,10 @@ class WhatsAppService
             return ['success' => false, 'error' => 'WhatsApp Business Account ID is required to manage templates.', 'data' => []];
         }
         try {
+            // Bounded: this runs inline while a page renders, and Laravel's default would let a
+            // slow Graph response hold the request open for 30s before anything is drawn.
             $resp = Http::withToken($this->cfg['token'])->acceptJson()
+                ->connectTimeout(5)->timeout(12)
                 ->get($this->wabaEndpoint('message_templates'), [
                     'limit'  => $limit,
                     'fields' => 'name,status,category,language,components,id,parameter_format',
@@ -2046,6 +2049,12 @@ class WhatsAppService
             if (!static::hasIndex('wa_bulk_sends', 'wabs_store_run')) {
                 DB::statement("ALTER TABLE `wa_bulk_sends` ADD KEY `wabs_store_run` (`store_id`, `id`)");
             }
+            // The history listing groups a store's rows by run_id. With only (store_id, id) to
+            // work from, that is a temp table over every row the store has ever sent; ordered by
+            // run_id it groups straight off the index, and sent_at rides along for MIN/MAX.
+            if (!static::hasIndex('wa_bulk_sends', 'wabs_store_runid')) {
+                DB::statement("ALTER TABLE `wa_bulk_sends` ADD KEY `wabs_store_runid` (`store_id`, `run_id`, `sent_at`)");
+            }
             return;
         }
 
@@ -2071,7 +2080,8 @@ class WhatsAppService
             UNIQUE KEY `wabs_once` (`run_id`, `phone10`),
             KEY `wabs_rotation` (`store_id`, `audience`, `sent_at`),
             KEY `wabs_run` (`run_id`, `status`),
-            KEY `wabs_store_run` (`store_id`, `id`)
+            KEY `wabs_store_run` (`store_id`, `id`),
+            KEY `wabs_store_runid` (`store_id`, `run_id`, `sent_at`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 

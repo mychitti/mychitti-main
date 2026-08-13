@@ -823,6 +823,13 @@ class WhatsAppController extends Controller
             ];
         }
 
+        // These recipients have just entered this store's rotation window, so the displayed
+        // audience size is now out of date — drop it rather than let the composer keep offering
+        // people it can no longer reach for the next ten minutes.
+        if ($platform) {
+            $this->forgetOutreachCount($storeId);
+        }
+
         return response()->json([
             'success' => true,
             'sent'    => count(array_filter($results, fn($r) => $r['success'])),
@@ -1093,7 +1100,12 @@ class WhatsAppController extends Controller
                 DB::raw('MAX(template) as template'),
                 DB::raw('MAX(language) as language'),
                 DB::raw('MAX(audience) as audience'),
-                DB::raw('MAX(body) as body'),
+                // LEFT(), not the bare column: body is TEXT, and a GROUP BY carrying a TEXT value
+                // cannot use an in-memory temp table — MySQL spills the entire grouping to disk.
+                // One row per recipient lives in here, so a store that has sent a few hundred
+                // thousand messages was sorting all of them on disk to draw twenty rows. The
+                // listing truncates to 110 characters anyway.
+                DB::raw('MAX(LEFT(body, 200)) as body'),
                 DB::raw('COUNT(*) as recipients'),
                 DB::raw("SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent"),
                 DB::raw("SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed"),

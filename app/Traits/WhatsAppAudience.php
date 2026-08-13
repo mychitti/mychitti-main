@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\CentralLogics\Helpers;
 use App\Models\UserNotificationPreference;
 use App\Services\WhatsAppService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -108,10 +109,39 @@ trait WhatsAppAudience
         return $query;
     }
 
-    /** How many distinct people outreachQuery() would reach. */
+    /**
+     * How many distinct people outreachQuery() would reach.
+     *
+     * Cached, because this is a headline figure on pages the vendor opens and re-opens, and the
+     * query behind it is the most expensive one either the bulk composer or the campaign builder
+     * runs: a union of the platform user table and every other store's book in the city, grouped
+     * on a computed phone suffix that no index covers. There is no reason to pay for it again on
+     * every page view.
+     *
+     * Display only. Nothing is ever sent to a cached figure — bulkSend() and the campaign runner
+     * re-run outreachQuery() live, so a stale count can at worst offer a number that comes back
+     * a little smaller when the batch is actually built.
+     */
     protected function outreachCount(int $storeId): int
     {
-        return DB::query()->fromSub($this->outreachQuery($storeId), 'c')->count();
+        // 10 minutes: long enough that reopening the page is free, short enough that the figure
+        // still tracks the pool as other vendors send into it.
+        return (int) Cache::remember(
+            $this->outreachCountKey($storeId),
+            600,
+            fn() => DB::query()->fromSub($this->outreachQuery($storeId), 'c')->count()
+        );
+    }
+
+    /** Drop the cached figure after a send — the rotation window has just moved. */
+    protected function forgetOutreachCount(int $storeId): void
+    {
+        Cache::forget($this->outreachCountKey($storeId));
+    }
+
+    protected function outreachCountKey(int $storeId): string
+    {
+        return 'wa_outreach_count_' . $storeId;
     }
 
     /** Client books of the OTHER stores in this city, plus rows with no store_id at all. */
