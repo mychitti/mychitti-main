@@ -1901,6 +1901,45 @@ class WhatsAppController extends Controller
         }
     }
 
+    /**
+     * The sample picture Meta reviews an IMAGE-header preset against.
+     *
+     * A placeholder that ships with the app, not the store's own picture: this is only what the
+     * reviewer sees, and every message sends the store's own image in its place (resolved per
+     * send by WhatsAppService::headerImageUrl()). Using a placeholder also keeps the preset a
+     * genuine one-click submit for a store that has not uploaded anything yet.
+     */
+    private function sampleImageHeader(WhatsAppService $wa)
+    {
+        $config = Helpers::get_business_settings('whatsapp_config');
+        $appId = $config['es_app_id'] ?? null;
+        $appSecret = $config['es_app_secret'] ?? null;
+        if (!$appId || !$appSecret) {
+            Toastr::error('Templates with a picture need the WhatsApp app credentials. Ask the admin to set them up.');
+            return false;
+        }
+
+        try {
+            $path = public_path('assets/admin/img/900x400/img1.jpg');
+            if (!is_file($path)) {
+                Toastr::error('The sample picture is missing from this installation.');
+                return false;
+            }
+
+            $handle = $wa->uploadHeaderMedia($path, 'image/jpeg', $appId, $appSecret);
+            if (!$handle) {
+                Toastr::error('Could not upload the sample picture to Meta. Please try again in a moment.');
+                return false;
+            }
+
+            return ['format' => 'IMAGE', 'handle' => $handle];
+        } catch (\Throwable $e) {
+            Log::error('WA sample image header failed: ' . $e->getMessage());
+            Toastr::error('Could not prepare the sample picture for this template.');
+            return false;
+        }
+    }
+
     private function templateQuotaError(WhatsAppService $wa, int $storeId): ?string
     {
         $res = $wa->listTemplates();
@@ -2182,8 +2221,14 @@ class WhatsAppController extends Controller
         // the vendor to produce one would end the "one click" promise, so the platform generates
         // a representative sample and uploads it for them.
         $header = $preset->header;
-        if (strtoupper((string) ($preset->header_format ?? '')) === 'DOCUMENT') {
+        $headerFormat = strtoupper((string) ($preset->header_format ?? ''));
+        if ($headerFormat === 'DOCUMENT') {
             $header = $this->sampleDocumentHeader($wa);
+            if ($header === false) {
+                return back();
+            }
+        } elseif ($headerFormat === 'IMAGE') {
+            $header = $this->sampleImageHeader($wa);
             if ($header === false) {
                 return back();
             }
@@ -2222,15 +2267,6 @@ class WhatsAppController extends Controller
                 if ($retry['success']) {
                     $res = $retry;
                     $submittedAs = $alternative;
-                    // Roles resolve by name, so a renamed template is invisible to the automation
-                    // until the role points at it. Renaming without this would submit a template
-                    // that never sends anything.
-                    $reboundRole = $this->bindRoleToRenamedTemplate(
-                        Helpers::get_store_id(),
-                        $preset->name,
-                        $alternative,
-                        $preset->language ?: 'en_US'
-                    );
                 }
             }
         }
@@ -2240,7 +2276,19 @@ class WhatsAppController extends Controller
             // would not see the new name (or the new binding's target) for another five minutes.
             WhatsAppService::forgetTemplateStatuses(Helpers::get_store_id());
 
+            // Roles resolve by name, so any template not named after the role's default - the
+            // picture variant, or a rename forced by Meta's hold - is invisible to the automation
+            // until the role points at it.
+            $reboundRole = $this->bindRoleForTemplate(
+                Helpers::get_store_id(),
+                $submittedAs,
+                $preset->language ?: 'en_US'
+            );
+
             $note = '"' . $preset->title . '" submitted to Meta for review on your WhatsApp account.';
+            if ($reboundRole && $submittedAs === $preset->name) {
+                $note .= ' Your "' . $reboundRole . '" automation now uses it.';
+            }
             if ($submittedAs !== $preset->name) {
                 $note .= ' WhatsApp still reserves the name "' . $preset->name . '" from when it was'
                     . ' deleted, so it went in as "' . $submittedAs . '".';
@@ -2298,16 +2346,28 @@ class WhatsAppController extends Controller
     }
 
     /**
-     * Point whichever role defaults to this preset at the name it actually went in under.
-     * Returns the role's label so the vendor can be told, or null when the preset drives no role.
+     * Point the automation at a template submitted under something other than the role's default
+     * name. Returns the role's label so the vendor can be told, or null if it drives no role.
+     *
+     * Variant suffixes are stripped before matching: "_image" is the version whose header carries
+     * a picture, "_vN" a resubmit forced by Meta's 30-day hold on a deleted name. Both are still
+     * the same automation, and without the binding a renamed template is one the code never finds.
      */
-    private function bindRoleToRenamedTemplate(int $storeId, string $presetName, string $actualName, string $language): ?string
+    private function bindRoleForTemplate(int $storeId, string $submittedName, string $language): ?string
     {
+        $base = preg_replace('/(_image)?(_v\d+)?$/', '', strtolower($submittedName));
+
         foreach (WhatsAppService::TEMPLATE_ROLES as $role => $meta) {
-            if (strtolower((string) ($meta['default'] ?? '')) === strtolower($presetName)) {
-                WhatsAppService::bindTemplate($storeId, $role, $actualName, $language);
-                return $meta['label'] ?? $role;
+            $default = strtolower((string) ($meta['default'] ?? ''));
+            if ($default === '' || $default !== $base) {
+                continue;
             }
+            // Binding a role to the name it already defaults to is a row that changes nothing.
+            if ($default === strtolower($submittedName)) {
+                return null;
+            }
+            WhatsAppService::bindTemplate($storeId, $role, $submittedName, $language);
+            return $meta['label'] ?? $role;
         }
 
         return null;

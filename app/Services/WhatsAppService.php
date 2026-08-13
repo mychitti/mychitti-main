@@ -1025,6 +1025,9 @@ class WhatsAppService
             // ours to choose: Meta pushes it on the business_capability_update webhook as
             // max_phone_numbers_per_business. NULL = never heard, so no ceiling is enforced.
             'wa_max_numbers'         => 'INT NULL',
+            // Picture for templates whose header carries an image (a welcome with a banner, say).
+            // NULL falls back to the store's own cover or logo — see headerImageUrl().
+            'wa_welcome_image'       => 'VARCHAR(255) NULL',
         ];
         foreach ($cols as $name => $def) {
             if (!Schema::hasColumn('stores', $name)) {
@@ -1065,6 +1068,7 @@ class WhatsAppService
                 }
             }
             static::ensureStaffForwardPreset();
+            static::ensureWelcomeImagePreset();
             static::ensureHmisPresets();
             static::repairHmisPresetBodies();
             static::ensureRepeatPreset();
@@ -1177,6 +1181,56 @@ class WhatsAppService
 
         DB::table('business_settings')->updateOrInsert(
             ['key' => 'wa_preset_staff_forward_seeded'],
+            ['value' => '1', 'updated_at' => now(), 'created_at' => now()]
+        );
+    }
+
+    /**
+     * The welcome message again, with a picture above it — some stores want one and some do not.
+     *
+     * A separate preset rather than a setting, because the choice is not ours to store: Meta
+     * rejects a message whose payload does not match the shape the template was approved with, so
+     * the template a store picked IS the answer, per store. The name carries an "_image" suffix
+     * (a WABA holds one template per name) and templateFromPreset() binds the welcome role to it
+     * on submit, since the automation resolves templates by name.
+     *
+     * Sent with the store's own cover or logo — see headerImageUrl(). The picture Meta reviews is
+     * only a placeholder.
+     */
+    public static function ensureWelcomeImagePreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('business_settings')->where('key', 'wa_preset_welcome_image_seeded')->exists()) {
+            return;
+        }
+
+        if (!DB::table('wa_template_presets')->where('name', 'customer_welcome_image')->exists()) {
+            $now = now();
+            DB::table('wa_template_presets')->insert([
+                'title'         => 'Welcome Message with picture',
+                'name'          => 'customer_welcome_image',
+                'category'      => 'MARKETING',
+                'language'      => 'en_US',
+                'header'        => null,
+                'header_format' => 'IMAGE',
+                'body'          => "Hi {{1}}, thank you for choosing {{2}}! We've added you to our customer list — you'll now receive your bills, updates and offers from us right here on WhatsApp. Reply to this message anytime and we'll be happy to help.",
+                'footer'        => 'Reply STOP to unsubscribe',
+                'example'       => 'Ramesh | Krishna Hospital',
+                'btn_text'      => null,
+                'btn_url'       => null,
+                'active'        => 1,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ]);
+        }
+
+        DB::table('business_settings')->updateOrInsert(
+            ['key' => 'wa_preset_welcome_image_seeded'],
             ['value' => '1', 'updated_at' => now(), 'created_at' => now()]
         );
     }
@@ -1536,14 +1590,23 @@ class WhatsAppService
             }
             $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
 
+            // Some stores want a picture at the top of the welcome and some do not. The template
+            // they had approved is the only thing that may decide it — Meta rejects the whole
+            // message if the payload does not match the shape the template was created with.
+            $header = static::mediaHeaderFor($storeId, $tpl['name'], $tpl['language']);
+            if ($header === false) {
+                Log::warning("WA welcome skipped for store {$storeId}: template {$tpl['name']} needs a media header this store has no picture for.");
+                return;
+            }
+
             // Body vars: {{1}} customer name, {{2}} store name.
-            $components = [[
+            $components = array_merge($header, [[
                 'type' => 'body',
                 'parameters' => array_map(
                     fn($v) => ['type' => 'text', 'text' => $v],
                     [trim((string) $customerName) ?: 'there', $storeName]
                 ),
-            ]];
+            ]]);
 
             $wa->sendTemplate($phone, $tpl['name'], $tpl['language'], $components, 'welcome');
         } catch (\Throwable $e) {
@@ -2815,6 +2878,62 @@ class WhatsAppService
         } catch (\Throwable $e) {
             return null;
         }
+    }
+
+    /**
+     * The header components an automated send must carry for this store's bound template.
+     *
+     * Returns [] when the template has a TEXT header or none — the overwhelming majority — so a
+     * caller can array_merge() it in front of the body unconditionally. Returns FALSE when the
+     * template wants a picture and the store has none to give: the send must then be abandoned,
+     * because a media template sent without its header is rejected whole with (#132012), and a
+     * message that fails at Meta is still billed at dispatch.
+     *
+     * Only IMAGE is satisfiable automatically. A welcome bound to a VIDEO or DOCUMENT template
+     * is asking for a file per recipient that nothing here can produce, so it is refused rather
+     * than guessed at.
+     */
+    public static function mediaHeaderFor(int $storeId, string $name, ?string $lang = null)
+    {
+        $format = static::templateHeaderFormat($storeId, $name, $lang);
+        if ($format === null || $format === 'TEXT') {
+            return [];
+        }
+        if ($format !== 'IMAGE') {
+            return false;
+        }
+
+        $url = static::headerImageUrl($storeId);
+        return $url ? [static::mediaHeaderComponent('IMAGE', $url)] : false;
+    }
+
+    /**
+     * The picture a media-header template carries for this store, as a URL Meta can fetch.
+     *
+     * An explicitly chosen welcome image wins; otherwise the store's own cover or logo stands in,
+     * so a vendor who picks an image template gets something sensible without configuring
+     * anything. Built on the canonical /storage path rather than asset('storage/app/public/…'),
+     * which only resolves through a 301 — Meta is fetching this, not a browser.
+     */
+    public static function headerImageUrl(int $storeId): ?string
+    {
+        $store = DB::table('stores')->where('id', $storeId)->first();
+        if (!$store) {
+            return null;
+        }
+
+        foreach ([
+            ['wa_welcome_image', 'whatsapp/header/'],
+            ['cover_photo',      'store/cover/'],
+            ['logo',             'store/'],
+        ] as [$column, $dir]) {
+            $file = $store->{$column} ?? null;
+            if (is_string($file) && trim($file) !== '') {
+                return url('storage/' . $dir . ltrim(trim($file), '/'));
+            }
+        }
+
+        return null;
     }
 
     /**
