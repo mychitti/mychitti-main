@@ -2679,6 +2679,29 @@ class WhatsAppService
         ];
     }
 
+    /**
+     * Is this template approved on the store's WABA right now?
+     *
+     * Stricter than templateExists(), and for a different job: existence is enough to decide
+     * whether a feature is configured, but an automated send needs to know Meta will actually
+     * accept it. A PENDING template is accepted by nothing — the message fails, the store is
+     * billed for it anyway (charges are taken at dispatch), and any dedupe row it claimed is
+     * spent, so the record never gets a second attempt once approval lands.
+     *
+     * An unreadable list still means "unknown", never "not approved": a Graph blip must not
+     * silently switch off every automation, so the caller proceeds and lets the send report
+     * the truth itself.
+     */
+    public static function templateApproved(int $storeId, string $name): bool
+    {
+        $statuses = static::templateStatuses($storeId);
+        if ($statuses === []) {
+            return true;
+        }
+
+        return strtoupper((string) ($statuses[strtolower($name)] ?? '')) === 'APPROVED';
+    }
+
     /** Is a template of this name on the store's WABA at all, in any language? */
     public static function templateExists(int $storeId, string $name): bool
     {

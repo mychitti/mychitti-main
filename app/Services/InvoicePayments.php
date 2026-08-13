@@ -517,6 +517,16 @@ class InvoicePayments
                 return $quiet();
             }
 
+            // This toggle is on by default, so an unapproved template would fail — and be billed —
+            // on every payment taken. Standing conditions stay quiet, like the two above it; the
+            // template's real status is on the Templates screen.
+            if (!WhatsAppService::templateApproved($storeId, self::TEMPLATE)) {
+                Log::info('Payment receipt skipped — template not approved', [
+                    'store' => $storeId, 'template' => self::TEMPLATE,
+                ]);
+                return $quiet();
+            }
+
             $customer = self::billTo($invoice);
             $phone = trim((string) ($customer['phone'] ?? ''));
             if (strlen(preg_replace('/[^0-9]/', '', $phone) ?? '') < 10) {

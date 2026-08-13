@@ -280,6 +280,19 @@ class HmisWhatsAppShare
                 return false;
             }
 
+            // Nothing can send on a template Meta has not approved. Attempting it anyway would
+            // fail, be billed regardless (charges are taken at dispatch), and spend the claim row
+            // below — so this record could never be sent again even after approval came through.
+            // Skipping without claiming leaves the toggle safe to turn on while a template is
+            // still in review; records registered during that window are skipped, not queued.
+            $template = self::KINDS[$kind]['template'] ?? null;
+            if (!$template || !WhatsAppService::templateApproved($storeId, $template)) {
+                Log::info('HMIS auto-send skipped — template not approved', [
+                    'kind' => $kind, 'store' => $storeId, 'template' => $template,
+                ]);
+                return false;
+            }
+
             self::ensureAutoTable();
 
             // Claim it before sending. A duplicate key means somebody already has.
