@@ -1267,6 +1267,7 @@ class WhatsAppService
         // Added after the first HMIS seed shipped, so it sits above the seeded-once guard —
         // below it, no existing hospital would ever be offered the template.
         self::ensurePatientDocumentPreset();
+        self::ensureRebookPreset();
         self::ensureVisitRegisteredPreset();
 
         if (DB::table('business_settings')->where('key', 'wa_preset_hmis_seeded')->exists()) {
@@ -1306,18 +1307,6 @@ class WhatsAppService
                 'body'     => "Hi {{1}}, this is a reminder from {{2}} that your follow-up visit is due on {{3}} with {{4}}. Please reply to this message if you need a different date.",
                 'footer'   => null,
                 'example'  => 'Ramesh | Krishna Hospital | 02 Aug 2026 | Dr. Anita Rao',
-            ],
-            [
-                // MARKETING, not UTILITY: nothing has happened on the patient's account to report.
-                // This asks someone who stopped coming to come back, which is what Meta means by
-                // marketing, and filing it as utility is how a WABA gets its category corrected
-                // the hard way.
-                'title'    => 'Rebook Reminder (Hospital)',
-                'name'     => 'rebook_reminder',
-                'category' => 'MARKETING',
-                'body'     => "Hi {{1}}, it has been a while since your last visit with {{2}} at {{3}}. If you are due for a check-up, reply to this message and we will find you a slot.",
-                'footer'   => 'Reply STOP to unsubscribe',
-                'example'  => 'Ramesh | Dr. Anita Rao | Krishna Hospital',
             ],
             [
                 'title'    => 'Lab Report Ready (Hospital)',
@@ -1416,6 +1405,49 @@ class WhatsAppService
             'body'          => "Hi {{1}}, {{2}} has sent you a document — {{3}}, dated {{4}}. It is attached to this message. Please save it for your records.",
             'footer'        => 'Reply here if you cannot open the file',
             'example'       => 'Ramesh | Krishna Hospital | Discharge summary | 25 July 2026',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
+     * "It has been a while — due for a check-up?" — the invitation AppointmentRebookReminder
+     * sends once a patient is past their doctor's recall interval.
+     *
+     * MARKETING, not UTILITY: nothing has happened on the patient's account to report. This asks
+     * someone who stopped coming to come back, which is what Meta means by marketing, and filing
+     * it as utility is how a WABA gets its category corrected the hard way.
+     *
+     * Stands on its own ABOVE ensureHmisPresets()' seeded-once guard. It used to sit inside that
+     * method's list, which meant every hospital seeded before it was added never saw it - the
+     * doctor form offered a recall interval, the toggle existed and the sweep ran, but the
+     * template it needs could not be created from the suggested list at all.
+     */
+    public static function ensureRebookPreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('wa_template_presets')->where('name', 'rebook_reminder')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Rebook Reminder (Hospital)',
+            'name'          => 'rebook_reminder',
+            'category'      => 'MARKETING',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => null,
+            'body'          => "Hi {{1}}, it has been a while since your last visit with {{2}} at {{3}}. If you are due for a check-up, reply to this message and we will find you a slot.",
+            'footer'        => 'Reply STOP to unsubscribe',
+            'example'       => 'Ramesh | Dr. Anita Rao | Krishna Hospital',
             'btn_text'      => null,
             'btn_url'       => null,
             'active'        => 1,
