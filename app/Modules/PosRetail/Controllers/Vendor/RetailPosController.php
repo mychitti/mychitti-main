@@ -2558,6 +2558,7 @@ class RetailPosController extends Controller
     {
         $storeId = $this->storeId();
         $items = InvoiceItem::with('item.itemunit')->where('manual_invoice_id', $invoice->id)->get();
+        $this->decorateReceiptLines($items);
         $store = Helpers::get_store_data();
         $legs = DB::table('pos_payment_legs')->where('manual_invoice_id', $invoice->id)->get();
         $customer = $invoice->bill_to ? StoreCustomer::find($invoice->bill_to) : null;
@@ -2584,7 +2585,7 @@ class RetailPosController extends Controller
         // Customer savings vs MRP: Σ(mrp − selling price)·qty per line, plus bill discount + coupon.
         $mrpSaving = 0;
         foreach ($items as $it) {
-            $mrp = (float) (optional($it->item)->mrp ?? 0);
+            $mrp = (float) ($it->line_mrp ?? 0);
             $price = (float) ($it->price ?? 0);
             $qty = (float) ($it->qty ?? 0);
             if ($mrp > $price) {
@@ -2601,6 +2602,48 @@ class RetailPosController extends Controller
         }
 
         return view('posretail::vendor.retail-pos.thermal', compact('invoice', 'items', 'store', 'legs', 'customer', 'receiptTemplate', 'tendered', 'changeReturn', 'balanceDue', 'savedAmount'))->render();
+    }
+
+    /**
+     * Qty text and comparable MRP for every receipt line.
+     *
+     * A measured-pack line is billed in PACKS: nine 500gm packs are qty 9 at ₹23 a pack. The
+     * receipts read "loose" off the ITEM (sugar is sold loose) and then printed that 9 with the
+     * item's own unit — "9 kg" for 4.5 kg of sugar — and valued the saving against the per-kg
+     * MRP, so the bill also claimed roughly twice the discount actually given. Pack lines print
+     * as "9 × 500gm" and compare against the MRP of one pack; every other line is unchanged.
+     */
+    private function decorateReceiptLines($items): void
+    {
+        $trim = fn($n, $dp) => rtrim(rtrim(number_format((float) $n, $dp, '.', ''), '0'), '.') ?: '0';
+
+        foreach ($items as $it) {
+            $item = $it->item;
+            $qty  = (float) $it->qty;
+            $mrp  = (float) (optional($item)->mrp ?? 0);
+            $pack = null;
+            $varType = trim((string) ($it->variation_type ?? ''));
+
+            if ($item && $varType !== '' && _variationMode($item) === 'measured' && ($var = _variationRow($item, $varType))) {
+                $pack = _variationPack($item, $var);
+            }
+
+            if ($pack) {
+                $it->qty_label = $trim($qty, 3) . ' × ' . $varType;
+                // mrp is held per item unit, so one pack is worth that much of it.
+                $it->line_mrp = $mrp * _variationQtyInItemUnit($item, $pack, 1);
+                continue;
+            }
+
+            $it->line_mrp = $mrp;
+            if (!empty(optional($item)->sell_loose) || !empty($it->pieces)) {
+                // Weighed line — show the weight with its unit, not the piece count.
+                $unitTxt = optional(optional($item)->itemunit)->unit;
+                $it->qty_label = $trim($qty, 3) . ($unitTxt ? ' ' . $unitTxt : '');
+            } else {
+                $it->qty_label = $trim($qty, 2);
+            }
+        }
     }
 
     // ── Email invoice (§4.3) ────────────────────────────────────────────────────

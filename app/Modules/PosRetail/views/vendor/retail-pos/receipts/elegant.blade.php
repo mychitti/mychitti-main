@@ -65,15 +65,7 @@
         <table>
             <tr><th style="width:30%;">Qty</th><th class="r" style="width:35%;">Rate</th><th class="r" style="width:35%;">Amt</th></tr>
             @foreach ($items as $it)
-                @php
-                    $isLoose = !empty(optional($it->item)->sell_loose) || !empty($it->pieces);
-                    if ($isLoose) {
-                        $unitTxt = optional(optional($it->item)->itemunit)->unit;
-                        $qtyTxt = rtrim(rtrim(number_format((float) $it->qty, 3), '0'), '.') . ($unitTxt ? ' ' . $unitTxt : '');
-                    } else {
-                        $qtyTxt = rtrim(rtrim(number_format((float) $it->qty, 2), '0'), '.');
-                    }
-                @endphp
+                @php($qtyTxt = $it->qty_label ?? rtrim(rtrim(number_format((float) $it->qty, 2), '0'), '.'))
                 <tr>
                     <td colspan="3" style="padding-bottom:0;">{{ $it->name }}@if ($it->hsn && !empty($gstCode))<br><small style="color:#000;">HSN {{ $it->hsn }}</small>@endif</td>
                 </tr>

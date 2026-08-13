@@ -57,16 +57,7 @@
     <table>
         <tr class="b"><td style="width:30%;">Qty</td><td class="r" style="width:35%;">Rate</td><td class="r" style="width:35%;">Amt</td></tr>
         @foreach ($items as $it)
-            @php
-                $isLoose = !empty(optional($it->item)->sell_loose) || !empty($it->pieces);
-                if ($isLoose) {
-                    // Weighed item — show only the weight (with unit), not the piece count.
-                    $unitTxt = optional(optional($it->item)->itemunit)->unit;
-                    $qtyTxt = rtrim(rtrim(number_format((float) $it->qty, 3), '0'), '.') . ($unitTxt ? ' ' . $unitTxt : '');
-                } else {
-                    $qtyTxt = rtrim(rtrim(number_format((float) $it->qty, 2), '0'), '.');
-                }
-            @endphp
+            @php($qtyTxt = $it->qty_label ?? rtrim(rtrim(number_format((float) $it->qty, 2), '0'), '.'))
             <tr>
                 <td colspan="3" style="padding-bottom:0;">{{ $it->name }}@if ($it->hsn && !empty($gstCode)) <br><small>HSN {{ $it->hsn }}</small>@endif</td>
             </tr>
