@@ -2836,6 +2836,47 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.whatsapp-templates', compact('templates', 'templateError'));
     }
 
+    /**
+     * The header for a template being created on the PLATFORM's own WhatsApp account.
+     *
+     * Returns a string for a TEXT header, an ['format', 'handle'] pair for a media one, null for
+     * no header at all, and FALSE when the admin asked for a file header and something stopped it
+     * — the caller must abandon the submit rather than quietly create a text template instead.
+     *
+     * Meta will not take the bytes at creation time: the file goes through the app's resumable
+     * upload endpoint first and comes back as a handle, which is what the template references.
+     */
+    private function platformTemplateHeader(Request $request, \App\Services\WhatsAppService $wa)
+    {
+        $format = strtoupper((string) $request->input('tpl_header_format', ''));
+
+        if ($format === '' || $format === 'TEXT') {
+            return trim((string) $request->input('tpl_header', '')) ?: null;
+        }
+
+        $file = $request->file('tpl_header_file');
+        if (!$file || !$file->isValid()) {
+            Toastr::error(translate('Choose a file for the ') . strtolower($format) . translate(' header, or set the header back to Text.'));
+            return false;
+        }
+
+        $config = Helpers::get_business_settings('whatsapp_config');
+        $appId = $config['es_app_id'] ?? null;
+        $appSecret = $config['es_app_secret'] ?? null;
+        if (!$appId || !$appSecret) {
+            Toastr::error(translate('Media headers need the WhatsApp App ID and App Secret saved under WhatsApp credentials.'));
+            return false;
+        }
+
+        $handle = $wa->uploadHeaderMedia($file->getRealPath(), $file->getMimeType(), $appId, $appSecret);
+        if (!$handle) {
+            Toastr::error(translate('Could not upload that file to Meta. Check the size and format, then try again.'));
+            return false;
+        }
+
+        return ['format' => $format, 'handle' => $handle];
+    }
+
     public function whatsapp_template_create(Request $request)
     {
         if (env('APP_MODE') == 'demo') {
@@ -2843,11 +2884,14 @@ class BusinessSettingsController extends Controller
             return back();
         }
         $request->validate([
-            'tpl_name'     => 'required|regex:/^[a-z0-9_]+$/',
-            'tpl_category' => 'required',
-            'tpl_body'     => 'required',
+            'tpl_name'          => 'required|regex:/^[a-z0-9_]+$/',
+            'tpl_category'      => 'required',
+            'tpl_body'          => 'required',
+            'tpl_header_format' => 'nullable|in:TEXT,IMAGE,DOCUMENT,VIDEO',
+            'tpl_header_file'   => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:16384',
         ], [
-            'tpl_name.regex' => translate('Template name must be lowercase letters, numbers and underscores only.'),
+            'tpl_name.regex'      => translate('Template name must be lowercase letters, numbers and underscores only.'),
+            'tpl_header_file.max' => translate('Header files must be 16 MB or smaller.'),
         ]);
 
         $wa = \App\Services\WhatsAppService::make();
@@ -2858,6 +2902,13 @@ class BusinessSettingsController extends Controller
 
         if ($bodyError = \App\Services\WhatsAppService::templateBodyProblem((string) $request->tpl_body, $request->tpl_name)) {
             Toastr::error(translate($bodyError));
+            return back()->withInput();
+        }
+
+        // Words or a file — createTemplate() takes a plain string for a TEXT header and an
+        // ['format' => ..., 'handle' => ...] pair for a media one.
+        $header = $this->platformTemplateHeader($request, $wa);
+        if ($header === false) {
             return back()->withInput();
         }
 
@@ -2875,7 +2926,7 @@ class BusinessSettingsController extends Controller
             (string) $request->tpl_body,
             $example,
             $buttons,
-            trim((string) $request->tpl_header) ?: null,
+            $header,
             trim((string) $request->tpl_footer) ?: null
         );
 

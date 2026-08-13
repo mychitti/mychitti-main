@@ -139,7 +139,7 @@
                             <div class="col-lg-5">
                                 <div class="border rounded p-3" style="background:#fafbff;">
                                     <h6 class="mb-3">{{ translate('Create Template') }}</h6>
-                                    <form action="{{ env('APP_MODE') != 'demo' ? route('admin.business-settings.third-party.whatsapp-template-create') : 'javascript:' }}" method="post">
+                                    <form action="{{ env('APP_MODE') != 'demo' ? route('admin.business-settings.third-party.whatsapp-template-create') : 'javascript:' }}" method="post" enctype="multipart/form-data">
                                         @csrf
                                         <div class="form-group">
                                             <label class="form-label">{{ translate('Template Name') }}</label>
@@ -160,10 +160,30 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        {{-- A header is either words or a file, never both. Meta wants a sample
+                                             of the file at creation time and sends the real one with each message,
+                                             so what is uploaded here is only what the reviewer sees. --}}
                                         <div class="form-group">
                                             <label class="form-label">{{ translate('Header') }} <span class="text-muted">({{ translate('optional') }})</span></label>
-                                            <input type="text" class="form-control" name="tpl_header" maxlength="60" placeholder="🔔 New Lead on MyChitti!">
-                                            <small class="text-muted">{{ translate('Bold title at the top. Max 60 chars.') }}</small>
+                                            <select class="form-control mb-2" name="tpl_header_format" id="waHeaderFormat">
+                                                <option value="TEXT">{{ translate('Text') }}</option>
+                                                <option value="IMAGE">{{ translate('Image') }}</option>
+                                                <option value="DOCUMENT">{{ translate('Document (PDF)') }}</option>
+                                                <option value="VIDEO">{{ translate('Video') }}</option>
+                                            </select>
+
+                                            <div id="waHeaderTextWrap">
+                                                <input type="text" class="form-control" name="tpl_header" maxlength="60" placeholder="🔔 New Lead on MyChitti!">
+                                                <small class="text-muted">{{ translate('Bold title at the top. Max 60 chars. Leave blank for no header.') }}</small>
+                                            </div>
+
+                                            <div id="waHeaderFileWrap" class="d-none">
+                                                <input type="file" class="form-control-file" name="tpl_header_file"
+                                                       accept=".jpg,.jpeg,.png,.pdf,.mp4">
+                                                <small class="text-muted d-block mt-1">
+                                                    {{ translate('Sample file for Meta to review — JPG, PNG, PDF or MP4, up to 16 MB. Each message carries its own file in its place.') }}
+                                                </small>
+                                            </div>
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label">{{ translate('Body') }}</label>
@@ -364,5 +384,21 @@
         el.focus();
         el.selectionStart = el.selectionEnd = at + chunk.length;
     });
+</script>
+@endpush
+
+@push('script_2')
+<script>
+    (function () {
+        var sel = document.getElementById('waHeaderFormat');
+        if (!sel) { return; }
+        var textWrap = document.getElementById('waHeaderTextWrap');
+        var fileWrap = document.getElementById('waHeaderFileWrap');
+        sel.addEventListener('change', function () {
+            var isText = sel.value === 'TEXT';
+            textWrap.classList.toggle('d-none', !isText);
+            fileWrap.classList.toggle('d-none', isText);
+        });
+    })();
 </script>
 @endpush
