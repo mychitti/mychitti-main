@@ -2200,8 +2200,55 @@ class WhatsAppController extends Controller
             $preset->footer
         );
 
+        // Meta reserves a DELETED template's name for 30 days, so a vendor who removed this
+        // template once cannot take the preset again until the reservation lapses — and the
+        // automation behind it stays dead for the whole of that time. Rather than leave them at a
+        // dead end for up to a month, submit the same content under the next free name.
+        $submittedAs = $preset->name;
+        $reboundRole = null;
+        if (!$res['success'] && $this->templateNameReserved($res['error'] ?? null)) {
+            $alternative = $this->nextFreeTemplateName(Helpers::get_store_id(), $preset->name);
+            if ($alternative) {
+                $retry = $wa->createTemplate(
+                    $alternative,
+                    $preset->category,
+                    $preset->language ?: 'en_US',
+                    $preset->body,
+                    $example,
+                    $buttons,
+                    $header,
+                    $preset->footer
+                );
+                if ($retry['success']) {
+                    $res = $retry;
+                    $submittedAs = $alternative;
+                    // Roles resolve by name, so a renamed template is invisible to the automation
+                    // until the role points at it. Renaming without this would submit a template
+                    // that never sends anything.
+                    $reboundRole = $this->bindRoleToRenamedTemplate(
+                        Helpers::get_store_id(),
+                        $preset->name,
+                        $alternative,
+                        $preset->language ?: 'en_US'
+                    );
+                }
+            }
+        }
+
         if ($res['success']) {
-            Toastr::success('"' . $preset->title . '" submitted to Meta for review on your WhatsApp account. Approval usually takes a few minutes but can take up to 24 hours — you can send with it once its status shows APPROVED.');
+            // The store's template set just changed; templateExists() reads a cached list and
+            // would not see the new name (or the new binding's target) for another five minutes.
+            WhatsAppService::forgetTemplateStatuses(Helpers::get_store_id());
+
+            $note = '"' . $preset->title . '" submitted to Meta for review on your WhatsApp account.';
+            if ($submittedAs !== $preset->name) {
+                $note .= ' WhatsApp still reserves the name "' . $preset->name . '" from when it was'
+                    . ' deleted, so it went in as "' . $submittedAs . '".';
+                $note .= $reboundRole
+                    ? ' Your "' . $reboundRole . '" automation now points at the new name, so nothing else to do.'
+                    : ' Point the matching automation at it on the Template Roles screen.';
+            }
+            Toastr::success($note . ' Approval usually takes a few minutes but can take up to 24 hours — you can send with it once its status shows APPROVED.');
         } else {
             Toastr::error('Submit failed: ' . $res['error']);
         }
@@ -2214,6 +2261,56 @@ class WhatsAppController extends Controller
             'error'    => $res['error'] ?? null,
             'response' => $res['response'] ?? null,
         ]);
+    }
+
+    /**
+     * Is this Meta refusing the name because the old template of that name is still being deleted?
+     *
+     * Deleting a template does not free its name — Meta holds the name and language for 30 days
+     * and answers a resubmit with "Message template language is being deleted … Try again in N
+     * days or consider creating a new message template". Matched on the wording rather than a
+     * code: Graph reports this through more than one subcode, and the sentence is the stable part.
+     */
+    private function templateNameReserved(?string $error): bool
+    {
+        return str_contains(strtolower((string) $error), 'being deleted');
+    }
+
+    /**
+     * The preset's name with the lowest _vN suffix this store is not already using.
+     *
+     * Only checks names that exist now — a suffix whose own template was deleted is still inside
+     * its own 30-day reservation and cannot be told apart from a free one, so the retry can still
+     * be refused. That is reported to the vendor rather than retried around.
+     */
+    private function nextFreeTemplateName(int $storeId, string $base): ?string
+    {
+        $taken = WhatsAppService::templateStatuses($storeId);
+
+        for ($n = 2; $n <= 9; $n++) {
+            $candidate = $base . '_v' . $n;
+            if (!isset($taken[strtolower($candidate)])) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Point whichever role defaults to this preset at the name it actually went in under.
+     * Returns the role's label so the vendor can be told, or null when the preset drives no role.
+     */
+    private function bindRoleToRenamedTemplate(int $storeId, string $presetName, string $actualName, string $language): ?string
+    {
+        foreach (WhatsAppService::TEMPLATE_ROLES as $role => $meta) {
+            if (strtolower((string) ($meta['default'] ?? '')) === strtolower($presetName)) {
+                WhatsAppService::bindTemplate($storeId, $role, $actualName, $language);
+                return $meta['label'] ?? $role;
+            }
+        }
+
+        return null;
     }
 
     public function templateCreate(Request $request)
