@@ -58,7 +58,14 @@
                         <input type="number" name="consultation_fee" class="form-control"
                             value="{{ $doctor->consultation_fee }}" min="0" step="0.01">
                     </div>
+                    @include('hmis::vendor.doctor._rebook_days', ['rebookDays' => $doctor->rebook_days ?? 0])
                     <div class="col-md-3 form-group mb-0">
+                        <label class="input-label">Bio</label>
+                        <textarea name="bio" class="form-control" rows="3">{{ $doctor->bio }}</textarea>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6 form-group mb-0">
                         <label class="input-label">Services</label>
                         <select name="services[]" multiple="multiple"
                             class="form-control js-select2-custom js-example-basic-multiple"
@@ -72,13 +79,6 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 form-group mb-0">
-                        <label class="input-label">Bio</label>
-                        <textarea name="bio" class="form-control" rows="3">{{ $doctor->bio }}</textarea>
-                    </div>
-                </div>
-                <div class="row mt-3">
-                    @include('hmis::vendor.doctor._rebook_days', ['rebookDays' => $doctor->rebook_days ?? 0])
                 </div>
             </div>
         </div>
