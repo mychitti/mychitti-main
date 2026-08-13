@@ -290,7 +290,7 @@ class OpdController extends Controller
             ->whereDate('visit_date', $visitDate)
             ->max('token_number') ?? 0) + 1;
 
-        OpdVisit::create([
+        $visit = OpdVisit::create([
             'store_id'            => $store_id,
             'patient_id'          => $patientId,
             'doctor_profile_id'   => $doctorProfileId,
@@ -312,6 +312,12 @@ class OpdController extends Controller
             'recorded_by'         => auth('vendor_employee')->id() ?? auth('vendor')->id(),
             'status'              => 'visited',
         ]);
+
+        // The patient's slip — token, doctor and a link to the visit. auto() is a no-op unless the
+        // hospital has switched "Visit registered" on, and it dedupes on (store, kind, visit) so
+        // re-saving the same visit cannot message the patient twice.
+        \App\Services\HmisWhatsAppShare::auto('visit_registered', (int) $store_id, (int) $visit->id,
+            fn() => \App\Services\HmisWhatsAppShare::visitRegistered($visit));
 
         if ($request->booking_mode === 'booked' && isset($sr) && $doctorProfileId) {
             $doctorProfile  = DoctorProfile::find($doctorProfileId);

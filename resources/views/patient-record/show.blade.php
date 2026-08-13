@@ -2,6 +2,7 @@
     $patient = $record->patient ?? null;
     $doctor  = \App\Services\HmisWhatsAppShare::doctorName($record->doctorProfile ?? null);
     $titles  = [
+        'visit_registered' => 'Visit Registered',
         'treatment'    => 'Consultation Summary',
         'prescription' => 'Prescription',
         'medicines'    => 'How to take your medicines',
@@ -102,7 +103,17 @@
         </div>
     </div>
 
-    @if ($kind === 'treatment')
+    @if ($kind === 'visit_registered' && filled($record->token_number))
+        <div class="card">
+            <h2>Your token number</h2>
+            <div style="font-size:34px;font-weight:800;color:var(--brand);line-height:1.1;">{{ $record->token_number }}</div>
+            <div class="mute" style="margin-top:6px;">Please show this at reception when you arrive.</div>
+        </div>
+    @endif
+
+    {{-- One visit, two moments: the slip handed over at registration and the summary written
+         afterwards. Diagnosis and treatment are simply still empty at the first of them. --}}
+    @if (in_array($kind, ['treatment', 'visit_registered']))
         @if (filled($record->chief_complaint))
             <div class="card">
                 <h2>Reported complaint</h2>

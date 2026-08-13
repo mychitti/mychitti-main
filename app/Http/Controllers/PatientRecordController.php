@@ -72,6 +72,9 @@ class PatientRecordController extends Controller
         $id      = (int) $share->record_id;
 
         switch ($share->kind) {
+            // Same record at two points in its life: the slip sent at the counter and the summary
+            // sent after the doctor has written it up. The page shows whichever fields are filled.
+            case 'visit_registered':
             case 'treatment':
                 return OpdVisit::with('patient', 'doctorProfile.employee')
                     ->where('store_id', $storeId)->find($id);

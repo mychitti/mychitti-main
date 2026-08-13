@@ -49,6 +49,7 @@ class HmisWhatsAppShare
      * these offered, since it could never send one.
      */
     const PRESET_USES = [
+        'opd_visit_registered'  => 'Sent automatically when an OPD visit is booked in, if “Visit registered” is on.',
         'treatment_summary'     => 'Powers “Send summary” on the OPD consultation screen.',
         'prescription_share'    => 'Powers “Send prescription” on a prescription.',
         'prescription_pdf'      => 'Powers “Send as PDF” on a prescription — attaches the file to the chat.',
@@ -64,6 +65,14 @@ class HmisWhatsAppShare
      * template must be called; the preset of the same name creates it in one click.
      */
     const KINDS = [
+        // Sent the moment the visit is booked in, which is why it carries the token and the
+        // doctor rather than a diagnosis — at registration there is no diagnosis yet. The
+        // consultation summary below is the same patient's follow-up, once they have been seen.
+        'visit_registered' => [
+            'label'    => 'Visit registered',
+            'template' => 'opd_visit_registered',
+            'context'  => 'visit registered',
+        ],
         'treatment' => [
             'label'    => 'Consultation summary',
             'template' => 'treatment_summary',
@@ -114,6 +123,7 @@ class HmisWhatsAppShare
      * A kind absent here can only ever be sent by hand.
      */
     const AUTO_PREFS = [
+        'visit_registered' => 'hmis_visit_registered',
         'treatment'        => 'hmis_treatment',
         'prescription'     => 'hmis_prescription',
         'prescription_pdf' => 'hmis_prescription_pdf',
@@ -461,6 +471,30 @@ class HmisWhatsAppShare
     /* ------------------------------------------------------------------ senders */
 
     /** Consultation summary — what was found and what was advised on an OPD visit. */
+    /**
+     * The visit slip: what the patient needs in order to turn up, sent as they are booked in.
+     *
+     * Deliberately not the vitals or the complaint — those are on the linked page. A registration
+     * message that a patient reads standing at the counter is useful only if the token and the
+     * doctor are in the message itself.
+     */
+    public static function visitRegistered(OpdVisit $visit, ?string $phone = null): array
+    {
+        $visit->loadMissing('patient', 'doctorProfile.employee');
+        $patient = $visit->patient;
+        if (!$patient) {
+            return self::fail('This visit has no patient on it.');
+        }
+
+        return self::dispatch('visit_registered', (int) $visit->store_id, $patient, $phone, (int) $visit->id, [
+            self::name($patient),
+            self::storeName((int) $visit->store_id),
+            self::date($visit->visit_date),
+            (string) ($visit->token_number ?: '—'),
+            self::doctorName($visit->doctorProfile ?? null) ?: 'our doctor',
+        ], true);
+    }
+
     public static function treatment(OpdVisit $visit, ?string $phone = null): array
     {
         $visit->loadMissing('patient', 'doctorProfile.employee');

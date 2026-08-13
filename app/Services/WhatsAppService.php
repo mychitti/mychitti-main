@@ -1258,6 +1258,7 @@ class WhatsAppService
         // Added after the first HMIS seed shipped, so it sits above the seeded-once guard —
         // below it, no existing hospital would ever be offered the template.
         self::ensurePatientDocumentPreset();
+        self::ensureVisitRegisteredPreset();
 
         if (DB::table('business_settings')->where('key', 'wa_preset_hmis_seeded')->exists()) {
             return;
@@ -1406,6 +1407,39 @@ class WhatsAppService
             'body'          => "Hi {{1}}, {{2}} has sent you a document — {{3}}, dated {{4}}. It is attached to this message. Please save it for your records.",
             'footer'        => 'Reply here if you cannot open the file',
             'example'       => 'Ramesh | Krishna Hospital | Discharge summary | 25 July 2026',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
+     * The slip a patient gets as they are booked in: token, doctor, and a link to the visit.
+     *
+     * UTILITY, and genuinely so — it confirms something the patient just did at the counter, which
+     * also keeps it clear of the per-user marketing cap and on the cheaper rate.
+     *
+     * Above ensureHmisPresets()' seeded-once guard for the same reason patient_document is: below
+     * it, no hospital already running would ever be offered this.
+     */
+    protected static function ensureVisitRegisteredPreset(): void
+    {
+        if (DB::table('wa_template_presets')->where('name', 'opd_visit_registered')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'OPD Visit Registered (Hospital)',
+            'name'          => 'opd_visit_registered',
+            'category'      => 'UTILITY',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => null,
+            'body'          => "Hi {{1}}, your OPD visit at {{2}} is registered for {{3}}. Your token number is {{4}} and you will be seen by {{5}}. Open {{6}} for your visit details. Please arrive 10 minutes early and show this message at reception.",
+            'footer'        => 'Reply to this message if you need to reschedule',
+            'example'       => 'Ramesh | Krishna Hospital | 25 July 2026 | 7 | Dr. Firoz | https://mychitti.net/health-record/abc123',
             'btn_text'      => null,
             'btn_url'       => null,
             'active'        => 1,

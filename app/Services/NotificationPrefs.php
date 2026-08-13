@@ -65,6 +65,13 @@ class NotificationPrefs
                 // each message is billed. That is a decision a hospital makes deliberately, not
                 // one they discover after the fact. Every one of them can still be sent by hand
                 // from its own screen whether the toggle is on or off.
+                'hmis_visit_registered' => [
+                    'label'   => 'Visit registered',
+                    'desc'    => 'Sent to the patient when an OPD visit is booked in, with their token number and doctor (needs your approved opd_visit_registered template).',
+                    'default' => false,
+                    'template' => 'opd_visit_registered',
+                    'module'  => 'hospital_manage',
+                ],
                 'hmis_treatment' => [
                     'label'   => 'Consultation summary',
                     'desc'    => 'Sent to the patient when an OPD visit is marked completed (needs your approved treatment_summary template).',
