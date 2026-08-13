@@ -141,6 +141,17 @@ class WhatsAppWebhookController extends Controller
                         // the series must not wait on a queue to branch. Typed text can involve an
                         // AI call, so it goes to a job AFTER Meta has its 200 — a webhook that
                         // waits on the AI service would get retried and eventually disabled.
+                        // An answer to "How was your visit?" is handled before anything else and,
+                        // when it is one, stops here: the AI auto-reply must never respond to
+                        // "the doctor was late" with a knowledge-base article.
+                        $feedbackHandled = \App\Services\FeedbackFlow::handleReply(
+                            $storeId ?: null,
+                            (string) $from,
+                            $buttonLabel,
+                            trim((string) data_get($msg, 'text.body')),
+                            data_get($msg, 'context.id')
+                        );
+
                         if ($from && !empty($buttonLabel)) {
                             WhatsAppCampaign::recordReply(
                                 $storeId,
@@ -149,7 +160,7 @@ class WhatsAppWebhookController extends Controller
                                 data_get($msg, 'context.id'),
                                 true
                             );
-                        } elseif ($from && !$optOut && trim((string) data_get($msg, 'text.body')) !== '') {
+                        } elseif ($from && !$optOut && !$feedbackHandled && trim((string) data_get($msg, 'text.body')) !== '') {
                             \App\Jobs\ClassifyCampaignReply::dispatch(
                                 $storeId ?: null,
                                 (string) $from,
@@ -166,7 +177,7 @@ class WhatsAppWebhookController extends Controller
                         // message on the MyChitti platform number (storeId null) uses the platform
                         // knowledge.
                         $text = trim((string) data_get($msg, 'text.body'));
-                        if ($from && !$optOut && $type === 'text' && $text !== '') {
+                        if ($from && !$optOut && !$feedbackHandled && $type === 'text' && $text !== '') {
                             \App\Jobs\SendAutoReply::dispatch(
                                 $storeId ?: null,
                                 (string) $from,

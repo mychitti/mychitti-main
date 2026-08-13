@@ -13,6 +13,7 @@ use App\Models\StoreWallet;
 use App\Models\TmpWhatsAppSetup;
 use App\Models\UserNotificationPreference;
 use App\Services\CustomerNote;
+use App\Services\FeedbackFlow;
 use App\Services\HmisWhatsAppShare;
 use App\Services\WhatsAppAgent;
 use App\Services\WhatsAppBilling;
@@ -609,6 +610,55 @@ class WhatsAppController extends Controller
         );
 
         return response()->json($result, empty($result['success']) ? 422 : 200);
+    }
+
+    /**
+     * Feedback that came back unhappy, and what the patient said was wrong.
+     *
+     * Its own screen rather than a line in the inbox: a complaint is work to be picked up and
+     * closed, and an inbox is read once and scrolled past.
+     */
+    public function complaints(Request $request)
+    {
+        FeedbackFlow::ensureTables();
+        $storeId = Helpers::get_store_id();
+
+        $status = in_array($request->get('status'), ['open', 'resolved'], true) ? $request->get('status') : 'open';
+
+        $complaints = DB::table('store_complaints')
+            ->where('store_id', $storeId)
+            ->where('status', $status === 'resolved' ? 'resolved' : 'open')
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->withQueryString();
+
+        // The counts either side of the tabs, so an empty list reads as "none open" rather than
+        // "this screen is broken".
+        $counts = [
+            'open'     => DB::table('store_complaints')->where('store_id', $storeId)->where('status', 'open')->count(),
+            'resolved' => DB::table('store_complaints')->where('store_id', $storeId)->where('status', 'resolved')->count(),
+        ];
+
+        // How the ratings have landed overall — the answer to "is this one angry patient or a pattern".
+        $ratings = DB::table('wa_feedback_threads')
+            ->where('store_id', $storeId)->whereNotNull('rating')
+            ->select('rating', DB::raw('COUNT(*) as n'))->groupBy('rating')->pluck('n', 'rating')->all();
+
+        return view('vendor-views.whatsapp.complaints', compact('complaints', 'counts', 'status', 'ratings'));
+    }
+
+    /** Mark one complaint dealt with. */
+    public function complaintResolve(Request $request, $id)
+    {
+        FeedbackFlow::ensureTables();
+
+        $updated = DB::table('store_complaints')
+            ->where('id', (int) $id)->where('store_id', Helpers::get_store_id())
+            ->update(['status' => 'resolved', 'resolved_at' => now(), 'updated_at' => now()]);
+
+        $updated ? Toastr::success('Marked resolved.') : Toastr::error('That complaint is no longer there.');
+
+        return back();
     }
 
     /** Client list for the bulk composer's recipient picker. */

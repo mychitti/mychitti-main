@@ -913,10 +913,17 @@ class HmisWhatsAppShare
 
             self::log($storeId, $kind, $recordId, $patient, $to);
 
+            // Feedback is the one kind whose ANSWER matters. Record the outbound id so the tap
+            // that comes back can be matched to this exact visit rather than guessed at.
+            if ($kind === 'feedback') {
+                FeedbackFlow::opened($storeId, $recordId, (int) $patient->id, $to, $res['id'] ?? null);
+            }
+
             return [
                 'success' => true,
                 'message' => $meta['label'] . ' sent on WhatsApp to ' . self::maskPhone($to) . '.',
                 'url'     => $url,
+                'wamid'   => $res['id'] ?? null,
             ];
         } catch (\Throwable $e) {
             Log::error('HMIS WhatsApp share failed: ' . $e->getMessage());

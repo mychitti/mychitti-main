@@ -77,6 +77,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/numbers/label', 'WhatsAppController@numberLabel')->name('whatsapp.numbers.label');
         Route::post('whatsapp/numbers/default', 'WhatsAppController@numberDefault')->name('whatsapp.numbers.default');
         Route::post('whatsapp/numbers/bind', 'WhatsAppController@numberBind')->name('whatsapp.numbers.bind');
+        // Unhappy feedback, and what the patient said was wrong.
+        Route::get('whatsapp/complaints', 'WhatsAppController@complaints')->name('whatsapp.complaints');
+        Route::post('whatsapp/complaints/{id}/resolve', 'WhatsAppController@complaintResolve')->name('whatsapp.complaints.resolve');
+
         // A note typed by hand to one customer — shared by every module's customer screen.
         Route::get('whatsapp/note/quote', 'WhatsAppController@noteQuote')->name('whatsapp.note.quote');
         Route::post('whatsapp/note/send', 'WhatsAppController@noteSend')->name('whatsapp.note.send');
