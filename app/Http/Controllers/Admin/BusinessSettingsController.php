@@ -2806,6 +2806,21 @@ class BusinessSettingsController extends Controller
         \App\Services\WhatsAppService::ensureMessagesTable();
         $config = \App\CentralLogics\Helpers::get_business_settings('whatsapp_config');
 
+        // Templates moved to their own page — this one no longer pays for a Graph call it
+        // does not render. See whatsapp_templates().
+        return view('admin-views.business-settings.whatsapp-index', compact('config'));
+    }
+
+    /**
+     * The templates on the PLATFORM's own WABA — the ones MyChitti itself sends from.
+     *
+     * Vendors have their own templates on their own accounts and manage them from their own panel;
+     * nothing here touches those. This page used to show vendor-facing presets under the same
+     * "WhatsApp Templates" label, which is why an admin looking for their own templates found
+     * somebody else's.
+     */
+    public function whatsapp_templates(Request $request)
+    {
         // Business Management API: list templates on the WABA (whatsapp_business_management).
         $templates = [];
         $templateError = null;
@@ -2818,7 +2833,7 @@ class BusinessSettingsController extends Controller
             }
         }
 
-        return view('admin-views.business-settings.whatsapp-index', compact('config', 'templates', 'templateError'));
+        return view('admin-views.business-settings.whatsapp-templates', compact('templates', 'templateError'));
     }
 
     public function whatsapp_template_create(Request $request)
@@ -2940,129 +2955,6 @@ class BusinessSettingsController extends Controller
         } else {
             Toastr::error(translate('Delete failed: ') . $res['error']);
         }
-        return back();
-    }
-
-    // Pre-suggested template presets vendors can submit to their own WABA in one click.
-    public function whatsapp_presets(Request $request)
-    {
-        \App\Services\WhatsAppService::ensurePresetsTable();
-        $presets = DB::table('wa_template_presets')->orderBy('title')->get();
-        return view('admin-views.business-settings.whatsapp-presets', compact('presets'));
-    }
-
-    public function whatsapp_preset_save(Request $request)
-    {
-        if (env('APP_MODE') == 'demo') {
-            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
-            return back();
-        }
-        $request->validate([
-            'title'    => 'required|max:120',
-            'name'     => 'required|regex:/^[a-z0-9_]+$/|max:120',
-            'category' => 'required|in:UTILITY,MARKETING,AUTHENTICATION',
-            'body'     => 'required',
-        ], [
-            'name.regex' => translate('Template name must be lowercase letters, numbers and underscores only.'),
-        ]);
-
-        $body = trim((string) $request->body);
-        if ($bodyError = \App\Services\WhatsAppService::templateBodyProblem($body, $request->name)) {
-            Toastr::error(translate($bodyError));
-            return back()->withInput();
-        }
-
-        // Meta requires one example value per {{n}} variable when the vendor submits it â€”
-        // enforce that here so every preset is submit-ready as stored. Named variables carry
-        // their own examples, so a named body needs nothing typed here.
-        $varCount = \App\Services\WhatsAppService::positionalCount($body);
-        $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->example)), fn($v) => $v !== ''));
-        if ($varCount > 0 && count($example) < $varCount) {
-            Toastr::error(translate('Provide a pipe-separated example value for each variable â€” this template has ') . $varCount . translate(' variable(s).'));
-            return back()->withInput();
-        }
-
-        // The call button. 'store' keeps each vendor's own number on the template they submit;
-        // 'fixed' is for a platform helpline, and is the only mode that needs a number typed.
-        $callMode = $request->btn_phone_mode ?: 'none';
-        $btnPhone = null;
-        if ($callMode === 'store') {
-            $btnPhone = \App\Services\WhatsAppService::STORE_PHONE_TOKEN;
-        } elseif ($callMode === 'fixed') {
-            $btnPhone = trim((string) $request->btn_phone);
-            if (strlen(preg_replace('/[^0-9]/', '', $btnPhone) ?? '') < 10) {
-                Toastr::error(translate('Enter the full call-button number including the country code, or choose the vendor\'s own number.'));
-                return back()->withInput();
-            }
-        }
-
-        \App\Services\WhatsAppService::ensurePresetsTable();
-        $data = [
-            'title'          => trim((string) $request->title),
-            'name'           => trim((string) $request->name),
-            'category'       => $request->category,
-            // English (US) only — presets are no longer offered a language to pick.
-            'language'       => 'en_US',
-            'header'         => trim((string) $request->header) ?: null,
-            'body'           => $body,
-            'footer'         => trim((string) $request->footer) ?: null,
-            'example'        => $example ? implode(' | ', $example) : null,
-            'btn_text'       => trim((string) $request->btn_text) ?: null,
-            'btn_url'        => trim((string) $request->btn_url) ?: null,
-            'btn_phone'      => $btnPhone,
-            'btn_phone_text' => $btnPhone ? (trim((string) $request->btn_phone_text) ?: 'Call now') : null,
-            'updated_at'     => now(),
-        ];
-
-        $duplicate = DB::table('wa_template_presets')->where('name', $data['name'])
-            ->when($request->filled('id'), fn($q) => $q->where('id', '!=', $request->id))
-            ->exists();
-        if ($duplicate) {
-            Toastr::error(translate('A preset with this template name already exists.'));
-            return back()->withInput();
-        }
-
-        if ($request->filled('id')) {
-            DB::table('wa_template_presets')->where('id', $request->id)->update($data);
-            Toastr::success(translate('Preset updated. Vendors who already submitted it keep their approved version â€” the change applies to new submissions only.'));
-        } else {
-            $data['active'] = 1;
-            $data['created_at'] = now();
-            DB::table('wa_template_presets')->insert($data);
-            Toastr::success(translate('Preset added. Vendors can now submit it to their WhatsApp Business Account.'));
-        }
-        return back();
-    }
-
-    public function whatsapp_preset_toggle(Request $request)
-    {
-        if (env('APP_MODE') == 'demo') {
-            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
-            return back();
-        }
-        $request->validate(['id' => 'required|integer']);
-        \App\Services\WhatsAppService::ensurePresetsTable();
-        $preset = DB::table('wa_template_presets')->where('id', $request->id)->first();
-        if (!$preset) {
-            Toastr::error(translate('Preset not found.'));
-            return back();
-        }
-        DB::table('wa_template_presets')->where('id', $preset->id)
-            ->update(['active' => $preset->active ? 0 : 1, 'updated_at' => now()]);
-        Toastr::success($preset->active ? translate('Preset hidden from vendors.') : translate('Preset visible to vendors.'));
-        return back();
-    }
-
-    public function whatsapp_preset_delete(Request $request)
-    {
-        if (env('APP_MODE') == 'demo') {
-            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
-            return back();
-        }
-        $request->validate(['id' => 'required|integer']);
-        \App\Services\WhatsAppService::ensurePresetsTable();
-        DB::table('wa_template_presets')->where('id', $request->id)->delete();
-        Toastr::success(translate('Preset deleted. Templates vendors already submitted to Meta are not affected.'));
         return back();
     }
 

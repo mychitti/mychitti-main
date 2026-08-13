@@ -1660,10 +1660,9 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::post('whatsapp-vendor-billing/{store}/tokens', 'WhatsAppVendorBillingController@tokens')->name('whatsapp-vendor-billing.tokens');
                 Route::post('whatsapp-vendor-billing/{store}/cancel', 'WhatsAppVendorBillingController@cancel')->name('whatsapp-vendor-billing.cancel');
                 Route::post('whatsapp-vendor-billing/{store}/platform-fee', 'WhatsAppVendorBillingController@platformFee')->name('whatsapp-vendor-billing.platform-fee');
-                Route::get('whatsapp-template-presets', 'BusinessSettingsController@whatsapp_presets')->name('whatsapp-template-presets');
-                Route::post('whatsapp-preset-save', 'BusinessSettingsController@whatsapp_preset_save')->name('whatsapp-preset-save');
-                Route::post('whatsapp-preset-toggle', 'BusinessSettingsController@whatsapp_preset_toggle')->name('whatsapp-preset-toggle');
-                Route::post('whatsapp-preset-delete', 'BusinessSettingsController@whatsapp_preset_delete')->name('whatsapp-preset-delete');
+                // The platform's own templates. Vendor-facing presets are seeded in code
+                // (WhatsAppService::ensure*Preset) and have no admin screen.
+                Route::get('whatsapp-templates', 'BusinessSettingsController@whatsapp_templates')->name('whatsapp-templates');
                 // MyChitti platform WhatsApp: two-way chat inbox + auto-reply knowledge base.
                 Route::get('whatsapp-inbox', 'WhatsAppInboxController@inbox')->name('whatsapp-inbox');
                 Route::get('whatsapp-inbox/threads', 'WhatsAppInboxController@threads')->name('whatsapp-inbox.threads');
