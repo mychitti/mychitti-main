@@ -642,17 +642,16 @@ Route::get('test-vendor-notif/{store_id}', function ($store_id) {
     return response()->json(['sent' => true, 'store_id' => $store_id]);
 });
 
-// Vendor signup has moved to MC Vendor Hub. Permanent redirects rather than deletions: this URL
-// is on printed material, live ad campaigns and years of inbound links, and 301 is what hands the
-// search ranking to the page's new home. The name is kept so any `route('new-store.create')` left
-// anywhere still resolves instead of throwing.
-Route::redirect('list-your-business', _vendorSignupUrl(), 301)->name('new-store.create');
+// Vendor signup is presented at mcvendorhub.com — every button on mychitti.net points there (see
+// _vendorSignupUrl()). This route must keep SERVING the form, not redirect to that URL: both
+// hostnames are served by this same application, so a redirect to mcvendorhub.com arrives right
+// back here and loops until the browser gives up.
+Route::get('list-your-business', 'VendorController@create')->name('new-store.create');
 Route::get('send_confirmation_sms', 'VendorController@send_confirmation_sms')->name('send_confirmation_sms');
 
 //Restaurant Registration
 Route::group(['prefix' => 'store', 'as' => 'restaurant.'], function () {
-    // The same signup form under an older URL — it moves with it.
-    Route::redirect('apply', _vendorSignupUrl(), 301)->name('create');
+    Route::get('apply', 'VendorController@create')->name('create');
     Route::post('apply', 'VendorController@store')->name('store');
     Route::post('store_ajax', 'VendorController@store_ajax')->name('store_ajax');
     Route::get('get-all-modules', 'VendorController@get_all_modules')->name('get-all-modules');
