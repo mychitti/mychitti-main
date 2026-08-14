@@ -170,6 +170,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('/master-dashboard', 'DashboardController@master_dashboard')->name('master-dashboard');
         Route::get('/dashboard', 'DashboardController@dashboard')->name('dashboard');
         // Route::get('/', 'DashboardController@dashboard')->name('dashboard'); 
+        Route::post('/welcome-guide-seen', 'DashboardController@welcome_guide_seen')->name('welcome-guide-seen');
         Route::get('/get-store-data', 'DashboardController@store_data')->name('get-store-data');
         Route::post('/store-token', 'DashboardController@updateDeviceToken')->name('store.token');
         Route::get('/reviews', 'ReviewController@index')->name('reviews')->middleware('module:reviews');

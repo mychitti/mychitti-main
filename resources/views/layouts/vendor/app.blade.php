@@ -456,6 +456,10 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
         @include('layouts.vendor.partials._footer')
 
+        @if (auth('vendor')->check())
+            @include('layouts.vendor.partials._welcome_guide_modal')
+        @endif
+
         <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">

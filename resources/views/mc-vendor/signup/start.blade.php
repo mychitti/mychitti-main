@@ -5,6 +5,35 @@
 
 @section('styles')
     <style>
+        /* The choice cards are the page. The shared .page-hero sizing pushed them below the
+           fold on a laptop, so the heading block is compressed here rather than in style.css,
+           which the marketing pages still want at full size. */
+        .breadcrumb {
+            padding: 9px 0;
+        }
+
+        .start-hero {
+            padding: 30px 28px 24px;
+        }
+
+        .start-hero .eyebrow {
+            margin-bottom: 13px;
+        }
+
+        .start-hero h1 {
+            font-size: clamp(26px, 2.9vw, 36px);
+            line-height: 1.18;
+            margin: 0 auto 9px;
+            /* Wide enough for the line to stay unbroken at 36px, which saves a whole line of
+               height compared with the 760px the heading used to wrap inside. */
+            max-width: 900px;
+        }
+
+        .start-hero p.lede {
+            font-size: 16px;
+            margin: 0 auto;
+        }
+
         .start-choice {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -22,7 +51,7 @@
             background: var(--white);
             border: 1px solid var(--line);
             border-radius: 16px;
-            padding: 32px 30px;
+            padding: 26px 28px;
             display: flex;
             flex-direction: column;
             position: relative;
@@ -57,20 +86,20 @@
         }
 
         .choice-card h2 {
-            font-size: 22px;
+            font-size: 21px;
             line-height: 1.25;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .choice-card p.sub {
-            font-size: 15px;
+            font-size: 14.5px;
             color: var(--ink-soft);
-            margin-bottom: 22px;
+            margin-bottom: 18px;
         }
 
         .choice-list {
             list-style: none;
-            margin: 0 0 26px;
+            margin: 0 0 20px;
             padding: 0;
         }
 
@@ -80,7 +109,7 @@
             align-items: flex-start;
             font-size: 14.5px;
             color: var(--ink-soft);
-            padding: 7px 0;
+            padding: 5px 0;
         }
 
         .choice-list li .tick {
@@ -99,7 +128,7 @@
             justify-content: center;
             gap: 10px;
             width: 100%;
-            padding: 13px 20px;
+            padding: 12px 20px;
             border-radius: 10px;
             border: 1.5px solid var(--line);
             background: var(--white);
@@ -142,7 +171,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin: 16px 0;
+            margin: 12px 0;
             color: var(--ink-faint);
             font-size: 12.5px;
             font-weight: 700;
@@ -157,9 +186,9 @@
         }
 
         .choice-note {
-            font-size: 13px;
+            font-size: 12.5px;
             color: var(--ink-faint);
-            margin-top: 14px;
+            margin-top: 12px;
         }
 
         .otp-panel {
@@ -270,7 +299,7 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 28px;
-            margin-top: 42px;
+            margin-top: 30px;
             font-size: 14px;
             color: var(--ink-soft);
         }
@@ -287,15 +316,15 @@
 
     <div class="wrap breadcrumb"><a href="{{ route('home') }}">Home</a><span>/</span>List Your Business</div>
 
-    <section class="page-hero" style="padding-bottom:32px;">
+    <section class="page-hero start-hero">
         <div class="wrap" style="text-align:center;">
             <span class="eyebrow"><span class="dot"></span> Free Forever · No Card Required</span>
-            <h1 style="max-width:760px; margin:0 auto 16px;">Get your business found on <span>My Chitti</span>.</h1>
-            <p class="lede" style="margin:0 auto;">Pick how you want to start. You can always finish the rest later.</p>
+            <h1>Get your business found on <span>My Chitti</span>.</h1>
+            <p class="lede">Pick how you want to start. You can always finish the rest later.</p>
         </div>
     </section>
 
-    <section style="padding-bottom:96px;">
+    <section style="padding-bottom:64px;">
         <div class="wrap">
             <div class="start-choice">
 
@@ -404,8 +433,8 @@
             </div>
 
             <div class="start-reassure">
-                <span>🆓 Free listing, forever</span>
-                <span>🔒 Your details are never sold</span>
+                {{-- <span>🆓 Free listing, forever</span>
+                <span>🔒 Your details are never sold</span> --}}
                 <span>📞 Support on 9951968473</span>
             </div>
         </div>

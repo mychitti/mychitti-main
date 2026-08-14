@@ -51,6 +51,14 @@ use Soap\Url;
 class DashboardController extends Controller
 {
 
+    public function welcome_guide_seen(Request $request)
+    {
+        if (auth('vendor')->check()) {
+            Vendor::where('id', auth('vendor')->id())->update(['welcome_guide_seen_at' => now()]);
+        }
+        return response()->json(['status' => true]);
+    }
+
     public function dashboard(Request $request)
     {
         if (!auth('vendor')->check()) {

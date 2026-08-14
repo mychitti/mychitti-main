@@ -374,10 +374,18 @@ class QuickSignupController extends Controller
         }
 
         $email = $googleUser->getEmail();
+        $existing = $email ? Vendor::where('email', $email)->first() : null;
 
-        if ($email && Vendor::where('email', $email)->exists()) {
-            return redirect()->away('https://vendor.mcvendorhub.com/login')
-                ->with('error', 'You already have an account with this email. Please log in.');
+        if ($existing) {
+            // They already have an account and Google has just proved they own the address on it,
+            // so sign them in rather than sending them to a login form. Quick-signup accounts
+            // never had a password set for them, which made "please log in" a dead end for
+            // exactly the people most likely to arrive back here.
+            if (!$existing->status) {
+                return redirect()->away('https://vendor.mcvendorhub.com/login');
+            }
+
+            return redirect()->away($this->panelHandoffUrl($existing));
         }
 
         session([self::SESSION_KEY => [

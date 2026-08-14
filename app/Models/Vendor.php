@@ -11,12 +11,13 @@ class Vendor extends Authenticatable
 {
     use Notifiable;
 
-    protected $fillable = ['remember_token', 'image', 'cm_firebase_token', 'last_login_at'];
+    protected $fillable = ['remember_token', 'image', 'cm_firebase_token', 'last_login_at', 'welcome_guide_seen_at'];
 
     protected $casts = [
         'created_at'    => 'datetime',
         'updated_at'    => 'datetime',
         'last_login_at' => 'datetime',
+        'welcome_guide_seen_at' => 'datetime',
     ];
 
     protected $hidden = [

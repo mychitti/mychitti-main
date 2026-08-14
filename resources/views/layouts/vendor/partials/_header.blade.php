@@ -270,6 +270,14 @@
                                 </a> --}}
 
 
+                                @if(auth('vendor')->check())
+                                    {{-- Re-opens the first-visit tour. The modal markup itself lives in
+                                         layouts.vendor.partials._welcome_guide_modal and is always on the page. --}}
+                                    <a class="dropdown-item" href="javascript:void(0)" data-toggle="modal" data-target="#welcomeGuideModal">
+                                        <span class="text-truncate pr-2" title="Quick Start Guide">🚀 {{translate('messages.Quick Start Guide')}}</span>
+                                    </a>
+                                @endif
+
                                 <a class="dropdown-item log-out" >
                                     <span class="text-truncate pr-2 log-out" title="Sign out">{{translate('messages.sign_out')}}</span>
                                 </a>
