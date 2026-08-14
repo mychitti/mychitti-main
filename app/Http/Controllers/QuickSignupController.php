@@ -58,8 +58,14 @@ class QuickSignupController extends Controller
 
         $phone = $request->phone;
 
-        if (Store::where('phone', $phone)->exists()) {
-            return response()->json(['status' => false, 'message' => 'This phone is already registered. Try logging in instead.']);
+        if ($this->phoneTaken($phone)) {
+            // `login` rather than the page matching on the message text: this is the one refusal
+            // the visitor can act on, and the composer shows them the way in when it is set.
+            return response()->json([
+                'status'  => false,
+                'message' => 'This phone is already registered.',
+                'login'   => true,
+            ]);
         }
 
         $check = _check_otp_send_allowed($phone);
@@ -144,7 +150,7 @@ class QuickSignupController extends Controller
         $phone = $identity['phone'] ?: $request->phone;
         $email = $identity['email'] ?: $request->email;
 
-        if (Store::where('phone', $phone)->exists()) {
+        if ($this->phoneTaken($phone)) {
             return back()->withInput()->withErrors(['phone' => 'This phone is already registered.']);
         }
 
@@ -241,6 +247,30 @@ class QuickSignupController extends Controller
     | Google
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Is this number already on a store?
+     *
+     * Matched on the last ten digits rather than the string, because the same number is written
+     * several ways across this database: the listing form posts what its country-code field holds
+     * ("+919876543210"), older rows are bare ten-digit numbers, and imports carry spaces and
+     * dashes. An exact comparison answers "no" for a number that is plainly already registered,
+     * and the caller's answer to that is to create a second account for the same business.
+     *
+     * The same RIGHT(REPLACE(...)) shape the WhatsApp audience queries use, so both agree on what
+     * counts as one person.
+     */
+    private function phoneTaken(string $phone): bool
+    {
+        $digits = substr(preg_replace('/[^0-9]/', '', $phone) ?? '', -10);
+        if (strlen($digits) < 10) {
+            return false;
+        }
+
+        return Store::withoutGlobalScopes()
+            ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$digits])
+            ->exists();
+    }
 
     /** Whether Google sign-in can actually be offered — see the button guard in start.blade.php. */
     public static function googleReady(): bool

@@ -192,6 +192,12 @@
             border-color: var(--blue);
         }
 
+        /* intl-tel-input wraps the field in a .iti div, which is inline-block by default and
+           would shrink the full-width phone box to its content. */
+        .otp-panel .iti {
+            width: 100%;
+        }
+
         .otp-digits {
             display: flex;
             gap: 10px;
@@ -225,6 +231,19 @@
 
         .otp-msg.is-error {
             color: #C0392B;
+        }
+
+        .otp-login-link {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--blue);
+            text-decoration: none;
+        }
+
+        .otp-login-link:hover {
+            text-decoration: underline;
         }
 
         .otp-msg.is-ok {
@@ -319,11 +338,18 @@
                     {{-- Step 1: phone --}}
                     <div class="otp-panel" id="otpPhoneStep">
                         <label for="qsPhone">Your phone number</label>
-                        <input type="tel" id="qsPhone" placeholder="e.g. 9988776655" autocomplete="tel">
+                        {{-- No placeholder: partials.tel_input prefills the dial code, so the box
+                             is never empty for one to show through. --}}
+                        <input type="tel" id="qsPhone" autocomplete="tel">
                         <button type="button" class="btn btn-primary" id="qsSendOtp" style="width:100%; margin-top:12px;">
                             Send OTP
                         </button>
                         <p class="otp-msg" id="qsPhoneMsg" role="status" aria-live="polite"></p>
+                        {{-- Shown when the number is already on an account: the visitor is not
+                             signing up, they are locked out of one they already have. --}}
+                        <a href="https://vendor.mcvendorhub.com/login" class="otp-login-link" id="qsLoginLink" style="display:none;">
+                            Log in to your account →
+                        </a>
                         <button type="button" class="otp-back" data-back="chooser">← Back</button>
                     </div>
 
@@ -346,6 +372,10 @@
                     <div class="choice-foot">
                         <p class="choice-note">
                             No documents needed to start. Your listing stays private until you complete your profile and it's approved.
+                        </p>
+                        <p class="choice-note" style="margin-top:8px;">
+                            Already listed with us?
+                            <a href="https://vendor.mcvendorhub.com/login" style="color:var(--blue); font-weight:700;">Log in</a>
                         </p>
                     </div>
                 </div>
@@ -384,6 +414,16 @@
 @endsection
 
 @section('scripts')
+    {{-- The same country-code field the full listing form uses, so both entry points ask for a
+         phone number the same way. The partial is shared rather than reimplemented, which is what
+         keeps the two in step — it carries the dial-code handling, the paste and backspace rules
+         and the 10-digit cap with it.
+
+         jQuery comes first because the partial is written against it, and this page's theme layout
+         ships no libraries of its own (the full form gets jQuery from its own layout). --}}
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    @include('front-views.partials.tel_input')
+
     <script>
         (function () {
             var csrf     = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -395,12 +435,16 @@
             var codeMsg  = document.getElementById('qsCodeMsg');
             var sendBtn  = document.getElementById('qsSendOtp');
             var verifyBtn = document.getElementById('qsVerifyOtp');
+            var loginLink = document.getElementById('qsLoginLink');
             var digits   = Array.prototype.slice.call(codeBox.querySelectorAll('input'));
 
             function show(step) {
                 chooser.style.display = step === 'chooser' ? '' : 'none';
                 phoneBox.classList.toggle('is-open', step === 'phone');
                 codeBox.classList.toggle('is-open', step === 'code');
+                // Belongs to one refusal about one number — leaving it up after a step change
+                // would have it pointing at a number the visitor has moved on from.
+                loginLink.style.display = 'none';
             }
 
             function say(el, text, ok) {
@@ -435,7 +479,10 @@
 
             sendBtn.addEventListener('click', function () {
                 var phone = phoneIn.value.trim();
-                if (phone.length < 10) {
+                // Counted in digits, not characters: the field now arrives carrying its dial code,
+                // so an untouched box already holds "+91" and a plain length test would read that
+                // as most of a phone number.
+                if (phone.replace(/\D/g, '').length < 10) {
                     say(phoneMsg, 'Enter a valid phone number.');
                     return;
                 }
@@ -445,9 +492,16 @@
                 post('{{ route('quick-signup.send-otp') }}', { phone: phone })
                     .then(function (d) {
                         sendBtn.disabled = false;
-                        if (!d.status) { say(phoneMsg, d.message); return; }
+                        if (!d.status) {
+                            say(phoneMsg, d.message);
+                            // The server says this number already has an account, so offer the
+                            // way in rather than leaving them at a dead end.
+                            loginLink.style.display = d.login ? 'inline-block' : 'none';
+                            return;
+                        }
                         document.getElementById('qsPhoneEcho').textContent = phone;
                         say(phoneMsg, '');
+                        loginLink.style.display = 'none';
                         show('code');
                         digits[0].focus();
                     })

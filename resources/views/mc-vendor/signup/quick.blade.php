@@ -52,6 +52,10 @@
         .qs-field select:focus { outline: none; border-color: var(--blue); }
         .qs-err { font-size: 13px; color: #C0392B; margin-top: 6px; }
         .qs-hint { font-size: 13px; color: var(--ink-faint); margin-top: 16px; }
+
+        /* intl-tel-input wraps the field in a .iti div, which is inline-block by default and would
+           shrink the full-width phone box to its content. */
+        .qs-field .iti { width: 100%; }
     </style>
 @endsection
 
@@ -133,4 +137,12 @@
 
         </div>
     </section>
+@endsection
+
+@section('scripts')
+    {{-- Only reached on the Google path, where we still have to ask for a number — so it asks the
+         same way the listing form and the OTP step do. jQuery first: the shared partial is written
+         against it and this page's layout ships none. --}}
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    @include('front-views.partials.tel_input')
 @endsection
