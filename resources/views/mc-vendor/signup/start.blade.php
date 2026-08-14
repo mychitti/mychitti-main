@@ -117,6 +117,21 @@
             background: var(--blue-pale);
         }
 
+        /* The primary action of this card, so it carries the same blue as "Continue to full form"
+           in the card beside it. A modifier rather than swapping in .btn-primary, so the button
+           keeps the icon row and full-width layout the other auth buttons share. */
+        .auth-btn-primary {
+            background: var(--blue);
+            border-color: var(--blue);
+            color: var(--white);
+        }
+
+        .auth-btn-primary:hover {
+            background: var(--blue-dark);
+            border-color: var(--blue-dark);
+            box-shadow: 0 8px 20px rgba(21, 101, 192, .25);
+        }
+
         .auth-btn svg {
             width: 19px;
             height: 19px;
@@ -308,7 +323,7 @@
                             <div class="auth-sep">OR</div>
                         @endif
 
-                        <button type="button" class="auth-btn" id="quickOtpBtn">
+                        <button type="button" class="auth-btn auth-btn-primary" id="quickOtpBtn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <rect x="5" y="2" width="14" height="20" rx="2"></rect>
                                 <line x1="12" y1="18" x2="12.01" y2="18"></line>

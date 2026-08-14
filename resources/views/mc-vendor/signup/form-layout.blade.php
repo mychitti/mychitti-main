@@ -30,10 +30,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-    {{-- The vendor hub theme, so the header, footer and typography match the rest of the site. --}}
-    <link rel="stylesheet" href="{{ asset('assets/mcvendorhub/style.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/mcvendorhub/app.css') }}">
+    {{-- Order matters here, and it is the whole reason this block is commented.
 
+         Bootstrap first: it is the baseline the FORM is built against (grid, form-control, its
+         wizard markup), so it has to be present before anything tunes it.
+
+         The vendor hub theme second, because it must win over Bootstrap for the chrome. Loaded
+         before Bootstrap instead, Bootstrap's `a{text-decoration:underline}` — a Bootstrap 5
+         default that Bootstrap 4 never had — underlines every link in the header and footer, which
+         is what made this page look wrong next to the rest of the site.
+
+         The page's own stylesheets last, via the stack, so the form still overrides both for its
+         own internals. Safe to put them there: vendor-registration.css is entirely scoped to the
+         form's classes and defines no bare element selectors to leak onto the chrome. --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
 
@@ -41,6 +50,9 @@
          window.intlTelInput and needs both of these stylesheets to look like anything. --}}
     <link rel="stylesheet" href="{{ asset('assets/admin/intltelinput/css/intlTelInput.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/admin/css/intlTelInput.css') }}">
+
+    <link rel="stylesheet" href="{{ asset('assets/mcvendorhub/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/mcvendorhub/app.css') }}">
 
     @stack('css_or_js')
 
