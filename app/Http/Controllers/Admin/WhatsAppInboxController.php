@@ -42,6 +42,14 @@ class WhatsAppInboxController extends Controller
             ->whereNull('store_id')
             ->whereNotNull('recipient')
             ->where('recipient', '!=', '')
+            // A bulk blast is not a conversation. Left in, one 10,000-number send fills the window
+            // below and pushes every real chat out of the list. Anyone who replies to a blast comes
+            // back on their inbound row, and the thread itself still shows the message they got.
+            ->where(function ($q) {
+                $q->where('direction', 'in')
+                    ->orWhereNull('context')
+                    ->orWhere('context', '!=', WhatsAppBulkController::CONTEXT);
+            })
             ->orderByDesc('sent_at')
             ->limit(2000)
             ->get(['recipient', 'direction', 'body', 'type', 'sent_at']);

@@ -1663,6 +1663,13 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 // The platform's own templates. Vendor-facing presets are seeded in code
                 // (WhatsAppService::ensure*Preset) and have no admin screen.
                 Route::get('whatsapp-templates', 'BusinessSettingsController@whatsapp_templates')->name('whatsapp-templates');
+                // Bulk send from the platform number — vendors, customers or a pasted list.
+                Route::get('whatsapp-bulk', 'WhatsAppBulkController@index')->name('whatsapp-bulk');
+                Route::get('whatsapp-bulk/recipients', 'WhatsAppBulkController@recipients')->name('whatsapp-bulk.recipients');
+                Route::post('whatsapp-bulk/send', 'WhatsAppBulkController@send')->name('whatsapp-bulk.send');
+                Route::post('whatsapp-bulk/header-media', 'WhatsAppBulkController@headerMedia')->name('whatsapp-bulk.header-media');
+                Route::get('whatsapp-bulk/{runId}', 'WhatsAppBulkController@run')->name('whatsapp-bulk.run');
+                Route::get('whatsapp-bulk/{runId}/export', 'WhatsAppBulkController@export')->name('whatsapp-bulk.export');
                 // MyChitti platform WhatsApp: two-way chat inbox + auto-reply knowledge base.
                 Route::get('whatsapp-inbox', 'WhatsAppInboxController@inbox')->name('whatsapp-inbox');
                 Route::get('whatsapp-inbox/threads', 'WhatsAppInboxController@threads')->name('whatsapp-inbox.threads');
