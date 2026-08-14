@@ -29,6 +29,17 @@ class VendorController extends Controller
 {
     public function create()
     {
+        // The listing form is an MC Vendor Hub page now — its header and footer are that site's,
+        // and those links are relative, so on mychitti.net half the nav would 404. Anyone arriving
+        // on the old host is sent to the same page where it belongs.
+        //
+        // Host-checked, never unconditional: mychitti.net and mcvendorhub.com are served by this
+        // one application off one route table, so a blanket redirect to mcvendorhub.com arrives
+        // back at this very method and loops until the browser gives up.
+        if (!$this->onVendorHub()) {
+            return redirect()->away('https://mcvendorhub.com/list-your-business', 301);
+        }
+
         $module_categories = Category::where('module_id', 6)->where('position', 0)->where('status', 1)->get();
         $status = BusinessSetting::where('key', 'toggle_store_registration')->first();
 
@@ -47,6 +58,12 @@ class VendorController extends Controller
         $service_stores_type =  StoreType::where('module_id', 6)->get();
 
         return view('front-views.vendor_registration', compact('custome_recaptcha', 'module_categories', 'shop_stores_type', 'service_stores_type'));
+    }
+
+    /** Whether this request is already on MC Vendor Hub, where the signup pages live. */
+    private function onVendorHub(): bool
+    {
+        return str_contains(request()->getHost(), 'mcvendorhub.com');
     }
     public function check_business(Request $request)
     {

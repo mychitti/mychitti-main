@@ -1,6 +1,8 @@
-@extends('front-views.layout')
+{{-- Wrapped in the MC Vendor Hub chrome, not MyChitti's: this page sells the platform to a
+     business, so the store search bar and consumer footer belonged to the wrong site. --}}
+@extends('mc-vendor.signup.form-layout')
 
-@section('title', 'Store Registration')
+@section('title', 'List Your Business — MC Vendor Hub')
 @push('css_or_js')
     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/toastr.css') }}">
     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/view-pages/vendor-registration.css') }}">

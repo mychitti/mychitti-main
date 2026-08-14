@@ -31,6 +31,13 @@ class QuickSignupController extends Controller
     /** The choice page: quick signup, or the full listing form. */
     public function start()
     {
+        // Same reasoning as VendorController::create() — this page wears MC Vendor Hub's chrome,
+        // whose nav links are relative and only resolve on that host. Host-checked so the redirect
+        // cannot point at itself: one application serves both hostnames.
+        if (!str_contains(request()->getHost(), 'mcvendorhub.com')) {
+            return redirect()->away('https://mcvendorhub.com/list-your-business/start', 301);
+        }
+
         return view('mc-vendor.signup.start');
     }
 
