@@ -647,6 +647,23 @@ Route::get('test-vendor-notif/{store_id}', function ($store_id) {
 // hostnames are served by this same application, so a redirect to mcvendorhub.com arrives right
 // back here and loops until the browser gives up.
 Route::get('list-your-business', 'VendorController@create')->name('new-store.create');
+
+// The signup start page and the quick route off it: prove identity with a phone OTP or Google,
+// give three fields, and the account exists — the profile is finished later in the panel. The long
+// form keeps /list-your-business above, because that is the URL on every ad and inbound link.
+// Declared here rather than lower down: the `{category_slug}/{slug}` catch-all further down this
+// file would otherwise swallow /list-your-business/start as a product page.
+Route::get('list-your-business/start', 'QuickSignupController@start')->name('new-store.start');
+Route::group(['prefix' => 'list-your-business/quick', 'as' => 'quick-signup.'], function () {
+    Route::post('send-otp', 'QuickSignupController@sendOtp')->name('send-otp');
+    Route::post('verify-otp', 'QuickSignupController@verifyOtp')->name('verify-otp');
+    Route::get('/', 'QuickSignupController@form')->name('form');
+    Route::post('/', 'QuickSignupController@store')->name('store');
+    Route::get('done', 'QuickSignupController@done')->name('done');
+    Route::get('auth/google/redirect', 'QuickSignupController@googleRedirect')->name('google.redirect');
+    Route::get('auth/google/callback', 'QuickSignupController@googleCallback')->name('google.callback');
+});
+
 Route::get('send_confirmation_sms', 'VendorController@send_confirmation_sms')->name('send_confirmation_sms');
 
 //Restaurant Registration

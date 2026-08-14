@@ -713,16 +713,18 @@ function _signImgById($sign_id)
     return $sign->image;
 }
 /**
- * Where a business signs up to sell on MyChitti.
+ * Where a business starts signing up to sell on MyChitti.
  *
- * The form lives on MC Vendor Hub — the site that actually sells the product — and no longer on
- * mychitti.net, which now only redirects. One function rather than the URL written out at each
- * button: it was hardcoded in eight blades and a controller before this move, and finding all of
- * them again is the whole cost of moving it a second time.
+ * Points at the start page, which offers the quick route (phone OTP or Google, three fields) beside
+ * the full listing form — not straight at the long form. The form itself keeps
+ * /list-your-business, because that is the URL on the ads and the inbound links.
+ *
+ * One function rather than the URL written out at each button: it was hardcoded in eight blades and
+ * a controller, and finding all of them again is the whole cost of moving it.
  */
 function _vendorSignupUrl(): string
 {
-    return 'https://mcvendorhub.com/list-your-business';
+    return 'https://mcvendorhub.com/list-your-business/start';
 }
 
 function _vendorSubscriptionPlans()
