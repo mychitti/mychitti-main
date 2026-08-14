@@ -660,6 +660,11 @@ Route::group(['prefix' => 'list-your-business/quick', 'as' => 'quick-signup.'], 
     Route::get('/', 'QuickSignupController@form')->name('form');
     Route::post('/', 'QuickSignupController@store')->name('store');
     Route::get('done', 'QuickSignupController@done')->name('done');
+    // Where a finished quick signup lands, on the PANEL host — the only host whose session cookie
+    // and guard the panel reads. It lives in web.php, which is registered without a prefix, so the
+    // URL resolves on every host; the panel's own route file is mounted under a `store-panel`
+    // prefix that its host does not use in URLs, and a route declared there would 404.
+    Route::get('land', 'QuickSignupController@land')->name('land');
     Route::get('auth/google/redirect', 'QuickSignupController@googleRedirect')->name('google.redirect');
     Route::get('auth/google/callback', 'QuickSignupController@googleCallback')->name('google.callback');
 });

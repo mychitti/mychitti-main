@@ -10,6 +10,8 @@ use App\Models\Store;
 use App\Models\Vendor;
 use App\Models\Zone;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -27,6 +29,9 @@ use Illuminate\Support\Str;
 class QuickSignupController extends Controller
 {
     private const SESSION_KEY = 'quick_signup';
+
+    /** Cache prefix for the one-shot ticket that carries a new vendor across to the panel host. */
+    private const HANDOFF_KEY = 'qs_login_';
 
     /** The choice page: quick signup, or the full listing form. */
     public function start()
@@ -234,7 +239,72 @@ class QuickSignupController extends Controller
 
         session()->forget(self::SESSION_KEY);
 
-        return redirect()->route('quick-signup.done');
+        // Straight into the panel rather than a "now go and log in" page — they proved who they
+        // were a moment ago, and no password was collected for them to log in WITH.
+        //
+        // It cannot be done by logging them in here: signup runs on mcvendorhub.com, the panel on
+        // vendor.mcvendorhub.com, and DynamicSessionCookie gives those hosts different session
+        // cookies under different guards (laravel_session/web against vendor_session/vendor). A
+        // session opened here would simply not exist over there. So the account is handed across
+        // with a one-shot ticket that land() spends on arrival.
+        return redirect()->away($this->panelHandoffUrl($vendor));
+    }
+
+    /**
+     * A single-use ticket that logs this vendor in on the panel host, as a URL.
+     *
+     * Ten minutes and one use: it is a bearer credential, so it should be worth as little as
+     * possible by the time it reaches anybody's logs or referrer header. Held in the cache rather
+     * than signed into the URL because both hosts run on one server against one Redis, and a
+     * cached key can be spent — a signature stays valid for its whole lifetime however many times
+     * it is replayed.
+     */
+    private function panelHandoffUrl(Vendor $vendor): string
+    {
+        $token = Str::random(64);
+        Cache::put(self::HANDOFF_KEY . $token, $vendor->id, now()->addMinutes(10));
+
+        // Built against the panel host rather than route(), which would generate this host's URL —
+        // the whole point is to arrive somewhere else. The path is the `land` route's own.
+        return 'https://vendor.mcvendorhub.com/list-your-business/quick/land?token=' . $token;
+    }
+
+    /**
+     * Spend the ticket and open the session, on the panel host where it belongs.
+     *
+     * Redirects to /dashboard as a path, not route('vendor.dashboard'): the panel routes carry a
+     * `store-panel` prefix in the route table that this host does not use in its URLs, so the
+     * generated route would 404 on the very host it is meant for.
+     */
+    public function land(Request $request)
+    {
+        // pull(), not get(): spending the ticket is what stops a shared or re-opened link being a
+        // standing key to somebody else's account.
+        $vendorId = Cache::pull(self::HANDOFF_KEY . (string) $request->query('token'));
+
+        $vendor = $vendorId ? Vendor::find($vendorId) : null;
+        if (!$vendor || !$vendor->status) {
+            return redirect()->to('/login')->withErrors([
+                'This sign-in link has already been used or has expired. Please log in with your phone number.',
+            ]);
+        }
+
+        Auth::guard('vendor')->login($vendor);
+
+        // The same log a normal login writes, so activity tracking does not treat a quick-signup
+        // vendor as never having signed in.
+        try {
+            $log = \App\Models\VendorLoginLog::create([
+                'vendor_id'        => $vendor->id,
+                'login_at'         => now(),
+                'last_activity_at' => now(),
+            ]);
+            session(['login_log_id' => $log->id]);
+        } catch (\Throwable $e) {
+            info('Quick signup login log failed: ' . $e->getMessage());
+        }
+
+        return redirect()->to('/dashboard');
     }
 
     public function done()
