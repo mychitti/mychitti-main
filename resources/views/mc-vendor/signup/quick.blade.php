@@ -73,24 +73,17 @@
             </div>
 
             <h1>Almost there.</h1>
-            <p class="sub">Three details and your account is live. Everything else — address, photos, services, documents — you can add later from your dashboard.</p>
+            <p class="sub">
+                One detail and your account is live. Your business name, city and everything else —
+                address, photos, services, documents — you can set from your dashboard.
+            </p>
 
+            {{-- Business name, owner name and city are not asked for: the controller fills them in
+                 (the Google name, and Tirupati) and the panel's unfinished-profile banner asks the
+                 vendor to correct them. Only what cannot be invented is collected here — the phone,
+                 which is NOT NULL and UNIQUE on vendors, and the email when OTP got us here. --}}
             <form action="{{ route('quick-signup.store') }}" method="post">
                 @csrf
-
-                <div class="qs-field">
-                    <label for="business_name">Business name</label>
-                    <input type="text" id="business_name" name="business_name"
-                        value="{{ old('business_name') }}" placeholder="e.g. Sri Balaji Electricals" required>
-                    @error('business_name')<div class="qs-err">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="qs-field">
-                    <label for="owner_name">Your name</label>
-                    <input type="text" id="owner_name" name="owner_name"
-                        value="{{ old('owner_name', $identity['name']) }}" placeholder="e.g. Ramesh Kumar" required>
-                    @error('owner_name')<div class="qs-err">{{ $message }}</div>@enderror
-                </div>
 
                 @if (empty($identity['phone']))
                     <div class="qs-field">
@@ -110,18 +103,10 @@
                     </div>
                 @endif
 
-                <div class="qs-field">
-                    <label for="zone_id">City</label>
-                    <select id="zone_id" name="zone_id" required>
-                        <option value="" disabled {{ old('zone_id') ? '' : 'selected' }}>Select your city</option>
-                        @foreach ($zones as $zone)
-                            <option value="{{ $zone->id }}" {{ old('zone_id') == $zone->id ? 'selected' : '' }}>
-                                {{ $zone->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('zone_id')<div class="qs-err">{{ $message }}</div>@enderror
-                </div>
+                {{-- Kept as an error slot only: nothing here asks for a city, but if the default
+                     zone could not be resolved the validator still has somewhere to say so. --}}
+                @error('zone_id')<div class="qs-err">{{ $message }}</div>@enderror
+                @error('business_name')<div class="qs-err">{{ $message }}</div>@enderror
 
                 <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;">
                     Create my account

@@ -134,7 +134,20 @@ class QuickSignupController extends Controller
             return redirect()->route('home')->with('error', 'Registrations are closed right now.');
         }
 
-        // Whichever contact detail the identity step did not give us is asked for here.
+        // Business name, owner name and city are defaulted rather than demanded — a Google
+        // identity already carries a name, and the overwhelming majority of these signups are
+        // Tirupati businesses. The unfinished-profile banner in the panel asks them to correct
+        // both, so a default never quietly becomes the listing's final name.
+        $request->merge([
+            'business_name' => trim((string) $request->input('business_name')) ?: $this->defaultBusinessName($identity),
+            'owner_name'    => trim((string) $request->input('owner_name')) ?: ($identity['name'] ?: 'Owner'),
+            'zone_id'       => $request->input('zone_id') ?: $this->defaultZoneId(),
+        ]);
+
+        // Whichever contact detail the identity step did not give us is asked for here. The phone
+        // is the one thing that cannot be defaulted away: vendors.phone is NOT NULL and UNIQUE, so
+        // a blank collides on the second signup, and a made-up number would become the store's
+        // contact of record, defeat the duplicate check and lock them out of OTP login.
         $rules = [
             'business_name' => 'required|string|max:191',
             'zone_id'       => 'required|exists:zones,id',
@@ -170,9 +183,15 @@ class QuickSignupController extends Controller
         $vendor = null;
 
         try {
-            DB::transaction(function () use ($request, $phone, $email, $firstName, $lastName, $latitude, $longitude, &$vendor) {
+            DB::transaction(function () use ($request, $identity, $phone, $email, $firstName, $lastName, $latitude, $longitude, &$vendor) {
 
-                $vendor = new Vendor();
+                // An account that already exists but never got a store — see googleCallback().
+                // Reused rather than duplicated: vendors.phone is UNIQUE, so a second row for the
+                // same person could not be written anyway, and a duplicate would split their
+                // history across two logins.
+                $vendor = !empty($identity['vendor_id']) ? Vendor::find($identity['vendor_id']) : null;
+                $vendor = $vendor ?: new Vendor();
+
                 $vendor->f_name = $firstName;
                 $vendor->l_name = $lastName !== $firstName ? $lastName : '';
                 $vendor->email = $email;
@@ -319,6 +338,43 @@ class QuickSignupController extends Controller
     */
 
     /**
+     * A name to open the listing with when none was typed.
+     *
+     * The person's own name, which Google gives us, reads far better on a listing than a random
+     * string and is the thing they are most likely to correct first. Falls back only when the
+     * identity carried no name at all — the OTP route, which knows a phone and nothing else.
+     */
+    private function defaultBusinessName(array $identity): string
+    {
+        $name = trim((string) ($identity['name'] ?? ''));
+
+        return $name !== '' ? mb_substr($name, 0, 191) : 'My Business';
+    }
+
+    /**
+     * The city a signup lands in when none was chosen.
+     *
+     * Tirupati, where the overwhelming majority of these businesses are. Resolved by name rather
+     * than a hardcoded id so it survives the zone table being rebuilt, and falls back to any
+     * active zone — a store row cannot exist without one, and refusing the signup over a default
+     * would be worse than putting it in the wrong city, which the vendor can change.
+     */
+    private function defaultZoneId(): ?int
+    {
+        try {
+            $id = Cache::remember('qs_default_zone_id', 3600, function () {
+                return Zone::active()->where('name', 'like', 'Tirupati%')->value('id')
+                    ?: Zone::active()->orderBy('id')->value('id');
+            });
+
+            return $id ? (int) $id : null;
+        } catch (\Throwable $e) {
+            info('Default zone lookup failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Is this number already on a store?
      *
      * Matched on the last ten digits rather than the string, because the same number is written
@@ -383,6 +439,26 @@ class QuickSignupController extends Controller
             // exactly the people most likely to arrive back here.
             if (!$existing->status) {
                 return redirect()->away('https://vendor.mcvendorhub.com/login');
+            }
+
+            // A vendor row with no store behind it cannot be sent to the panel: get_store_data()
+            // reads stores[0] with no guard, so the dashboard dies with "Undefined array key 0"
+            // before it draws anything. There are already accounts in this state from earlier
+            // signups. Rather than a crash or a dead end, carry them into the form and give them
+            // the store they never got — see the vendor_id the identity carries below.
+            if ($existing->stores()->count() === 0) {
+                session([self::SESSION_KEY => [
+                    'via'   => 'google',
+                    // Their own number, carried through so the form does not ask for a phone it
+                    // would then reject: vendors.phone is UNIQUE, and the value already sits on
+                    // this very row, so typing it truthfully would fail validation.
+                    'phone' => $existing->phone,
+                    'email' => $email,
+                    'name'  => $googleUser->getName(),
+                    'vendor_id' => $existing->id,
+                ]]);
+
+                return redirect()->route('quick-signup.form');
             }
 
             return redirect()->away($this->panelHandoffUrl($existing));

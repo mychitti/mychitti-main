@@ -54,8 +54,18 @@ class DashboardController extends Controller
     public function welcome_guide_seen(Request $request)
     {
         if (auth('vendor')->check()) {
-            Vendor::where('id', auth('vendor')->id())->update(['welcome_guide_seen_at' => now()]);
+            // The column is added on first use — see Vendor::ensureWelcomeGuideColumn(). Without
+            // this the update below fails silently and the guide reopens on every page load.
+            Vendor::ensureWelcomeGuideColumn();
+
+            try {
+                Vendor::where('id', auth('vendor')->id())->update(['welcome_guide_seen_at' => now()]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('welcome guide dismiss failed: ' . $e->getMessage());
+                return response()->json(['status' => false], 500);
+            }
         }
+
         return response()->json(['status' => true]);
     }
 
