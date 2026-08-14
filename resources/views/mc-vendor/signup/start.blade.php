@@ -280,28 +280,8 @@
         <div class="wrap">
             <div class="start-choice">
 
-                {{-- Existing full listing --}}
-                <div class="choice-card">
-                    <div class="choice-kicker">Full Listing</div>
-                    <h2>Set up your complete profile now</h2>
-                    <p class="sub">The full six-step form. Best if you have your GST or ID document handy and want to go live straight away.</p>
-
-                    <ul class="choice-list">
-                        <li><span class="tick">✓</span> Business name, address and map location</li>
-                        <li><span class="tick">✓</span> Category and the services you offer</li>
-                        <li><span class="tick">✓</span> Logo, cover photo and verification documents</li>
-                        <li><span class="tick">✓</span> Goes to admin for approval as soon as you submit</li>
-                    </ul>
-
-                    <div class="choice-foot">
-                        <a href="{{ route('new-store.create') }}" class="btn btn-primary" style="width:100%; justify-content:center;">
-                            Continue to full form
-                        </a>
-                        <p class="choice-note">Takes about 10 minutes · Needs GST or ID proof</p>
-                    </div>
-                </div>
-
-                {{-- Quick signup --}}
+                {{-- Quick signup leads: it is the path marked Fastest, so it takes the first
+                     column on desktop and is what a phone shows before any scrolling. --}}
                 <div class="choice-card is-quick">
                     <span class="choice-badge">Fastest</span>
                     <div class="choice-kicker">Quick Signup</div>
@@ -309,7 +289,11 @@
                     <p class="sub">Just verify who you are. We'll create your account right away and you can fill in the business details whenever you're ready.</p>
 
                     <div id="quickChooser">
-                        @if (config('mychitti.google_signup_enabled'))
+                        {{-- Shown once Google credentials are configured. This was a
+                             config('mychitti.*') flag in the app this page came from, which does
+                             not exist here — so the button could never render whatever the
+                             credentials said. --}}
+                        @if (\App\Http\Controllers\QuickSignupController::googleReady())
                             <a href="{{ route('quick-signup.google.redirect') }}" class="auth-btn">
                                 <svg viewBox="0 0 48 48" aria-hidden="true">
                                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -363,6 +347,27 @@
                         <p class="choice-note">
                             No documents needed to start. Your listing stays private until you complete your profile and it's approved.
                         </p>
+                    </div>
+                </div>
+
+                {{-- The full six-step form, for anyone who would rather do it all in one sitting. --}}
+                <div class="choice-card">
+                    <div class="choice-kicker">Full Listing</div>
+                    <h2>Set up your complete profile now</h2>
+                    <p class="sub">The full six-step form. Best if you have your GST or ID document handy and want to go live straight away.</p>
+
+                    <ul class="choice-list">
+                        <li><span class="tick">✓</span> Business name, address and map location</li>
+                        <li><span class="tick">✓</span> Category and the services you offer</li>
+                        <li><span class="tick">✓</span> Logo, cover photo and verification documents</li>
+                        <li><span class="tick">✓</span> Goes to admin for approval as soon as you submit</li>
+                    </ul>
+
+                    <div class="choice-foot">
+                        <a href="{{ route('new-store.create') }}" class="btn btn-primary" style="width:100%; justify-content:center;">
+                            Continue to full form
+                        </a>
+                        <p class="choice-note">Takes about 10 minutes · Needs GST or ID proof</p>
                     </div>
                 </div>
 
