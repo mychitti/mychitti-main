@@ -42,6 +42,67 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <link rel="stylesheet" href="{{ asset('public/assets/admin/css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('public/assets/admin/intltelinput/css/intlTelInput.css') }}">
     @include('theme-colors')
+
+    <style>
+        /* The unfinished-profile banner. It sits above the panel's own top bar, which the theme
+           fixes at top:0 with z-index 99 — so this takes the top slot and everything the theme
+           fixes underneath is pushed down by exactly its height. Without that the banner would
+           simply cover the navbar rather than sit above it. */
+        .store-profile-alert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            height: 44px;
+            background: #dc3545;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 0 16px;
+            font-size: 13.5px;
+            font-weight: 600;
+        }
+
+        .store-profile-alert a {
+            background: #fff;
+            color: #dc3545;
+            border-radius: 4px;
+            padding: 4px 14px;
+            font-weight: 700;
+            font-size: 12.5px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .store-profile-alert a:hover {
+            color: #a71d2a;
+        }
+
+        body.has-store-alert .navbar-fixed,
+        body.has-store-alert .navbar-fixed ~ .main .navbar-vertical-aside {
+            top: 44px;
+        }
+
+        /* The theme's own 3.75rem for the fixed navbar, plus the banner above it. */
+        body.has-store-alert .navbar-fixed ~ .main {
+            padding-top: calc(3.75rem + 44px);
+        }
+
+        @media (max-width: 575px) {
+            .store-profile-alert {
+                height: auto;
+                min-height: 44px;
+                padding: 8px 12px;
+                font-size: 12.5px;
+                gap: 8px;
+                flex-wrap: wrap;
+                text-align: center;
+            }
+        }
+    </style>
     @stack('css_or_js')
 
     <script
@@ -300,7 +361,8 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     @endif
 </head>
  
-<body class="footer-offset {{ strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') == 'hospital' ? 'hmis-skin' : '' }}">
+@php($_storeGaps = auth('vendor')->check() ? _storeProfileGaps() : [])
+<body class="footer-offset {{ strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') == 'hospital' ? 'hmis-skin' : '' }} {{ !empty($_storeGaps) ? 'has-store-alert' : '' }}">
     @if (session()->has('impersonator_id'))
         <div
             style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#e74c3c;color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:16px;">
@@ -315,6 +377,20 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             </form>
         </div>
         <div style="height:40px"></div>
+    @endif
+
+    {{-- A store that came in through quick signup and has not finished its profile. The listing
+         cannot go live in that state, and nothing else in the panel says so, so it is said here on
+         every screen until it is done. Clears itself the moment Store Settings is saved — see
+         _storeProfileGaps(). --}}
+    @if (!empty($_storeGaps))
+        <div class="store-profile-alert">
+            <i class="tio-warning"></i>
+            <span>
+                Your business listing isn't live yet — add your {{ implode(' and ', $_storeGaps) }} to finish setting it up.
+            </span>
+            <a href="{{ route('vendor.shop.edit') }}">Complete profile</a>
+        </div>
     @endif
 
     @if (env('APP_MODE') == 'demo')

@@ -727,6 +727,35 @@ function _vendorSignupUrl(): string
     return 'https://mcvendorhub.com/list-your-business/start';
 }
 
+/**
+ * What a store still has to fill in before its listing is worth showing, as a readable list.
+ *
+ * Quick signup deliberately writes the least a store row can exist with — a name, a phone and a
+ * city — and leaves the rest for the vendor to finish in the panel. The full listing form cannot
+ * produce a store in that state: it requires an address and a logo before it will submit. So an
+ * empty address or a default logo IS the signal that someone came in through quick signup and has
+ * not been back to finish, without needing a column to record it.
+ *
+ * Returns [] for a complete store, which is what the panel's banner keys off.
+ */
+function _storeProfileGaps($store = null): array
+{
+    $store = $store ?: \App\CentralLogics\Helpers::get_store_data();
+    if (!$store) {
+        return [];
+    }
+
+    $gaps = [];
+    if (trim((string) ($store->address ?? '')) === '') {
+        $gaps[] = 'address';
+    }
+    if (in_array(trim((string) ($store->logo ?? '')), ['', 'def.png'], true)) {
+        $gaps[] = 'logo';
+    }
+
+    return $gaps;
+}
+
 function _vendorSubscriptionPlans()
 {
     $plans = Plan::where('status', 1)->get();
