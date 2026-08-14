@@ -53,7 +53,7 @@
 
                     <a style="width: fit-content;"
                         class=" wrapper_link  nav-link text-primary fw-bold  position-relative"
-                        href="{{ route('new-store.create') }}">
+                        href="{{ _vendorSignupUrl() }}">
                         Business Listing
                         <span
                             class="position-absolute top-0 start-100 translate-middle badge rounded bg-danger free_listing_badge">

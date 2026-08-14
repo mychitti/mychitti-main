@@ -1170,7 +1170,7 @@ $log_email_succ = session()->get('log_email_succ');
                             @endif
                         </div>
                         <p class="mb-0 text-center">Don't have an account?</p>
-                        <a class="btn signup-btn" href="https://mychitti.net/list-your-business">SIGN UP NOW</a>
+                        <a class="btn signup-btn" href="{{ _vendorSignupUrl() }}">SIGN UP NOW</a>
                     @endif
 
                 </form>

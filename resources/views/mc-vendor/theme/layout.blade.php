@@ -1,5 +1,5 @@
 @php($mc_login_url = $mc_login_url ?? 'https://vendor.mcvendorhub.com/login')
-@php($mc_signup_url = $mc_signup_url ?? 'https://mychitti.net/list-your-business')
+@php($mc_signup_url = $mc_signup_url ?? _vendorSignupUrl())
 @php($mc_wa_url = $mc_wa_url ?? 'https://wa.me/919951968473')
 <!DOCTYPE html>
 <html lang="en">

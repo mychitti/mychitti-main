@@ -153,7 +153,7 @@ class MCVendorController extends Controller
 
         return [
             'mc_login_url'  => 'https://vendor.mcvendorhub.com/login',
-            'mc_signup_url' => 'https://mychitti.net/list-your-business',
+            'mc_signup_url' => _vendorSignupUrl(),
             'mc_wa_url'     => 'https://wa.me/919951968473',
             'mc_pricing'    => $mc_pricing,
             'mc_modules'    => $this->theme_module_board($sub_modules, $yearly),

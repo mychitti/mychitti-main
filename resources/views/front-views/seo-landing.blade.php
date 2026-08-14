@@ -366,7 +366,7 @@
                         <h3>Are you a {{ $category->name }} provider in {{ $zone->name }}?</h3>
                         <p>List your business free and reach customers searching in your area.</p>
                     </div>
-                    <a href="{{ url('list-your-business') }}" class="seo-btn seo-btn-light">List your business</a>
+                    <a href="{{ _vendorSignupUrl() }}" class="seo-btn seo-btn-light">List your business</a>
                 </div>
 
             </div>

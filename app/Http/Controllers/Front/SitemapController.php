@@ -37,7 +37,9 @@ class SitemapController extends Controller
         // Static pages
         $xml .= $this->urlTag($baseUrl . '/about-us', '2025-01-01', 'monthly', '0.4');
         $xml .= $this->urlTag($baseUrl . '/contact', '2025-01-01', 'monthly', '0.4');
-        $xml .= $this->urlTag($baseUrl . '/list-your-business', '2025-01-01', 'monthly', '0.6');
+        // /list-your-business is gone from here on purpose: it now 301s to MC Vendor Hub, and a
+        // sitemap is a list of pages worth indexing, not of redirects. Submitting one asks Google
+        // to keep crawling a URL whose whole job is to send it somewhere else.
         $xml .= $this->urlTag($baseUrl . '/blog', $today, 'weekly', '0.7');
 
         // Category pages — module 6 (services) is gated to real supply: only emit a URL for a

@@ -105,7 +105,7 @@
                             class="btn-link">
                             {{ auth('web')->user() ? 'My Account' : 'Login/Register' }}
                         </a>
-                        <a href="{{ route('new-store.create') }}" class="btn-link">List Your Business For Free</a>
+                        <a href="{{ _vendorSignupUrl() }}" class="btn-link">List Your Business For Free</a>
                         @if (auth('web')->user())
                             {{-- <a class="btn-link" href="{{ route('cart') }}">My Cart</a>
                             @if (_cartCount())

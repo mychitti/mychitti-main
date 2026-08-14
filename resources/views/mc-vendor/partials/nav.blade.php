@@ -27,7 +27,7 @@
                  <a href="https://mcvendorhub.com/#faq_section" class="my-nav-link nav-link">FAQs</a>
                  <a href="https://mcvendorhub.com/#review_section" class="my-nav-link nav-link">Reviews</a>
                  <a href="https://vendor.mcvendorhub.com/login" class="my-nav-link nav-link">Login</a>
-                 <a href="https://mychitti.net/list-your-business" class="my-nav-link nav-link">Signup</a>
+                 <a href="{{ _vendorSignupUrl() }}" class="my-nav-link nav-link">Signup</a>
              </div>
          </div>
      </div>

@@ -377,7 +377,7 @@ max-height: 302px;
                             Sign in with OTP
                         </div>
                         <div class="signup-link">
-                            Don't have a vendor account ? <a href="{{ route('new-store.create') }}">Create Account</a>
+                            Don't have a vendor account ? <a href="{{ _vendorSignupUrl() }}">Create Account</a>
                         </div>
                     @endif
                 </form>

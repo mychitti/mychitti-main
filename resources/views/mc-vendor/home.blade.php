@@ -546,7 +546,7 @@ $log_email_succ = session()->get('log_email_succ');
             </ul>
         </div>
         <div class="mc-vendor-cta">
-            <a href="https://mychitti.net/list-your-business" class="mc-vendor-btn">Register Now</a>
+            <a href="{{ _vendorSignupUrl() }}" class="mc-vendor-btn">Register Now</a>
         </div>
     </div>
 

@@ -712,6 +712,19 @@ function _signImgById($sign_id)
     $sign = StoreSignature::find($sign_id);
     return $sign->image;
 }
+/**
+ * Where a business signs up to sell on MyChitti.
+ *
+ * The form lives on MC Vendor Hub — the site that actually sells the product — and no longer on
+ * mychitti.net, which now only redirects. One function rather than the URL written out at each
+ * button: it was hardcoded in eight blades and a controller before this move, and finding all of
+ * them again is the whole cost of moving it a second time.
+ */
+function _vendorSignupUrl(): string
+{
+    return 'https://mcvendorhub.com/list-your-business';
+}
+
 function _vendorSubscriptionPlans()
 {
     $plans = Plan::where('status', 1)->get();
