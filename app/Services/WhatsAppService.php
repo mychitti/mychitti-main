@@ -159,6 +159,25 @@ class WhatsAppService
         self::DEFAULT_LEAD_ACCEPTED_TEMPLATE,
         self::DEFAULT_TEST_TEMPLATE,
         'staff_forward',
+        // Every other suggested template behind a role in TEMPLATE_ROLES. Kept as literals
+        // because a const cannot be built from the roles array, so this list has to be extended
+        // alongside it whenever a role is added.
+        'advice_note',
+        'service_recall',
+        'repeat_purchase_reminder',
+        'rebook_reminder',
+        'invoice_ready',
+        'payment_receipt',
+        'opd_visit_registered',
+        'treatment_summary',
+        'prescription_share',
+        'prescription_pdf',
+        'medicine_instructions',
+        'followup_reminder',
+        'visit_feedback',
+        'lab_report_ready',
+        'radiology_report_ready',
+        'patient_document',
     ];
 
     /**
@@ -175,25 +194,187 @@ class WhatsAppService
      * message) is deliberately absent — those are ours, not the vendor's, and are not bindable.
      */
     const TEMPLATE_ROLES = [
+        // ── Customers ───────────────────────────────────────────────────────────────────
         'welcome' => [
             'label'   => 'Customer welcome',
+            'group'   => 'Customers',
             'default' => self::DEFAULT_WELCOME_TEMPLATE,
             'params'  => ['Customer name', 'Store name'],
             'blurb'   => 'Sent once when a new customer is added to your customer book.',
         ],
+        'advice_note' => [
+            'label'   => 'Advice note',
+            'group'   => 'Customers',
+            'default' => 'advice_note',
+            'params'  => ['Customer name', 'Store name', 'Note'],
+            'blurb'   => 'A note you type yourself and send to one customer from their profile.',
+        ],
+        'service_recall' => [
+            'label'   => 'Service recall',
+            'group'   => 'Customers',
+            'default' => 'service_recall',
+            'params'  => ['Customer name', 'Store name', 'Service name'],
+            'blurb'   => 'Invites a customer back once their last service is due again.',
+        ],
+        'repeat_purchase' => [
+            'label'   => 'Repeat purchase reminder',
+            'group'   => 'Customers',
+            'default' => 'repeat_purchase_reminder',
+            'params'  => ['Customer name', 'Items', 'Store name'],
+            'blurb'   => 'Reminds a customer to restock what they buy regularly.',
+        ],
+
+        // ── Appointments ────────────────────────────────────────────────────────────────
         'appt_reminder' => [
             'label'   => 'Appointment reminder',
+            'group'   => 'Appointments',
             'default' => self::DEFAULT_APPT_REMINDER_TEMPLATE,
             'params'  => ['Patient name', 'Clinic name', 'Date', 'Time'],
             'blurb'   => 'Sent before a booked appointment, on the schedule set in your reminder settings.',
         ],
+        'rebook' => [
+            'label'   => 'Rebooking reminder',
+            'group'   => 'Appointments',
+            'default' => 'rebook_reminder',
+            'params'  => ['Patient name', 'Doctor name', 'Clinic name'],
+            'blurb'   => 'Nudges a patient who has not booked again since their last visit.',
+        ],
+
+        // ── Billing ─────────────────────────────────────────────────────────────────────
+        // Both carry the PDF in a document header, so a stand-in needs that header as well as
+        // the right variable count — see `header` and the note the automation screen shows.
+        'invoice' => [
+            'label'   => 'Invoice',
+            'group'   => 'Billing',
+            'default' => 'invoice_ready',
+            'header'  => 'DOCUMENT',
+            'params'  => ['Customer name', 'Store name', 'Invoice number', 'Total amount', 'Balance note'],
+            'blurb'   => 'Sends a bill to the customer with the PDF attached.',
+        ],
+        'payment_receipt' => [
+            'label'   => 'Payment receipt',
+            'group'   => 'Billing',
+            'default' => 'payment_receipt',
+            'header'  => 'DOCUMENT',
+            'params'  => ['Customer name', 'Amount paid', 'Invoice number', 'Store name', 'Balance note'],
+            'blurb'   => 'Sent when a payment is recorded against a bill, with the receipt attached.',
+        ],
+
+        // ── Hospital ────────────────────────────────────────────────────────────────────
+        // Keys match HmisWhatsAppShare::KINDS exactly, which is what lets dispatch() resolve a
+        // role from the kind it was handed without a second lookup table to keep in step.
+        'visit_registered' => [
+            'label'   => 'Visit registered',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'opd_visit_registered',
+            'params'  => ['Patient name', 'Hospital name', 'Visit date', 'Token number', 'Doctor name', 'Record link'],
+            'blurb'   => 'Sent when an OPD visit is booked in, with the token number and doctor.',
+        ],
+        'treatment' => [
+            'label'   => 'Consultation summary',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'treatment_summary',
+            'params'  => ['Patient name', 'Hospital name', 'Visit date', 'Diagnosis', 'Record link'],
+            'blurb'   => 'Sent once a consultation is finished — the summary itself is behind the link.',
+        ],
+        'prescription' => [
+            'label'   => 'Prescription',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'prescription_share',
+            'params'  => ['Patient name', 'Hospital name', 'Date', 'Medicine count', 'Record link'],
+            'blurb'   => 'Sent when a prescription is finalized — the medicine list is behind the link.',
+        ],
+        'prescription_pdf' => [
+            'label'   => 'Prescription as a PDF',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'prescription_pdf',
+            'header'  => 'DOCUMENT',
+            'params'  => ['Patient name', 'Hospital name', 'Date', 'Medicine count'],
+            'blurb'   => 'The prescription as an attached file rather than a link.',
+        ],
+        'medicines' => [
+            'label'   => 'Medicine instructions',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'medicine_instructions',
+            'params'  => ['Patient name', 'Hospital name', 'Medicine schedule', 'Record link'],
+            'blurb'   => 'How to take each medicine, sent when a prescription is finalized.',
+        ],
+        'followup' => [
+            'label'   => 'Follow-up reminder',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'followup_reminder',
+            'params'  => ['Patient name', 'Hospital name', 'Follow-up date', 'Doctor name'],
+            'blurb'   => 'Sent when a patient\'s next visit is booked. Carries no link.',
+        ],
+        'feedback' => [
+            'label'   => 'Feedback request',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'visit_feedback',
+            'params'  => ['Patient name', 'Hospital name', 'Visit date'],
+            'blurb'   => 'Asks the patient how their visit went, after the delay you set.',
+        ],
+        'lab' => [
+            'label'   => 'Lab report ready',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'lab_report_ready',
+            'params'  => ['Patient name', 'Hospital name', 'Tests done', 'Record link'],
+            'blurb'   => 'Sent once a lab report is verified — results are behind the link, never in the message.',
+        ],
+        'radiology' => [
+            'label'   => 'Radiology report ready',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'radiology_report_ready',
+            'params'  => ['Patient name', 'Hospital name', 'Scan name', 'Record link'],
+            'blurb'   => 'Sent once a radiology study is verified — findings are behind the link.',
+        ],
+        'document' => [
+            'label'   => 'Patient document',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'patient_document',
+            'header'  => 'DOCUMENT',
+            'params'  => ['Patient name', 'Hospital name', 'Document name', 'Date'],
+            'blurb'   => 'Any file you send a patient from their record, attached to the message.',
+        ],
+
+        // ── Team ────────────────────────────────────────────────────────────────────────
         'staff_forward' => [
             'label'   => 'Forward chat to staff',
+            'group'   => 'Team',
             'default' => 'staff_forward',
             'params'  => ['Store name', 'Sender name', 'Sender phone', 'Message'],
             'blurb'   => 'Sent to a staff member when you forward a customer chat to them.',
         ],
     ];
+
+    /**
+     * The template a role actually sends, with the platform's suggested name standing in.
+     *
+     * templateFor() answers null when there is nothing usable, which is right for an automation
+     * deciding whether to run at all. These callers want the opposite: attempt the send and let
+     * Meta's own refusal reach the vendor, who is then told which template to create. $fallback
+     * exists for callers whose suggested name lives on their own class rather than in the role.
+     */
+    public static function roleTemplate(int $storeId, string $role, ?string $fallback = null): array
+    {
+        $tpl = static::templateFor($storeId, $role);
+        if ($tpl) {
+            return ['name' => $tpl['name'], 'language' => $tpl['language']];
+        }
+
+        $name = $fallback ?: (self::TEMPLATE_ROLES[$role]['default'] ?? '');
+
+        return ['name' => $name, 'language' => static::templateLanguage($storeId, $name)];
+    }
 
     /**
      * Templates the vendor has trashed. The template itself stays at Meta — approved and still

@@ -448,6 +448,8 @@ class RepeatPurchaseReminder
             return 0;
         }
 
+        $tpl = WhatsAppService::roleTemplate($storeId, 'repeat_purchase', self::TEMPLATE);
+
         $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
         $optedOut  = array_flip(array_map(
             fn($p) => self::phoneKey((string) $p),
@@ -491,8 +493,8 @@ class RepeatPurchaseReminder
 
                 $res = $wa->sendTemplate(
                     $target['phone'],
-                    self::TEMPLATE,
-                    'en_US',
+                    $tpl['name'],
+                    $tpl['language'],
                     [['type' => 'body', 'parameters' => array_map(
                         fn($v) => ['type' => 'text', 'text' => $v],
                         [

@@ -891,15 +891,21 @@ class HmisWhatsAppShare
                 ),
             ];
 
-            $res = $wa->sendTemplate($to, $meta['template'], 'en_US', $components, $meta['context']);
+            // Whichever template this store uses for this kind — the suggested one, or their own
+            // if they pointed the role at it under WhatsApp → Automation. The kind IS the role
+            // key, and the bound language is used rather than a hardcoded en_US.
+            $tpl = WhatsAppService::roleTemplate($storeId, $kind, $meta['template']);
+
+            $res = $wa->sendTemplate($to, $tpl['name'], $tpl['language'], $components, $meta['context']);
 
             if (!$res['success']) {
                 // The commonest failure by far is the template not existing on this vendor's WABA
                 // yet, and Meta's own wording for that helps nobody — say what to do about it.
                 $error = (string) ($res['error'] ?? 'WhatsApp refused the message.');
                 if (stripos($error, 'template') !== false) {
-                    $error .= ' Create the "' . $meta['template'] . '" template under WhatsApp → Message Templates '
-                        . '(it is in the suggested list) and wait for Meta to approve it.';
+                    $error .= ' Create the "' . $tpl['name'] . '" template under WhatsApp → Message Templates '
+                        . '(it is in the suggested list) and wait for Meta to approve it, or point this '
+                        . 'message at one of your own under WhatsApp → Automation.';
                 }
                 return self::fail($error);
             }

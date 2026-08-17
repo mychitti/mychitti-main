@@ -179,13 +179,15 @@ class InvoiceShare
             ],
         ];
 
-        $res = $wa->sendTemplate($phone, self::TEMPLATE, 'en_US', $components, 'invoice');
+        $tpl = WhatsAppService::roleTemplate($storeId, 'invoice', self::TEMPLATE);
+        $res = $wa->sendTemplate($phone, $tpl['name'], $tpl['language'], $components, 'invoice');
 
         if (empty($res['success'])) {
             $error = (string) ($res['error'] ?? 'WhatsApp refused the message.');
             if (stripos($error, 'template') !== false) {
-                $error .= ' Create the "' . self::TEMPLATE . '" template under WhatsApp → Message Templates '
-                    . '(it is in the suggested list) and wait for Meta to approve it.';
+                $error .= ' Create the "' . $tpl['name'] . '" template under WhatsApp → Message Templates '
+                    . '(it is in the suggested list) and wait for Meta to approve it, or point this '
+                    . 'message at one of your own under WhatsApp → Automation.';
             }
             return ['status' => 'failed', 'message' => 'Bill not sent on WhatsApp — ' . $error, 'error' => $error];
         }

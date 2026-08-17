@@ -1195,6 +1195,21 @@
                             <button onclick="printPrescription()" class="btn btn-sm btn-primary">
                                 <i class="tio-print"></i> Print Rx
                             </button>
+                            {{-- The prescription as a PDF attachment on WhatsApp, on the
+                                 prescription_pdf template. Finalized only: a draft is still being
+                                 written, and a patient who receives one starts a course of medicine
+                                 the doctor has not committed to. --}}
+                            @if ($currentPrescription->is_finalized
+                                && hasPermission('prescription', 'print')
+                                && filled($currentPrescription->patient?->phone))
+                                <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $currentPrescription->id) }}" class="mb-0"
+                                      onsubmit="return confirm('Send this prescription as a PDF to {{ addslashes($currentPrescription->patient->name ?? 'the patient') }} on WhatsApp?')">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Attach the prescription PDF and send it to the patient on WhatsApp">
+                                        <i class="tio-attachment"></i> Send as PDF
+                                    </button>
+                                </form>
+                            @endif
                             @if (hasPermission('prescription', 'add'))
                                 <button onclick="togglePrescriptionEdit(true)" class="btn btn-sm btn-outline-secondary">
                                     <i class="tio-edit"></i> Edit Rx

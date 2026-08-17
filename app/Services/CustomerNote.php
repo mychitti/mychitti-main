@@ -74,7 +74,8 @@ class CustomerNote
             ];
         }
 
-        $ready = WhatsAppService::templateApproved($storeId, self::TEMPLATE);
+        $tpl   = WhatsAppService::roleTemplate($storeId, 'advice_note', self::TEMPLATE);
+        $ready = WhatsAppService::templateApproved($storeId, $tpl['name']);
 
         return [
             'free'   => false,
@@ -82,7 +83,7 @@ class CustomerNote
             'ready'  => $ready,
             'reason' => $ready
                 ? 'This customer has not messaged recently, so the note is sent on your approved template and is charged as one message.'
-                : 'This customer has not messaged recently, so the note needs your "' . self::TEMPLATE . '" template — it is not approved yet.',
+                : 'This customer has not messaged recently, so the note needs your "' . $tpl['name'] . '" template — it is not approved yet.',
         ];
     }
 
@@ -117,15 +118,17 @@ class CustomerNote
                 : ['success' => true, 'free' => true, 'message' => 'Note sent.'];
         }
 
-        if (!WhatsAppService::templateApproved($storeId, self::TEMPLATE)) {
+        $tpl = WhatsAppService::roleTemplate($storeId, 'advice_note', self::TEMPLATE);
+
+        if (!WhatsAppService::templateApproved($storeId, $tpl['name'])) {
             return self::fail(
                 'This customer has not messaged you in the last 24 hours, so the note has to go on a template — '
-                . 'and your "' . self::TEMPLATE . '" template is not approved yet. Submit it under WhatsApp → Templates.'
+                . 'and your "' . $tpl['name'] . '" template is not approved yet. Submit it under WhatsApp → Templates.'
             );
         }
 
         $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
-        $language  = WhatsAppService::templateLanguage($storeId, self::TEMPLATE);
+        $language  = $tpl['language'];
 
         $components = [[
             'type' => 'body',
@@ -135,7 +138,7 @@ class CustomerNote
             ),
         ]];
 
-        $res = $wa->sendTemplate($phone, self::TEMPLATE, $language, $components, 'advice note');
+        $res = $wa->sendTemplate($phone, $tpl['name'], $language, $components, 'advice note');
 
         return empty($res['success'])
             ? self::fail($res['error'] ?? 'WhatsApp would not accept the note.')

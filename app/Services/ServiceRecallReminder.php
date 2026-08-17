@@ -179,7 +179,8 @@ class ServiceRecallReminder
         if ($wa->source() !== 'vendor' || !WhatsAppBilling::isActive($storeId)) {
             return 0;
         }
-        if (!WhatsAppService::templateApproved($storeId, self::TEMPLATE)) {
+        $tpl = WhatsAppService::roleTemplate($storeId, 'service_recall', self::TEMPLATE);
+        if (!WhatsAppService::templateApproved($storeId, $tpl['name'])) {
             return 0;
         }
 
@@ -225,8 +226,8 @@ class ServiceRecallReminder
             try {
                 $res = $wa->sendTemplate(
                     $row['phone'],
-                    self::TEMPLATE,
-                    WhatsAppService::templateLanguage($storeId, self::TEMPLATE),
+                    $tpl['name'],
+                    $tpl['language'],
                     $components,
                     'service recall'
                 );

@@ -12,8 +12,18 @@
             </div>
         @endif
 
+        {{-- Nineteen cards in one column is a wall. The roles arrive already ordered by group, so
+             a heading whenever the group changes is enough to make it scannable. --}}
+        @php($shownGroup = null)
+
         @foreach ($roles as $role)
             @php($resolved = $role['resolved'])
+            @if (($role['group'] ?? null) && $role['group'] !== $shownGroup)
+                @php($shownGroup = $role['group'])
+                <h6 class="text-muted text-uppercase mt-4 mb-2" style="font-size:11px;letter-spacing:.06em;">
+                    {{ translate($role['group']) }}
+                </h6>
+            @endif
             <div class="card mb-3 tr-card {{ !$resolved ? 'tr-broken' : ($role['current'] ? 'tr-bound' : '') }}">
                 <div class="card-body">
                     <div class="d-flex flex-wrap justify-content-between align-items-start mb-2">
@@ -75,6 +85,16 @@
                             <span class="tr-slot">{{ $ob . ($i + 1) . $cb }} {{ translate($param) }}</span>
                         @endforeach
                     </div>
+
+                    {{-- The variable count is filtered for automatically; a media header is not, and
+                         Meta rejects the whole message when the payload does not match the shape the
+                         template was approved with. Say so rather than let it fail at send. --}}
+                    @if (!empty($role['header']))
+                        <div class="alert alert-warning py-2 mb-2" style="font-size:11px;">
+                            {{ translate('This message carries a file, so the template you pick must also have a') }}
+                            <b>{{ $role['header'] }}</b> {{ translate('header — a body-only template will be refused by WhatsApp when the message is sent.') }}
+                        </div>
+                    @endif
 
                     <form method="post" action="{{ route('vendor.whatsapp.template-roles.save') }}" class="form-row align-items-end">
                         @csrf

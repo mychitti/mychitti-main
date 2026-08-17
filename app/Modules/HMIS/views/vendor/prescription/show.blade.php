@@ -20,12 +20,22 @@
         </div>
         @if (hasPermission('prescription', 'print'))
         <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-            {{-- No WhatsApp buttons here on purpose. What the patient is sent — the prescription,
-                 the medicine instructions, the follow-up — is a standing decision the hospital
-                 makes once under Notification Settings, and it goes out on its own the moment the
-                 prescription is finalized (PrescriptionController::autoSendToPatient). A per-record
-                 button next to it only invites sending the same thing a second time, by hand, to a
-                 patient who already has it. --}}
+            {{-- Only the PDF is offered by hand. The rest of what a patient is sent — the
+                 prescription link, the medicine instructions, the follow-up — is a standing
+                 decision the hospital makes once under Notification Settings and goes out on its
+                 own when the prescription is finalized (PrescriptionController::autoSendToPatient),
+                 so a button beside it would only send the same thing twice. The PDF is the one a
+                 hospital genuinely re-sends: unlike the link it never expires, and a patient who
+                 lost the file asks for it again. --}}
+            @if ($rx->is_finalized && filled($rx->patient?->phone))
+            <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $rx->id) }}" class="mb-0"
+                  onsubmit="return confirm('Send this prescription as a PDF to {{ addslashes($rx->patient->name ?? 'the patient') }} on WhatsApp?')">
+                @csrf
+                <button type="submit" class="btn btn-sm btn-outline-success" title="Attach the prescription PDF and send it to the patient on WhatsApp">
+                    <i class="tio-attachment"></i> Send as PDF
+                </button>
+            </form>
+            @endif
             <button onclick="window.print()" class="btn btn--primary btn-sm">
                 <i class="tio-print"></i> Print
             </button>

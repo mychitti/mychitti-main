@@ -517,12 +517,17 @@ class InvoicePayments
                 return $quiet();
             }
 
+            // Resolved before the approval check, not at the send: a store that pointed this
+            // message at its own template would otherwise be gated on the suggested one, which it
+            // may not even have — and every receipt would go quietly unsent.
+            $tpl = WhatsAppService::roleTemplate($storeId, 'payment_receipt', self::TEMPLATE);
+
             // This toggle is on by default, so an unapproved template would fail — and be billed —
             // on every payment taken. Standing conditions stay quiet, like the two above it; the
             // template's real status is on the Templates screen.
-            if (!WhatsAppService::templateApproved($storeId, self::TEMPLATE)) {
+            if (!WhatsAppService::templateApproved($storeId, $tpl['name'])) {
                 Log::info('Payment receipt skipped — template not approved', [
-                    'store' => $storeId, 'template' => self::TEMPLATE,
+                    'store' => $storeId, 'template' => $tpl['name'],
                 ]);
                 return $quiet();
             }
@@ -565,13 +570,14 @@ class InvoicePayments
                 ],
             ];
 
-            $res = $wa->sendTemplate($phone, self::TEMPLATE, 'en_US', $components, 'payment receipt');
+            $res = $wa->sendTemplate($phone, $tpl['name'], $tpl['language'], $components, 'payment receipt');
 
             if (empty($res['success'])) {
                 $error = (string) ($res['error'] ?? 'WhatsApp refused the message.');
                 if (stripos($error, 'template') !== false) {
-                    $error .= ' Create the "' . self::TEMPLATE . '" template under WhatsApp → Message Templates '
-                        . '(it is in the suggested list) and wait for Meta to approve it.';
+                    $error .= ' Create the "' . $tpl['name'] . '" template under WhatsApp → Message Templates '
+                        . '(it is in the suggested list) and wait for Meta to approve it, or point this '
+                        . 'message at one of your own under WhatsApp → Automation.';
                 }
                 return ['status' => 'failed', 'message' => 'Receipt not sent — ' . $error, 'error' => $error];
             }

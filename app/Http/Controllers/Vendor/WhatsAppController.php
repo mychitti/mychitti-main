@@ -1000,6 +1000,13 @@ class WhatsAppController extends Controller
         // parameter count or puts the store's name where the customer's should be.
         $roles = [];
         foreach (WhatsAppService::TEMPLATE_ROLES as $role => $meta) {
+            // A role tied to a module is only offered to stores that run it — a laundry has no use
+            // for a consultation-summary card it could never trigger. Mirrors how the Send
+            // Notifications toggles are filtered.
+            if (!empty($meta['module']) && !vendorPlanHasModule($meta['module'])) {
+                continue;
+            }
+
             $need = count($meta['params']);
             $roles[$role] = $meta + [
                 'key'      => $role,

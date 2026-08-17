@@ -206,6 +206,8 @@ class AppointmentRebookReminder
             $byPhone[$key]['lines'][] = $d;
         }
 
+        $tpl = WhatsAppService::roleTemplate($storeId, 'rebook', self::TEMPLATE);
+
         $sent = 0;
         foreach (array_slice($byPhone, 0, self::BATCH, true) as $phoneKey => $target) {
             try {
@@ -219,8 +221,8 @@ class AppointmentRebookReminder
 
                 $res = $wa->sendTemplate(
                     $target['phone'],
-                    self::TEMPLATE,
-                    'en_US',
+                    $tpl['name'],
+                    $tpl['language'],
                     [['type' => 'body', 'parameters' => array_map(
                         fn($v) => ['type' => 'text', 'text' => $v],
                         [
