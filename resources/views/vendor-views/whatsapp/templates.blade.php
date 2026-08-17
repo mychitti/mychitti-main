@@ -4,6 +4,21 @@
 
 @push('css_or_js')
     @include('vendor-views.whatsapp.partials._ui')
+    <style>
+        .wa-pv { background:#d9fdd3; border-radius:10px; padding:10px 12px; font-size:13px; line-height:1.55; }
+        .wa-pv-hdr { font-weight:700; margin-bottom:6px; }
+        .wa-pv-img { display:block; max-width:100%; border-radius:8px; margin-bottom:4px; }
+        .wa-pv-media { display:flex; align-items:center; gap:8px; background:rgba(0,0,0,.05);
+            border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:12px; color:#5a6472; }
+        .wa-pv-note { display:block; margin-bottom:8px; font-size:11px; color:#667085; }
+        .wa-pv-body { white-space:pre-wrap; word-break:break-word; }
+        .wa-pv-ftr { margin-top:8px; font-size:11px; font-style:italic; color:#667085; }
+        .wa-pv-btns { margin-top:8px; padding-top:8px; border-top:1px solid rgba(0,0,0,.08);
+            display:flex; flex-direction:column; gap:6px; }
+        .wa-pv-btn { background:#fff; border:1px solid #e6e9ef; border-radius:8px; padding:7px 10px;
+            text-align:center; color:#128c7e; font-weight:600; font-size:12.5px; }
+        .wa-pv-btn small { display:block; font-weight:400; color:var(--wa-mute); word-break:break-all; }
+    </style>
 @endpush
 
 @section('content')
@@ -148,11 +163,13 @@
                                                     @endif
                                                 </td>
                                                 <td class="text-right text-nowrap">
+                                                    {{-- The whole component list, not the handful the edit
+                                                         modal can put back: the preview has to show the
+                                                         message Meta approved, header and buttons included. --}}
                                                     <button type="button" class="btn btn-sm btn-outline-secondary wa-tpl-view"
                                                             data-name="{{ $tpl['name'] ?? '' }}" data-category="{{ $tpl['category'] ?? '' }}"
                                                             data-language="{{ $tpl['language'] ?? '' }}" data-status="{{ $st }}"
-                                                            data-body="{{ $bodyText }}" data-btntext="{{ $btnText }}" data-btnurl="{{ $btnUrl }}"
-                                                            data-btnphone="{{ $btnPhone }}" data-btnphonetext="{{ $btnPhoneText }}">
+                                                            data-components="{{ json_encode($tpl['components'] ?? []) }}">
                                                         <i class="tio-visible-outlined"></i>
                                                     </button>
                                                     @if ($editable)
@@ -630,16 +647,10 @@
                         <tr><td class="text-muted">Language</td><td id="wavLanguage"></td></tr>
                         <tr><td class="text-muted">Status</td><td id="wavStatus"></td></tr>
                     </table>
-                    <label class="form-label text-muted">Body</label>
-                    <div class="border rounded p-2 mb-2" style="white-space:pre-wrap;background:#f8f9fa;" id="wavBody"></div>
-                    <div id="wavButtonWrap" style="display:none;">
-                        <label class="form-label text-muted">Button</label>
-                        <div class="border rounded p-2 text-primary"><i class="tio-link"></i> <span id="wavBtnText"></span> — <small id="wavBtnUrl" class="text-muted"></small></div>
-                    </div>
-                    <div id="wavCallWrap" style="display:none;">
-                        <label class="form-label text-muted">Call button</label>
-                        <div class="border rounded p-2 text-primary"><i class="tio-call-talking"></i> <span id="wavCallText"></span> — <small id="wavCallNumber" class="text-muted"></small></div>
-                    </div>
+                    {{-- Shown the way the customer will see it. A template previewed as body-only
+                         reads as a different message from the one that actually goes out. --}}
+                    <label class="form-label text-muted">Preview</label>
+                    <div class="wa-pv" id="wavPreview"></div>
                 </div>
             </div>
         </div>
@@ -758,15 +769,88 @@
         });
     })();
 
+    // The picture an image-header template is sent with — the store's own, chosen server-side.
+    // Null when the store has none, and the preview then says the header is filled in at send time
+    // rather than showing a broken image.
+    var WAV_HEADER_IMAGE = @json($headerImage ?? null);
+
+    // Every button kind Meta can approve, drawn as the customer sees it. An unknown type still
+    // gets a row — a preview that silently drops a button is worse than one that names it oddly.
+    function wavButtonRow(b) {
+        var type = String(b.type || '').toUpperCase();
+        var icons = {
+            URL: 'tio-link', PHONE_NUMBER: 'tio-call-talking', QUICK_REPLY: 'tio-reply',
+            COPY_CODE: 'tio-copy', FLOW: 'tio-carousel-horizontal', CATALOG: 'tio-shopping-cart'
+        };
+        var sub = type === 'URL' ? (b.url || '')
+            : type === 'PHONE_NUMBER' ? (b.phone_number || '')
+            : type === 'COPY_CODE' ? (b.example || '')
+            : '';
+
+        var $row = $('<div class="wa-pv-btn"></div>')
+            .append($('<i></i>').addClass(icons[type] || 'tio-more-horizontal'))
+            .append(' ')
+            .append($('<span></span>').text(b.text || type.replace(/_/g, ' ').toLowerCase()));
+        if (sub) {
+            $row.append($('<small></small>').text(sub));
+        }
+        return $row;
+    }
+
     $(document).on('click', '.wa-tpl-view', function () {
         var d = $(this).data();
         $('#wavName').text(d.name); $('#wavCategory').text(d.category);
         $('#wavLanguage').text(d.language); $('#wavStatus').text(d.status);
-        $('#wavBody').text(d.body || '');
-        if (d.btnurl) { $('#wavButtonWrap').show(); $('#wavBtnText').text(d.btntext); $('#wavBtnUrl').text(d.btnurl); }
-        else { $('#wavButtonWrap').hide(); }
-        if (d.btnphone) { $('#wavCallWrap').show(); $('#wavCallText').text(d.btnphonetext || 'Call now'); $('#wavCallNumber').text(d.btnphone); }
-        else { $('#wavCallWrap').hide(); }
+
+        // jQuery parses the JSON attribute itself, but a malformed one must not take the modal
+        // down with it — an unreadable component list is previewed as an empty message.
+        var comps = d.components;
+        if (typeof comps === 'string') {
+            try { comps = JSON.parse(comps); } catch (e) { comps = []; }
+        }
+        if (!$.isArray(comps)) { comps = []; }
+
+        var header = null, body = '', footer = '', buttons = [];
+        $.each(comps, function (i, c) {
+            var t = String(c.type || '').toUpperCase();
+            if (t === 'HEADER') { header = c; }
+            else if (t === 'BODY') { body = c.text || ''; }
+            else if (t === 'FOOTER') { footer = c.text || ''; }
+            else if (t === 'BUTTONS') { buttons = buttons.concat(c.buttons || []); }
+        });
+
+        var $pv = $('#wavPreview').empty();
+
+        if (header) {
+            var fmt = String(header.format || 'TEXT').toUpperCase();
+            if (fmt === 'TEXT') {
+                $pv.append($('<div class="wa-pv-hdr"></div>').text(header.text || ''));
+            } else if (fmt === 'IMAGE' && WAV_HEADER_IMAGE) {
+                $pv.append($('<img class="wa-pv-img" alt="Header image">').attr('src', WAV_HEADER_IMAGE));
+                $pv.append($('<small class="wa-pv-note"></small>')
+                    .text('Image header — your store picture is used for automatic messages.'));
+            } else {
+                var micon = fmt === 'VIDEO' ? 'tio-video-camera'
+                    : fmt === 'DOCUMENT' ? 'tio-file-text'
+                    : fmt === 'LOCATION' ? 'tio-poi' : 'tio-image';
+                $pv.append($('<div class="wa-pv-media"></div>')
+                    .append($('<i></i>').addClass(micon))
+                    .append($('<span></span>').text(
+                        fmt.charAt(0) + fmt.slice(1).toLowerCase() + ' header — added when the message is sent'
+                    )));
+            }
+        }
+
+        $pv.append($('<div class="wa-pv-body"></div>').text(body));
+        if (footer) {
+            $pv.append($('<div class="wa-pv-ftr"></div>').text(footer));
+        }
+        if (buttons.length) {
+            var $btns = $('<div class="wa-pv-btns"></div>');
+            $.each(buttons, function (i, b) { $btns.append(wavButtonRow(b)); });
+            $pv.append($btns);
+        }
+
         $('#waTplViewModal').modal('show');
     });
     $(document).on('click', '.wa-tpl-edit', function () {

@@ -1015,7 +1015,31 @@ class HmisWhatsAppShare
             'updated_at' => now(),
         ]);
 
-        return route('patient-record', ['token' => $token]);
+        return self::recordUrl($token);
+    }
+
+    /**
+     * The patient-facing address for a record token.
+     *
+     * route() builds against whichever host served the request, so a share sent from the vendor
+     * panel handed the patient vendor.mcvendorhub.com — an address that exists for vendors and
+     * that no patient should ever be given. The path is taken from route() rather than hardcoded
+     * so a sub-directory install still resolves, and only the host is replaced.
+     *
+     * Public: the copy-link buttons on the patient screens must produce the same address staff
+     * would have sent over WhatsApp, or support ends up debugging two different links.
+     */
+    public static function recordUrl(string $token): string
+    {
+        $url  = route('patient-record', ['token' => $token]);
+        $base = rtrim((string) config('app.patient_portal_url'), '/');
+        if (!$base) {
+            return $url;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+
+        return $path ? $base . '/' . ltrim($path, '/') : $url;
     }
 
     /**

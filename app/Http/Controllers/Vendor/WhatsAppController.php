@@ -2261,7 +2261,11 @@ class WhatsAppController extends Controller
         // their own line, and a number typed without a country code is what Meta rejects.
         $storePhone = (string) (DB::table('stores')->where('id', $storeId)->value('phone') ?? '');
 
-        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'trashed', 'templateError', 'presets', 'apptReminder', 'quota', 'storePhone'));
+        // What an image-header template is actually sent with, so the preview shows the real
+        // picture rather than leaving the vendor to guess which one Meta will fetch.
+        $headerImage = WhatsAppService::headerImageUrl($storeId);
+
+        return view('vendor-views.whatsapp.templates', compact('connected', 'templates', 'trashed', 'templateError', 'presets', 'apptReminder', 'quota', 'storePhone', 'headerImage'));
     }
 
     // Vendor picks how many hours before the appointment the reminder goes out (0 = off).

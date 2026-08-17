@@ -108,7 +108,7 @@
                         <td class="text-right" style="white-space:nowrap;">
                             @if($live)
                                 <button type="button" class="btn btn-xs btn-soft-secondary"
-                                        onclick="copySentLink(this, '{{ route('patient-record', ['token' => $doc->token]) }}')"
+                                        onclick="copySentLink(this, '{{ \App\Services\HmisWhatsAppShare::recordUrl($doc->token) }}')"
                                         title="Copy the link that was sent">
                                     <i class="tio-link"></i>
                                 </button>

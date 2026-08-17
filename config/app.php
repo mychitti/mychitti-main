@@ -61,6 +61,11 @@ return [
     'admin_panel_url'  => env('ADMIN_PANEL_URL', env('APP_URL', 'http://localhost') . '/admin'),
     'vendor_panel_url' => env('VENDOR_PANEL_URL', env('APP_URL', 'http://localhost') . '/store-panel'),
 
+    // Where a patient opens a record link we sent them. Never the vendor panel's host: route()
+    // builds against whichever domain served the request, so a share sent from the vendor panel
+    // would hand a patient a vendor-only address. Set per server; falls back to the public site.
+    'patient_portal_url' => env('PATIENT_PORTAL_URL', 'https://mychitti.net'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
