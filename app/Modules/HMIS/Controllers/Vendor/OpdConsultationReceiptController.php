@@ -245,10 +245,18 @@ class OpdConsultationReceiptController extends Controller
         HmisWhatsAppShare::auto('treatment', $storeId, (int) $visit->id,
             fn() => HmisWhatsAppShare::treatment($visit));
 
-        // Feedback for walk-ins only. An appointment-driven visit gets its request from
-        // AppointmentController::autoSendOnCompletion, held back by the hospital's chosen delay —
-        // asking again from here would be the same question twice about one visit.
+        // A visit that came from a booking: billing it is the moment that consultation ended, so
+        // the appointment is closed here rather than left for a status page nobody opens. That
+        // also releases its feedback request — which this method deliberately does not send for
+        // an appointment-driven visit, and which therefore used to be sent by nobody at all.
         if ($visit->appointment_id) {
+            $appointment = \App\Models\Appointment::where('store_id', $storeId)
+                ->find($visit->appointment_id);
+
+            if ($appointment) {
+                \App\Services\AppointmentCompletion::complete($appointment);
+            }
+
             return;
         }
 

@@ -238,55 +238,11 @@ class AppointmentController extends Controller
         // the module — an OPD visit has no such transition, its screen just saves fields as the
         // doctor types. So both the summary and the feedback request hang off this moment.
         if ($request->status === 'completed' && $oldStatus !== 'completed') {
-            $this->autoSendOnCompletion($appointment);
+            \App\Services\AppointmentCompletion::autoSend($appointment);
         }
 
         Toastr::success('Status updated to ' . $request->status);
         return back();
-    }
-
-    /**
-     * Consultation summary and feedback request, for hospitals that turned them on under Send
-     * Notifications. Best-effort and locked per record — a status flipped back and forth cannot
-     * message the patient twice.
-     *
-     * The summary needs the OPD visit recorded against this appointment; a walk-in with no
-     * appointment, or an appointment with no visit written up, has nothing to summarise and only
-     * the feedback request goes.
-     */
-    private function autoSendOnCompletion(Appointment $appointment): void
-    {
-        $storeId = (int) $appointment->store_id;
-
-        $visit = \App\Models\OpdVisit::where('store_id', $storeId)
-            ->where('appointment_id', $appointment->id)
-            ->latest('id')
-            ->first();
-
-        if ($visit) {
-            HmisWhatsAppShare::auto('treatment', $storeId, (int) $visit->id,
-                fn() => HmisWhatsAppShare::treatment($visit));
-        }
-
-        $appointment->loadMissing('patient');
-        if ($appointment->patient) {
-            // Held back by the hospital's chosen delay, so the question lands once the patient has
-            // left and can actually judge the visit — not while they are still at the desk.
-            HmisWhatsAppShare::auto(
-                'feedback',
-                $storeId,
-                (int) $appointment->id,
-                fn() => HmisWhatsAppShare::feedback(
-                    $storeId,
-                    $appointment->patient,
-                    $appointment->appointment_date,
-                    null,
-                    (int) $appointment->id
-                ),
-                'appointment',
-                HmisWhatsAppShare::feedbackDueAt($storeId)
-            );
-        }
     }
 
     public function reschedule(Request $request, $id)

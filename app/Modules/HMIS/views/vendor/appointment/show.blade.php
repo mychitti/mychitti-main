@@ -12,8 +12,9 @@
             </h1>
             {{-- No actions here. The reminder before the visit and the feedback request after it
                  are both standing settings under Notification Settings, sent by the scheduled
-                 sweep and by autoSendOnCompletion respectively; the submenu above carries the
-                 way back to the list. --}}
+                 sweep and by AppointmentCompletion respectively — which fires from Update Status
+                 below or, far more often, when the consultation receipt is generated in OPD.
+                 The submenu above carries the way back to the list. --}}
         </div>
     </div>
  
