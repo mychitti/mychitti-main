@@ -581,6 +581,23 @@ class OpdController extends Controller
     }
 
     /**
+     * The register's filters, carried on the cancel/delete form action and handed back on the
+     * redirect. Whitelisted rather than passing $request->query() straight through, so nothing
+     * a URL happens to carry gets reflected back into the redirect.
+     *
+     * Not left to back(): that reads the Referer header, which is missing whenever the browser
+     * or a proxy strips it, and the receptionist lands on today's unfiltered list instead of
+     * the range they were working in.
+     */
+    private function registerFilters(Request $request): array
+    {
+        return array_filter(
+            $request->only(['date_range', 'custom_date_range', 'doctor', 'search', 'scope', 'page']),
+            fn($value) => $value !== null && $value !== ''
+        );
+    }
+
+    /**
      * Mark a visit as not having happened, keeping the row.
      *
      * The token stays issued, the reason is recorded and the visit drops out of every count.
@@ -600,7 +617,7 @@ class OpdController extends Controller
 
         if ($visit->is_cancelled) {
             Toastr::info('This visit is already cancelled.');
-            return back();
+            return Redirect::route('vendor.opd.index', $this->registerFilters($request));
         }
 
         DB::transaction(function () use ($visit, $request, $store_id) {
@@ -630,7 +647,7 @@ class OpdController extends Controller
         );
 
         Toastr::success('Visit cancelled.');
-        return back();
+        return Redirect::route('vendor.opd.index', $this->registerFilters($request));
     }
 
     /**
@@ -703,7 +720,7 @@ class OpdController extends Controller
      * Remove a visit outright. Only ever for a row registered by mistake — anything attached to
      * it stops the delete and points the user at Cancel instead.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         if (!auth('vendor')->check() && !hasPermission('opd_register', 'delete')) abort(403);
         $this->ensureClinicalSchema();
@@ -718,7 +735,7 @@ class OpdController extends Controller
                 'This visit has ' . implode(', ', $blocking) . ' against it and cannot be deleted. '
                 . 'That is part of the patient\'s record — cancel the visit instead.'
             );
-            return back();
+            return Redirect::route('vendor.opd.index', $this->registerFilters($request));
         }
 
         $token      = $visit->token_number;
@@ -735,7 +752,7 @@ class OpdController extends Controller
         );
 
         Toastr::success('Visit deleted.');
-        return Redirect::route('vendor.opd.index');
+        return Redirect::route('vendor.opd.index', $this->registerFilters($request));
     }
 
     public function edit($id)

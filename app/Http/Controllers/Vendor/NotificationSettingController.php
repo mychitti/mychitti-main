@@ -170,6 +170,10 @@ class NotificationSettingController extends Controller
             return 'Turned on — but nothing will send until you connect your own WhatsApp number under WhatsApp → Connection.';
         }
 
+        // Whatever the role actually resolves to, not the suggested name — a store that pointed
+        // this message at its own template must not be told the suggested one is missing.
+        $template = WhatsAppService::effectiveTemplateName($storeId, $template);
+
         $statuses = WhatsAppService::templateStatuses($storeId);
         if (empty($statuses)) {
             return null;

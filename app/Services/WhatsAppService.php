@@ -2912,6 +2912,27 @@ class WhatsAppService
         return $statuses === [] || isset($statuses[strtolower($name)]);
     }
 
+    /**
+     * The template a role will actually send, given the platform's suggested name for it.
+     *
+     * Screens that describe an automation name the suggested template, because that is all they
+     * know statically. A store may have pointed the role at one of its own under Automation →
+     * template roles, and reading the suggested name there warns about a template the store
+     * deliberately replaced — and keeps warning after they have already fixed it. Falls back to
+     * the name given, so a template with no role behind it is returned untouched.
+     */
+    public static function effectiveTemplateName(int $storeId, string $default): string
+    {
+        foreach (self::TEMPLATE_ROLES as $role => $meta) {
+            if (strtolower($meta['default']) !== strtolower($default)) {
+                continue;
+            }
+            return static::templateBindings($storeId)[$role]->template_name ?? $default;
+        }
+
+        return $default;
+    }
+
     /** Point a role at one of the store's templates. */
     public static function bindTemplate(int $storeId, string $role, string $name, string $language): void
     {

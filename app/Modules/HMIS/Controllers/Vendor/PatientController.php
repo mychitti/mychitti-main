@@ -13,6 +13,7 @@ use App\Models\PatientDocument;
 use App\Models\PatientMedicalHistory;
 use App\Models\RadiologyStudy;
 use App\Models\RadiologyTest;
+use App\Models\StoreCustomer;
 use App\Services\HmisWhatsAppShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
@@ -805,6 +806,78 @@ class PatientController extends Controller
         'patient_consents'          => 'consent form',
     ];
 
+    /**
+     * Everything hanging off the client record a patient is mirrored onto, as
+     * [table => [column, label]].
+     *
+     * Separate from PATIENT_HISTORY_TABLES and not a duplicate of it: a hospital client can be
+     * billed, quoted and given tasks from the counter without any of it touching HMIS, so a
+     * patient can be clean while the client behind them is not.
+     *
+     * Every entry is Schema-guarded — most belong to optional modules a hospital may never have
+     * installed — and the ambiguous columns are qualified: tasks.user_id holds a platform user id
+     * as often as a client id, and only user_type says which.
+     */
+    const CLIENT_HISTORY_TABLES = [
+        'laundry_orders'   => ['store_customer_id', 'store_id',  'laundry order'],
+        'laundry_challans' => ['store_customer_id', 'store_id',  'laundry challan'],
+        // client_name is an id whose table depends on the flow that wrote it — QuoteController
+        // reads it as a platform user in one place and as a store client in another, with no
+        // discriminator column. Scoped to this store so an unrelated user id elsewhere on the
+        // platform cannot block a delete; within one store a match is worth a human looking.
+        'quotations'       => ['client_name',       'vendor_id', 'quotation'],
+    ];
+
+    /**
+     * What stands in the way of removing this client along with their patient record.
+     *
+     * Returns human-readable phrases, empty when the client is only a mirror of the patient and
+     * carries nothing of its own.
+     */
+    private function clientHistory(StoreCustomer $client, int $storeId): array
+    {
+        $blocking = [];
+
+        // bill_to is a bare id whose meaning comes from bill_to_type: 'patient' rows are keyed on
+        // the patient and already covered above, and a patient id can collide numerically with a
+        // client id, so both those and supplier invoices are excluded rather than counted twice.
+        if (Schema::hasTable('manual_invoices')) {
+            $invoices = DB::table('manual_invoices')
+                ->where('vendor_id', $storeId)
+                ->where('bill_to', $client->id)
+                ->whereNotIn('bill_to_type', ['vendor', 'patient'])
+                ->count();
+            if ($invoices) {
+                $blocking[] = $invoices . ' invoice' . ($invoices === 1 ? '' : 's');
+            }
+        }
+
+        if (Schema::hasTable('tasks') && Schema::hasColumn('tasks', 'user_id') && Schema::hasColumn('tasks', 'user_type')) {
+            $tasks = DB::table('tasks')
+                ->where('user_id', $client->id)
+                ->where('user_type', 'customer')
+                ->count();
+            if ($tasks) {
+                $blocking[] = $tasks . ' task' . ($tasks === 1 ? '' : 's');
+            }
+        }
+
+        foreach (self::CLIENT_HISTORY_TABLES as $table => [$column, $storeColumn, $label]) {
+            if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column)) {
+                continue;
+            }
+            $count = DB::table($table)
+                ->where($column, $client->id)
+                ->when(Schema::hasColumn($table, $storeColumn), fn($q) => $q->where($storeColumn, $storeId))
+                ->count();
+            if ($count > 0) {
+                $blocking[] = $count . ' ' . $label . ($count === 1 ? '' : 's');
+            }
+        }
+
+        return $blocking;
+    }
+
     public function destroy($id)
     {
         if (!auth('vendor')->check() && !hasPermission('patient', 'delete')) abort(403);
@@ -832,7 +905,29 @@ class PatientController extends Controller
             return back();
         }
 
-        DB::transaction(function () use ($patient) {
+        // In a hospital the patient and the client are one person, so the mirror goes with them —
+        // otherwise the client survives every deletion and is silently re-linked the next time the
+        // same number is registered, which is why a re-added patient never gets a second welcome.
+        $client = $patient->store_customer_id
+            ? StoreCustomer::where('store_id', $store_id)->find($patient->store_customer_id)
+            : null;
+
+        // Refused outright rather than deleting the patient and keeping the client: half a
+        // deletion is the state nobody can reason about later, and these records are the client's
+        // own, not the patient's, so the staff member has to deal with them first.
+        if ($client) {
+            $clientBlocking = $this->clientHistory($client, (int) $store_id);
+            if (!empty($clientBlocking)) {
+                Toastr::error(
+                    $patient->name . ' is also a client of this store with ' . implode(', ', $clientBlocking)
+                    . ' against them, so nothing was deleted. Clear those from the client record first, '
+                    . 'or keep the patient and edit it instead.'
+                );
+                return back();
+            }
+        }
+
+        DB::transaction(function () use ($patient, $client) {
             // patient_documents cascades, but the files it points at do not — deleting the row
             // without this leaves the uploads behind on the disk for good.
             foreach (PatientDocument::where('patient_id', $patient->id)->get() as $doc) {
@@ -841,9 +936,17 @@ class PatientController extends Controller
                 }
             }
             $patient->delete();
+
+            if ($client) {
+                // Patient goes first: the client's `deleted` side has no hook, but leaving the
+                // patient pointing at a client that is gone would be the worse half-state if the
+                // transaction were ever split.
+                Helpers::delete_file('profile/', $client->profile_pic);
+                $client->delete();
+            }
         });
 
-        Toastr::success('Patient deleted');
+        Toastr::success($client ? 'Patient and their client record deleted' : 'Patient deleted');
         return redirect()->route('vendor.patient.list');
     }
 

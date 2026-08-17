@@ -293,6 +293,11 @@ class NotificationPrefs
                     // the vendor's own WABA. Without it the toggle is a switch wired to nothing.
                     // null = no template needed, or the status could not be read.
                     if (!empty($item['template']) && $channel === 'whatsapp') {
+                        // The item names the suggested template, but the send resolves the role
+                        // binding first. Check whatever will actually go out, or a store that
+                        // replaced the suggested template is warned about one it never uses.
+                        $item['template'] = WhatsAppService::effectiveTemplateName($storeId, $item['template']);
+
                         $statuses = $statuses ?? WhatsAppService::templateStatuses($storeId);
                         $item['template_status'] = $statuses
                             ? ($statuses[strtolower($item['template'])] ?? 'MISSING')

@@ -446,7 +446,9 @@
                                                             </button>
                                                         @endif
                                                         @if ($canDelete)
-                                                            <form method="POST" action="{{ route('vendor.opd.destroy', $visit->id) }}"
+                                                            {{-- The register's filters ride on the action URL so the redirect
+                                                                 afterwards lands back on the same date range and search. --}}
+                                                            <form method="POST" action="{{ route('vendor.opd.destroy', ['id' => $visit->id] + request()->query()) }}"
                                                                 onsubmit="return confirm('Delete this visit outright? This cannot be undone. If anything has been recorded against it, cancel it instead.')">
                                                                 @csrf
                                                                 @method('DELETE')
@@ -516,7 +518,10 @@
     <script>
         function opdOpenCancel(visitId, token, patientName) {
             var form = document.getElementById('opdCancelForm');
-            form.action = "{{ route('vendor.opd.cancel', ['id' => '__ID__']) }}".replace('__ID__', visitId);
+            // Built by the js directive rather than a plain echo: the filters make this a
+            // multi-parameter URL, and Blade's HTML escaping would leave a literal &amp; in the
+            // string — entities are not decoded inside a script block.
+            form.action = @js(route('vendor.opd.cancel', ['id' => '__ID__'] + request()->query())).replace('__ID__', visitId);
             document.getElementById('opdCancelSummary').textContent =
                 'Token #' + token + ' — ' + patientName + '. This marks the visit as not having happened.';
             document.getElementById('opdCancelReason').value = '';
