@@ -76,6 +76,10 @@
                         <div id="hbSlotGrid" class="hb-slot-grid">
                             <span class="text-muted small">Loading slots...</span>
                         </div>
+                        <div class="hb-started-note" id="hbStartedNote">
+                            This session has already started. You can still book it — you'll be seen
+                            from the time you book, not from the printed start time.
+                        </div>
                     </div>
 
                     {{-- Step 4: Appointment for? --}}
@@ -242,6 +246,34 @@
             color: #9ca3af;
             cursor: not-allowed;
         }
+        /* Already under way: bookable, but visibly not a normal on-time slot. */
+        .hb-slot-card.hb-slot-started {
+            border-color: #fcd34d;
+            background: #fffbeb;
+        }
+        .hb-slot-card.hb-slot-started .hb-slot-avail {
+            color: #b45309;
+            font-weight: 600;
+        }
+        .hb-slot-card.hb-slot-started.hb-slot-selected {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #fff;
+        }
+        .hb-slot-card.hb-slot-started.hb-slot-selected .hb-slot-avail {
+            color: rgba(255, 255, 255, .8);
+        }
+        .hb-started-note {
+            display: none;
+            margin-top: 8px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #92400e;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 6px;
+            padding: 7px 10px;
+        }
         .hb-slot-time {
             font-weight: 700;
             font-size: 12px;
@@ -402,17 +434,29 @@
                         return;
                     }
 
+                    // A session already under way is still bookable — clinics take patients into a
+                    // running slot — but it must not look like an appointment at the printed start
+                    // time. The customer is seen from when they book, which is what the server
+                    // records and what their reminder will say.
+                    var isToday = date === hbTodayStr();
+                    var nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+
                     var html = '';
                     slots.forEach(function(s) {
-                        var full = s.available <= 0;
-                        html += '<div class="hb-slot-card ' + (full ? 'hb-slot-full' : '') + '"'
+                        var full    = s.available <= 0;
+                        var started = isToday && !full && hbMins(s.slot_start) <= nowMins;
+                        html += '<div class="hb-slot-card ' + (full ? 'hb-slot-full' : (started ? 'hb-slot-started' : '')) + '"'
                             + ' data-slot-id="' + s.id + '" data-start="' + s.slot_start + '"'
+                            + ' data-started="' + (started ? '1' : '') + '"'
                             + (full ? '' : ' onclick="hbSelectSlot(this)"') + '>'
                             + '<div class="hb-slot-time">' + hbFmt(s.slot_start) + ' – ' + hbFmt(s.slot_end) + '</div>'
-                            + '<div class="hb-slot-avail">' + (full ? 'Full' : s.available + '/' + s.max_patients + ' avail') + '</div>'
+                            + '<div class="hb-slot-avail">'
+                            + (full ? 'Full' : (started ? 'Started · ' + s.available + ' left' : s.available + '/' + s.max_patients + ' avail'))
+                            + '</div>'
                             + '</div>';
                     });
                     grid.innerHTML = html;
+                    hbSetStartedNote(false);
                 })
                 .catch(function() {
                     grid.innerHTML = '<span class="text-danger small">Could not load slots.</span>';
@@ -427,12 +471,34 @@
                 document.querySelectorAll('.hb-slot-card').forEach(function(c) { c.classList.remove('hb-slot-selected'); });
                 _hbSlotId   = null;
                 _hbSlotTime = null;
+                hbSetStartedNote(false);
                 return;
             }
             document.querySelectorAll('.hb-slot-card').forEach(function(c) { c.classList.remove('hb-slot-selected'); });
             el.classList.add('hb-slot-selected');
             _hbSlotId   = id;
             _hbSlotTime = start ? start.substring(0, 5) : null;
+            hbSetStartedNote(el.dataset.started === '1');
+        }
+
+        // Says plainly that the printed start time is not the time they are being given. Without
+        // it the confirmation and the WhatsApp reminder would name a time the customer never saw.
+        function hbSetStartedNote(show) {
+            var note = document.getElementById('hbStartedNote');
+            if (note) note.style.display = show ? 'block' : 'none';
+        }
+
+        function hbTodayStr() {
+            var d = new Date();
+            return d.getFullYear() + '-'
+                + String(d.getMonth() + 1).padStart(2, '0') + '-'
+                + String(d.getDate()).padStart(2, '0');
+        }
+
+        function hbMins(t) {
+            if (!t) return 0;
+            var p = t.split(':');
+            return parseInt(p[0], 10) * 60 + parseInt(p[1] || '0', 10);
         }
 
         // ── Helpers ─────────────────────────────────────────────────────────────────

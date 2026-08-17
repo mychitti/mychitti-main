@@ -15,7 +15,12 @@
             </div>
             <div>
                 <small class="text-muted d-block">Date</small>
-                <strong>{{ $visit->visit_date?->format('d M Y') }}</strong>
+                <strong>
+                    {{ $visit->visit_date?->format('d M Y') }}
+                    @if ($visit->visit_time)
+                        <span class="text-muted">· {{ \Carbon\Carbon::parse($visit->visit_time)->format('h:i A') }}</span>
+                    @endif
+                </strong>
             </div>
         </div>
     </div>
@@ -56,12 +61,22 @@
                     @error('doctor_profile_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <div class="form-group">
                     <label class="input-label">Visit Date <span class="text-danger">*</span></label>
                     <input type="date" name="visit_date" class="form-control @error('visit_date') is-invalid @enderror"
                         value="{{ old('visit_date', now()->toDateString()) }}" required>
                     @error('visit_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    {{-- Defaults to now because a walk-in is registered as the patient arrives.
+                         Editable for the desk that catches up on the register later. --}}
+                    <label class="input-label">Visit Time</label>
+                    <input type="time" name="visit_time" class="form-control @error('visit_time') is-invalid @enderror"
+                        value="{{ old('visit_time', now()->format('H:i')) }}">
+                    @error('visit_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
             <div class="col-md-3">

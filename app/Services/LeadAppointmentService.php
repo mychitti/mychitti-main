@@ -67,6 +67,21 @@ class LeadAppointmentService
         $slot = $sr->preferred_slot_id ? DoctorSlot::find($sr->preferred_slot_id) : null;
         $time = $sr->preferred_time ?: ($slot?->slot_start ?? '00:00');
 
+        // A slot booked after it has already started would be recorded at its start time — in the
+        // past before the row even existed. SendAppointmentRemindersJob skips anything not in the
+        // future, so such an appointment silently never gets a reminder and nobody finds out.
+        //
+        // Only today's bookings are nudged: a future date keeps exactly the time the customer
+        // chose, and a past date is a historical backfill, which must keep its original time.
+        try {
+            if (\Carbon\Carbon::parse($sr->preferred_date)->isToday()
+                && \Carbon\Carbon::parse($sr->preferred_date . ' ' . $time)->isPast()) {
+                $time = now()->format('H:i:s');
+            }
+        } catch (\Throwable $e) {
+            // Unparseable date/time — keep what was chosen rather than inventing one.
+        }
+
         // Capacity is NOT enforced here: the booking was already confirmed to the customer,
         // so refusing to record it would lose the appointment entirely. Overbooking is logged
         // for the vendor to sort out instead.

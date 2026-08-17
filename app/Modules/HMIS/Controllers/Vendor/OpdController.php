@@ -54,6 +54,13 @@ class OpdController extends Controller
                 }
             }
 
+            // What time the patient was actually seen. visit_date alone cannot order a walk-in
+            // register beyond the token, and a hospital running two sittings a day needs to know
+            // which one a visit belonged to.
+            if (!Schema::hasColumn('opd_visits', 'visit_time')) {
+                DB::statement("ALTER TABLE `opd_visits` ADD COLUMN `visit_time` TIME NULL AFTER `visit_date`");
+            }
+
             // A cancelled visit keeps its row and its token. The register has to be able to show
             // that a token was issued and came to nothing — a deleted row would read as a gap in
             // the day's numbering that nobody can account for later.
@@ -150,10 +157,11 @@ class OpdController extends Controller
             ->orderBy('token_number')
             ->get();
 
-        $headings = ['Token', 'Visit Date', 'Patient', 'MUID', 'Doctor', 'Chief Complaint', 'Diagnosis', 'Treatment', 'BP', 'Temperature', 'Weight', 'Status'];
+        $headings = ['Token', 'Visit Date', 'Visit Time', 'Patient', 'MUID', 'Doctor', 'Chief Complaint', 'Diagnosis', 'Treatment', 'BP', 'Temperature', 'Weight', 'Status'];
         $data = $visits->map(fn($v) => [
             $v->token_number,
             $v->visit_date,
+            $v->visit_time ? \Carbon\Carbon::parse($v->visit_time)->format('h:i A') : '',
             $v->patient?->name,
             $v->patient?->patient_uid,
             'Dr. ' . trim(($v->doctorProfile?->employee?->f_name ?? '') . ' ' . ($v->doctorProfile?->employee?->l_name ?? '')),
@@ -243,6 +251,9 @@ class OpdController extends Controller
 
     public function store(Request $request)
     {
+        // create/store can be reached straight from a link without the register having been
+        // opened first, so the columns this writes are provisioned here too.
+        $this->ensureClinicalSchema();
         $store_id = Helpers::get_store_id();
 
         if ($request->booking_mode === 'booked') {
@@ -280,6 +291,7 @@ class OpdController extends Controller
         }
 
         $request->validate([
+            'visit_time'       => 'nullable|date_format:H:i',
             'chief_complaint'  => 'nullable|string|max:500',
             'bp_systolic'      => 'nullable|integer|min:0|max:300',
             'bp_diastolic'     => 'nullable|integer|min:0|max:200',
@@ -314,6 +326,9 @@ class OpdController extends Controller
             'appointment_id'      => $appointmentId,
             'service_request_id'  => $request->booking_mode === 'booked' ? ($sr->id ?? null) : null,
             'visit_date'          => $visitDate,
+            // A booked visit is registered when the patient reaches the desk, so "now" is the
+            // honest answer there too — the booked slot time lives on the appointment, not here.
+            'visit_time'          => $request->visit_time ?: now()->format('H:i'),
             'token_number'        => $request->token_number ?? $nextToken,
             'visit_type'          => $visitType,
             'chief_complaint'     => $request->chief_complaint,
