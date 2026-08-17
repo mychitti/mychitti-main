@@ -16,6 +16,7 @@ use App\Models\Prescription;
 use App\Models\PrescriptionItem;
 use App\Models\ServiceRequest;
 use App\Services\HmisWhatsAppShare;
+use App\Services\InvoiceShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -462,6 +463,7 @@ class PrescriptionController extends Controller
         ]);
 
         $taxType = $request->input('tax_type', 'non-gst');
+        $invoice = null;
 
         DB::beginTransaction();
         try {
@@ -501,20 +503,33 @@ class PrescriptionController extends Controller
             }
 
             if (!empty($billLines)) {
-                $this->appendToPharmacyInvoice($rx, $billLines, $storeId, $taxType);
+                $invoice = $this->appendToPharmacyInvoice($rx, $billLines, $storeId, $taxType);
             }
 
             DB::commit();
             Toastr::success('Medicines dispensed successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+            $invoice = null;
             Toastr::error('Dispense failed: ' . $e->getMessage());
+        }
+
+        // WhatsApp the patient their pharmacy bill, the same way the sales and hospital billing
+        // screens do. Deliberately after the commit: this reaches out to Meta, and stock that has
+        // already left the shelf must not sit inside an open transaction waiting on a network call.
+        // Once per invoice — a second dispense onto the same day's bill is an append, and
+        // InvoiceShare's claim row keeps the patient from being messaged about it twice.
+        if ($invoice) {
+            $wa = InvoiceShare::auto($invoice, 'manual');
+            if ($wa['message']) {
+                $wa['status'] === 'sent' ? Toastr::success($wa['message']) : Toastr::warning($wa['message']);
+            }
         }
 
         return Redirect::route('vendor.prescription.dispense.show', $id);
     }
 
-    private function appendToPharmacyInvoice(Prescription $rx, array $lines, int $storeId, string $taxType = 'non-gst'): void
+    private function appendToPharmacyInvoice(Prescription $rx, array $lines, int $storeId, string $taxType = 'non-gst'): ManualInvoice
     {
         $patientId = $rx->patient_id;
 
@@ -578,6 +593,8 @@ class PrescriptionController extends Controller
             $invoice->update(['pdf' => $data['pdf']]);
         } catch (\Throwable) {
         }
+
+        return $invoice;
     }
 
     /**

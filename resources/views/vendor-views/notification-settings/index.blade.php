@@ -26,6 +26,10 @@
                    class="btn btn-sm {{ $direction === 'receive' ? 'btn--primary' : 'btn-outline-primary' }}">
                     <i class="tio-notifications"></i> Receive
                 </a>
+                {{-- "Is it actually working?" is the question this page can't answer on its own. --}}
+                <a href="{{ route('vendor.whatsapp.message-log') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="tio-history"></i> Message log
+                </a>
             </div>
         </div>
 
@@ -37,11 +41,50 @@
             @endif
         </p>
 
-        @if (!$waConnected && $activeTab === 'whatsapp')
-            <div class="alert alert-warning" style="font-size:13px;">
-                <i class="tio-info-outined"></i>
-                <b>WhatsApp is not connected.</b> The toggles below are saved, but nothing sends until you
-                <a href="{{ route('vendor.whatsapp.connect') }}" class="alert-link">connect your number</a>.
+        {{-- Twenty switches that physically cannot fire are worse than two setup steps: the vendor
+             turns them all on, nothing arrives, and they conclude the feature is broken. Until the
+             account can send at all, this page IS the two steps. --}}
+        @php($needsSetup = $activeTab === 'whatsapp' && (!$waState['connected'] || !$waState['subscription']))
+
+        @if ($needsSetup)
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="mb-1" style="font-size:15px;">Two steps before any of this can send</h5>
+                    <p class="text-muted" style="font-size:13px;">
+                        WhatsApp only delivers business messages from your own connected number, on an active plan.
+                        Your settings below are saved either way — they just can't fire yet.
+                    </p>
+
+                    <div class="d-flex align-items-center py-2 border-top" style="gap:10px;">
+                        <span class="badge badge-{{ $waState['connected'] ? 'success' : 'secondary' }} px-2 py-1">1</span>
+                        <div style="min-width:0; flex:1;">
+                            <b style="font-size:13px;">Connect your WhatsApp number</b>
+                            <small class="text-muted d-block" style="font-size:12px;">
+                                {{ $waState['connected'] ? 'Done — your own number is linked.' : 'Messages send from your business number, not a shared one.' }}
+                            </small>
+                        </div>
+                        @if (!$waState['connected'])
+                            <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary flex-shrink-0">Connect</a>
+                        @else
+                            <i class="tio-checkmark-circle text-success flex-shrink-0"></i>
+                        @endif
+                    </div>
+
+                    <div class="d-flex align-items-center py-2 border-top" style="gap:10px;">
+                        <span class="badge badge-{{ $waState['subscription'] ? 'success' : 'secondary' }} px-2 py-1">2</span>
+                        <div style="min-width:0; flex:1;">
+                            <b style="font-size:13px;">Activate your WhatsApp plan</b>
+                            <small class="text-muted d-block" style="font-size:12px;">
+                                {{ $waState['subscription'] ? 'Done — your plan is active.' : 'Meta charges per conversation, so the plan has to be running.' }}
+                            </small>
+                        </div>
+                        @if (!$waState['subscription'])
+                            <a href="{{ route('vendor.whatsapp.billing') }}" class="btn btn-sm btn--primary flex-shrink-0">Activate</a>
+                        @else
+                            <i class="tio-checkmark-circle text-success flex-shrink-0"></i>
+                        @endif
+                    </div>
+                </div>
             </div>
         @endif
 
@@ -105,41 +148,72 @@
                                 </form>
                             @endif
 
-                            {{-- An action whose template Meta hasn't approved is a switch wired to
-                                 nothing. Say so on the row, not only when they flip it. --}}
-                            @if (!empty($item['template_status']) && $item['template_status'] !== 'APPROVED')
-                                @if ($item['template_status'] === 'MISSING')
-                                    <small class="d-block text-warning" style="font-size:11px;">
-                                        <i class="tio-warning"></i>
-                                        The <code>{{ $item['template'] }}</code> template isn't on your WhatsApp account yet, so this won't send.
-                                        <a href="{{ route('vendor.whatsapp.templates') }}#tplPresets">Add it in one click</a> from the ready-made list.
-                                    </small>
-                                @elseif ($item['template_status'] === 'PENDING')
-                                    <small class="d-block text-info" style="font-size:11px;">
-                                        <i class="tio-time"></i>
-                                        <code>{{ $item['template'] }}</code> is with Meta for review — sending starts automatically once it's approved.
-                                    </small>
-                                @else
-                                    <small class="d-block text-danger" style="font-size:11px;">
-                                        <i class="tio-clear-circle"></i>
-                                        <code>{{ $item['template'] }}</code> is {{ $item['template_status'] }} at Meta, so this won't send.
-                                        <a href="{{ route('vendor.whatsapp.templates') }}">Fix it under Message Templates</a>.
-                                    </small>
-                                @endif
+                            {{-- The whole chain in one line: which template will actually go out,
+                                 whether Meta will accept it, and the one thing that fixes it if
+                                 not. A vendor used to have to visit three more screens to learn
+                                 this, which is why toggles got flipped and nothing ever sent. --}}
+                            @php($state = $item['readiness'] ?? null)
+                            {{-- Either the row's own blocking problem, or — when it is simply
+                                 switched off — the problem that would greet them if they switched
+                                 it on. Same wording either way. --}}
+                            @php($settled = [\App\Services\MessageReadiness::LIVE, \App\Services\MessageReadiness::OFF])
+                            @php($note = $state['warning'] ?? null)
+                            @php($note = $note ?: (($state && !in_array($state['state'], $settled, true)) ? $state : null))
+                            @if ($note)
+                                <small class="d-block text-{{ $note['tone'] === 'warning' ? 'warning' : ($note['tone'] === 'info' ? 'info' : 'danger') }}" style="font-size:11px;">
+                                    <i class="tio-warning"></i> {{ $note['reason'] }}
+                                    @if ($note['action'] && $note['url'])
+                                        <a href="{{ $note['url'] }}">{{ $note['action'] }}</a>
+                                    @endif
+                                </small>
+                            @endif
+
+                            {{-- Swapping in your own template used to live on its own page under
+                                 Automation. It is a property of this one message, so it belongs on
+                                 this row — and the vendor never has to learn what a "role" is. --}}
+                            @if ($state && $state['role'] && $waState['connected'])
+                                <details class="mt-1">
+                                    <summary class="text-muted" style="font-size:11px; cursor:pointer;">
+                                        Template: <code>{{ $state['template'] }}</code>{{ $state['bound'] ? ' (yours)' : '' }}
+                                    </summary>
+                                    <form action="{{ route('vendor.whatsapp.template-roles.save') }}" method="post"
+                                          class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
+                                        @csrf
+                                        <input type="hidden" name="role" value="{{ $state['role'] }}">
+                                        <select name="template" class="form-control form-control-sm" style="max-width:230px;">
+                                            <option value="">Suggested ({{ $state['suggested'] }})</option>
+                                            @foreach ($approved as $tplName)
+                                                <option value="{{ $tplName }}" {{ strtolower($tplName) === strtolower($state['template']) && $state['bound'] ? 'selected' : '' }}>
+                                                    {{ $tplName }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary py-0">Use this</button>
+                                        <small class="text-muted d-block w-100" style="font-size:11px;">
+                                            Only templates with exactly the values this message sends are accepted — you'll be told if one doesn't fit.
+                                        </small>
+                                    </form>
+                                </details>
                             @endif
                         </div>
-                        <form action="{{ route('vendor.notification-settings.toggle') }}" method="post" class="mb-0 flex-shrink-0">
-                            @csrf
-                            <input type="hidden" name="group" value="{{ $current['group'] }}">
-                            <input type="hidden" name="key" value="{{ $key }}">
-                            <input type="hidden" name="enabled" value="{{ $item['enabled'] ? 0 : 1 }}">
-                            <button type="submit" class="btn btn-sm p-0 border-0 bg-transparent"
-                                    title="{{ $item['enabled'] ? 'Turn off' : 'Turn on' }}">
-                                <span class="badge badge-{{ $item['enabled'] ? 'success' : 'secondary' }} px-3 py-2">
-                                    {{ $item['enabled'] ? 'ON' : 'OFF' }}
-                                </span>
-                            </button>
-                        </form>
+                        <div class="d-flex align-items-center flex-shrink-0" style="gap:8px;">
+                            @if ($state)
+                                <span class="badge badge-soft-{{ $state['tone'] }} px-2 py-1" style="font-size:11px;"
+                                      title="{{ $state['reason'] }}">{{ $state['chip'] }}</span>
+                            @endif
+                            <form action="{{ route('vendor.notification-settings.toggle') }}" method="post" class="mb-0">
+                                @csrf
+                                <input type="hidden" name="group" value="{{ $current['group'] }}">
+                                <input type="hidden" name="key" value="{{ $key }}">
+                                <input type="hidden" name="enabled" value="{{ $item['enabled'] ? 0 : 1 }}">
+                                <button type="submit" class="btn btn-sm p-0 border-0 bg-transparent"
+                                        title="{{ $item['enabled'] ? 'Turn off' : 'Turn on' }}">
+                                    <span class="badge badge-{{ $item['enabled'] ? 'success' : 'secondary' }} px-3 py-2">
+                                        {{ $item['enabled'] ? 'ON' : 'OFF' }}
+                                    </span>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 @empty
                     @if (!($direction === 'send' && $activeTab === 'whatsapp'))

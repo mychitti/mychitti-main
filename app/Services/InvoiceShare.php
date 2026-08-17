@@ -82,12 +82,28 @@ class InvoiceShare
                 return $quiet;
             }
 
+            // Each of these used to return in silence. The bill still stands either way — but the
+            // vendor now has somewhere to read why their customer never got it.
+            $note = fn(string $reason) => MessageLog::skipped($storeId, $reason, [
+                'key'         => self::PREF,
+                'label'       => 'Bill on WhatsApp',
+                'template'    => self::TEMPLATE,
+                'record_type' => 'invoice',
+                'record_id'   => (int) $invoice->id,
+            ]);
+
             if (!NotificationPrefs::enabled($storeId, 'whatsapp_send', self::PREF)) {
+                $note('"Bill on WhatsApp" is turned off under Send Notifications.');
                 return $quiet;
             }
 
             $wa = WhatsAppService::make($storeId);
-            if ($wa->source() !== 'vendor' || !WhatsAppBilling::isActive($storeId)) {
+            if ($wa->source() !== 'vendor') {
+                $note('Your own WhatsApp number is not connected.');
+                return $quiet;
+            }
+            if (!WhatsAppBilling::isActive($storeId)) {
+                $note('Your WhatsApp subscription is not active.');
                 return $quiet;
             }
 
@@ -98,17 +114,20 @@ class InvoiceShare
                 Log::info('Bill WhatsApp skipped — template not approved', [
                     'store' => $storeId, 'template' => self::TEMPLATE,
                 ]);
+                $note('The "' . self::TEMPLATE . '" template is not approved on your WhatsApp account yet.');
                 return $quiet;
             }
 
             $customer = InvoicePayments::billTo($invoice);
             $phone    = trim((string) ($customer['phone'] ?? ''));
             if (strlen(preg_replace('/[^0-9]/', '', $phone) ?? '') < 10) {
+                $note('This customer has no phone number on file.');
                 return ['status' => 'skipped', 'message' => 'Bill not sent on WhatsApp — this customer has no phone number on file.'];
             }
 
             $pdfUrl = $pdfUrl ?: self::pdfUrl($invoice->pdf ?? null);
             if (!$pdfUrl) {
+                $note('The bill PDF could not be generated.');
                 return ['status' => 'skipped', 'message' => 'Bill not sent on WhatsApp — the bill PDF could not be generated.'];
             }
 
@@ -138,6 +157,17 @@ class InvoiceShare
                     'error'      => $result['error'] ? mb_substr($result['error'], 0, 255) : null,
                     'updated_at' => now(),
                 ]);
+
+            MessageLog::record($storeId, $result['status'] === 'sent' ? MessageLog::SENT : MessageLog::FAILED, [
+                'key'         => self::PREF,
+                'label'       => 'Bill on WhatsApp',
+                'template'    => self::TEMPLATE,
+                'recipient'   => $customer['name'] ?? null,
+                'to'          => $phone,
+                'record_type' => 'invoice',
+                'record_id'   => (int) $invoice->id,
+                'reason'      => $result['error'] ?: null,
+            ]);
 
             return ['status' => $result['status'], 'message' => $result['message']];
         } catch (\Throwable $e) {

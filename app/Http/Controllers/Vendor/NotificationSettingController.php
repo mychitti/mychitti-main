@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Vendor;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Services\HmisWhatsAppShare;
+use App\Services\MessageReadiness;
 use App\Services\ServiceRecallReminder;
 use App\Services\NotificationPrefs;
 use App\Services\WhatsAppService;
@@ -25,6 +26,25 @@ class NotificationSettingController extends Controller
         WhatsAppService::ensureStoreColumns();
 
         $channels = NotificationPrefs::forDirection($storeId, $direction);
+
+        // One resolved state per message — the chip, the reason and the single action that fixes
+        // it — so the row can say "needs a template" instead of leaving the vendor to work out
+        // which of four screens is the one standing between them and a sent message.
+        $waState  = MessageReadiness::store($storeId);
+        $approved = array_keys(array_filter(
+            $waState['statuses'],
+            fn($status) => strtoupper((string) $status) === 'APPROVED'
+        ));
+        sort($approved);
+
+        foreach ($channels as $chKey => $ch) {
+            if ($ch['group'] !== 'whatsapp_send') {
+                continue;
+            }
+            foreach ($ch['items'] as $key => $item) {
+                $channels[$chKey]['items'][$key]['readiness'] = MessageReadiness::for($storeId, $ch['group'], $key);
+            }
+        }
 
         $store = DB::table('stores')->where('id', $storeId)
             ->select('wa_enabled', 'wa_phone_number_id', 'wa_appt_reminder')
@@ -48,7 +68,7 @@ class NotificationSettingController extends Controller
 
         return view('vendor-views.notification-settings.index', compact(
             'direction', 'channels', 'waConnected', 'apptReminder', 'leadFeature',
-            'feedbackDelay', 'followupLead', 'serviceRecallDays'
+            'feedbackDelay', 'followupLead', 'serviceRecallDays', 'waState', 'approved'
         ));
     }
 
@@ -158,41 +178,24 @@ class NotificationSettingController extends Controller
      */
     private function templateWarning(string $group, string $key): ?string
     {
-        $item = NotificationPrefs::GROUPS[$group]['items'][$key] ?? null;
-        $template = $item['template'] ?? null;
-        if (!$template) {
+        $storeId = (int) Helpers::get_store_id();
+
+        // The row on the page, the toast on the toggle and the send itself now all read the same
+        // resolver, so they cannot tell the vendor three different stories about one message.
+        MessageReadiness::forget($storeId);
+        $state = MessageReadiness::for($storeId, $group, $key);
+
+        if (in_array($state['state'], [MessageReadiness::LIVE, MessageReadiness::OFF], true)) {
             return null;
         }
 
-        $storeId = Helpers::get_store_id();
-        $wa = WhatsAppService::make($storeId);
-        if ($wa->source() !== 'vendor') {
-            return 'Turned on — but nothing will send until you connect your own WhatsApp number under WhatsApp → Connection.';
-        }
+        $where = [
+            MessageReadiness::NOT_CONNECTED     => ' Connect it under WhatsApp → Connection.',
+            MessageReadiness::NO_SUBSCRIPTION   => ' Activate it under WhatsApp → Plan & Billing.',
+            MessageReadiness::TEMPLATE_MISSING  => ' Add it in one click from WhatsApp → Message Templates.',
+            MessageReadiness::TEMPLATE_REJECTED => ' Fix or re-submit it under WhatsApp → Message Templates.',
+        ][$state['state']] ?? '';
 
-        // Whatever the role actually resolves to, not the suggested name — a store that pointed
-        // this message at its own template must not be told the suggested one is missing.
-        $template = WhatsAppService::effectiveTemplateName($storeId, $template);
-
-        $statuses = WhatsAppService::templateStatuses($storeId);
-        if (empty($statuses)) {
-            return null;
-        }
-
-        $status = $statuses[strtolower($template)] ?? null;
-
-        if ($status === 'APPROVED') {
-            return null;
-        }
-        if ($status === null) {
-            return 'Turned on — but the "' . $template . '" template does not exist on your WhatsApp account yet, so nothing will send. '
-                . 'Add it in one click from WhatsApp → Message Templates → Ready-made templates.';
-        }
-        if ($status === 'PENDING') {
-            return 'Turned on — "' . $template . '" is still being reviewed by Meta. Messages start going out as soon as it is approved (usually minutes, up to 24 hours).';
-        }
-
-        return 'Turned on — but "' . $template . '" is ' . $status . ' at Meta, so nothing will send. '
-            . 'Fix or re-submit it under WhatsApp → Message Templates.';
+        return 'Turned on — but ' . lcfirst($state['reason']) . $where;
     }
 }

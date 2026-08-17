@@ -1,6 +1,20 @@
     @php($ob = '{' . '{')
     @php($cb = '}' . '}')
 
+        {{-- Choosing a template is a property of one message, so the everyday version of this now
+             lives on the message itself under Send Notifications. What stays here is the repair
+             bench: roles whose bound template was deleted at Meta, name suggestions around the
+             30-day name lock, and the variable-count detail behind a rejected choice. --}}
+        <div class="alert alert-info d-flex align-items-center flex-wrap" style="font-size:13px; gap:8px;">
+            <span class="mr-auto">
+                {{ translate('Switching a message to your own template is now done on the message itself.') }}
+                {{ translate('This page is for repairs — a template Meta deleted, or one that will not fit.') }}
+            </span>
+            <a href="{{ route('vendor.notification-settings', 'send') }}" class="btn btn-sm btn--primary">
+                {{ translate('Open Send Notifications') }}
+            </a>
+        </div>
+
         @if (!$connected)
             <div class="alert alert-warning">
                 {{ translate('Connect your WhatsApp number first — until then there are no templates to choose from.') }}

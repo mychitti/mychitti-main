@@ -44,23 +44,68 @@ class HmisWhatsAppShare
     const PDF_DIR = 'hmis-shared';
 
     /**
-     * Where each hospital template is actually used, shown on the suggested-templates card.
+     * The hospital-only presets: a store without the hospital module never sees these offered,
+     * since it could never send one.
      *
-     * Doubles as the list of hospital-only presets: a store without the hospital module never sees
-     * these offered, since it could never send one.
+     * The description shown beside each one is NOT written here — presetUse() derives it from the
+     * settings toggle that actually drives the template. Hand-written prose about where a template
+     * is used goes stale the moment a screen changes, and did: this list claimed a "Send as PDF"
+     * button on prescriptions for months before one existed.
      */
-    const PRESET_USES = [
-        'opd_visit_registered'  => 'Sent automatically when an OPD visit is booked in, if “Visit registered” is on.',
-        'treatment_summary'     => 'Powers “Send summary” on the OPD consultation screen.',
-        'prescription_share'    => 'Powers “Send prescription” on a prescription.',
-        'prescription_pdf'      => 'Powers “Send as PDF” on a prescription — attaches the file to the chat.',
-        'medicine_instructions' => 'Powers “Send medicine instructions” on a prescription.',
-        'followup_reminder'     => 'Powers “Send follow-up” on a prescription and “Send reminder” on an appointment.',
-        'visit_feedback'        => 'Powers “Ask for feedback” after an OPD visit or a completed appointment.',
-        'lab_report_ready'      => 'Powers “WhatsApp” on Lab → Reports, once a report is verified.',
-        'radiology_report_ready' => 'Powers “WhatsApp” on Radiology → Reports, once a study is verified.',
-        'patient_document'      => 'Powers “Send a document” on a patient — attaches any file from their record to the chat.',
+    const HOSPITAL_PRESETS = [
+        'opd_visit_registered',
+        'treatment_summary',
+        'prescription_share',
+        'prescription_pdf',
+        'medicine_instructions',
+        'followup_reminder',
+        'visit_feedback',
+        'lab_report_ready',
+        'radiology_report_ready',
+        'patient_document',
     ];
+
+    /** Kept as a key-only map so callers that only ask "is this a hospital preset?" still work. */
+    const PRESET_USES = [
+        'opd_visit_registered'   => null,
+        'treatment_summary'      => null,
+        'prescription_share'     => null,
+        'prescription_pdf'       => null,
+        'medicine_instructions'  => null,
+        'followup_reminder'      => null,
+        'visit_feedback'         => null,
+        'lab_report_ready'       => null,
+        'radiology_report_ready' => null,
+        'patient_document'       => null,
+    ];
+
+    /**
+     * What this template is for, in the vendor's terms, built from the message that uses it.
+     *
+     * One source of truth: the NotificationPrefs entry owns the wording, so a toggle renamed on
+     * the settings page renames itself here too.
+     */
+    public static function presetUse(string $template): ?string
+    {
+        foreach (NotificationPrefs::GROUPS['whatsapp_send']['items'] ?? [] as $item) {
+            if (strtolower((string) ($item['template'] ?? '')) !== strtolower($template)) {
+                continue;
+            }
+
+            return '"' . $item['label'] . '" under Send Notifications — ' . rtrim(preg_replace(
+                '/\s*\(needs your approved [^)]*\)\s*/i', '', (string) $item['desc']
+            ), ' .') . '.';
+        }
+
+        // Templates with no toggle of their own are only ever sent by hand from a record screen.
+        foreach (self::KINDS as $meta) {
+            if (strtolower((string) ($meta['template'] ?? '')) === strtolower($template)) {
+                return 'Sent by hand from a patient record: ' . $meta['label'] . '.';
+            }
+        }
+
+        return null;
+    }
 
     /**
      * What can be sent, and the template each one needs. The name is what the vendor's approved
@@ -288,6 +333,12 @@ class HmisWhatsAppShare
                 return false;
             }
             if (!NotificationPrefs::enabled($storeId, 'whatsapp_send', $pref)) {
+                MessageLog::skipped($storeId, 'This message is turned off under Send Notifications.', [
+                    'key'         => $pref,
+                    'label'       => self::KINDS[$kind]['label'] ?? $kind,
+                    'record_type' => $source ?: $kind,
+                    'record_id'   => $recordId,
+                ]);
                 return false;
             }
 
@@ -301,6 +352,15 @@ class HmisWhatsAppShare
                 Log::info('HMIS auto-send skipped — template not approved', [
                     'kind' => $kind, 'store' => $storeId, 'template' => $template,
                 ]);
+                MessageLog::skipped($storeId, $template
+                    ? 'The "' . $template . '" template is not approved on your WhatsApp account yet.'
+                    : 'No template is configured for this message.', [
+                        'key'         => $pref,
+                        'label'       => self::KINDS[$kind]['label'] ?? $kind,
+                        'template'    => $template,
+                        'record_type' => $source ?: $kind,
+                        'record_id'   => $recordId,
+                    ]);
                 return false;
             }
 
@@ -324,10 +384,24 @@ class HmisWhatsAppShare
             // Scheduled for later: the claim row IS the queue entry, and
             // SendDueHmisMessagesJob sends it when its time comes.
             if ($dueAt && $dueAt->isFuture()) {
+                MessageLog::queued($storeId, 'Scheduled for ' . $dueAt->format('d M Y, h:i A') . '.', [
+                    'key'         => $pref,
+                    'label'       => self::KINDS[$kind]['label'] ?? $kind,
+                    'template'    => $template,
+                    'record_type' => $source ?: $kind,
+                    'record_id'   => $recordId,
+                ]);
                 return true;
             }
 
-            $result = $send();
+            // dispatch() logs the outcome itself, for manual sends as well as this one — the flag
+            // is only so the row can say whether a human pressed the button.
+            self::$sendingAutomatically = true;
+            try {
+                $result = $send();
+            } finally {
+                self::$sendingAutomatically = false;
+            }
 
             DB::table('wa_hmis_auto_sends')
                 ->where('store_id', $storeId)->where('kind', $kind)->where('record_id', $recordId)
@@ -848,14 +922,20 @@ class HmisWhatsAppShare
 
             $to = trim((string) ($phone ?: $patient->phone));
             if ($to === '') {
+                self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, null, $recordId,
+                    'This patient has no phone number on file.');
                 return self::fail('This patient has no phone number on file.');
             }
 
             $wa = WhatsAppService::make($storeId);
             if ($wa->source() !== 'vendor') {
+                self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, $to, $recordId,
+                    'Your own WhatsApp number is not connected.');
                 return self::fail('Connect your own WhatsApp number under WhatsApp → Connection before sending records.');
             }
             if (!WhatsAppBilling::isActive($storeId)) {
+                self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, $to, $recordId,
+                    'Your WhatsApp subscription is not active.');
                 return self::fail('Your WhatsApp subscription isn’t active. Activate it under WhatsApp → Plan & Billing.');
             }
 
@@ -907,6 +987,7 @@ class HmisWhatsAppShare
                         . '(it is in the suggested list) and wait for Meta to approve it, or point this '
                         . 'message at one of your own under WhatsApp → Automation.';
                 }
+                self::logAttempt(MessageLog::FAILED, $kind, $storeId, $patient, $to, $recordId, $error);
                 return self::fail($error);
             }
 
@@ -918,6 +999,7 @@ class HmisWhatsAppShare
             }
 
             self::log($storeId, $kind, $recordId, $patient, $to);
+            self::logAttempt(MessageLog::SENT, $kind, $storeId, $patient, $to, $recordId);
 
             // Feedback is the one kind whose ANSWER matters. Record the outbound id so the tap
             // that comes back can be matched to this exact visit rather than guessed at.
@@ -1115,6 +1197,30 @@ class HmisWhatsAppShare
     public static function maskedPhone(?string $phone): string
     {
         return self::maskPhone($phone);
+    }
+
+    /** Set by auto() around its send, so the log can tell an automatic send from a hand-pressed one. */
+    protected static bool $sendingAutomatically = false;
+
+    /**
+     * One row in the vendor-readable message log for this attempt.
+     *
+     * Separate from log() above, which writes the hospital's clinical activity trail: that answers
+     * "what was done to this patient", this answers "did the message reach them, and if not why".
+     */
+    protected static function logAttempt(string $status, string $kind, int $storeId, ?Patient $patient, ?string $to, ?int $recordId, ?string $reason = null): void
+    {
+        MessageLog::record($storeId, $status, [
+            'key'         => self::AUTO_PREFS[$kind] ?? null,
+            'label'       => self::KINDS[$kind]['label'] ?? $kind,
+            'template'    => self::KINDS[$kind]['template'] ?? null,
+            'recipient'   => $patient?->name,
+            'to'          => $to,
+            'record_type' => $kind,
+            'record_id'   => $recordId,
+            'reason'      => $reason,
+            'automatic'   => self::$sendingAutomatically,
+        ]);
     }
 
     protected static function log(int $storeId, string $kind, ?int $recordId, Patient $patient, string $phone): void

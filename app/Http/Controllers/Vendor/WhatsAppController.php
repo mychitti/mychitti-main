@@ -2245,7 +2245,9 @@ class WhatsAppController extends Controller
                     $p->waba_status = $statusByName[strtolower($p->name)] ?? null;
                     // Says where the template gets used, so a vendor picks by what it does for
                     // them rather than by guessing from the wording.
-                    $p->used_for = HmisWhatsAppShare::PRESET_USES[$p->name] ?? null;
+                    // Derived from the message that actually uses it, never hand-written — see
+                    // HmisWhatsAppShare::presetUse(). Non-hospital presets resolve too.
+                    $p->used_for = HmisWhatsAppShare::presetUse($p->name);
                     return $p;
                 })
                 ->values();

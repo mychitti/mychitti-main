@@ -75,7 +75,7 @@ class NotificationPrefs
                 // owed, and chasing someone on WhatsApp is a decision a business makes on purpose.
                 'invoice_ready' => [
                     'label'    => 'Bill on WhatsApp',
-                    'desc'     => 'Sends the customer their bill as a PDF the moment it is raised, on the sales billing and hospital billing screens (needs your approved invoice_ready template). Only new bills — editing one later never re-sends it.',
+                    'desc'     => 'Sends the customer their bill as a PDF the moment it is raised — sales billing, hospital billing and the pharmacy counter (needs your approved invoice_ready template). Only new bills — editing one later, or dispensing again onto the same day\'s bill, never re-sends it.',
                     'default'  => false,
                     'template' => 'invoice_ready',
                 ],

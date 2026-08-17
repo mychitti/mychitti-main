@@ -54,6 +54,14 @@
                 <span class="text-truncate">{{ translate('Campaign Series') }}</span>
             </a>
         </li>
+        {{-- Above Templates on purpose: when a message doesn't arrive this is the screen that
+             says why, and a vendor who starts at Templates is already guessing. --}}
+        <li class="nav-item {{ Request::is('*whatsapp/message-log*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('vendor.whatsapp.message-log') }}" title="{{ translate('Message Log') }}">
+                <span class="tio-circle nav-indicator-icon"></span>
+                <span class="text-truncate">{{ translate('Message Log') }}</span>
+            </a>
+        </li>
         <li class="nav-item {{ Request::is('*whatsapp/templates*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('vendor.whatsapp.templates') }}" title="{{ translate('Message Templates') }}">
                 <span class="tio-circle nav-indicator-icon"></span>
