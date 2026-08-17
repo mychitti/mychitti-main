@@ -33,7 +33,10 @@ class OpdController extends Controller
         }
         // receipt_view gates the OP consultation receipt for the Receptionist role only; every
         // other role gets it unconditionally (see _canViewOpdReceipt).
-        foreach (['edit', 'receipt_view'] as $action) {
+        // cancel and delete arrived later still: cancel marks a visit as not having happened,
+        // delete removes a row created by mistake, and they are separate rows in the grid so a
+        // receptionist can be trusted with the first without being handed the second.
+        foreach (['edit', 'receipt_view', 'cancel', 'delete'] as $action) {
             if (!DB::table('feature_permissions')->where('feature_id', $featureId)->where('action', $action)->exists()) {
                 DB::table('feature_permissions')->insert(['feature_id' => $featureId, 'action' => $action, 'free' => 0]);
             }
@@ -49,6 +52,16 @@ class OpdController extends Controller
                 if (!Schema::hasColumn('opd_visits', $column)) {
                     DB::statement("ALTER TABLE `opd_visits` ADD COLUMN `{$column}` TEXT NULL AFTER `chief_complaint`");
                 }
+            }
+
+            // A cancelled visit keeps its row and its token. The register has to be able to show
+            // that a token was issued and came to nothing — a deleted row would read as a gap in
+            // the day's numbering that nobody can account for later.
+            if (!Schema::hasColumn('opd_visits', 'cancelled_at')) {
+                DB::statement("ALTER TABLE `opd_visits`
+                    ADD COLUMN `cancelled_at` TIMESTAMP NULL,
+                    ADD COLUMN `cancel_reason` VARCHAR(255) NULL,
+                    ADD COLUMN `cancelled_by` BIGINT UNSIGNED NULL");
             }
         }
 
@@ -100,6 +113,7 @@ class OpdController extends Controller
                     ->orWhere('patient_uid', 'like', "%$search%"));
             })
             ->with(['patient', 'doctorProfile.employee'])
+            ->orderByRaw("status = 'cancelled'")                // cancelled sink below everything
             ->orderByRaw('consultation_receipt_id IS NOT NULL') // fresh appointments first, completed (receipt generated) last
             ->orderBy('token_number')
             ->paginate(20);
@@ -122,7 +136,10 @@ class OpdController extends Controller
 
         $store_id = Helpers::get_store_id();
 
+        // Cancelled visits are left out: the export is what a hospital reconciles its day against,
+        // and a visit that did not happen has no place in that count.
         $visits = OpdVisit::where('store_id', $store_id)
+            ->notCancelled()
             ->whereBetween('visit_date', [$from, $to])
             ->when($request->doctor, fn($q) => $q->where('doctor_profile_id', $request->doctor))
             ->when($request->search, function ($q) use ($request) {
@@ -561,6 +578,164 @@ class OpdController extends Controller
         }
 
         return response()->json(['ok' => true] + $saved);
+    }
+
+    /**
+     * Mark a visit as not having happened, keeping the row.
+     *
+     * The token stays issued, the reason is recorded and the visit drops out of every count.
+     * Allowed even once a fee has been collected — a patient who paid and then left still did
+     * not have the consultation, and the receipt stays where it is to be refunded on its own
+     * terms rather than vanishing with the visit.
+     */
+    public function cancel(Request $request, $id)
+    {
+        if (!auth('vendor')->check() && !hasPermission('opd_register', 'cancel')) abort(403);
+        $this->ensureClinicalSchema();
+
+        $request->validate(['cancel_reason' => 'required|string|max:255']);
+
+        $store_id = Helpers::get_store_id();
+        $visit    = OpdVisit::where('store_id', $store_id)->findOrFail($id);
+
+        if ($visit->is_cancelled) {
+            Toastr::info('This visit is already cancelled.');
+            return back();
+        }
+
+        DB::transaction(function () use ($visit, $request, $store_id) {
+            $visit->update([
+                'status'        => OpdVisit::STATUS_CANCELLED,
+                'cancel_reason' => $request->cancel_reason,
+                'cancelled_at'  => now(),
+                'cancelled_by'  => auth('vendor_employee')->id() ?? auth('vendor')->id(),
+            ]);
+
+            // The booking behind the visit goes with it, so the doctor's slot is freed and the
+            // appointment list stops showing a patient who is not coming. Only a live booking is
+            // touched: a completed or already-cancelled one is history, not a reservation, and
+            // Appointment::STATUS_TRANSITIONS allows 'cancelled' from these two states only.
+            if ($visit->appointment_id) {
+                \App\Models\Appointment::where('id', $visit->appointment_id)
+                    ->where('store_id', $store_id)
+                    ->whereIn('status', ['scheduled', 'checked_in'])
+                    ->update(['status' => 'cancelled']);
+            }
+        });
+
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'opd_visit', (int) $visit->id, 'cancelled',
+            "OPD visit token #{$visit->token_number} cancelled — {$request->cancel_reason}",
+            ['patient_id' => $visit->patient_id, 'reason' => $request->cancel_reason]
+        );
+
+        Toastr::success('Visit cancelled.');
+        return back();
+    }
+
+    /**
+     * Everything a visit can leave behind, and what to call it when it blocks a delete.
+     *
+     * Each entry is [label, closure returning a count]. A visit with any of these is history —
+     * clinical or financial — and is cancelled rather than deleted, the same rule
+     * PatientController::destroy applies to a patient with any record against them. Hard delete
+     * exists only for a row created by mistake and never used.
+     */
+    private function visitAttachments(OpdVisit $visit, int $storeId): array
+    {
+        $blocking = [];
+
+        $receipts = $visit->consultation_receipt_id ? 1 : 0;
+        if (Schema::hasTable('opd_consultation_receipts')) {
+            $receipts = max($receipts, DB::table('opd_consultation_receipts')
+                ->where('opd_visit_id', $visit->id)->count());
+        }
+        if ($receipts) {
+            $blocking[] = $receipts . ' consultation receipt' . ($receipts === 1 ? '' : 's');
+        }
+
+        // Same matching the consultation screen uses to find this visit's prescription, so what
+        // blocks the delete is exactly what the user can see attached to the visit.
+        $prescriptions = Prescription::where('store_id', $storeId)
+            ->where('patient_id', $visit->patient_id)
+            ->where(function ($q) use ($visit) {
+                if ($visit->appointment_id) {
+                    $q->where('appointment_id', $visit->appointment_id);
+                } elseif ($visit->service_request_id) {
+                    $q->where('service_request_id', $visit->service_request_id);
+                } else {
+                    $q->where('doctor_profile_id', $visit->doctor_profile_id)
+                        ->whereDate('created_at', $visit->visit_date ?? today());
+                }
+            })
+            ->count();
+        if ($prescriptions) {
+            $blocking[] = $prescriptions . ' prescription' . ($prescriptions === 1 ? '' : 's');
+        }
+
+        // Lab and Radiology build their tables lazily, so both reads are guarded — a hospital
+        // that has never opened those modules must still be able to delete a stray visit.
+        if (Schema::hasTable('lab_orders')) {
+            $labOrders = DB::table('lab_orders')
+                ->where('store_id', $storeId)
+                ->where('opd_id', $visit->id)
+                ->count();
+            if ($labOrders) {
+                $blocking[] = $labOrders . ' lab order' . ($labOrders === 1 ? '' : 's');
+            }
+        }
+
+        if (Schema::hasTable('radiology_studies') && $visit->visit_date) {
+            $studies = DB::table('radiology_studies')
+                ->where('store_id', $storeId)
+                ->where('patient_id', $visit->patient_id)
+                ->whereDate('created_at', $visit->visit_date)
+                ->count();
+            if ($studies) {
+                $blocking[] = $studies . ' radiology stud' . ($studies === 1 ? 'y' : 'ies');
+            }
+        }
+
+        return $blocking;
+    }
+
+    /**
+     * Remove a visit outright. Only ever for a row registered by mistake — anything attached to
+     * it stops the delete and points the user at Cancel instead.
+     */
+    public function destroy($id)
+    {
+        if (!auth('vendor')->check() && !hasPermission('opd_register', 'delete')) abort(403);
+        $this->ensureClinicalSchema();
+
+        $store_id = Helpers::get_store_id();
+        $visit    = OpdVisit::where('store_id', $store_id)->with('patient')->findOrFail($id);
+
+        $blocking = $this->visitAttachments($visit, (int) $store_id);
+
+        if (!empty($blocking)) {
+            Toastr::error(
+                'This visit has ' . implode(', ', $blocking) . ' against it and cannot be deleted. '
+                . 'That is part of the patient\'s record — cancel the visit instead.'
+            );
+            return back();
+        }
+
+        $token      = $visit->token_number;
+        $patientId  = $visit->patient_id;
+        $visitDate  = $visit->visit_date?->toDateString();
+        $patientName = $visit->patient?->name ?? 'patient';
+
+        $visit->delete();
+
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'opd_visit', (int) $id, 'deleted',
+            "OPD visit token #{$token} for {$patientName} on {$visitDate} deleted",
+            ['patient_id' => $patientId, 'token_number' => $token, 'visit_date' => $visitDate]
+        );
+
+        Toastr::success('Visit deleted.');
+        return Redirect::route('vendor.opd.index');
     }
 
     public function edit($id)

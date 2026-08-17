@@ -181,6 +181,33 @@
         }
         .hmis-badge-status.waiting { background-color: #fffbeb !important; color: #b45309 !important; border: 1px solid #fde68a !important; }
         .hmis-badge-status.completed { background-color: #dcfce7 !important; color: #15803d !important; border: 1px solid #bbf7d0 !important; }
+        .hmis-badge-status.cancelled { background-color: #fef2f2 !important; color: #b91c1c !important; border: 1px solid #fecaca !important; }
+
+        /* A cancelled visit keeps its row so the token is still accounted for, but must not read
+           as part of the working queue. */
+        tr.row-cancelled td { opacity: .55; }
+        tr.row-cancelled td .hmis-badge-status { opacity: 1; }
+        tr.row-cancelled .hmis-token-badge { background-color: #94a3b8 !important; box-shadow: none; }
+        .cancel-reason-note { font-size: 11px; color: #64748b; margin-top: 4px; max-width: 180px; white-space: normal; }
+
+        .btn-hmis-action-more {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff !important;
+            border: 1.5px solid #e2e8f0 !important;
+            color: #64748b !important;
+            font-size: 13px !important;
+            width: 30px;
+            height: 28px;
+            border-radius: 8px !important;
+            transition: all 0.2s ease;
+            padding: 0 !important;
+        }
+        .btn-hmis-action-more:hover { background-color: #f1f5f9 !important; color: #334155 !important; }
+        .opd-action-menu { font-size: 13px; min-width: 170px; }
+        .opd-action-menu .dropdown-item { padding: 7px 14px; }
+        .opd-action-menu button.dropdown-item { border: 0; background: none; width: 100%; text-align: left; }
 
         /* Action Buttons */
         .btn-hmis-action-view {
@@ -324,7 +351,7 @@
                         </thead>
                         <tbody>
                             @forelse($visits as $visit)
-                                <tr>
+                                <tr class="{{ $visit->is_cancelled ? 'row-cancelled' : '' }}">
                                     <td>
                                         <span class="hmis-token-badge">
                                             {{ $visit->token_number }}
@@ -371,7 +398,12 @@
                                         </div>
                                     </td>
                                     <td>
-                                        @if ($visit->consultation_receipt_id)
+                                        @if ($visit->is_cancelled)
+                                            <span class="hmis-badge-status cancelled">Cancelled</span>
+                                            @if ($visit->cancel_reason)
+                                                <div class="cancel-reason-note">{{ $visit->cancel_reason }}</div>
+                                            @endif
+                                        @elseif ($visit->consultation_receipt_id)
                                             <span class="hmis-badge-status completed">Completed</span>
                                         @else
                                             <span class="hmis-badge-status waiting">Waiting</span>
@@ -379,22 +411,52 @@
                                     </td>
                                     <td>
                                         @if ( hasPermission('opd_register', 'view'))
-                                        <div class="d-flex gap-2">
+                                        @php($canCancel = !$visit->is_cancelled && hasPermission('opd_register', 'cancel'))
+                                        @php($canDelete = hasPermission('opd_register', 'delete'))
+                                        <div class="d-flex gap-2 align-items-center">
                                             <a href="{{ route('vendor.opd.show', $visit->id) }}"
                                                 class="btn btn-hmis-action-view">
                                                 <i class="tio-visible"></i> View
                                             </a>
-                                            @if (_canViewOpdReceipt())
+                                            {{-- Receipt and Bill are hidden on a cancelled visit: collecting a fee for a
+                                                 consultation that did not happen is the mistake this is meant to prevent. --}}
+                                            @if (!$visit->is_cancelled && _canViewOpdReceipt())
                                                 <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}"
                                                     class="btn btn-hmis-action-receipt" title="OP Consultation Receipt">
                                                     <i class="tio-receipt"></i> Receipt
                                                 </a>
                                             @endif
-                                            @if (hasPermission('opd_register', 'generate_bill'))
+                                            @if (!$visit->is_cancelled && hasPermission('opd_register', 'generate_bill'))
                                                 <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}"
                                                     class="btn btn-hmis-action-receipt" title="Generate Bill">
                                                     <i class="tio-receipt-outlined"></i> Bill
                                                 </a>
+                                            @endif
+                                            @if ($canCancel || $canDelete)
+                                                <div class="dropdown">
+                                                    <button type="button" class="btn btn-hmis-action-more" data-toggle="dropdown"
+                                                        aria-haspopup="true" aria-expanded="false" title="More">
+                                                        <i class="tio-more-vertical"></i>
+                                                    </button>
+                                                    <div class="dropdown-menu dropdown-menu-right opd-action-menu">
+                                                        @if ($canCancel)
+                                                            <button type="button" class="dropdown-item text-danger"
+                                                                onclick="opdOpenCancel({{ $visit->id }}, '{{ $visit->token_number }}', @js($visit->patient?->name ?? 'this patient'))">
+                                                                <i class="tio-clear-circle mr-2"></i> Cancel visit
+                                                            </button>
+                                                        @endif
+                                                        @if ($canDelete)
+                                                            <form method="POST" action="{{ route('vendor.opd.destroy', $visit->id) }}"
+                                                                onsubmit="return confirm('Delete this visit outright? This cannot be undone. If anything has been recorded against it, cancel it instead.')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="dropdown-item text-danger">
+                                                                    <i class="tio-delete mr-2"></i> Delete visit
+                                                                </button>
+                                                            </form>
+                                                        @endif
+                                                    </div>
+                                                </div>
                                             @endif
                                         </div>
                                         @endif
@@ -415,8 +477,50 @@
         @endif
     </div>
 
+    {{-- One modal for the whole table, retargeted per row — a modal per visit would put a
+         hidden form in the DOM for every line on the page. --}}
+    <div class="modal fade" id="opdCancelModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius:12px;">
+                <form method="POST" id="opdCancelForm">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" style="font-family:'Outfit',sans-serif;font-weight:700;">Cancel OPD visit</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3" style="font-size:13px;color:#475569;" id="opdCancelSummary"></p>
+                        <label class="form-label" style="font-size:13px;font-weight:600;">Reason <span class="text-danger">*</span></label>
+                        <input type="text" name="cancel_reason" id="opdCancelReason" class="form-control hmis-input"
+                               maxlength="255" required placeholder="e.g. Patient left without consulting">
+                        <div class="mt-3" style="font-size:12px;color:#64748b;">
+                            The token stays on the register and the visit drops out of the day's counts.
+                            Any linked appointment is cancelled with it.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal">Keep visit</button>
+                        <button type="submit" class="btn btn-sm btn-danger">Cancel visit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('script_2')
     @include('vendor-views/js/date_range')
+    <script>
+        function opdOpenCancel(visitId, token, patientName) {
+            var form = document.getElementById('opdCancelForm');
+            form.action = "{{ route('vendor.opd.cancel', ['id' => '__ID__']) }}".replace('__ID__', visitId);
+            document.getElementById('opdCancelSummary').textContent =
+                'Token #' + token + ' — ' + patientName + '. This marks the visit as not having happened.';
+            document.getElementById('opdCancelReason').value = '';
+            $('#opdCancelModal').modal('show');
+        }
+    </script>
 @endpush

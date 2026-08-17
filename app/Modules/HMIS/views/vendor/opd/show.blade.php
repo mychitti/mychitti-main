@@ -727,6 +727,21 @@
         </div>
     </div>
 
+    @if ($visit->is_cancelled)
+        {{-- Every field below stays editable by design — notes written during a consultation that
+             was then cancelled are still the record of what happened. The banner is what stops the
+             screen being mistaken for a live encounter. --}}
+        <div class="alert mb-0" style="border-radius:0;background:#fef2f2;border:0;border-bottom:1px solid #fecaca;color:#991b1b;">
+            <strong><i class="tio-clear-circle"></i> This visit was cancelled</strong>
+            @if ($visit->cancel_reason)
+                — {{ $visit->cancel_reason }}
+            @endif
+            @if ($visit->cancelled_at)
+                <span style="font-size:12px;opacity:.8;">({{ $visit->cancelled_at->format('d M Y, h:i A') }})</span>
+            @endif
+        </div>
+    @endif
+
     {{-- 2. AUTOSAVE BANNER --}}
     <div class="autosave-bar">
         <div class="indicator">
@@ -872,7 +887,7 @@
                         <tr><td class="lbl">Visit Type</td><td class="val" style="color:#16a34a">{{ \App\Models\OpdVisit::VISIT_TYPES[$visit->visit_type] ?? $visit->visit_type }}</td></tr>
                         <tr><td class="lbl">Last Visit</td><td class="val">{{ $pastVisits->first()?->visit_date?->format('d M Y') ?: 'None' }}</td></tr>
                         <tr><td class="lbl">Total Visits</td><td class="val">{{ $pastVisits->count() + 1 }} visits</td></tr>
-                        @if (hasPermission('opd_register', 'view'))
+                        @if (!$visit->is_cancelled && hasPermission('opd_register', 'view'))
                             <tr>
                                 <td class="lbl">OP Receipt</td>
                                 <td class="val">
@@ -882,7 +897,7 @@
                                 </td>
                             </tr>
                         @endif
-                        @if (hasPermission('opd_register', 'generate_bill'))
+                        @if (!$visit->is_cancelled && hasPermission('opd_register', 'generate_bill'))
                             <tr>
                                 <td class="lbl">Bill</td>
                                 <td class="val">

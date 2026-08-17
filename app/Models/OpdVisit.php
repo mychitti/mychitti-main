@@ -12,10 +12,12 @@ class OpdVisit extends Model
         'bp_systolic', 'bp_diastolic', 'temperature', 'weight',
         'height', 'spo2', 'pulse_rate', 'respiratory_rate', 'notes', 'recorded_by', 'status',
         'consultation_receipt_id', 'consultation_visit_no',
+        'cancelled_at', 'cancel_reason', 'cancelled_by',
     ];
 
     protected $casts = [
         'visit_date'       => 'date',
+        'cancelled_at'     => 'datetime',
         'bp_systolic'      => 'integer',
         'bp_diastolic'     => 'integer',
         'temperature'      => 'float',
@@ -32,6 +34,26 @@ class OpdVisit extends Model
         'emergency'=> 'Emergency',
         'review'   => 'Review',
     ];
+
+    const STATUS_CANCELLED = 'cancelled';
+
+    public function getIsCancelledAttribute(): bool
+    {
+        return $this->status === self::STATUS_CANCELLED;
+    }
+
+    /**
+     * Visits that actually happened — everything counted, charted or exported.
+     *
+     * Rows created before the status column was written carry NULL rather than 'visited', so
+     * a plain `!=` comparison would silently drop the whole of a hospital's older register.
+     */
+    public function scopeNotCancelled($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('status')->orWhere('status', '!=', self::STATUS_CANCELLED);
+        });
+    }
 
     // Diagnosis and treatment are stored as a comma-joined string so they stay readable in
     // exports and receipts; the UI works with them as tag lists.

@@ -37,13 +37,14 @@ class HospitalDashboardController extends Controller
                 'beds_total'             => Bed::where('store_id', $store_id)->count(),
                 'beds_available'         => Bed::where('store_id', $store_id)->where('status', 'available')->count(),
                 'beds_occupied'          => Bed::where('store_id', $store_id)->where('status', 'occupied')->count(),
-                'opd_in_range'           => OpdVisit::where('store_id', $store_id)->whereDate('visit_date', '>=', $from)->whereDate('visit_date', '<=', $to)->count(),
+                'opd_in_range'           => OpdVisit::where('store_id', $store_id)->notCancelled()->whereDate('visit_date', '>=', $from)->whereDate('visit_date', '<=', $to)->count(),
                 'ipd_admitted'           => IpdAdmission::where('store_id', $store_id)->where('status', 'admitted')->count(),
                 'ipd_in_range'           => IpdAdmission::where('store_id', $store_id)->whereDate('admission_date', '>=', $from)->whereDate('admission_date', '<=', $to)->count(),
                 'prescriptions_in_range' => Prescription::where('store_id', $store_id)->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)->count(),
             ];
 
             $opdTrend = OpdVisit::where('store_id', $store_id)
+                ->notCancelled()
                 ->whereDate('visit_date', '>=', $from)
                 ->whereDate('visit_date', '<=', $to)
                 ->select(DB::raw('DATE(visit_date) as day'), DB::raw('COUNT(*) as total'))
@@ -102,6 +103,7 @@ class HospitalDashboardController extends Controller
                 ->orderByDesc('admission_date')->limit(5)->get();
 
             $recentOpdVisits = OpdVisit::where('store_id', $store_id)
+                ->notCancelled()
                 ->with(['patient', 'doctorProfile.employee'])
                 ->whereDate('visit_date', '>=', $from)->whereDate('visit_date', '<=', $to)
                 ->orderByDesc('token_number')->limit(8)->get();
@@ -128,6 +130,7 @@ class HospitalDashboardController extends Controller
                 ->first();
 
             $opdVisits = OpdVisit::where('store_id', $store_id)
+                ->notCancelled()
                 ->when($doctorProfile, fn($q) => $q->where('doctor_profile_id', $doctorProfile->id))
                 ->when(!$doctorProfile, fn($q) => $q->whereRaw('1=0'))
                 ->whereBetween('visit_date', [$from, $to])

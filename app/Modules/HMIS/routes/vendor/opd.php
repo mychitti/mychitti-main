@@ -18,4 +18,6 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::put('{id}/update',        [OpdController::class, 'update'])->name('update')->middleware('permission:opd_register,edit');
     Route::patch('{id}/quick-update',[OpdController::class, 'quickUpdate'])->name('quick-update')->middleware('permission:opd_register,edit');
     Route::post('{id}/next-visit',   [OpdController::class, 'nextVisit'])->name('next-visit')->middleware('permission:opd_register,edit');
+    Route::post('{id}/cancel',       [OpdController::class, 'cancel'])->name('cancel')->middleware('permission:opd_register,cancel');
+    Route::delete('{id}',            [OpdController::class, 'destroy'])->name('destroy')->middleware('permission:opd_register,delete');
 });
