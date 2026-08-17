@@ -85,6 +85,36 @@
                     </div>
                 </div>
 
+                <div class="wbrun-sub mt-3 mb-2">{{ translate('What the handsets reported back') }}</div>
+                <div class="row" style="row-gap:12px;">
+                    <div class="col-sm-4">
+                        <div class="wbrun-stat">
+                            <div class="wbrun-stat-val text-success">{{ number_format($run->delivered) }}</div>
+                            <div class="wbrun-stat-lbl">{{ translate('Delivered') }}</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="wbrun-stat">
+                            <div class="wbrun-stat-val text-info">{{ number_format($run->read) }}</div>
+                            <div class="wbrun-stat-lbl">{{ translate('Read') }}</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="wbrun-stat">
+                            <div class="wbrun-stat-val {{ $run->undelivered ? 'text-danger' : '' }}">{{ number_format($run->undelivered) }}</div>
+                            <div class="wbrun-stat-lbl">{{ translate('Not delivered') }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wbrun-sub mt-2">
+                    {{ translate('Delivered counts everyone who has it, read included.') }}
+                    @if ($run->awaiting)
+                        {{ number_format($run->awaiting) }}
+                        {{ $run->awaiting == 1 ? translate('number has') : translate('numbers have') }}
+                        {{ translate('not reported back yet — WhatsApp sends these receipts as they happen.') }}
+                    @endif
+                </div>
+
                 @if ($run->queued)
                     <div class="alert alert-warning mt-3 mb-0" style="font-size:12px;">
                         {{ number_format($run->queued) }}

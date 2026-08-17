@@ -1572,11 +1572,11 @@
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:9px;">
-                    <select class="env-select {{ $env }}" id="env-sel" onchange="changeEnv(this)">
-                        <option value="prod" @selected($env === 'prod')>🔴 Production</option>
-                        <option value="staging" @selected($env === 'staging')>🟡 Staging</option>
-                        <option value="sandbox" @selected($env === 'sandbox')>🟢 Sandbox</option>
-                    </select>
+                    {{-- The Production / Staging / Sandbox selector is gone. It was stored and never
+                         read — not by this app, not by the AI service — so the three modes did
+                         nothing, and "Sandbox: safe to test, no real data will be affected" was an
+                         invitation to try a destructive tool against live data and the live DB.
+                         There is one mode: this one. --}}
                     @if(hasPermission('ai_agent', 'test'))
                     <button class="btn-t" onclick="openTest()">▶ Test Agent</button>
                     @endif
@@ -1718,17 +1718,16 @@
                         <button class="rp-tab-btn active" data-tab="basic" onclick="switchRpTab('basic')">
                             <span class="rp-tab-icon">📋</span> Basic Info
                         </button>
-                        <button class="rp-tab-btn" data-tab="versioning" onclick="switchRpTab('versioning')">
-                            <span class="rp-tab-icon">📦</span> Versioning
-                        </button>
+                        {{-- API Tools and Functions are both live — the AI service reads
+                             agent_api_tools and agent_functions in ClaudeService and hands them to
+                             the model as callable tools. Versioning and Tasks are not: nothing in
+                             either repo reads agent_versions or agent_tasks, so their tabs are
+                             gone rather than offering settings that cannot take effect. --}}
                         <button class="rp-tab-btn" data-tab="api" onclick="switchRpTab('api')">
                             <span class="rp-tab-icon">🔌</span> API Tools
                         </button>
                         <button class="rp-tab-btn" data-tab="schema" onclick="switchRpTab('schema')">
                             <span class="rp-tab-icon">🧩</span> Functions
-                        </button>
-                        <button class="rp-tab-btn" data-tab="tasks" onclick="switchRpTab('tasks')">
-                            <span class="rp-tab-icon">✅</span> Tasks
                         </button>
                     @endif
                      @if(hasPermission('ai_agent', 'test'))
@@ -1761,8 +1760,6 @@
                                     @endif
                                 </div>
                             </div>
-
-                            <div class="ib {{ $envWarnClass }}" id="env-warn">{!! $envWarnMsg !!}</div>
 
                             <div class="fr c3">
                                 <div class="fg">
@@ -1802,13 +1799,40 @@
                                 </div>
                             </div>
                             <div class="fg">
-                                <label class="fl">System Prompt</label>
-                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;">
-                                    📄 <strong>Prompt loaded from file</strong> 
-                                    {{-- <code style="background:#dcfce7;padding:2px 6px;border-radius:4px;font-size:12px;">storage/app/prompts/{{ $a->user_type }}.txt</code><br> --}}
-                                    <span style="color:#4b7a3b;font-size:12px;">✓ Edit the file in your IDE and deploy to update the prompt. Changes here are ignored.</span>
-                                </div>
-                                <input type="hidden" id="ag-prompt" value="{{ $a->prompt }}">
+                                @if ($a->user_type === 'admin' && array_key_exists($a->skill_type, \App\Services\AdminAiPersona::PERSONAS))
+                                    {{-- The three admin assistants keep their brief in this column and it is
+                                         genuinely used, so it is editable. What follows it at runtime — the
+                                         live figures and the rules governing them — is built in
+                                         AdminAiPersona::systemPrompt() and is not editable here. --}}
+                                    <label class="fl">Intro Prompt</label>
+                                    <textarea id="ag-prompt" class="fi" rows="6"
+                                        style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.55;"
+                                        placeholder="How this assistant introduces itself and what it is for.">{{ $a->prompt }}</textarea>
+                                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px 12px;font-size:12px;color:#1e40af;margin-top:8px;">
+                                        🔒 <strong>Only this intro is editable.</strong>
+                                        Everything below is appended to it in code
+                                        (<code>AdminAiPersona::developerPrompt()</code>) — a developer change, on purpose.
+                                    </div>
+
+                                    {{-- The developer half, shown read-only. Writing an intro without seeing
+                                         this is writing blind: the assistant is already told to quote figures
+                                         exactly, and which figures it has. The figures are read live, so this
+                                         is exactly what would be sent if a message were posted now. --}}
+                                    <label class="fl" style="margin-top:14px;">Developer Prompt (read-only)</label>
+                                    <textarea class="fi" rows="14" readonly
+                                        style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;background:#f8fafc;color:#334155;cursor:default;">{{ \App\Services\AdminAiPersona::developerPrompt($a->skill_type) }}</textarea>
+                                    <span class="fh">
+                                        Appended after your intro on every message. Figures shown are live — they are
+                                        re-read each time the assistant is asked something.
+                                    </span>
+                                @else
+                                    <label class="fl">System Prompt</label>
+                                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;">
+                                        📄 <strong>Prompt loaded from file</strong>
+                                        <span style="color:#4b7a3b;font-size:12px;">✓ Edit the file in your IDE and deploy to update the prompt. Changes here are ignored.</span>
+                                    </div>
+                                    <input type="hidden" id="ag-prompt" value="{{ $a->prompt }}">
+                                @endif
                             </div>
                             <label class="fl">Quick Skill Types</label>
                             <div class="chips">
@@ -1958,54 +1982,6 @@
                             </div>
                         </div>
 
-                        <!-- ④ LOGIN STATE & AUTH -->
-                        <div class="card m-2" data-tab="basic">
-                            <div class="sch">
-                                <div class="sch-l">
-                                    <div class="ico" style="background:linear-gradient(135deg,#0f766e,#0d9488)">🔐</div>
-                                    <div>
-                                        <div class="st">Login State & Access Control</div>
-                                        <div class="ss2">Authentication requirements and role restrictions for this agent
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="ib amber">⚠️ Without login restriction, any unauthenticated user could trigger this
-                                agent.
-                                Always enable auth for write-capable agents.</div>
-                            <div class="fr c2">
-                                <div class="fg">
-                                    <label class="fl">Requires Authentication?</label>
-                                    <select class="fc" id="ag-auth">
-                                        <option value="yes" @selected($a->requires_auth)>Yes — Login Required</option>
-                                        <option value="no" @selected(!$a->requires_auth)>No — Public Access</option>
-                                        <option value="optional">Optional — Works Both Ways</option>
-                                    </select>
-                                </div>
-                                <div class="fg">
-                                    <label class="fl">Session Validation</label>
-                                    <select class="fc" id="ag-sess">
-                                        <option value="jwt" @selected(($a->session_validation ?? 'jwt') === 'jwt')>Validate JWT Token</option>
-                                        <option value="session" @selected($a->session_validation === 'session')>Check Active Session</option>
-                                        <option value="api_key" @selected($a->session_validation === 'api_key')>API Key Auth</option>
-                                        <option value="none" @selected($a->session_validation === 'none')>None</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <label class="fl">Allowed Roles — Who Can Trigger This Agent</label>
-                            <div class="role-grid">
-                                @foreach ($allRoles as $roleKey => $roleLabel)
-                                    @php $roleOn = in_array($roleKey, $allowedRoles); @endphp
-                                    <div class="role-item {{ $roleOn ? 'on' : '' }}" data-role="{{ $roleKey }}"
-                                        onclick="toggleRole(this)">
-                                        <div class="role-check">{!! $roleOn
-                                            ? '<svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-                                            : '' !!}</div>
-                                        <span class="role-label">{{ $roleLabel }}</span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
     
                         <!-- ⑥ MEMORY / CONTEXT -->
                         <div class="card m-2" data-tab="basic">
@@ -2072,10 +2048,13 @@
                                             rate limits</div>
                                     </div>
                                 </div>
-                                <button class="badd ind" onclick="addApi()">+ Add API</button>
                             </div>
-                            <div class="ib red">🛡️ <strong>Write / Delete actions</strong> should always have <strong>Require
-                                    Confirmation = Yes</strong> to prevent the AI from auto-executing destructive operations.
+                            {{-- Read-only. These rows are live — ClaudeService hands them to the model as
+                                 callable tools and executes the matching endpoint — so they are shown
+                                 rather than edited here: defining a tool the model may call is a developer
+                                 change, made alongside the endpoint it calls. --}}
+                            <div class="ib">🔒 <strong>Read-only.</strong> These are the tools this agent may call.
+                                They are defined in code alongside the endpoints they hit — add or change one there.
                             </div>
                             <div class="tw">
                                 <table class="tbl"> 
@@ -2093,21 +2072,13 @@
                                         @forelse($a->apiTools as $i => $tool)
                                             <tr>
                                                 <td class="rn">{{ $i + 1 }}</td>
-                                                <td><input class="ti" type="text" value="{{ $tool->api_name }}"
-                                                        style="min-width:110px"></td>
-                                                <td><input class="ti" type="text" value="{{ $tool->endpoint }}"
-                                                        style="min-width:180px"></td>
-                                                <td><select class="ts" style="width:76px">
-                                                        <option @selected(($tool->method ?? 'POST') === 'GET')>GET</option>
-                                                        <option @selected(($tool->method ?? 'POST') === 'POST')>POST</option>
-                                                        <option @selected(($tool->method ?? 'POST') === 'PUT')>PUT</option>
-                                                        <option @selected(($tool->method ?? 'POST') === 'DELETE')>DELETE</option>
-                                                    </select></td>
+                                                <td style="font-weight:600">{{ $tool->api_name }}</td>
+                                                <td style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px">{{ $tool->endpoint }}</td>
+                                                <td>{{ strtoupper($tool->method ?? 'POST') }}</td>
                                                 <td><span
                                                         class="pill {{ $tool->status === 'active' ? 'ac' : 'dr' }}">{{ ucfirst($tool->status ?? 'active') }}</span>
                                                 </td>
-                                                <td><button class="brm" onclick="this.closest('tr').remove()">✕</button>
-                                                </td>
+                                                <td></td>
                                             </tr>
                                         @empty
                                             <tr>
@@ -2120,9 +2091,6 @@
                                 </table>
                             </div>
                             <div style="margin-top:11px;font-size:11px;color:#6b7280">Tools are configured by API name with endpoint and HTTP method.</div>
-                            <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
-                                <button class="bsav" onclick="saveAgent()">💾 Save API Tools</button>
-                            </div>
                         </div>
 
                         <!-- ⑧ FUNCTION SCHEMA (Tool Calling) -->
@@ -2136,11 +2104,12 @@
                                             parameters and validation</div>
                                     </div>
                                 </div>
-                                <button class="badd pur" onclick="addSchema()">+ Add Function</button>
                             </div>
-                            <div class="ib blue">📌 Without a proper JSON schema, AI function calling is unstable. The model
-                                needs
-                                to know the exact parameter names, types, and which are required.</div>
+                            {{-- Read-only, same reasoning as API Tools: the AI service reads these schemas
+                                 and offers them to the model, so a schema and the code that answers it have
+                                 to change together. --}}
+                            <div class="ib blue">🔒 <strong>Read-only.</strong> The exact parameter shapes the model is
+                                told about. Defined in code with the handlers behind them.</div>
                             <div id="schema-list">
                                 @forelse($a->functions as $fn)
                                     @php
@@ -2150,111 +2119,18 @@
                                     <div class="schema-entry"
                                         style="margin-bottom:16px;border:1.5px solid #e5e8ef;border-radius:10px;padding:14px">
                                         <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px">
-                                            <input class="fc" type="text" value="{{ $fn->function_name }}"
-                                                style="flex:1;font-family:'Courier New',monospace;font-size:12.5px;font-weight:700;color:#7c3aed">
-                                            <input class="fc" type="text" value="{{ $fn->description }}"
-                                                style="flex:2">
-                                            <button class="brm" onclick="this.closest('.schema-entry').remove()">✕</button>
+                                            <span style="flex:1;font-family:'Courier New',monospace;font-size:12.5px;font-weight:700;color:#7c3aed">{{ $fn->function_name }}</span>
+                                            <span style="flex:2;font-size:12.5px;color:#475569">{{ $fn->description }}</span>
                                         </div>
                                         <div class="schema-box">
                                             <span class="schema-lang">JSON SCHEMA</span>
-                                            <textarea class="schema-ta" id="{{ $schId }}">{{ is_array($fn->json_schema) ? json_encode($fn->json_schema, JSON_PRETTY_PRINT) : $fn->json_schema }}</textarea>
+                                            <textarea class="schema-ta" id="{{ $schId }}" readonly style="background:#f8fafc;cursor:default;">{{ is_array($fn->json_schema) ? json_encode($fn->json_schema, JSON_PRETTY_PRINT) : $fn->json_schema }}</textarea>
                                         </div>
-                                        <div class="schema-actions">
-                                            <button class="schema-btn validate"
-                                                onclick="validateSchema('{{ $schId }}','{{ $resId }}')">✓
-                                                Validate JSON</button>
-                                            <button class="schema-btn format"
-                                                onclick="formatSchema('{{ $schId }}','{{ $resId }}')">⟳
-                                                Format</button>
-                                        </div>
-                                        <div class="schema-result" id="{{ $resId }}"></div>
                                     </div>
                                 @empty
                                     <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No function
                                         schemas defined yet</div>
                                 @endforelse
-                            </div>
-                            <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
-                                <button class="bsav" onclick="saveAgent()">💾 Save Functions</button>
-                            </div>
-                        </div>
-
-                        <!-- ⑨ TASKS + DESTRUCTIVE CONFIRMATION -->
-                        <div class="card m-2" data-tab="tasks">
-                            <div class="sch">
-                                <div class="sch-l">
-                                    <div class="ico" style="background:linear-gradient(135deg,#10b981,#059669)">✅</div>
-                                    <div>
-                                        <div class="st">Tasks</div>
-                                        <div class="ss2">Automated actions — enable approval for destructive operations
-                                        </div>
-                                    </div>
-                                </div>
-                                <button class="badd grn" onclick="addTask()">+ Add Task</button>
-                            </div>
-                            <div class="ib amber">🔒 Tasks marked <strong>Destructive</strong> (delete data, cancel bookings,
-                                deduct wallet) will show an approval prompt before execution.</div>
-                            <div class="tklist" id="task-list">
-                                @forelse($a->tasks as $task)
-                                    @php
-                                        $tIsDestr = (bool) $task->is_destructive;
-                                        $tStatCls = match ($task->status ?? 'active') {
-                                            'active' => 'ac',
-                                            'inactive' => 'er',
-                                            default => 'dr',
-                                        };
-                                        $tStatLbl = match ($task->status ?? 'active') {
-                                            'active' => 'Active',
-                                            'inactive' => 'Inactive',
-                                            default => 'Draft',
-                                        };
-                                    @endphp
-                                    <div class="tkrow {{ $tIsDestr ? 'destructive' : '' }}">
-                                        <div class="tk-top">
-                                            <span class="tk-drag">⠿</span>
-                                            <input class="ti tk-name" type="text" value="{{ $task->task_name }}"
-                                                style="flex:1;min-width:150px;font-weight:600">
-                                            <select class="ts" style="width:120px">
-                                                <option value="scheduled" @selected($task->trigger_type === 'scheduled')>Scheduled</option>
-                                                <option value="on_demand" @selected($task->trigger_type === 'on_demand')>On Demand</option>
-                                                <option value="trigger" @selected($task->trigger_type === 'trigger')>Trigger</option>
-                                                <option value="manual" @selected($task->trigger_type === 'manual')>Manual</option>
-                                            </select>
-                                            <select class="ts" style="width:100px">
-                                                <option value="analytics" @selected($task->skill_category === 'analytics')>Analytics</option>
-                                                <option value="pdf" @selected($task->skill_category === 'pdf')>PDF</option>
-                                                <option value="excel" @selected($task->skill_category === 'excel')>Excel</option>
-                                                <option value="chatbot" @selected($task->skill_category === 'chatbot')>Chatbot</option>
-                                                <option value="seo" @selected($task->skill_category === 'seo')>SEO</option>
-                                            </select>
-                                            <label
-                                                style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:{{ $tIsDestr ? '#ef4444' : '#6b7280' }};cursor:pointer;white-space:nowrap">
-                                                <div class="tog {{ $tIsDestr ? 'on' : '' }}"
-                                                    onclick="toggleDestructive(this)"></div> Destructive?
-                                            </label>
-                                            <span
-                                                class="pill {{ $tIsDestr ? 'er' : $tStatCls }}">{{ $tIsDestr ? 'Destructive' : $tStatLbl }}</span>
-                                            <button class="brm" onclick="this.closest('.tkrow').remove()">✕</button>
-                                        </div>
-                                        <input class="ti" type="text" value="{{ $task->description }}"
-                                            style="margin-top:6px;color:#6b7280;font-size:11.5px">
-                                        <div class="tk-warn" style="display:{{ $tIsDestr ? 'flex' : 'none' }}">⚠️ This task
-                                            is marked destructive. Vendor must approve before execution.</div>
-                                        <div class="tk-conf-row {{ $tIsDestr ? '' : 'hidden' }}">
-                                            <span style="font-size:13px">✅</span>
-                                            <span class="tk-conf-label">Require vendor approval before running this task</span>
-                                            <div class="tog gr {{ $task->require_approval ? 'on' : '' }}"
-                                                onclick="this.classList.toggle('on')"></div>
-                                        </div>
-                                    </div>
-                                @empty
-                                    <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">No tasks defined
-                                        yet</div>
-                                @endforelse
-                            </div>
-                            <div style="display:flex;justify-content:flex-end;padding-top:14px;border-top:1px solid #f1f5f9;margin-top:16px">
-                                <button class="bsav" onclick="saveAgent()">💾 Save Tasks</button>
                             </div>
                         </div>
 
@@ -2822,7 +2698,9 @@
                     skill_type: document.getElementById('ag-stype').value,
                     status: document.getElementById('ag-status').value,
                     prompt: document.getElementById('ag-prompt').value,
-                    environment: document.getElementById('env-sel').value,
+                    // `environment` is no longer sent — the selector is gone, and the column was
+                    // never read by anything. Omitted rather than defaulted, so whatever is stored
+                    // stays as it is.
                     ai_provider: document.getElementById('ag-provider').value,
                     ai_model: document.getElementById('ag-model').value,
                     max_tokens: document.getElementById('ag-tokens').value,
@@ -2830,9 +2708,11 @@
                     top_p: document.getElementById('ag-topp').value, 
                     api_key_override: document.getElementById('ag-apikey').value,
                     tts_voice: document.getElementById('ag-tts-voice').value,
-                    requires_auth: document.getElementById('ag-auth').value === 'yes' ? 1 : 0,
-                    session_validation: document.getElementById('ag-sess').value,
-                    allowed_roles: getAllowedRoles(), 
+                    // requires_auth / session_validation / allowed_roles are not sent any more:
+                    // the card that set them was removed because nothing anywhere read them back.
+                    // Access is decided by the route middleware and the guard the caller passes,
+                    // never by these columns. Left out of the payload entirely so the controller's
+                    // field whitelist leaves whatever is already stored untouched.
                     conv_history_enabled: document.getElementById('ag-convhist').classList.contains('on') ? 1 : 0,
                     cross_session_memory: document.getElementById('ag-crossmem').classList.contains('on') ? 1 : 0,
                     inject_vendor_profile: document.getElementById('ag-inject').classList.contains('on') ? 1 : 0,
@@ -2843,9 +2723,10 @@
                     fallback_message: document.getElementById('ag-fallback').value,
                     escalation_rules: getEscalationRules(),
                     notification_settings: getNotifSettings(),
-                    api_tools: getApiTools(),
-                    functions: getFunctions(),
-                    tasks: getTasks(),
+                    // api_tools, functions and tasks are all deliberately absent. update() deletes
+                    // and recreates each of them whenever its key is present, and these are now
+                    // read-only displays — so posting what this page can collect (nothing) would
+                    // wipe the very tools the agent calls. Omitted, the controller leaves them be.
                 };
                 const res = await api(`${ADMIN_PREFIX}/agent/${AGENT_ID}/update`, 'POST', data);
                 if (res.status) {
@@ -3027,11 +2908,12 @@
 
             const out = document.getElementById('con-out');
             const btn = document.querySelector('.con-run');
-            const env = document.getElementById('env-sel').value;
             const agentName = document.getElementById('ag-name')?.value || 'Agent';
 
             out.style.color = '#f59e0b';
-            out.textContent = `// Running ${agentName} in ${env.toUpperCase()} mode...\n// Connecting to AI service...`;
+            // No mode to announce: the test hits the same AI service and the same data as any
+            // other message, which is precisely what the old "sandbox" label obscured.
+            out.textContent = `// Running ${agentName} against live data...\n// Connecting to AI service...`;
             btn.disabled = true;
             btn.textContent = '⏳ Running...';
 

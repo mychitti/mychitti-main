@@ -1029,20 +1029,49 @@
                                     $promptFile = 'storage/app/prompts/' . $selected->user_type . '.txt';
                                     $promptFileExists = is_file(storage_path('app/prompts/' . $selected->user_type . '.txt'));
                                 @endphp
-                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;display:flex;align-items:flex-start;gap:10px;">
-                                    <span style="font-size:16px;line-height:1.4">📄</span>
-                                    <div>
-                                        <div style="font-weight:600;margin-bottom:4px;">Prompt loaded from file</div>
-                                        <code style="background:#dcfce7;padding:3px 7px;border-radius:4px;font-size:12px;">{{ $promptFile }}</code>
-                                        <div style="margin-top:6px;color:#15803d;">
-                                            @if($promptFileExists)
-                                                ✓ File exists — edit it in your IDE and deploy to update the prompt.
-                                            @else
-                                                ⚠ File not found — create <code>{{ $promptFile }}</code> on the server.
-                                            @endif
+                                @if ($selected->user_type === 'admin' && array_key_exists($selected->skill_type, \App\Services\AdminAiPersona::PERSONAS))
+                                    {{-- The three admin assistants carry their brief in this column, so it is
+                                         editable here. Everything after it — the live figures and the rules
+                                         that stop the assistant inventing a number — is assembled in
+                                         AdminAiPersona::systemPrompt() and deliberately cannot be edited from
+                                         this screen. --}}
+                                    <textarea name="prompt" class="pm-input" rows="7"
+                                        style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.55;"
+                                        placeholder="How this assistant should introduce itself and what it is for.">{{ old('prompt', $selected->prompt) }}</textarea>
+
+                                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:12px 14px;font-size:13px;color:#1e40af;display:flex;align-items:flex-start;gap:10px;margin-top:10px;">
+                                        <span style="font-size:16px;line-height:1.4">🔒</span>
+                                        <div>
+                                            <div style="font-weight:600;margin-bottom:4px;">Only the intro above is editable</div>
+                                            <div style="color:#1d4ed8;">
+                                                The live figures this assistant may quote, and the rules governing how it
+                                                uses them, are built in code
+                                                (<code style="background:#dbeafe;padding:2px 6px;border-radius:4px;font-size:12px;">AdminAiPersona::systemPrompt()</code>)
+                                                and are appended to whatever you write here. Changing them is a developer
+                                                change — they are what keep the assistant from estimating or inventing a number.
+                                            </div>
                                         </div>
                                     </div>
-                                </div> 
+                                @else
+                                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;display:flex;align-items:flex-start;gap:10px;">
+                                        <span style="font-size:16px;line-height:1.4">📄</span>
+                                        <div>
+                                            <div style="font-weight:600;margin-bottom:4px;">Prompt loaded from file</div>
+                                            <code style="background:#dcfce7;padding:3px 7px;border-radius:4px;font-size:12px;">{{ $promptFile }}</code>
+                                            <div style="margin-top:6px;color:#15803d;">
+                                                @if($promptFileExists)
+                                                    ✓ File exists — edit it in your IDE and deploy to update the prompt.
+                                                @else
+                                                    ⚠ File not found — create <code>{{ $promptFile }}</code> on the server.
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{-- Nothing on this form edits `prompt` for a file-backed agent, and update()
+                                         writes whatever is posted — so without this the column would be emptied
+                                         every time the agent's name or status was saved. --}}
+                                    <input type="hidden" name="prompt" value="{{ $selected->prompt }}">
+                                @endif
 
                               
 

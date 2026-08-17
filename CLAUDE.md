@@ -5,7 +5,7 @@ MyChitti is a multi-vendor e-commerce platform (services / marketplace).
 
 ## Tech Stack
 - **Main app**: Laravel 10 (PHP 8.2+), MySQL, Blade + Bootstrap 4, jQuery
-- **AI service** (`_ai_service/`): Separate Laravel 10 app — handles all AI chat, memory, agents, RAG injection
+- **AI service** (sibling repo `ai-agent` — NOT part of this repo; deployed separately to the AI droplet): Separate Laravel 10 app — handles all AI chat, memory, agents, RAG injection
 - **Python RAG server** (`/root/ai-server/`): FastAPI + pgvector (PostgreSQL), VoyageAI embeddings
 - **Web server**: nginx + PHP-FPM 8.2, Supervisor for Python processes
 - **CI/CD**: GitHub Actions (`deploy.yml`), deploys to admin / vendor / shop servers on push to main
@@ -25,7 +25,7 @@ MyChitti is a multi-vendor e-commerce platform (services / marketplace).
 - Blade views extend `layouts.admin.app` (admin) or `layouts.vendor.app` (vendor) or `front-views\layout` (front)
 - Icons: `tio-*` icon set in admin and vendor panel
 - AI chat goes through `AiServiceClient` → AI service → Claude/OpenAI/Gemini
-- RAG context injected at top of system prompt in `_ai_service/app/Http/Controllers/Api/AIChatController.php`
+- RAG context injected at top of system prompt in the ai-agent repo's `app/Http/Controllers/Api/AIChatController.php`
 - Storage: `storage/app/public` is a DO Spaces mountpoint — never `rm -rf` or reset
 
 ## Database Rules

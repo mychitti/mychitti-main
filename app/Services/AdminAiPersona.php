@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\SupportTicket;
+use App\Models\SystemPrompt;
 use App\Models\VendorSubscription;
 use App\Modules\SalesCRM\Models\SalesFollowUp;
 use App\Modules\SalesCRM\Models\SalesQuery;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The three assistants an admin can talk to, and the live figures each one is allowed to see.
@@ -83,26 +85,129 @@ class AdminAiPersona
         return $band + $adminId;
     }
 
-    /** Persona brief + the figures it may see, as one system prompt. */
+    /**
+     * The brief each assistant opens with, as first written.
+     *
+     * This is the half an admin may rewrite: it lives in system_prompts alongside Sam and Sara and
+     * is edited on the AI Agents screen. What is here is the seed and the fallback — if the row is
+     * deleted or emptied, the assistant keeps its original brief rather than losing its identity.
+     */
+    const DEFAULT_INTRO = [
+        self::CEO => "You are the CEO assistant for MyChitti, a multi-vendor business platform in India. "
+            . "You brief the platform's leadership on how the business as a whole is doing.",
+        self::SALES => "You are the sales assistant for MyChitti. You help the sales team work their "
+            . "enquiries, follow-ups and plan conversions.",
+        self::SUPPORT => "You are the customer support assistant for MyChitti. You help the support team "
+            . "stay on top of issues raised by vendors and by users.",
+    ];
+
+    /**
+     * Persona brief + the figures it may see, as one system prompt.
+     *
+     * Two halves with two owners. The brief comes from the database and belongs to whoever is
+     * running the platform. Everything below it — the live figures, and the rules governing how
+     * they may be used — is assembled here and cannot be edited from the admin panel: those rules
+     * are what stop the assistant inventing a number, and an assistant that can be told to ignore
+     * them is worse than no assistant. Editing them is a code change, on purpose.
+     */
     public static function systemPrompt(string $key): string
     {
-        $intro = match ($key) {
-            self::CEO => "You are the CEO assistant for MyChitti, a multi-vendor business platform in India. "
-                . "You brief the platform's leadership on how the business as a whole is doing.",
-            self::SALES => "You are the sales assistant for MyChitti. You help the sales team work their "
-                . "enquiries, follow-ups and plan conversions.",
-            self::SUPPORT => "You are the customer support assistant for MyChitti. You help the support team "
-                . "stay on top of issues raised by vendors and by users.",
-        };
+        return static::intro($key) . "\n\n" . static::developerPrompt($key);
+    }
 
-        return $intro . "\n\n"
-            . static::figures($key) . "\n"
+    /**
+     * The half that belongs to the developer: the live figures and the rules governing them.
+     *
+     * Split out so the admin screen can SHOW it read-only beside the editable intro. An admin who
+     * cannot see this half is writing an intro blind — they have no way of knowing the assistant is
+     * already told to quote figures exactly, or which figures it has.
+     */
+    public static function developerPrompt(string $key): string
+    {
+        return static::figures($key) . "\n"
             . "RULES:\n"
             . "- Quote the figures above exactly. Never estimate, project or invent a number.\n"
             . "- If something is not in the figures above, say it is not available here and point them at the "
             . "relevant admin screen. Do not guess.\n"
             . "- The figures are a snapshot taken when this message was sent — say so if asked how current they are.\n"
             . "- Be direct and brief. Plain text, no markdown headings.\n";
+    }
+
+    /** Write the backing rows for all three assistants, if they are not there yet. */
+    public static function ensureRows(): void
+    {
+        foreach (array_keys(self::PERSONAS) as $key) {
+            static::row($key);
+        }
+    }
+
+    /** The admin-editable brief for one persona, or its original wording if none is saved. */
+    public static function intro(string $key): string
+    {
+        $saved = trim((string) (static::row($key)->prompt ?? ''));
+
+        return $saved !== '' ? $saved : (self::DEFAULT_INTRO[$key] ?? '');
+    }
+
+    /**
+     * The system_prompts row backing one persona, created on first use.
+     *
+     * They are seeded rather than expected: these three assistants existed in code before they had
+     * rows, so every install needs the row written once before it can be edited. Keyed on
+     * (user_type, skill_type) rather than the name, which an admin is free to change.
+     */
+    public static function row(string $key)
+    {
+        static $cache = [];
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
+
+        try {
+            $row = SystemPrompt::where('user_type', 'admin')->where('skill_type', $key)->first();
+
+            if (!$row) {
+                $row = SystemPrompt::create([
+                    'name'        => self::PERSONAS[$key]['label'] ?? ucfirst($key),
+                    'description' => self::PERSONAS[$key]['blurb'] ?? null,
+                    'user_type'   => 'admin',
+                    'skill_type'  => $key,
+                    // Draft, not active: AiServiceClient resolves the general admin agent as "the
+                    // most recently updated ACTIVE row for this user type", so seeding these as
+                    // active would silently hand every admin chat whichever assistant was saved
+                    // last. They are addressed by persona explicitly and do not need to be active.
+                    'status'      => 'draft',
+                    'prompt'      => self::DEFAULT_INTRO[$key] ?? '',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // A missing table or column must not take the assistants down — they simply fall back
+            // to the wording in code.
+            Log::warning('AdminAiPersona row lookup failed: ' . $e->getMessage());
+            $row = null;
+        }
+
+        return $cache[$key] = $row;
+    }
+
+    /**
+     * Label and blurb for the assistant switcher, preferring whatever the admin saved on the row.
+     * The KEYS stay in code: memory bands and figure queries are bound to them, so a renamed
+     * assistant must still be the same assistant.
+     */
+    public static function tabs(): array
+    {
+        $out = [];
+        foreach (self::PERSONAS as $key => $meta) {
+            $row = static::row($key);
+            $out[$key] = [
+                'label' => trim((string) ($row->name ?? '')) ?: $meta['label'],
+                'icon'  => $meta['icon'],
+                'blurb' => trim((string) ($row->description ?? '')) ?: $meta['blurb'],
+            ];
+        }
+
+        return $out;
     }
 
     /** The live block for one persona. Each persona sees only its own. */

@@ -85,6 +85,46 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="wa-sub mt-3 mb-2">What the handsets reported back</div>
+                <div class="row" style="row-gap:12px;">
+                    <div class="col-sm-4">
+                        <div class="wa-stat">
+                            <div>
+                                <div class="wa-stat-val text-success">{{ number_format($run->delivered) }}</div>
+                                <div class="wa-stat-lbl">Delivered</div>
+                            </div>
+                            <div class="wa-stat-ico" style="background:#eefbf3;color:#128c7e;"><i class="tio-done-all"></i></div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="wa-stat">
+                            <div>
+                                <div class="wa-stat-val text-info">{{ number_format($run->read) }}</div>
+                                <div class="wa-stat-lbl">Read</div>
+                            </div>
+                            <div class="wa-stat-ico" style="background:#eef7ff;color:#2563eb;"><i class="tio-visible"></i></div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="wa-stat">
+                            <div>
+                                <div class="wa-stat-val {{ $run->undelivered ? 'text-danger' : '' }}">{{ number_format($run->undelivered) }}</div>
+                                <div class="wa-stat-lbl">Not delivered</div>
+                            </div>
+                            <div class="wa-stat-ico" style="background:#fdecec;color:#dc2626;"><i class="tio-clear-circle"></i></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wa-sub mt-2">
+                    Delivered counts everyone who has it, read included.
+                    @if ($run->awaiting)
+                        {{ number_format($run->awaiting) }}
+                        {{ $run->awaiting == 1 ? 'number has' : 'numbers have' }}
+                        not reported back yet — WhatsApp sends these receipts as they happen.
+                    @endif
+                </div>
+
                 @if ($run->queued)
                     <div class="alert alert-warning mt-3 mb-0" style="font-size:12px;">
                         {{ number_format($run->queued) }} {{ $run->queued == 1 ? 'number was' : 'numbers were' }}

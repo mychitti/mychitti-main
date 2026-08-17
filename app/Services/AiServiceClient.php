@@ -31,7 +31,7 @@ class AiServiceClient
                 ->where('user_type', $userType)
                 ->where('status', 'active')
                 ->orderByDesc('updated_at')
-                ->first(['id', 'ai_provider', 'ai_model', 'max_tokens', 'temperature', 'top_p', 'api_key_override']);
+                ->first(['id', 'ai_provider', 'ai_model', 'max_tokens', 'temperature', 'top_p', 'api_key_override', 'inject_vendor_profile']);
                 // prx($resolved, 'Resolved agent for guard: ' . $guard);
             if ($resolved) {
                 $agentId = (int) $resolved->id;
@@ -57,8 +57,15 @@ class AiServiceClient
                     }
                 }
 
-                // Inject vendor profile into system prompt so Sam knows who is logged in
-                if ($guard === 'vendor' && $systemPrompt === null) {
+                // Inject vendor profile into system prompt so Sam knows who is logged in.
+                //
+                // Honours the agent's "Inject Vendor Profile" toggle, which until now was saved and
+                // never consulted. Absent or null counts as ON: every existing agent row has it set,
+                // and a missing value must not be read as "turn Sam's context off" — he would stop
+                // knowing who he is talking to and start telling logged-in vendors to log in.
+                $injectProfile = !isset($resolved->inject_vendor_profile) || (bool) $resolved->inject_vendor_profile;
+
+                if ($guard === 'vendor' && $systemPrompt === null && $injectProfile) {
                     $vendor = DB::table('vendors')->where('id', $userId)
                         ->first(['f_name', 'l_name', 'email', 'phone']);
                     $store = DB::table('stores')->where('vendor_id', $userId)

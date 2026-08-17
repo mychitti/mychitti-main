@@ -20,7 +20,9 @@
                             General
                         </a>
                     </li>
-                    @foreach (\App\Services\AdminAiPersona::PERSONAS as $key => $meta)
+                    {{-- tabs(), not PERSONAS: the name and blurb are whatever the admin saved on
+                         the assistant's row under AI Agents, falling back to the wording in code. --}}
+                    @foreach (\App\Services\AdminAiPersona::tabs() as $key => $meta)
                         <li class="nav-item">
                             <a class="nav-link" href="javascript:;" data-persona="{{ $key }}"
                                title="{{ $meta['blurb'] }}">
@@ -291,7 +293,7 @@ $('#chat-form').off('submit').on('submit', function(e){
     // Which assistant is being talked to. Sent with every call so the reply, the thread it is
     // stored in and the memory it is cleared from all refer to the same one.
     var activePersona = '';
-    var personaBlurbs = @json(collect(\App\Services\AdminAiPersona::PERSONAS)->map(fn($m) => $m['blurb']));
+    var personaBlurbs = @json(collect(\App\Services\AdminAiPersona::tabs())->map(fn($m) => $m['blurb']));
 
     $('#persona-tabs').on('click', 'a[data-persona]', function() {
         var next = $(this).data('persona') || '';

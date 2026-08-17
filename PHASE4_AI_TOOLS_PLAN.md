@@ -7,7 +7,7 @@ CREATE/ALTER via `DB::statement`), Eloquent for queries, `Http::` for service ca
 
 ## Where things run (repos)
 - **mychitti-main** (Laravel) — consumer app + main DB. Home of the **Recommendation Engine** and consumer feeds.
-- **ai-agent** (Laravel `_ai_service`) — LLM gateway. `AIChatController` + `ClaudeService` (Claude/OpenAI/Gemini) + `AiServiceClient` (in mychitti-main). **Sam** = the vendor chat agent driven by `AiServiceClient::vendorCapabilitiesPrompt()`. Phase 4 generators call through here (force OpenAI, like the SEO pipeline, since the server's Anthropic is unfunded).
+- **ai-agent** (sibling repo, not part of this one) — LLM gateway. `AIChatController` + `ClaudeService` (Claude/OpenAI/Gemini) + `AiServiceClient` (in mychitti-main). **Sam** = the vendor chat agent driven by `AiServiceClient::vendorCapabilitiesPrompt()`. Phase 4 generators call through here (force OpenAI, like the SEO pipeline, since the server's Anthropic is unfunded).
 - **mcvendorhub** (Laravel, `vendor.mcvendorhub.com`) — the vendor SaaS dashboard. **No AI yet** — this is where the vendor-facing AI Tools UI (Sam/Zayan panels) is built.
 
 ## What Phase 3 already gives us (reuse map)

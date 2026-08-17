@@ -334,6 +334,8 @@ class WhatsAppBulkController extends Controller
             return redirect()->route('admin.business-settings.third-party.whatsapp-bulk', ['tab' => 'history']);
         }
 
+        $this->attachDeliveryCounts($run, self::PLATFORM_SCOPE);
+
         $query = DB::table('wa_bulk_sends as b')
             ->leftJoin('whatsapp_messages as m', function ($join) {
                 $join->on('m.wamid', '=', 'b.wamid')->where('m.direction', 'out');
@@ -815,6 +817,32 @@ class WhatsAppBulkController extends Controller
             )
             ->groupBy('run_id')
             ->first();
+    }
+
+    /**
+     * What the handsets reported back, counted onto the run header.
+     *
+     * Kept out of platformRun() because these come from whatsapp_messages: the claim row only says
+     * Meta accepted the send, the webhook is what later says delivered, read or failed. `read` is a
+     * MySQL keyword, hence the aliases. Anything sent with no receipt yet is `awaiting`.
+     */
+    private function attachDeliveryCounts($run, $storeId): void
+    {
+        $counts = DB::table('wa_bulk_sends as b')
+            ->join('whatsapp_messages as m', function ($join) {
+                $join->on('m.wamid', '=', 'b.wamid')->where('m.direction', 'out');
+            })
+            ->where('b.store_id', $storeId)
+            ->where('b.run_id', $run->run_id)
+            ->selectRaw("SUM(CASE WHEN m.status IN ('delivered','read') THEN 1 ELSE 0 END) as delivered_count,
+                SUM(CASE WHEN m.status = 'read' THEN 1 ELSE 0 END) as read_count,
+                SUM(CASE WHEN m.status = 'failed' THEN 1 ELSE 0 END) as undelivered_count")
+            ->first();
+
+        $run->delivered   = (int) ($counts->delivered_count ?? 0);
+        $run->read        = (int) ($counts->read_count ?? 0);
+        $run->undelivered = (int) ($counts->undelivered_count ?? 0);
+        $run->awaiting    = max(0, (int) $run->sent - $run->delivered - $run->undelivered);
     }
 
     /** What the stored audience key is called on screen. Static so the history blades share it. */

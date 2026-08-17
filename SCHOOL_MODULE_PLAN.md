@@ -305,7 +305,7 @@ Reconciled with **School Management FRD v3.3** (70+ features, groups A–O, phas
    health/wellness data.
 4. **Subscription gating:** FRD `PlanFeatureMiddleware` → our **`planwise:school_manage`** + per-tier
    plan flags (Starter/Growth/Professional/Enterprise). Branch count enforced per tier.
-5. **AI (Sam Agent):** routes through existing **`_ai_service/` + `AiServiceClient`** (Phase 2b+).
+5. **AI (Sam Agent):** routes through existing **ai-agent + `AiServiceClient`** (Phase 2b+).
 6. **Fees + GST receipts:** reuse **`ManualInvoice`** (has cgst/sgst/igst) + **post to accounts
    ledger/daybook** (the OP-consultation pattern). Fee collection **always** posts to the ledger.
 7. **No migration files** — schema via guarded `CREATE TABLE / ALTER`; per-store settings in
