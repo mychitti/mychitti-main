@@ -19,41 +19,45 @@
     <meta name="robots" content="noindex, nofollow">
     <title>{{ $title }} — {{ $store->name ?? 'Health Record' }}</title>
     <style>
-        :root { --ink:#1e293b; --mute:#64748b; --line:#e6e9ef; --bg:#f6f8fb; --brand:#128c7e; }
+        /* Colours are literal hex on purpose — do NOT refactor them back into CSS variables.
+           mpdf renders this same page into the WhatsApp attachment and has no var() support, so
+           "border:1px solid var(--line)" reaches it as a border with no colour at all and crashes
+           it (Uninitialized string offset 0 in Mpdf::_setBorderLine). Palette, for editing:
+           ink #1e293b · mute #64748b · line #e6e9ef · bg #f6f8fb · brand #128c7e */
         * { box-sizing:border-box; }
         body {
-            margin:0; padding:16px; background:var(--bg); color:var(--ink);
+            margin:0; padding:16px; background:#f6f8fb; color:#1e293b;
             font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
             font-size:15px; line-height:1.55;
         }
         .wrap { max-width:680px; margin:0 auto; }
-        .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:14px; }
-        .clinic { text-align:center; border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:14px; }
+        .card { background:#fff; border:1px solid #e6e9ef; border-radius:14px; padding:20px; margin-bottom:14px; }
+        .clinic { text-align:center; border-bottom:1px solid #e6e9ef; padding-bottom:14px; margin-bottom:14px; }
         .clinic h1 { font-size:19px; margin:0 0 4px; }
-        .clinic p { margin:0; font-size:13px; color:var(--mute); }
-        .kind { display:inline-block; background:#e8f7ef; color:var(--brand); font-size:12px; font-weight:700;
+        .clinic p { margin:0; font-size:13px; color:#64748b; }
+        .kind { display:inline-block; background:#e8f7ef; color:#128c7e; font-size:12px; font-weight:700;
             padding:4px 12px; border-radius:20px; letter-spacing:.3px; text-transform:uppercase; margin-bottom:12px; }
         .meta { display:flex; flex-wrap:wrap; gap:10px 26px; font-size:14px; margin-bottom:4px; }
         .meta div { min-width:130px; }
-        .meta span { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--mute); }
-        h2 { font-size:14px; text-transform:uppercase; letter-spacing:.4px; color:var(--mute);
+        .meta span { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:#64748b; }
+        h2 { font-size:14px; text-transform:uppercase; letter-spacing:.4px; color:#64748b;
             margin:0 0 8px; font-weight:700; }
         table { width:100%; border-collapse:collapse; font-size:14px; }
-        th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.3px; color:var(--mute);
-            border-bottom:1px solid var(--line); padding:8px 6px; font-weight:600; }
+        th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.3px; color:#64748b;
+            border-bottom:1px solid #e6e9ef; padding:8px 6px; font-weight:600; }
         td { padding:10px 6px; border-bottom:1px solid #f2f4f8; vertical-align:top; }
         tr:last-child td { border-bottom:0; }
         .med { font-weight:600; }
-        .sub { font-size:13px; color:var(--mute); }
+        .sub { font-size:13px; color:#64748b; }
         .flag { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
         .flag-high { background:#fdeaea; color:#c0392b; }
         .flag-low  { background:#fff5e6; color:#b9770e; }
         .flag-ok   { background:#e8f7ef; color:#128c7e; }
-        .note { background:var(--bg); border-left:3px solid var(--brand); border-radius:8px;
+        .note { background:#f6f8fb; border-left:3px solid #128c7e; border-radius:8px;
             padding:12px 14px; font-size:14px; }
-        .foot { text-align:center; font-size:12px; color:var(--mute); padding:6px 0 20px; }
-        .btn { display:block; width:100%; padding:12px; border:1px solid var(--line); border-radius:10px;
-            background:#fff; color:var(--ink); font-size:14px; font-weight:600; cursor:pointer; }
+        .foot { text-align:center; font-size:12px; color:#64748b; padding:6px 0 20px; }
+        .btn { display:block; width:100%; padding:12px; border:1px solid #e6e9ef; border-radius:10px;
+            background:#fff; color:#1e293b; font-size:14px; font-weight:600; cursor:pointer; }
         .scroll { overflow-x:auto; }
         @media print {
             body { background:#fff; padding:0; }
@@ -107,7 +111,7 @@
     @if ($kind === 'visit_registered' && filled($record->token_number))
         <div class="card">
             <h2>Your token number</h2>
-            <div style="font-size:34px;font-weight:800;color:var(--brand);line-height:1.1;">{{ $record->token_number }}</div>
+            <div style="font-size:34px;font-weight:800;color:#128c7e;line-height:1.1;">{{ $record->token_number }}</div>
             <div class="mute" style="margin-top:6px;">Please show this at reception when you arrive.</div>
         </div>
     @endif
