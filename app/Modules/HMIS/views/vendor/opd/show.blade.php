@@ -1199,8 +1199,12 @@
                                  prescription_pdf template. Finalized only: a draft is still being
                                  written, and a patient who receives one starts a course of medicine
                                  the doctor has not committed to. --}}
+                            {{-- Owner-or-permission, matching what the route enforces: the
+                                 permission middleware passes any vendor owner, while hasPermission()
+                                 alone answers false for an owner until some role has been granted
+                                 prescription/print — which would hide a button its own route allows. --}}
                             @if ($currentPrescription->is_finalized
-                                && hasPermission('prescription', 'print')
+                                && (auth('vendor')->check() || hasPermission('prescription', 'print'))
                                 && filled($currentPrescription->patient?->phone))
                                 <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $currentPrescription->id) }}" class="mb-0"
                                       onsubmit="return confirm('Send this prescription as a PDF to {{ addslashes($currentPrescription->patient->name ?? 'the patient') }} on WhatsApp?')">

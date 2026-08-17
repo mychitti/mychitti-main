@@ -18,7 +18,11 @@
             </a>
             @endif
         </div>
-        @if (hasPermission('prescription', 'print'))
+        {{-- Owner-or-permission, the same rule show() itself opens the page on: hasPermission()
+             alone answers false for a vendor owner until some role has been granted
+             prescription/print, which left an owner on their own prescription with no Print
+             button and nothing to send. --}}
+        @if (auth('vendor')->check() || hasPermission('prescription', 'print'))
         <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
             {{-- Only the PDF is offered by hand. The rest of what a patient is sent — the
                  prescription link, the medicine instructions, the follow-up — is a standing
