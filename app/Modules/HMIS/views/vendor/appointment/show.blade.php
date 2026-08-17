@@ -10,14 +10,10 @@
                 <span class="page-header-icon"><i class="tio-calendar" style="font-size:22px;"></i></span>
                 Appointment Detail
             </h1>
-            <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-                {{-- Nothing to press here. The reminder before the visit and the feedback request
-                     after it are both standing settings under Notification Settings, sent by the
-                     scheduled sweep and by autoSendOnCompletion respectively. --}}
-                <a href="{{ route('vendor.appointment.list') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="tio-arrow-backward"></i> Back
-                </a>
-            </div>
+            {{-- No actions here. The reminder before the visit and the feedback request after it
+                 are both standing settings under Notification Settings, sent by the scheduled
+                 sweep and by autoSendOnCompletion respectively; the submenu above carries the
+                 way back to the list. --}}
         </div>
     </div>
  

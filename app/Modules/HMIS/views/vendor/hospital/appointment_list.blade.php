@@ -248,19 +248,29 @@
                 $hOpdVisit = \App\Models\OpdVisit::where('service_request_id', $lead->id)->first();
             } catch (\Exception $e) {}
 
-            // Fallback for visits registered before service_request_id column existed:
-            // match by preferred doctor + preferred date + patient (via user_id)
+            // Fallback for visits registered before service_request_id existed: match by preferred
+            // doctor + preferred date + patient (via user_id).
+            //
+            // Deliberately narrow, because doctor+patient+date is not unique — one patient booking
+            // the same doctor twice in a day matches every one of their leads. Unclaimed visits
+            // only, so a visit already linked to another lead can never be borrowed; and only when
+            // exactly one candidate remains, because with two the guess is a coin toss and a card
+            // pointing into the wrong patient encounter is worse than one offering to register.
             $hStoreId = \App\CentralLogics\Helpers::get_store_id();
             if (!$hOpdVisit && $lead->preferred_doctor_id && $lead->preferred_date) {
                 $hPatientFallback = \App\Models\Patient::where('store_id', $hStoreId)
                     ->where('user_id', $lead->uid)
                     ->first();
                 if ($hPatientFallback) {
-                    $hOpdVisit = \App\Models\OpdVisit::where('store_id', $hStoreId)
+                    $hUnclaimed = \App\Models\OpdVisit::where('store_id', $hStoreId)
                         ->where('doctor_profile_id', $lead->preferred_doctor_id)
                         ->where('patient_id', $hPatientFallback->id)
                         ->whereDate('visit_date', $lead->preferred_date)
-                        ->first();
+                        ->whereNull('service_request_id')
+                        ->limit(2)
+                        ->get();
+
+                    $hOpdVisit = $hUnclaimed->count() === 1 ? $hUnclaimed->first() : null;
                 }
             }
 
