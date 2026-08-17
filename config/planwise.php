@@ -50,10 +50,14 @@ return [
             'laundry',
             'inventory_manage',
         ],
+        // Pharmacy is Inventory under a hospital label (_moduleLabel), and a hospital that cannot
+        // track medicine stock cannot dispense against its own prescriptions — the Dispense Queue
+        // is part of HMIS, so the stock behind it has to come with it rather than as an upsell.
         'hospital' => [
             'hospital',
             'hospital_manage',
             'leads_manage',
+            'inventory_manage',
         ],
         // Retail POS (`pos_retail`) is a PAID plan, so `pos_retail` itself is NOT free here — stores
         // must hold an active subscription to use the Retail POS module. But basic Inventory is free
