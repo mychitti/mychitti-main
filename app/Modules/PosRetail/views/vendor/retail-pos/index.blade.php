@@ -722,6 +722,12 @@
             kg: 'g', kgs: 'g', kilogram: 'g', kilograms: 'g',
             l: 'ml', ltr: 'ml', litre: 'ml', liter: 'ml', litres: 'ml', liters: 'ml',
         };
+        // Held in the item's STOCK unit, so 10000 kg — the grams box allows 10,000,000. Anything
+        // past this is a slipped key, not a sale; the bill it makes overflows the money columns.
+        // Mirrored server-side as MAX_LINE_QTY in RetailPosController::finalize().
+        const MAX_LINE_QTY = 10000;
+        function capQty(q) { return Math.min(MAX_LINE_QTY, q); }
+        function maxEntryQty(l) { return inSubUnit(l) ? MAX_LINE_QTY * 1000 : MAX_LINE_QTY; }
         function subUnitOf(u) { return SUB_UNIT[String(u || '').trim().toLowerCase()] || null; }
         function inSubUnit(l) { const s = subUnitOf(l.unit); return !!s && l.wunit === s; }
         function entryUnit(l) { return l.wunit || l.unit || 'kg'; }
@@ -889,7 +895,8 @@
         // which is the stock unit. With no scale, focus the weight box so the cashier keys it in.
         function weighLine(i) {
             POSAgent.readScale().then(w => {
-                if (w && w > 0) { POS.cart[i].qty = Math.round(w * 1000) / 1000; renderCart(); return; }
+                // Capped — a garbled serial read must not become a billable weight.
+                if (w && w > 0) { POS.cart[i].qty = capQty(Math.round(w * 1000) / 1000); renderCart(); return; }
                 renderCart();
                 const box = document.querySelector('#cart-body input[data-wq="' + i + '"]');
                 if (box) { box.focus(); box.select(); }
@@ -913,14 +920,14 @@
                         <td>
                             ${l.sell_loose ? `
                             <div class="qty-stepper" style="margin-bottom:4px;">
-                                <input type="number" min="0" step="1" value="${l.pieces ?? ''}" placeholder="pcs" title="Pieces (e.g. 4 apples)"
+                                <input type="number" min="0" max="${MAX_LINE_QTY}" step="1" value="${l.pieces ?? ''}" placeholder="pcs" title="Pieces (e.g. 4 apples)"
                                     onchange="setPieces(${i}, this.value)" onfocus="this.select()"
                                     style="width:44px;text-align:center;border:0;background:transparent;font-weight:700;font-size:13px;-moz-appearance:textfield;">
                                 <span style="font-size:11px;color:var(--muted)">pc</span>
                             </div>
                             <div class="qty-stepper">
                                 <button class="qty-btn" onclick="chQty(${i},-1)">−</button>
-                                <input type="number" min="0" step="${inSubUnit(l) ? 1 : 0.001}" value="${entryQty(l)}"
+                                <input type="number" min="0" max="${maxEntryQty(l)}" step="${inSubUnit(l) ? 1 : 0.001}" value="${entryQty(l)}"
                                     data-wq="${i}" title="Weight — tap the unit to switch g / kg"
                                     onkeyup="liveQty(${i}, this.value)" onchange="setQty(${i}, this.value)" onfocus="this.select()"
                                     style="width:56px;text-align:center;border:0;background:transparent;font-weight:700;font-size:13px;-moz-appearance:textfield;">
@@ -931,7 +938,7 @@
                             </div>` : `
                             <div class="qty-stepper">
                                 <button class="qty-btn" onclick="chQty(${i},-1)">−</button>
-                                <input type="number" min="0" step="1" value="${l.qty}"
+                                <input type="number" min="0" max="${MAX_LINE_QTY}" step="1" value="${l.qty}"
                                     onkeyup="liveQty(${i}, this.value)" onchange="setQty(${i}, this.value)" onfocus="this.select()"
                                     style="width:56px;text-align:center;border:0;background:transparent;font-weight:700;font-size:13px;-moz-appearance:textfield;">
                                 <button class="qty-btn" onclick="chQty(${i},1)">+</button>
@@ -953,7 +960,7 @@
             // Loose steps in the unit being keyed: 10 g at a time in grams, 0.1 kg in kg.
             const step = l.sell_loose ? (inSubUnit(l) ? 0.01 : 0.1) : 1;
             const min = l.sell_loose ? 0.001 : 1;
-            l.qty = Math.max(min, Math.round((l.qty + d * step) * 1000) / 1000);
+            l.qty = capQty(Math.max(min, Math.round((l.qty + d * step) * 1000) / 1000));
             renderCart();
         }
         // Live update as the cashier types (keyup) — refresh just this line's total and the
@@ -962,7 +969,9 @@
             const l = POS.cart[i];
             let q = entryToQty(l, v);
             if (!(q >= 0)) q = 0; // allow a transient/partial value mid-typing; normalised on blur
-            l.qty = q;
+            // Capped live too, so the running total can't sprint away while the digits are typed;
+            // setQty corrects the box itself (and warns) on blur.
+            l.qty = capQty(q);
             const cell = document.getElementById('ltot-' + i);
             if (cell) cell.textContent = money(l.price * l.qty - l.discount);
             recalc();
@@ -974,13 +983,17 @@
             const l = POS.cart[i];
             let q = entryToQty(l, v);
             if (!(q > 0)) q = l.sell_loose ? 0.001 : 1;
+            if (q > MAX_LINE_QTY && window.toastr) {
+                toastr.warning('Maximum ' + MAX_LINE_QTY + ' ' + (l.unit || 'per line') + ' — quantity capped', 'Check the quantity');
+            }
+            q = capQty(q);
             l.qty = l.sell_loose ? Math.round(q * 1000) / 1000 : Math.max(1, Math.round(q));
             renderCart();
         }
         // Loose item piece count (e.g. 4 apples) — recorded & printed; price stays by weight.
         function setPieces(i, v) {
             const p = parseInt(v, 10);
-            POS.cart[i].pieces = (p > 0) ? p : null;
+            POS.cart[i].pieces = (p > 0) ? Math.min(MAX_LINE_QTY, p) : null;
             renderCart();
         }
         function rmLine(i) { POS.cart.splice(i, 1); renderCart(); }
@@ -1634,7 +1647,7 @@
             fetch(POS.resumeUrl.replace('__ID__', id), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } }).then(r => r.json()).then(d => {
                 if (!d.status) return;
                 POS.cart = (d.items || []).map(l => ({
-                    id: l.id, name: l.name, price: parseFloat(l.price) || 0, qty: parseFloat(l.qty) || 1,
+                    id: l.id, name: l.name, price: parseFloat(l.price) || 0, qty: capQty(parseFloat(l.qty) || 1),
                     discount: parseFloat(l.discount) || 0, hsn: l.hsn || '',
                     gst_rate: parseFloat(l.gst_rate) || 0, gst_status: l.gst_status || 'excluding',
                     unit: l.unit || '', sell_loose: !!l.sell_loose,

@@ -287,6 +287,12 @@
                 <a href="{{ route('vendor.opd.export', array_filter(['date_range'=>$preset,'custom_date_range'=>request('custom_date_range'),'doctor'=>request('doctor'),'search'=>request('search')])) }}"
                    class="btn btn-hmis-export"><i class="tio-download"></i> Export</a>
                 @endif
+                @if (hasPermission('opd_register', 'edit'))
+                <a href="{{ route('vendor.opd.terms') }}" class="btn btn-hmis-export"
+                   title="Choose which diagnosis and treatment terms your doctors are offered">
+                    <i class="tio-label"></i> Clinical Terms
+                </a>
+                @endif
                 @if (hasPermission('opd_register', 'add'))
                 <a href="{{ route('vendor.opd.create') }}" class="btn btn-hmis-primary">
                     <i class="tio-add"></i> Register Visit

@@ -20,4 +20,9 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::post('{id}/next-visit',   [OpdController::class, 'nextVisit'])->name('next-visit')->middleware('permission:opd_register,edit');
     Route::post('{id}/cancel',       [OpdController::class, 'cancel'])->name('cancel')->middleware('permission:opd_register,cancel');
     Route::delete('{id}',            [OpdController::class, 'destroy'])->name('destroy')->middleware('permission:opd_register,delete');
+
+    // The hospital's own view of the clinical dropdowns: what the platform offers for its
+    // category, plus anything its doctors added, with a switch to stop offering a term.
+    Route::get('terms/manage',        [OpdController::class, 'terms'])->name('terms')->middleware('permission:opd_register,edit');
+    Route::post('terms/manage',       [OpdController::class, 'termsUpdate'])->name('terms.update')->middleware('permission:opd_register,edit');
 });

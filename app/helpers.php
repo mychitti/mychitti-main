@@ -2764,13 +2764,19 @@ if (!function_exists('_applyStockDelta')) {
      * drift apart and no caller has to know which variation mode an item is in.
      *
      *   $sign  -1 to take stock out, +1 to put it back.
-     *   $clamp true on a sale (cannot take out more than exists); false on a reversal, which must
-     *          be exact even if it passes through a negative intermediate — see
-     *          _decrementInventoryStock for why.
      *
-     * Returns the resulting main-stock figure (unclamped, so a caller can spot an oversell).
+     * The figure written is always exact — there is no floor at zero. Selling past what exists
+     * is allowed (with manager approval on the out-of-stock prompt), so the shortfall has to stay
+     * on record: 5 kg sold against 3 kg reads -2, not 0. Flooring it threw the oversell away, and
+     * the next stock-in then silently absorbed goods that were already gone. Reversals need the
+     * same exactness to keep the arithmetic balanced — see _decrementInventoryStock.
+     *
+     * Both stock columns are SIGNED DECIMAL(12,3) (see _ensureDecimalStockColumns), so a negative
+     * figure stores rather than being rejected by strict mode.
+     *
+     * Returns the resulting main-stock figure.
      */
-    function _applyStockDelta($inv_item, $qty, $unit, ?string $varType, int $sign, bool $clamp): float
+    function _applyStockDelta($inv_item, $qty, $unit, ?string $varType, int $sign): float
     {
         $var  = _variationRow($inv_item, $varType);
         $mode = _variationMode($inv_item);
@@ -2787,7 +2793,7 @@ if (!function_exists('_applyStockDelta')) {
                 ? _variationQtyInItemUnit($inv_item, $pack, $qty)
                 : _qtyInItemUnit($inv_item, $qty, $unit);
             $new   = (float) $inv_item->stock + $sign * $delta;
-            $inv_item->stock = $clamp ? max(0, $new) : $new;
+            $inv_item->stock = $new;
             $inv_item->save();
             return $new;
         }
@@ -2797,13 +2803,11 @@ if (!function_exists('_applyStockDelta')) {
         if ($var && $mode === 'countable') {
             $vars  = _itemVariations($inv_item);
             $delta = _qtyInItemUnit($inv_item, $qty, $unit);
-            $new   = (float) $inv_item->stock;
             foreach ($vars as $i => $row) {
                 if (!isset($row['type']) || mb_strtolower(trim($row['type'])) !== mb_strtolower(trim($varType))) {
                     continue;
                 }
-                $line = (float) ($row['stock'] ?? 0) + $sign * $delta;
-                $vars[$i]['stock'] = $clamp ? max(0, $line) : $line;
+                $vars[$i]['stock'] = (float) ($row['stock'] ?? 0) + $sign * $delta;
             }
             $inv_item->variations = json_encode($vars);
             $inv_item->stock = _sumCountableVariationStock($vars);
@@ -2814,7 +2818,7 @@ if (!function_exists('_applyStockDelta')) {
         // No variation on the line: straight against the main pool, exactly as before.
         $delta = _qtyInItemUnit($inv_item, $qty, $unit);
         $new   = (float) $inv_item->stock + $sign * $delta;
-        $inv_item->stock = $clamp ? max(0, $new) : $new;
+        $inv_item->stock = $new;
         $inv_item->save();
         return $new;
     }
@@ -2877,7 +2881,7 @@ if (!function_exists('_updateInventoryStock')) {
 
             // Any unit of the item's dimension is accepted and converted into the item's
             // own stock unit (see _qtyInItemUnit / _variationQtyInItemUnit).
-            $updated_stock = _applyStockDelta($inv_item, $qty, $unit, $varType, -1, true);
+            $updated_stock = _applyStockDelta($inv_item, $qty, $unit, $varType, -1);
 
             // low stock alert
             if ($updated_stock <= 5) {
@@ -2910,7 +2914,7 @@ if (!function_exists('_restoreInventoryStock')) {
                 return;
             }
 
-            _applyStockDelta($inv_item, $qty, $unit, $varType, 1, false);
+            _applyStockDelta($inv_item, $qty, $unit, $varType, 1);
         } catch (\Throwable $th) {
             // best-effort; bill deletion must not fail on stock restore
         }
@@ -2979,7 +2983,7 @@ if (!function_exists('_incrementInventoryStock')) {
                 return;
             }
 
-            _applyStockDelta($inv_item, $qty, $unit, $varType, 1, false);
+            _applyStockDelta($inv_item, $qty, $unit, $varType, 1);
         } catch (\Throwable $th) {
             //  Log::error($th);
         }
@@ -2991,11 +2995,8 @@ if (!function_exists('_decrementInventoryStock')) {
      * Exact mirror of _incrementInventoryStock — takes back precisely what an earlier increment
      * put in, with no floor and no side effects.
      *
-     * _updateInventoryStock() cannot be used to unwind a purchase: it clamps at zero and fires
-     * the low-stock notification and auto purchase order. Editing a bill of 8 bags against 79.7 kg
-     * of stock would clamp the intermediate -0.3 kg to 0 and the 0.3 kg already sold would come
-     * back from nowhere when the new lines were added. Clamping belongs on a sale, which cannot
-     * take out more than exists; a reversal has to be exact or the arithmetic stops balancing.
+     * _updateInventoryStock() cannot be used to unwind a purchase: it fires the low-stock
+     * notification and the auto purchase order, neither of which belongs on a reversal.
      */
     function _decrementInventoryStock($inv_item_id, $qty, $unit = null, $varType = null)
     {
@@ -3012,7 +3013,7 @@ if (!function_exists('_decrementInventoryStock')) {
                 return;
             }
 
-            _applyStockDelta($inv_item, $qty, $unit, $varType, -1, false);
+            _applyStockDelta($inv_item, $qty, $unit, $varType, -1);
         } catch (\Throwable $th) {
             //  Log::error($th);
         }

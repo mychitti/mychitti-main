@@ -469,6 +469,9 @@ class PrescriptionController extends Controller
         try {
             $billLines = [];
 
+            // Stock may go negative below, which a legacy UNSIGNED column rejects under strict mode.
+            _ensureDecimalStockColumns();
+
             foreach ($request->items as $itemId => $data) {
                 if (empty($data['dispense'])) continue;
 
@@ -479,7 +482,9 @@ class PrescriptionController extends Controller
 
                 if ($rxItem->inventory_item_id && $rxItem->inventoryItem) {
                     $invItem = $rxItem->inventoryItem;
-                    $invItem->stock = max(0, ($invItem->stock ?? 0) - $qty);
+                    // Not floored at zero — dispensing past stock is allowed, and flooring it
+                    // threw the shortfall away so the next stock-in silently absorbed it.
+                    $invItem->stock = (float) ($invItem->stock ?? 0) - $qty;
                     $invItem->save();
                 }
 

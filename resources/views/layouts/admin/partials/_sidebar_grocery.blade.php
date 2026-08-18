@@ -795,6 +795,12 @@
                                     <span class="text-truncate">Hospital Bed Pricing</span>
                                 </a>
                             </li>
+                        <li class="nav-item {{ Request::is('hmis/opd-terms*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.hmis.opd-terms') }}" title="OPD Clinical Terms">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">OPD Clinical Terms</span>
+                                </a>
+                            </li>
                         <li class="nav-item {{ Request::is('school-tiers*') ? 'active' : '' }}">
                                 <a class="nav-link" href="{{ route('admin.school-tiers.index') }}" title="School Plan Tiers">
                                     <span class="tio-circle nav-indicator-icon"></span>

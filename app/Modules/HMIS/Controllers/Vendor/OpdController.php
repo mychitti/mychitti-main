@@ -84,6 +84,11 @@ class OpdController extends Controller
                 KEY `oct_store_type_idx` (`store_id`, `type`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         }
+
+        // The dropdowns are read from the platform catalogue plus this store's own rows, so both
+        // sides have to exist before a consultation screen asks for them.
+        \App\Models\OpdClinicalTerm::ensureSchema();
+        \App\Models\OpdTermCatalogue::ensureTable();
     }
 
     public function index(Request $request)
@@ -768,6 +773,67 @@ class OpdController extends Controller
 
         Toastr::success('Visit deleted.');
         return Redirect::route('vendor.opd.index', $this->registerFilters($request));
+    }
+
+    /**
+     * The hospital's own view of the clinical dropdowns.
+     *
+     * Shows what it is actually offered — the platform catalogue for its category plus anything
+     * its doctors have typed — and lets it stop offering any of them. Hiding is per store: the
+     * catalogue itself is admin's and is never changed from here.
+     */
+    public function terms(Request $request)
+    {
+        $this->ensureClinicalSchema();
+        $store_id = Helpers::get_store_id();
+
+        $category = \App\Models\OpdClinicalTerm::categoryFor($store_id);
+        $lists    = [];
+
+        foreach ([\App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS, \App\Models\OpdClinicalTerm::TYPE_TREATMENT] as $type) {
+            $catalogue = collect(\App\Models\OpdTermCatalogue::namesFor($category, $type));
+            $hidden    = collect(\App\Models\OpdClinicalTerm::hiddenNames($store_id, $type))
+                ->mapWithKeys(fn($n) => [mb_strtolower(trim($n)) => true]);
+
+            $own = \App\Models\OpdClinicalTerm::where('store_id', $store_id)
+                ->where('type', $type)->where('hidden', false)
+                ->orderBy('name')->pluck('name');
+
+            $lists[$type] = [
+                'catalogue' => $catalogue->sort(SORT_NATURAL | SORT_FLAG_CASE)->values(),
+                'own'       => $own,
+                'hidden'    => $hidden,
+            ];
+        }
+
+        $categoryLabel = \App\Models\StoreConfig::hospitalCategoryLabel($category);
+
+        return view('hmis::vendor.opd.terms', compact('lists', 'category', 'categoryLabel'));
+    }
+
+    /** Hide or restore one term for this store. */
+    public function termsUpdate(Request $request)
+    {
+        $request->validate([
+            'type'   => 'required|in:' . \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS . ',' . \App\Models\OpdClinicalTerm::TYPE_TREATMENT,
+            'name'   => 'required|string|max:150',
+            'action' => 'required|in:hide,show',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+
+        $request->action === 'hide'
+            ? \App\Models\OpdClinicalTerm::hide($store_id, $request->type, $request->name)
+            : \App\Models\OpdClinicalTerm::unhide($store_id, $request->type, $request->name);
+
+        // The casemix ordering is built from what is on offer, so it has to be rebuilt.
+        \App\Services\OpdTermInsights::forget($store_id);
+
+        Toastr::success($request->action === 'hide'
+            ? '"' . $request->name . '" will no longer be offered.'
+            : '"' . $request->name . '" is available again.');
+
+        return back();
     }
 
     public function edit($id)

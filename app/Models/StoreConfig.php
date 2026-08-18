@@ -9,6 +9,40 @@ use Illuminate\Support\Facades\Schema;
 class StoreConfig extends Model
 {
     use HasFactory;
+
+    /**
+     * What kind of hospital this is. Descriptive for now — nothing branches on it.
+     *
+     * Keys are stored, labels are shown, so a label can be reworded without rewriting rows. Kept
+     * as a fixed list rather than a table because the set changes about once a year and a stray
+     * value would be worse than a deploy: anything that later reads this (module visibility, per
+     * category wording) has to be able to trust the key.
+     */
+    const HOSPITAL_CATEGORIES = [
+        'multi_speciality' => 'Multi-speciality Hospital',
+        'general'          => 'General Hospital',
+        'clinic'           => 'Clinic / Polyclinic',
+        'dental'           => 'Dental',
+        'neurology'        => 'Neurology',
+        'orthopaedic'      => 'Orthopaedic',
+        'cardiology'       => 'Cardiology',
+        'eye'              => 'Eye Care',
+        'ent'              => 'ENT',
+        'dermatology'      => 'Dermatology / Skin',
+        'paediatric'       => 'Paediatric',
+        'maternity'        => 'Maternity / Gynaecology',
+        'ayurveda'         => 'Ayurveda / Homeopathy',
+        'physiotherapy'    => 'Physiotherapy',
+        'veterinary'       => 'Veterinary',
+        'diagnostic'       => 'Diagnostic Centre',
+    ];
+
+    /** The stored key as something to show. Unknown or unset reads as not chosen. */
+    public static function hospitalCategoryLabel(?string $key): ?string
+    {
+        return $key ? (self::HOSPITAL_CATEGORIES[$key] ?? null) : null;
+    }
+
     protected $fillable = [
         'paid_unpaid_options',
         'pharmacy_dispense_to_bearer',
@@ -48,6 +82,7 @@ class StoreConfig extends Model
         'branch_2_color',
         'branch_3_color',
         'code',
+        'hospital_category',
         'resubmit_per_req_form',
         'task_id_serial',
         'task_id_format',

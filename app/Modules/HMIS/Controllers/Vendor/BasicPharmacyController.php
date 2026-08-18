@@ -342,6 +342,9 @@ class BasicPharmacyController extends Controller
                 ],
             ]);
 
+            // Stock may go negative below, which a legacy UNSIGNED column rejects under strict mode.
+            _ensureDecimalStockColumns();
+
             foreach ($lines as $ln) {
                 InvoiceItem::create([
                     'rand_invoice_id'   => $invoiceId,
@@ -354,8 +357,9 @@ class BasicPharmacyController extends Controller
                     'inv_id'            => $ln['item']->id, // link to inventory item so it appears in Sale Orders
                 ]);
 
-                // Decrement pharmacy stock.
-                $ln['item']->stock = max(0, (float) $ln['item']->stock - $ln['qty']);
+                // Decrement pharmacy stock. Not floored at zero — dispensing past what is on the
+                // shelf is allowed, so the shortfall has to stay visible instead of reading 0.
+                $ln['item']->stock = (float) $ln['item']->stock - $ln['qty'];
                 $ln['item']->save();
             }
 

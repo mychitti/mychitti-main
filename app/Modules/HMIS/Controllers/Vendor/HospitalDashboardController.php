@@ -157,6 +157,11 @@ class HospitalDashboardController extends Controller
         $serial   = (int) ($config?->patient_uid_serial ?? 1);
         $opd_consultation_count          = (int) ($config?->opd_consultation_count ?? 1);
         $opd_consultation_validity_days  = (int) ($config?->opd_consultation_validity_days ?? 7);
+        // Read defensively: the column is added on first save, so a hospital that has never
+        // opened this page has a config row without it.
+        $hospital_category = \Illuminate\Support\Facades\Schema::hasColumn((new \App\Models\StoreConfig)->getTable(), 'hospital_category')
+            ? ($config?->hospital_category ?? null)
+            : null;
 
         $lastUid  = Patient::where('store_id', $store_id)->orderByDesc('id')->value('patient_uid');
         $autoNext = 1;
@@ -166,7 +171,10 @@ class HospitalDashboardController extends Controller
         $nextSerial  = max($autoNext, $serial);
         $previewMuid = strtoupper($prefix) . '-' . str_pad($nextSerial, $padding, '0', STR_PAD_LEFT);
 
-        return view('hmis::vendor.hospital.settings', compact('prefix', 'padding', 'serial', 'previewMuid', 'opd_consultation_count', 'opd_consultation_validity_days'));
+        return view('hmis::vendor.hospital.settings', compact(
+            'prefix', 'padding', 'serial', 'previewMuid',
+            'opd_consultation_count', 'opd_consultation_validity_days', 'hospital_category'
+        ));
     }
 
     public function saveSettings(Request $request)
@@ -177,6 +185,7 @@ class HospitalDashboardController extends Controller
             'serial'  => 'required|integer|min:1',
             'opd_consultation_count'         => 'required|integer|min:1|max:50',
             'opd_consultation_validity_days' => 'required|integer|min:1|max:365',
+            'hospital_category'              => 'nullable|in:' . implode(',', array_keys(\App\Models\StoreConfig::HOSPITAL_CATEGORIES)),
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -193,6 +202,10 @@ class HospitalDashboardController extends Controller
                 ADD COLUMN `opd_consultation_count` INT NULL,
                 ADD COLUMN `opd_consultation_validity_days` INT NULL");
         }
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hospital_category')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}`
+                ADD COLUMN `hospital_category` VARCHAR(40) NULL");
+        }
 
         \App\Models\StoreConfig::updateOrInsert(
             ['store_id' => $store_id],
@@ -202,6 +215,9 @@ class HospitalDashboardController extends Controller
                 'patient_uid_serial'             => (int) $request->serial,
                 'opd_consultation_count'         => (int) $request->opd_consultation_count,
                 'opd_consultation_validity_days' => (int) $request->opd_consultation_validity_days,
+                // Blank is a real answer here — a hospital that has not decided keeps no category
+                // rather than being defaulted into one it never picked.
+                'hospital_category'              => $request->hospital_category ?: null,
             ]
         );
 

@@ -631,6 +631,17 @@ class RetailPosController extends Controller
     // Max discount % a cashier may apply without manager approval (§4.1).
     private const DISCOUNT_CAP = 5;
 
+    // A line above this is a keying slip, not a sale — 999999999999 typed into the grams box
+    // comes through as 999999999.999 kg. Hard cap, deliberately not clearable by the OOS
+    // override: the totals it produces overflow the money columns (a tender past
+    // pos_payment_legs.amount DECIMAL(12,2) is silently truncated by MySQL, so the receipt
+    // then prints a "Tendered" figure the customer never handed over) and the bill is unusable.
+    // Mirrored client-side as MAX_LINE_QTY in the New Sale screen.
+    private const MAX_LINE_QTY = 10000;
+
+    // Ceiling of pos_payment_legs.amount DECIMAL(12,2) — reject rather than store a wrong number.
+    private const MAX_PAYMENT_LEG = 9999999999.99;
+
     // ── Cash Flow: shift-to-shift cash handover with raise / accept ──────────────
 
     private function isCashManager(): bool
@@ -1478,6 +1489,17 @@ class RetailPosController extends Controller
 
             $qty = max(0, (float) ($row['qty'] ?? 1));
 
+            // Absurd quantity — a slipped key in the weight box, never a real sale. Blocked here
+            // as well as in the UI so a replayed or hand-built request can't get through either.
+            if ($qty > self::MAX_LINE_QTY) {
+                $displayName = $varType ? "{$item->item_name} ({$varType})" : $item->item_name;
+                $qtyTxt = rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.');
+                return response()->json([
+                    'status' => false,
+                    'msg'    => "Quantity on \"{$displayName}\" looks wrong ({$qtyTxt}). Maximum " . self::MAX_LINE_QTY . " per line — check the weight box.",
+                ], 422);
+            }
+
             $basePrice = (float) ($item->selling_price ?? 0);
             $avail = $billingBranchId ? $this->branchItemStock($billingBranchId, $item->id) : (float) $item->stock;
 
@@ -1551,8 +1573,9 @@ class RetailPosController extends Controller
             $taxTotal += $tax;
 
             // Piece count is only meaningful for a loose (weighed) line.
-            $pieces = ((int) ($item->sell_loose ?? 0) === 1 && (int) ($row['pieces'] ?? 0) > 0)
-                ? (int) $row['pieces'] : null;
+            $piecesIn = (int) ($row['pieces'] ?? 0);
+            $pieces = ((int) ($item->sell_loose ?? 0) === 1 && $piecesIn > 0)
+                ? min($piecesIn, self::MAX_LINE_QTY) : null;
 
             $lines[] = [
                 'item'       => $item,
@@ -1628,6 +1651,11 @@ class RetailPosController extends Controller
             $mode = strtolower($p['mode'] ?? 'cash');
             if ($amt <= 0) {
                 continue;
+            }
+            // Past the column's ceiling MySQL stores the maximum instead of failing, so the
+            // receipt would print a tendered amount nobody paid. Refuse the sale instead.
+            if ($amt > self::MAX_PAYMENT_LEG) {
+                return response()->json(['status' => false, 'msg' => 'Payment amount is too large — check the tendered figure'], 422);
             }
             $modes[] = $mode;
             if ($mode === 'cash') {
@@ -1748,11 +1776,27 @@ class RetailPosController extends Controller
             // Decrement the branch's stock too (availability at the counter's branch). Branch
             // stock is held in the item's own unit, so a measured pack takes its converted
             // weight — one 100gm pack off a kg item is 0.1, not 1.
+            //
+            // No floor at zero: an approved oversell must show the branch short (-2), matching
+            // what the main pool now records. Flooring it here left the branch reading 0 while
+            // the store's own figure was negative, and the two never reconciled.
             if ($billingBranchId) {
                 $branchQty = _stockQtyForLine($line['item'], $line['qty'], $line['item']->unit, $line['var_type']);
-                DB::table('pos_branch_stock')
+                $affected = DB::table('pos_branch_stock')
                     ->where('branch_id', $billingBranchId)->where('inventory_item_id', $line['item']->id)
-                    ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
+                    ->update(['stock' => DB::raw('stock - ' . $branchQty), 'updated_at' => now()]);
+                // An item never transferred to this branch has no row at all, so the update above
+                // matched nothing and the oversell vanished. Open the row at the negative figure.
+                if (!$affected) {
+                    DB::table('pos_branch_stock')->insert([
+                        'store_id'          => $storeId,
+                        'branch_id'         => $billingBranchId,
+                        'inventory_item_id' => $line['item']->id,
+                        'stock'             => -$branchQty,
+                        'created_at'        => now(),
+                        'updated_at'        => now(),
+                    ]);
+                }
             }
         }
 
