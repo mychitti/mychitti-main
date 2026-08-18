@@ -758,12 +758,14 @@
                 @endif
                 
                 @if (\App\CentralLogics\Helpers::module_permission_check('subscription_plan'))
-                <li class="navbar-vertical-aside-has-menu {{ Request::is('plan*') ? 'active' : '' }}">
+                {{-- Bed pricing lives under Module Settings now, but its URL is still under plan/,
+                     so it has to be excluded here or both menus open on that page. --}}
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('plan*') && !Request::is('plan/hospital-bed-tiers') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="Subscription Plan Management">
                         <i class="tio-calendar-note nav-icon"></i>
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate text-capitalize">Subscription Plan</span>
                     </a>
-                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:{{ Request::is('plan*') ? 'block' : 'none' }}">
+                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:{{ Request::is('plan*') && !Request::is('plan/hospital-bed-tiers') ? 'block' : 'none' }}">
                         <li class="nav-item {{ Request::is('plan/add-new') ? 'active' : '' }}">
                             <a class="nav-link " href="{{ route('admin.plan.add-new') }}" title="{{ translate('messages.add') }} {{ translate('messages.new') }}">
                                 <span class="tio-circle nav-indicator-icon"></span>
@@ -789,27 +791,42 @@
                                 <span class="text-truncate"> Subscription Requests</span>
                             </a>
                         </li>
-                        <li class="nav-item {{ Request::is('plan/hospital-bed-tiers') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('admin.plan.hospital-bed-tiers') }}" title="Hospital Bed Pricing">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">Hospital Bed Pricing</span>
-                                </a>
-                            </li>
-                        <li class="nav-item {{ Request::is('hmis/opd-terms*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('admin.hmis.opd-terms') }}" title="OPD Clinical Terms">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">OPD Clinical Terms</span>
-                                </a>
-                            </li>
-                        <li class="nav-item {{ Request::is('school-tiers*') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('admin.school-tiers.index') }}" title="School Plan Tiers">
-                                    <span class="tio-circle nav-indicator-icon"></span>
-                                    <span class="text-truncate">School Plan Tiers</span>
-                                </a>
-                            </li>
-
                     </ul>
-                </li> 
+                </li>
+                @endif
+
+                {{-- MODULE SETTINGS  =========================== --}}
+                {{-- Per-module admin setup (bed pricing, clinical vocabulary, school tiers). These
+                     sat under Subscription Plan, which only fitted the bed pricing and not the rest.
+                     Guarded by the same permission they were reachable under, so nobody's access
+                     changes with the move. --}}
+                @if (\App\CentralLogics\Helpers::module_permission_check('subscription_plan'))
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('plan/hospital-bed-tiers') || Request::is('hmis/opd-terms*') || Request::is('school-tiers*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="Module Settings">
+                        <i class="tio-apps nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate text-capitalize">Module Settings</span>
+                    </a>
+                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:{{ Request::is('plan/hospital-bed-tiers') || Request::is('hmis/opd-terms*') || Request::is('school-tiers*') ? 'block' : 'none' }}">
+                        <li class="nav-item {{ Request::is('plan/hospital-bed-tiers') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('admin.plan.hospital-bed-tiers') }}" title="Hospital Bed Pricing">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">Hospital Bed Pricing</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ Request::is('hmis/opd-terms*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('admin.hmis.opd-terms') }}" title="OPD Clinical Terms">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">OPD Clinical Terms</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ Request::is('school-tiers*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('admin.school-tiers.index') }}" title="School Plan Tiers">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">School Plan Tiers</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
                 @endif
                 {{-- STORE WALLET  =========================== --}}
                   @if (\App\CentralLogics\Helpers::module_permission_check('store_wallet'))

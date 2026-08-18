@@ -433,6 +433,27 @@
                                 <div class="profile-card">
                                     <div class="profile-header">
 
+                                        {{-- Hospital category. Only meaningful for a hospital store,
+                                             and it drives which clinical term lists OPD offers. --}}
+                                        @if (strtolower($shop->business_type ?? '') === 'hospital')
+                                            <div class="col-md-12 form-group">
+                                                <label class="small-label">Hospital Category</label>
+                                                <select name="hospital_category" class="form-control">
+                                                    <option value="">Not specified</option>
+                                                    @foreach (\App\Models\StoreConfig::HOSPITAL_CATEGORIES as $hcKey => $hcLabel)
+                                                        <option value="{{ $hcKey }}"
+                                                            {{ old('hospital_category', $hospitalCategory ?? null) === $hcKey ? 'selected' : '' }}>
+                                                            {{ $hcLabel }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="text-muted" style="font-size:11px;">
+                                                    Sets the diagnosis and treatment lists your doctors are offered in OPD.
+                                                    No module is hidden or changed by this.
+                                                </small>
+                                            </div>
+                                        @endif
+
                                         <div class="col-md-12 form-group">
                                             <label class="small-label">Service Location</label>
                                             <select name="zone_id" id="choice_zones"

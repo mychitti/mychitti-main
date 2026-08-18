@@ -60,36 +60,6 @@
                     </div>
                 </div>
 
-                {{-- Hospital Category --}}
-                <div class="card mb-3">
-                    <div class="card-header py-2">
-                        <h6 class="mb-0"><i class="tio-hospital mr-1"></i> Hospital Category</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group mb-0">
-                            <label class="input-label">What kind of hospital is this?</label>
-                            <select name="hospital_category"
-                                    class="form-control @error('hospital_category') is-invalid @enderror">
-                                <option value="">Not specified</option>
-                                @foreach (\App\Models\StoreConfig::HOSPITAL_CATEGORIES as $key => $label)
-                                    <option value="{{ $key }}"
-                                        {{ old('hospital_category', $hospital_category) === $key ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">
-                                Describes your practice. Nothing is hidden or changed based on this — every
-                                module stays exactly as it is.
-                            </small>
-                            @error('hospital_category')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                    </div>
-                    <div class="card-footer text-right">
-                        <button type="submit" class="btn btn--primary">Save Settings</button>
-                    </div>
-                </div>
-
                 {{-- OP Consultation Validity --}}
                 <div class="card mb-3">
                     <div class="card-header py-2">

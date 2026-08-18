@@ -36,7 +36,13 @@ class RestaurantController extends Controller
         $other_docs = $store_documents->where('doc_type', 'other')->values();
         $gstFilePath = ($gst_doc ? $gst_doc->file_path : null) ?? $store->gst_doc ?? null;
         $idFilePath = ($id_doc ? $id_doc->file_path : null) ?? $store->id_doc ?? null;
-        return view('vendor-views.shop.edit', compact('shop', 'store', 'id_doc', 'gst_doc', 'fssai_doc', 'other_docs', 'gstFilePath', 'idFilePath'));
+        // Hospital category lives on store_configs. Read defensively: the column is added on the
+        // first save, so a store that has never set one has a config row without it.
+        $hospitalCategory = \Illuminate\Support\Facades\Schema::hasColumn('store_configs', 'hospital_category')
+            ? \Illuminate\Support\Facades\DB::table('store_configs')->where('store_id', $store['id'])->value('hospital_category')
+            : null;
+
+        return view('vendor-views.shop.edit', compact('shop', 'store', 'id_doc', 'gst_doc', 'fssai_doc', 'other_docs', 'gstFilePath', 'idFilePath', 'hospitalCategory'));
     }
 
     public function update(Request $request)
@@ -47,6 +53,7 @@ class RestaurantController extends Controller
             'name.0' => 'required',
             'address' => 'nullable|max:1000',
             'contact' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:10|max:20|unique:stores,phone,'.Helpers::get_store_id(),
+            'hospital_category' => 'nullable|in:' . implode(',', array_keys(\App\Models\StoreConfig::HOSPITAL_CATEGORIES)),
         ], [
             'f_name.required' => translate('messages.first_name_is_required'),
             'name.0.required'=>translate('name_is_required'),
@@ -180,6 +187,23 @@ class RestaurantController extends Controller
             $userinfo->f_name = $shop->name;
             $userinfo->image = $shop->logo;
             $userinfo->save();
+        }
+
+        // Hospital category, for stores that have one. Kept on store_configs beside the other
+        // HMIS settings rather than on stores, and the column is added on first save like the
+        // rest of them. Blank is a real answer: a hospital that has not decided keeps none.
+        if (strtolower($shop->business_type ?? '') === 'hospital') {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('store_configs', 'hospital_category')) {
+                \Illuminate\Support\Facades\DB::statement("ALTER TABLE `store_configs` ADD COLUMN `hospital_category` VARCHAR(40) NULL");
+            }
+
+            \App\Models\StoreConfig::updateOrInsert(
+                ['store_id' => $shop->id],
+                ['hospital_category' => $request->hospital_category ?: null]
+            );
+
+            // The OPD dropdowns are built from this category, and their ordering is cached.
+            \App\Services\OpdTermInsights::forget((int) $shop->id);
         }
 
         Toastr::success(translate('messages.store_data_updated'));
