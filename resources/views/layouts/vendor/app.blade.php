@@ -91,6 +91,23 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             padding-top: calc(3.75rem + 44px);
         }
 
+        /* The theme ships .footer as position:absolute; bottom:0, but nothing in the markup is
+           positioned, so it anchored to the initial containing block instead — a viewport-sized
+           box pinned to the TOP of the document. That parks the footer one screen-height down
+           whatever the page height: it looks correct on anything short enough not to scroll, and
+           floats across the middle of the content on a long page (the bills table). Give it its
+           real parent to anchor against and reserve the height it occupies, so it lands under the
+           last row instead of on top of it. */
+        #content.main {
+            position: relative;
+            padding-bottom: 3.5rem;
+        }
+
+        /* The bottom margin the theme added to make room for a footer that never got there. */
+        body.footer-offset {
+            margin-bottom: 0;
+        }
+
         @media (max-width: 575px) {
             .store-profile-alert {
                 height: auto;
