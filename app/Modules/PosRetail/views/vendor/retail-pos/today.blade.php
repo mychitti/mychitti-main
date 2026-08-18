@@ -7,7 +7,6 @@
     @include('posretail::vendor.retail-pos._styles')
     <style>
         /* allow the actions dropdown to escape the card/table clipping */
-        .rp .rp-card, .rp .table-responsive { overflow: visible; }
         .rp .act-dd .dropdown-menu { border:1px solid var(--line); border-radius:11px; box-shadow:0 10px 28px rgba(16,24,40,.14); padding:6px; min-width:178px; }
         .rp .act-dd .dropdown-item { font-size:13px; padding:8px 12px; border-radius:7px; display:flex; align-items:center; gap:9px; }
         .rp .act-dd .dropdown-item:hover { background:var(--soft); }
