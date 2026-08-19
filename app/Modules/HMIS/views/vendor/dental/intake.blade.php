@@ -6,19 +6,37 @@
 
 @push('css_or_js')
     <style>
-        .di-card { background:#fff; border:1px solid #edf0f5; border-radius:14px; box-shadow:0 1px 3px rgba(16,24,40,.05); margin-bottom:16px; }
-        .di-card .hd { padding:13px 18px; border-bottom:1px solid #edf0f5; font-weight:700; font-size:14px; }
-        .di-card .bd { padding:18px; }
+        .di-card { background:#fff; border:1px solid #edf0f5; border-radius:10px; box-shadow:0 1px 2px rgba(16,24,40,.04); margin-bottom:12px; }
+        .di-card .hd { padding:9px 14px; border-bottom:1px solid #edf0f5; font-weight:700; font-size:13px; }
+        .di-card .bd { padding:14px; }
         .di-req { color:#dc3545; }
-        .custom-header-btn { border-radius:999px; font-size:12px; font-weight:600; padding:4px 13px; }
-        .custom-field label { font-size:12px; font-weight:600; color:#56606e; margin-bottom:4px; }
+
+        /* Compact intake: this screen is filled in at a busy front desk, so every field should be
+           reachable without scrolling. Scoped to .di-card so the shared vendor form styles are
+           left alone everywhere else. */
+        .di-card .form-group { margin-bottom:10px; }
+        .di-card .input-label { font-size:11.5px; font-weight:600; color:#56606e; margin-bottom:3px; }
+        .di-card .form-control { font-size:13px; padding:5px 10px; height:34px; border-radius:7px; }
+        .di-card textarea.form-control { height:auto; min-height:46px; }
+        .di-card select.form-control { height:34px; padding-top:3px; padding-bottom:3px; }
+        /* The complaint picker is a <select multiple> that Select2 replaces. The fixed height
+           above would squash it on the fallback path where Select2 has not loaded, and Select2's
+           own container sizes itself, so leave both alone. */
+        .di-card select[multiple].form-control { height:auto; }
+        .di-page-header { margin-bottom:12px; }
+        .di-page-header .page-header-title { font-size:19px; margin-bottom:2px; }
+        .di-page-header .page-header-text { font-size:12px; }
+        .di-actions .btn { font-size:13px; padding:6px 16px; }
+
+        .custom-header-btn { border-radius:999px; font-size:11.5px; font-weight:600; padding:3px 11px; }
+        .custom-field label { font-size:11.5px; font-weight:600; color:#56606e; margin-bottom:3px; }
         .custom-field .remove-field { align-self:center; font-size:17px; padding:0 4px; }
     </style>
 @endpush
 
 @section('content')
     <div class="content container-fluid">
-        <div class="page-header">
+        <div class="page-header di-page-header">
             <h1 class="page-header-title"><i class="tio-user-add"></i> New Patient</h1>
             <p class="page-header-text mb-0">Registers the patient and opens today's visit in one step.</p>
         </div>
@@ -30,15 +48,18 @@
                     <div class="di-card">
                         <div class="hd">Patient</div>
                         <div class="bd">
+                            {{-- Name, phone, age and gender share one row: four short answers that
+                                 the desk reads straight off the patient, and stacking them pushed the
+                                 problem picker below the fold. --}}
                             <div class="form-row">
-                                <div class="form-group col-md-7">
+                                <div class="form-group col-md-5">
                                     <label class="input-label">Patient Name <span class="di-req">*</span></label>
                                     <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-                                        value="{{ old('name') }}" maxlength="150" placeholder="Full name as it should read on the bill"
+                                        value="{{ old('name') }}" maxlength="150" placeholder="Full name for the bill"
                                         required autofocus>
                                     @error('name')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                 </div>
-                                <div class="form-group col-md-5">
+                                <div class="form-group col-md-3">
                                     <label class="input-label">Phone <span class="di-req">*</span></label>
                                     {{-- Deliberately type="text", not type="tel": the layout attaches
                                          intl-tel-input to the first tel input on the page, which puts a
@@ -48,19 +69,16 @@
                                         class="form-control @error('phone') is-invalid @enderror"
                                         value="{{ old('phone') }}" maxlength="10" inputmode="numeric"
                                         autocomplete="off" placeholder="10-digit mobile" required>
-                                    <small class="text-danger d-none" id="di-phone-err" style="font-size:11.5px;"></small>
+                                    <small class="text-danger d-none" id="di-phone-err" style="font-size:11px;"></small>
                                     @error('phone')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                 </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group col-md-4">
+                                <div class="form-group col-md-2">
                                     <label class="input-label">Age <span class="di-req">*</span></label>
                                     <input type="number" name="age" class="form-control @error('age') is-invalid @enderror"
                                         value="{{ old('age') }}" min="0" max="150" placeholder="Years" required>
                                     @error('age')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                 </div>
-                                <div class="form-group col-md-8">
+                                <div class="form-group col-md-2">
                                     <label class="input-label">Gender <span class="di-req">*</span></label>
                                     <select name="gender" class="form-control @error('gender') is-invalid @enderror" required>
                                         <option value="">Select</option>
@@ -75,7 +93,7 @@
                             <div class="form-group">
                                 <label class="input-label">Address <span class="di-req">*</span></label>
                                 <textarea name="address" class="form-control @error('address') is-invalid @enderror"
-                                    rows="2" maxlength="500" placeholder="House / street, area, city and pincode"
+                                    rows="1" maxlength="500" placeholder="House / street, area, city and pincode"
                                     required>{{ old('address') }}</textarea>
                                 @error('address')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                             </div>
@@ -117,7 +135,7 @@
                 </div>
             </div>
 
-            <div class="d-flex flex-wrap" style="gap:10px;">
+            <div class="d-flex flex-wrap di-actions" style="gap:8px;">
                 <button type="submit" name="action" value="visit" class="btn btn--primary">Register Patient</button>
                 <button type="submit" name="action" value="bill" class="btn btn-outline-primary">Register &amp; Generate Bill</button>
                 <a href="{{ route('vendor.patient.list') }}" class="btn btn-secondary">Cancel</a>

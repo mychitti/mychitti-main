@@ -63,15 +63,40 @@ class WhatsAppAppointmentBot
                     . ($dr ? " with Dr. {$dr}" : '');
             })->implode("\n");
 
+        // What is already on file for this number. Asking a returning customer for their own name
+        // and number is the fastest way to sound like a form rather than a clinic, so the model is
+        // told what it already has and instructed not to ask for it again.
+        $known = static::knownCaller($storeId, $phoneKey);
+        $onFile = $known['name']
+            ? "The person messaging is {$known['name']} ({$known['phone']}) — already on file."
+            : "This number ({$known['phone']}) is on file but the name is not.";
+
+        // The self branch reads differently depending on what is already known, and a rule that
+        // says both "do not ask for their name" and "ask for their name" teaches nothing.
+        $selfRule = $known['name']
+            ? "  * FOR THEMSELVES — do NOT ask for their name or phone number, both are on file above. "
+                . "Ask only for: address, age, gender.\n"
+            : "  * FOR THEMSELVES — do NOT ask for their phone number, it is the number they are messaging from. "
+                . "Ask for: their name, address, age, gender.\n";
+
         return "\n\nAPPOINTMENT ACTIONS — you can book and reschedule appointments for this customer.\n"
             . 'Today is ' . now()->format('l, d M Y') . ".\n"
+            . $onFile . "\n"
             . "Doctors:\n{$doctors}\n"
             . "Customer's upcoming appointments:\n" . ($upcoming ?: '- none') . "\n\n"
             . "ACTION RULES:\n"
             . "- Booking submits an appointment REQUEST that the clinic confirms — never promise a confirmed slot, say the clinic will confirm shortly.\n"
-            . "- To BOOK: collect (1) the patient's full name if they are new, (2) which doctor if there is more than one, (3) date, (4) time. "
-            . "Confirm all details with the customer first. After they confirm, reply with ONLY this marker and no other text:\n"
-            . '[[' . self::BOOK_MARKER . ': {"name":"<patient full name>","doctor":"<doctor name>","date":"YYYY-MM-DD","time":"HH:MM","reason":"<short reason>"}]]' . "\n"
+            . "- To BOOK, FIRST ask whether the appointment is for themselves or for someone else. Everything after that depends on the answer:\n"
+            . $selfRule
+            . "  * FOR SOMEONE ELSE — ask for the patient's: name, phone number, address, age, gender.\n"
+            . "- Then ask which doctor if there is more than one, plus the date and time.\n"
+            . "- Ask for the details you still need in ONE message as a short list, not one question per reply.\n"
+            . "- If the customer declines to give a detail, do not press them twice — send the marker with that field left as an empty string.\n"
+            . "- Confirm the full details back to the customer. After they confirm, reply with ONLY this marker and no other text:\n"
+            . '[[' . self::BOOK_MARKER . ': {"for":"self|other","name":"<patient full name>","phone":"<patient phone>",'
+            . '"address":"<patient address>","age":"<age in years>","gender":"male|female|other",'
+            . '"doctor":"<doctor name>","date":"YYYY-MM-DD","time":"HH:MM","reason":"<short reason>"}]]' . "\n"
+            . "- When \"for\" is \"self\", leave name and phone as empty strings — the clinic already has them.\n"
             . "- To RESCHEDULE an upcoming appointment from the list above: confirm the new date and time, then reply with ONLY:\n"
             . '[[' . self::RESCHEDULE_MARKER . ': {"appointment_id": <ID from the list>, "date":"YYYY-MM-DD","time":"HH:MM"}]]' . "\n"
             . "- Time is 24-hour format. Dates must be today or later — interpret \"tomorrow\" etc. from today's date above.\n"
@@ -138,7 +163,22 @@ class WhatsAppAppointmentBot
         $store = DB::table('stores')->where('id', $storeId)
             ->first(['id', 'name', 'zone_id', 'latitude', 'longitude', 'module_id', 'address']);
 
-        $user = static::resolveUser($storeId, $phoneKey, $fromPhone, (string) ($data['name'] ?? ''), $store->zone_id ?? null);
+        // Who the appointment is FOR, which is not the same question as who is messaging. The
+        // account always belongs to the sender; only the patient details move when they book for
+        // somebody else.
+        $forOther = mb_strtolower(trim((string) ($data['for'] ?? 'self'))) === 'other';
+        $patientName = trim((string) ($data['name'] ?? ''));
+
+        if ($forOther && $patientName === '') {
+            return static::failure('The patient\'s name was missing.');
+        }
+
+        // The sender's own name — never the other patient's, or booking for a relative would
+        // rename the account holder.
+        $senderName = $forOther ? '' : $patientName;
+        $user = static::resolveUser($storeId, $phoneKey, $fromPhone, $senderName, $store->zone_id ?? null);
+
+        $extraColumns = static::ensurePatientColumns();
 
         $sr = new ServiceRequest();
         $sr->user_id             = $user->id;
@@ -152,7 +192,19 @@ class WhatsAppAppointmentBot
         $sr->status              = 'new';
         $sr->address             = $store->address ?? null;
         $sr->requirements        = trim((string) ($data['reason'] ?? '')) ?: 'Booked via WhatsApp';
-        $sr->patient_for         = 'myself';
+        // 'myself' / 'other' are the values the web booking writes and every reader downstream
+        // tests for (LeadAppointmentService, the appointments and OPD screens) — see
+        // Front\UserController::storeServiceRequest.
+        $sr->patient_for         = $forOther ? 'other' : 'myself';
+        $sr->patient_name        = $forOther ? mb_substr($patientName, 0, 190) : null;
+        $sr->patient_phone       = $forOther ? (static::cleanPhone((string) ($data['phone'] ?? '')) ?: null) : null;
+        // Age, gender and address are asked for either way: they belong to the patient, and for a
+        // self-booking the clinic has a name and number on file but rarely these.
+        if ($extraColumns) {
+            $sr->patient_age     = static::cleanAge($data['age'] ?? null);
+            $sr->patient_gender  = static::cleanGender((string) ($data['gender'] ?? ''));
+            $sr->patient_address = trim((string) ($data['address'] ?? '')) ?: null;
+        }
         $sr->preferred_doctor_id = $doctor->id;
         $sr->preferred_date      = $when->toDateString();
         $sr->preferred_slot_id   = null;
@@ -175,7 +227,8 @@ class WhatsAppAppointmentBot
         $drName = trim(($doctor->employee->f_name ?? '') . ' ' . ($doctor->employee->l_name ?? ''));
 
         return [
-            'message' => '✅ Your appointment request at ' . ($store->name ?? 'the clinic') . ' has been sent for '
+            'message' => '✅ Your appointment request at ' . ($store->name ?? 'the clinic') . ' has been sent'
+                . ($forOther ? ' for ' . $patientName : '') . ' on '
                 . $when->format('d M Y') . ' at ' . $when->format('h:i A')
                 . ($drName ? " with Dr. {$drName}" : '')
                 . ". The clinic will confirm it shortly — you'll get a message here once it's confirmed.",
@@ -271,6 +324,117 @@ class WhatsAppAppointmentBot
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
+
+    /**
+     * What the clinic already knows about the number that is messaging.
+     *
+     * A self-booking must not ask for a name and number the store already holds, so the prompt is
+     * told what is on file. The name is looked for in the same two places a booking would find it:
+     * the platform account, then the store's own customer book.
+     */
+    protected static function knownCaller(int $storeId, string $phoneKey): array
+    {
+        $suffix = "RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?";
+
+        try {
+            $user = User::whereRaw($suffix, [$phoneKey])->orderBy('id')->first();
+            $name = $user ? trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) : '';
+
+            if ($name === '') {
+                $name = trim((string) DB::table('store_customers')->where('store_id', $storeId)
+                    ->whereRaw($suffix, [$phoneKey])->value('f_name'));
+            }
+
+            // A placeholder is not a name — asking "and your name?" is better than greeting
+            // somebody as "WhatsApp Customer".
+            if (mb_strtolower($name) === 'whatsapp customer') {
+                $name = '';
+            }
+
+            return ['name' => $name, 'phone' => $phoneKey];
+        } catch (\Throwable $e) {
+            return ['name' => '', 'phone' => $phoneKey];
+        }
+    }
+
+    /**
+     * Patient details the WhatsApp booking collects that the web form never did.
+     *
+     * patient_name and patient_phone already exist (the web booking writes them for an "other"
+     * booking); age, gender and address are new. Kept off the existing `address` column on
+     * purpose — that one holds the STORE's address on a lead, not the patient's.
+     */
+    protected static function ensurePatientColumns(): bool
+    {
+        static $ready = null;
+        if ($ready !== null) {
+            return $ready;
+        }
+
+        try {
+            foreach ([
+                'patient_age'     => "ALTER TABLE `service_requests` ADD COLUMN `patient_age` VARCHAR(12) NULL",
+                'patient_gender'  => "ALTER TABLE `service_requests` ADD COLUMN `patient_gender` VARCHAR(12) NULL",
+                'patient_address' => "ALTER TABLE `service_requests` ADD COLUMN `patient_address` VARCHAR(500) NULL",
+            ] as $column => $sql) {
+                if (!Schema::hasColumn('service_requests', $column)) {
+                    DB::statement($sql);
+                }
+            }
+            return $ready = true;
+        } catch (\Throwable $e) {
+            // Reported false, not rethrown: an appointment the customer has already confirmed is
+            // worth more than the three details, so the booking goes through without them rather
+            // than failing on an unknown column.
+            Log::warning('service_requests patient columns unavailable: ' . $e->getMessage());
+            return $ready = false;
+        }
+    }
+
+    /** Digits only, and only if there are enough of them to be a real number. */
+    protected static function cleanPhone(string $phone): string
+    {
+        $digits = preg_replace('/[^0-9]/', '', $phone) ?? '';
+
+        return strlen($digits) >= 10 ? $digits : '';
+    }
+
+    /**
+     * Age as the customer said it, kept as digits.
+     *
+     * Stored as text rather than an integer because "6 months" is a real answer at a clinic; the
+     * number is pulled out when it is plainly a year count, and anything unreadable is dropped
+     * rather than guessed at.
+     */
+    protected static function cleanAge($age): ?string
+    {
+        $raw = trim((string) $age);
+        if ($raw === '') {
+            return null;
+        }
+        if (preg_match('/(\d{1,3})/', $raw, $m) && (int) $m[1] > 0 && (int) $m[1] <= 120) {
+            return str_contains(mb_strtolower($raw), 'month') ? mb_substr($raw, 0, 12) : $m[1];
+        }
+
+        return null;
+    }
+
+    /** male / female / other, or nothing — a half-understood answer is worse than a blank. */
+    protected static function cleanGender(string $gender): ?string
+    {
+        $g = mb_strtolower(trim($gender));
+        if ($g === '') {
+            return null;
+        }
+        if (str_starts_with($g, 'm')) {
+            return 'male';
+        }
+        if (str_starts_with($g, 'f')) {
+            return 'female';
+        }
+
+        return in_array($g, ['other', 'others'], true) ? 'other' : null;
+    }
 
     protected static function upcomingFor(int $storeId, string $phoneKey)
     {

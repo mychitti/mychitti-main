@@ -20,6 +20,11 @@ class ServiceRequest extends Model
         'patient_for',
         'patient_name',
         'patient_phone',
+        // Collected by the WhatsApp booking bot, which asks for them whether the appointment is
+        // for the caller or for somebody else. See WhatsAppAppointmentBot::ensurePatientColumns.
+        'patient_age',
+        'patient_gender',
+        'patient_address',
     ];
     protected function serializeDate(\DateTimeInterface $date)
     {

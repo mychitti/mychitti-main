@@ -162,18 +162,18 @@ class LeadAppointmentService
                     ->first()
                     ?? Patient::where('store_id', $storeId)->where('phone', $phone)->first();
                 if ($existing) {
-                    return $existing;
+                    return static::fillPatientDetails($existing, $sr);
                 }
             }
 
-            return Patient::create([
+            return Patient::create(array_merge([
                 'store_id'    => $storeId,
                 'user_id'     => null,
                 'patient_uid' => Patient::generateUid($storeId),
                 'name'        => $sr->patient_name,
                 'phone'       => $phone,
                 'status'      => 1,
-            ]);
+            ], static::patientDetails($sr)));
         }
 
         $user = $sr->user_id ? User::find($sr->user_id) : null;
@@ -181,7 +181,7 @@ class LeadAppointmentService
         if ($user) {
             $existing = Patient::where('store_id', $storeId)->where('user_id', $user->id)->first();
             if ($existing) {
-                return $existing;
+                return static::fillPatientDetails($existing, $sr);
             }
 
             $name = trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')) ?: ($user->name ?? 'Patient');
@@ -195,11 +195,11 @@ class LeadAppointmentService
                 if ($byPhone) {
                     $byPhone->user_id = $user->id;
                     $byPhone->save();
-                    return $byPhone;
+                    return static::fillPatientDetails($byPhone, $sr);
                 }
             }
 
-            return Patient::create([
+            return Patient::create(array_merge([
                 'store_id'    => $storeId,
                 'user_id'     => $user->id,
                 'patient_uid' => Patient::generateUid($storeId),
@@ -207,10 +207,52 @@ class LeadAppointmentService
                 'phone'       => $user->phone,
                 'email'       => $user->email,
                 'status'      => 1,
-            ]);
+            ], static::patientDetails($sr)));
         }
 
         return null;
+    }
+
+    /**
+     * Age, gender and address as the enquiry captured them.
+     *
+     * The WhatsApp booking bot asks for these whether the appointment is for the caller or for
+     * somebody else; a web booking still does not, so every one of them can be absent.
+     */
+    protected static function patientDetails(ServiceRequest $sr): array
+    {
+        return array_filter([
+            'age'     => trim((string) ($sr->patient_age ?? '')) ?: null,
+            'gender'  => trim((string) ($sr->patient_gender ?? '')) ?: null,
+            'address' => trim((string) ($sr->patient_address ?? '')) ?: null,
+        ], fn($v) => $v !== null);
+    }
+
+    /**
+     * Fill in what the record is missing, and only that.
+     *
+     * A patient the clinic already has may carry details entered at the desk from documents. An
+     * enquiry is one person typing on their phone, so it fills blanks — it never overwrites what
+     * the clinic already recorded.
+     */
+    protected static function fillPatientDetails(Patient $patient, ServiceRequest $sr): Patient
+    {
+        $fill = [];
+        foreach (static::patientDetails($sr) as $field => $value) {
+            if (trim((string) ($patient->{$field} ?? '')) === '') {
+                $fill[$field] = $value;
+            }
+        }
+
+        if ($fill) {
+            try {
+                $patient->fill($fill)->save();
+            } catch (\Throwable $e) {
+                Log::warning('LeadAppointmentService: patient detail fill skipped: ' . $e->getMessage());
+            }
+        }
+
+        return $patient;
     }
 
 }
