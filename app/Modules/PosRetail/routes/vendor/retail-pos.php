@@ -79,6 +79,8 @@ Route::prefix('retail-pos')->as('retail-pos.')->group(function () {
     Route::get('gatepass/search',     [RetailPosController::class, 'gatepassSearch'])->name('gatepass.search')->middleware('permission:pos_gatepass,view');
     Route::post('gatepass',           [RetailPosController::class, 'gatepassStore'])->name('gatepass.store')->middleware('permission:pos_gatepass,create');
     Route::post('gatepass/delete',    [RetailPosController::class, 'gatepassDelete'])->name('gatepass.delete')->middleware('permission:pos_gatepass,delete');
+    Route::get('gatepass/{id}/edit',  [RetailPosController::class, 'gatepassEdit'])->name('gatepass.edit')->middleware('permission:pos_gatepass,edit,pos_gatepass,create');
+    Route::post('gatepass/{id}',      [RetailPosController::class, 'gatepassUpdate'])->name('gatepass.update')->where('id', '[0-9]+')->middleware('permission:pos_gatepass,edit,pos_gatepass,create');
     Route::get('gatepass/{id}/print', [RetailPosController::class, 'gatepassPrint'])->name('gatepass.print')->middleware('permission:pos_gatepass,view');
 
     // Damaged / Theft stock write-off

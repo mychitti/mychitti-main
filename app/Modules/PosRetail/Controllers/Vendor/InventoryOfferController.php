@@ -162,6 +162,8 @@ class InventoryOfferController extends Controller
 
     private function offerPayload(Request $request): array
     {
+        _ensureOfferStockRunColumn();
+
         return [
             'item_id' => $request->item_id,
             'offer_name' => $request->offer_name,
@@ -196,6 +198,7 @@ class InventoryOfferController extends Controller
             'combine_with_other_offers' => $request->boolean('combine_with_other_offers'),
             'show_in_pos' => $request->boolean('show_in_pos'),
             'auto_expire_after_end_date' => $request->boolean('auto_expire_after_end_date'),
+            'run_until_stock_out' => $request->boolean('run_until_stock_out'),
             'notify_sms' => $request->boolean('notify_sms'),
             'notify_whatsapp' => $request->boolean('notify_whatsapp'),
             'notify_push' => $request->boolean('notify_push'),

@@ -120,7 +120,14 @@
                                 <div class="row-line"><span class="k">Get (Y)</span><span class="v">{{ $getText }}</span></div>
                                 <div class="row-line"><span class="k">Offer Type</span><span class="v">{{ ucwords(str_replace('_', ' ', $offer->offer_type)) }}</span></div>
                                 <div class="row-line"><span class="k">Valid From</span><span class="v">{{ $offer->start_date }} {{ $offer->start_time }}</span></div>
-                                <div class="row-line"><span class="k">Valid To</span><span class="v">{{ $offer->end_date }} {{ $offer->end_time }}</span></div>
+                                <div class="row-line"><span class="k">Valid To</span><span class="v">
+                                    @if ($offer->run_until_stock_out ?? false)
+                                        Until stock runs out
+                                        <small class="text-muted d-block">(listed end {{ $offer->end_date }} is not enforced)</small>
+                                    @else
+                                        {{ $offer->end_date }} {{ $offer->end_time }}
+                                    @endif
+                                </span></div>
                                 <div class="row-line"><span class="k">Days</span><span class="v">
                                     @forelse ($days as $d)
                                         <span class="offer-day-chip">{{ $d }}</span>

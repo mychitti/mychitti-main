@@ -1933,6 +1933,7 @@ class RetailPosController extends Controller
             return response()->json(['offers' => []]);
         }
         $today = date('Y-m-d');
+        $stockRun = _ensureOfferStockRunColumn();
         $offers = \App\Models\InventoryOffer::where('store_id', $storeId)->orderByDesc('id')->get();
 
         return response()->json(['offers' => $offers->map(fn($o) => [
@@ -1943,7 +1944,10 @@ class RetailPosController extends Controller
             'start'  => $o->start_date,
             'end'    => $o->end_date,
             'status' => $o->status,
-            'active' => $o->status === 'published' && $o->start_date <= $today && $o->end_date >= $today,
+            // A stock-governed offer is still live past its end date — the engine keeps applying
+            // it until the qualifying goods run out, so the panel must not label it expired.
+            'active' => $o->status === 'published' && $o->start_date <= $today
+                && ($o->end_date >= $today || ($stockRun && $o->run_until_stock_out)),
         ])]);
     }
 
@@ -3373,6 +3377,17 @@ class RetailPosController extends Controller
     // ── Stock Transfer Gatepass (main store → branch) ───────────────────────────
     public function gatepass(Request $request)
     {
+        return $this->gatepassPage(null);
+    }
+
+    /** The same page in edit mode — the transfer form pre-filled from an existing gatepass. */
+    public function gatepassEdit(Request $request, $id)
+    {
+        return $this->gatepassPage((int) $id);
+    }
+
+    private function gatepassPage(?int $editId)
+    {
         $this->ensureSchema();
         $storeId = $this->storeId();
         $branches = Branch::where('store_id', $storeId)->orderBy('name')->get();
@@ -3391,7 +3406,19 @@ class RetailPosController extends Controller
                 $hasSource ? ['fb.name as from_branch_name'] : []
             ));
 
-        return view('posretail::vendor.retail-pos.gatepass', compact('branches', 'gatepasses', 'hasSource'));
+        $editing = null;
+        $editLines = [];
+        if ($editId) {
+            $editing = DB::table('pos_stock_gatepass')->where('store_id', $storeId)->where('id', $editId)->first();
+            if (!$editing) {
+                Toastr::error('Gatepass not found');
+                return redirect()->route('vendor.retail-pos.gatepass');
+            }
+            $editLines = $this->gatepassEditPayload($storeId, $editing);
+        }
+
+        return view('posretail::vendor.retail-pos.gatepass',
+            compact('branches', 'gatepasses', 'hasSource', 'editing', 'editLines'));
     }
 
     /** Item picker for the transfer form — name or SKU, including variation SKUs. */
@@ -3614,6 +3641,205 @@ class RetailPosController extends Controller
         ];
     }
 
+    /**
+     * The form's qty[]/source[] inputs as transfer lines.
+     *
+     * qty[{itemId}] pairs with source[{itemId}], which is '' for the main stock pool or a
+     * variation type. The legacy "{itemId}-var-{type}" qty key is still honoured so a stale
+     * open tab keeps working.
+     *
+     * A branch pool has no variation breakdown, so a variation posted against a branch source
+     * would be recorded on the gatepass and printed on the note while the deduction ignored it.
+     * Flattened here rather than downstream.
+     */
+    private function gatepassParseLines(Request $request, $fromBranch): array
+    {
+        $sources = (array) $request->input('source', []);
+        $lines = [];
+        foreach ((array) $request->input('qty', []) as $idStr => $val) {
+            $qty = (float) $val;
+            if ($qty <= 0) {
+                continue;
+            }
+            $idParts = explode('-var-', (string) $idStr);
+            $varType = $idParts[1] ?? null;
+            if ($varType === null) {
+                $src = trim((string) ($sources[$idStr] ?? ''));
+                $varType = $src !== '' ? $src : null;
+            }
+            $lines[] = ['item_id' => (int) $idParts[0], 'var_type' => $varType, 'qty' => $qty];
+        }
+
+        if ($fromBranch) {
+            $lines = array_map(fn($l) => ['item_id' => $l['item_id'], 'var_type' => null, 'qty' => $l['qty']], $lines);
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Check what is being sent against the pool it is coming out of. Returns the operator-facing
+     * error, or null when the transfer is fine.
+     *
+     * From the main store a countable variation is checked against its own count and a measured
+     * pack against what it actually draws — 3 x 100gm needs 0.3 kg, not 3 kg, so the raw line
+     * quantity is the wrong thing to compare. Sending from a branch is a different sum entirely:
+     * the branch holds one flat quantity per item in the item's own unit, with no variation
+     * breakdown, so the line quantity is checked straight against that pool and the main store
+     * is not consulted at all.
+     */
+    private function gatepassValidateLines(int $storeId, $fromBranch, array $lines): ?string
+    {
+        $items = InventoryItem::where('store_id', $storeId)
+            ->whereIn('id', array_unique(array_column($lines, 'item_id')))->get()->keyBy('id');
+
+        if ($fromBranch) {
+            $pool = DB::table('pos_branch_stock')->where('branch_id', $fromBranch->id)
+                ->whereIn('inventory_item_id', array_column($lines, 'item_id'))
+                ->pluck('stock', 'inventory_item_id');
+
+            $wanted = [];
+            foreach ($lines as $line) {
+                if (!$items->get($line['item_id'])) {
+                    return 'Item not found';
+                }
+                $wanted[$line['item_id']] = ($wanted[$line['item_id']] ?? 0) + $line['qty'];
+            }
+
+            foreach ($wanted as $itemId => $qty) {
+                $have = (float) ($pool[$itemId] ?? 0);
+                if ($qty > $have) {
+                    $name = optional($items->get($itemId))->item_name ?? 'Item';
+                    return "Insufficient stock at {$fromBranch->name} for \"{$name}\" (have "
+                        . rtrim(rtrim(number_format($have, 3), '0'), '.') . ')';
+                }
+            }
+
+            return null;
+        }
+
+        foreach ($lines as $line) {
+            $item = $items->get($line['item_id']);
+            if (!$item) {
+                return 'Item not found';
+            }
+
+            if ($varErr = _variationSelectionError($item, $line['var_type'])) {
+                return $varErr;
+            }
+
+            if (_variationMode($item) === 'countable') {
+                $var = _variationRow($item, $line['var_type']);
+                $have = (float) ($var['stock'] ?? 0);
+                if ($line['qty'] > $have) {
+                    return "Insufficient stock for \"{$item->item_name} ({$line['var_type']})\" (have "
+                        . rtrim(rtrim(number_format($have, 3), '0'), '.') . ')';
+                }
+                continue;
+            }
+
+            $needed = _stockQtyForLine($item, $line['qty'], $item->unit, $line['var_type']);
+            if ($needed > (float) $item->stock) {
+                return "Insufficient main-store stock for \"{$item->item_name}\" (have "
+                    . rtrim(rtrim(number_format((float) $item->stock, 3), '0'), '.') . ')';
+            }
+        }
+
+        return null;
+    }
+
+    /** Move the stock a gatepass describes and write its line rows. Caller owns the transaction. */
+    private function gatepassApplyLines(int $storeId, int $gatepassId, $fromBranch, int $branchId, array $lines): void
+    {
+        foreach ($lines as $line) {
+            $itemId = $line['item_id'];
+            $varType = $line['var_type'];
+            $qty = $line['qty'];
+
+            $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
+
+            if ($fromBranch) {
+                // Branch to branch moves stock sideways: the store's total is unchanged, so
+                // inventory_items.stock must not be touched. The quantity is already in the
+                // item's own unit — a branch holds no variations to convert from.
+                $branchQty = $qty;
+                DB::table('pos_branch_stock')
+                    ->where('branch_id', $fromBranch->id)->where('inventory_item_id', $itemId)
+                    ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
+            } else {
+                // Deduct from main store through the shared helper, so a transfer takes exactly
+                // what the same line would take on a sale — one deduction, in the right place for
+                // the item's stock type. Deducting the variation and the umbrella separately, as
+                // this did before, took the quantity out twice.
+                _decrementInventoryStock($itemId, $qty, $item->unit, $varType);
+
+                // …and add to the branch. Branch stock is held in the item's own unit, so a
+                // measured pack moves its converted weight, not its pack count.
+                $branchQty = _stockQtyForLine($item, $qty, $item->unit, $varType);
+            }
+
+            $existing = DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)->first();
+            if ($existing) {
+                DB::table('pos_branch_stock')->where('id', $existing->id)->update(['stock' => DB::raw('stock + ' . $branchQty), 'updated_at' => now()]);
+            } else {
+                DB::table('pos_branch_stock')->insert(['branch_id' => $branchId, 'inventory_item_id' => $itemId, 'store_id' => $storeId, 'stock' => $branchQty, 'created_at' => now(), 'updated_at' => now()]);
+            }
+
+            DB::table('pos_stock_gatepass_items')->insert([
+                'gatepass_id' => $gatepassId,
+                'inventory_item_id' => $itemId,
+                'variation_type' => $varType,
+                'qty' => $qty,
+                'created_at' => now()
+            ]);
+        }
+    }
+
+    /** Put a gatepass's stock back where it came from. Caller owns the transaction. */
+    private function gatepassReverseStock(int $storeId, $gp): void
+    {
+        $lines = DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->get();
+        foreach ($lines as $line) {
+            $qty = (float) $line->qty;
+            $itemId = $line->inventory_item_id;
+            $varType = $line->variation_type ?? null;
+
+            $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
+            $fromBranchId = $gp->from_branch_id ?? null;
+
+            if ($fromBranchId) {
+                // A branch-to-branch transfer never touched the main store, so reversing it
+                // must not either — the quantity simply goes back the way it came, in the
+                // item's own unit.
+                $branchQty = $qty;
+                $existing = DB::table('pos_branch_stock')
+                    ->where('branch_id', $fromBranchId)->where('inventory_item_id', $itemId)->first();
+                if ($existing) {
+                    DB::table('pos_branch_stock')->where('id', $existing->id)
+                        ->update(['stock' => DB::raw('stock + ' . $branchQty), 'updated_at' => now()]);
+                } else {
+                    DB::table('pos_branch_stock')->insert([
+                        'branch_id' => $fromBranchId, 'inventory_item_id' => $itemId,
+                        'store_id' => $storeId, 'stock' => $branchQty,
+                        'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                }
+            } else {
+                // Return to main store — the exact mirror of the transfer, through the same
+                // helper, so what comes back is what went out.
+                if ($item) {
+                    _incrementInventoryStock($itemId, $qty, $item->unit, $varType);
+                }
+                $branchQty = $item ? _stockQtyForLine($item, $qty, $item->unit, $varType) : $qty;
+            }
+
+            // …and pull it back out of the destination branch, in the unit the branch holds.
+            DB::table('pos_branch_stock')
+                ->where('branch_id', $gp->branch_id)->where('inventory_item_id', $itemId)
+                ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
+        }
+    }
+
     public function gatepassStore(Request $request)
     {
         $this->ensureSchema();
@@ -3631,100 +3857,15 @@ class RetailPosController extends Controller
             return back();
         }
 
-        // The form posts qty[{itemId}] alongside source[{itemId}], which is '' for the main
-        // stock pool or a variation type. The legacy "{itemId}-var-{type}" qty key is still
-        // honoured so a stale open tab keeps working.
-        $sources = (array) $request->input('source', []);
-        $lines = [];
-        foreach ((array) $request->input('qty', []) as $idStr => $val) {
-            $qty = (float) $val;
-            if ($qty <= 0) {
-                continue;
-            }
-            $idParts = explode('-var-', (string) $idStr);
-            $varType = $idParts[1] ?? null;
-            if ($varType === null) {
-                $src = trim((string) ($sources[$idStr] ?? ''));
-                $varType = $src !== '' ? $src : null;
-            }
-            $lines[] = ['item_id' => (int) $idParts[0], 'var_type' => $varType, 'qty' => $qty];
-        }
+        $lines = $this->gatepassParseLines($request, $fromBranch);
         if (empty($lines)) {
             Toastr::error('Enter a transfer quantity for at least one item');
             return back();
         }
 
-        // A branch pool has no variation breakdown, so a variation posted by a stale tab would be
-        // recorded on the gatepass and printed on the note while the deduction ignored it.
-        if ($fromBranch) {
-            $lines = array_map(fn($l) => ['item_id' => $l['item_id'], 'var_type' => null, 'qty' => $l['qty']], $lines);
-        }
-
-        // Validate what is being sent against the pool it is coming out of. From the main store a
-        // countable variation is checked against its own count and a measured pack against what it
-        // actually draws — 3 × 100gm needs 0.3 kg, not 3 kg, so the raw line quantity is the wrong
-        // thing to compare.
-        $items = InventoryItem::where('store_id', $storeId)
-            ->whereIn('id', array_unique(array_column($lines, 'item_id')))->get()->keyBy('id');
-
-        // Sending from a branch is a different sum entirely: the branch holds one flat quantity per
-        // item in the item's own unit, with no variation breakdown, so the line quantity is checked
-        // straight against that pool and the main store is not consulted at all.
-        if ($fromBranch) {
-            $pool = DB::table('pos_branch_stock')->where('branch_id', $fromBranch->id)
-                ->whereIn('inventory_item_id', array_column($lines, 'item_id'))
-                ->pluck('stock', 'inventory_item_id');
-
-            $wanted = [];
-            foreach ($lines as $line) {
-                $item = $items->get($line['item_id']);
-                if (!$item) {
-                    Toastr::error('Item not found');
-                    return back();
-                }
-                $wanted[$line['item_id']] = ($wanted[$line['item_id']] ?? 0) + $line['qty'];
-            }
-
-            foreach ($wanted as $itemId => $qty) {
-                $have = (float) ($pool[$itemId] ?? 0);
-                if ($qty > $have) {
-                    $name = optional($items->get($itemId))->item_name ?? 'Item';
-                    Toastr::error("Insufficient stock at {$fromBranch->name} for \"{$name}\" (have "
-                        . rtrim(rtrim(number_format($have, 3), '0'), '.') . ')');
-                    return back();
-                }
-            }
-        }
-
-        if (!$fromBranch) {
-            foreach ($lines as $line) {
-                $item = $items->get($line['item_id']);
-                if (!$item) {
-                    Toastr::error('Item not found');
-                    return back();
-                }
-
-                if ($varErr = _variationSelectionError($item, $line['var_type'])) {
-                    Toastr::error($varErr);
-                    return back();
-                }
-
-                if (_variationMode($item) === 'countable') {
-                    $var = _variationRow($item, $line['var_type']);
-                    $have = (float) ($var['stock'] ?? 0);
-                    if ($line['qty'] > $have) {
-                        Toastr::error("Insufficient stock for \"{$item->item_name} ({$line['var_type']})\" (have " . rtrim(rtrim(number_format($have, 3), '0'), '.') . ')');
-                        return back();
-                    }
-                    continue;
-                }
-
-                $needed = _stockQtyForLine($item, $line['qty'], $item->unit, $line['var_type']);
-                if ($needed > (float) $item->stock) {
-                    Toastr::error("Insufficient main-store stock for \"{$item->item_name}\" (have " . rtrim(rtrim(number_format((float) $item->stock, 3), '0'), '.') . ')');
-                    return back();
-                }
-            }
+        if ($err = $this->gatepassValidateLines($storeId, $fromBranch, $lines)) {
+            Toastr::error($err);
+            return back();
         }
 
         DB::beginTransaction();
@@ -3745,48 +3886,7 @@ class RetailPosController extends Controller
             }
             $gatepassId = DB::table('pos_stock_gatepass')->insertGetId($header);
 
-            foreach ($lines as $line) {
-                $itemId = $line['item_id'];
-                $varType = $line['var_type'];
-                $qty = $line['qty'];
-
-                $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
-
-                if ($fromBranch) {
-                    // Branch to branch moves stock sideways: the store's total is unchanged, so
-                    // inventory_items.stock must not be touched. The quantity is already in the
-                    // item's own unit — a branch holds no variations to convert from.
-                    $branchQty = $qty;
-                    DB::table('pos_branch_stock')
-                        ->where('branch_id', $fromBranch->id)->where('inventory_item_id', $itemId)
-                        ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
-                } else {
-                    // Deduct from main store through the shared helper, so a transfer takes exactly
-                    // what the same line would take on a sale — one deduction, in the right place for
-                    // the item's stock type. Deducting the variation and the umbrella separately, as
-                    // this did before, took the quantity out twice.
-                    _decrementInventoryStock($itemId, $qty, $item->unit, $varType);
-
-                    // …and add to the branch. Branch stock is held in the item's own unit, so a
-                    // measured pack moves its converted weight, not its pack count.
-                    $branchQty = _stockQtyForLine($item, $qty, $item->unit, $varType);
-                }
-
-                $existing = DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)->first();
-                if ($existing) {
-                    DB::table('pos_branch_stock')->where('id', $existing->id)->update(['stock' => DB::raw('stock + ' . $branchQty), 'updated_at' => now()]);
-                } else {
-                    DB::table('pos_branch_stock')->insert(['branch_id' => $branchId, 'inventory_item_id' => $itemId, 'store_id' => $storeId, 'stock' => $branchQty, 'created_at' => now(), 'updated_at' => now()]);
-                }
-
-                DB::table('pos_stock_gatepass_items')->insert([
-                    'gatepass_id' => $gatepassId,
-                    'inventory_item_id' => $itemId,
-                    'variation_type' => $varType,
-                    'qty' => $qty,
-                    'created_at' => now()
-                ]);
-            }
+            $this->gatepassApplyLines($storeId, $gatepassId, $fromBranch, $branchId, $lines);
             DB::commit();
         } catch (\Throwable $th) {
             DB::rollBack();
@@ -3797,6 +3897,153 @@ class RetailPosController extends Controller
         Toastr::success('Stock transferred from ' . ($fromBranch->name ?? 'Main Store')
             . ' to ' . $branch->name . ' (' . $gpNo . ')');
         return redirect()->route('vendor.retail-pos.gatepass.print', $gatepassId);
+    }
+
+    /**
+     * Re-issue an existing gatepass with different lines, destination or note.
+     *
+     * An edit is the old transfer undone and the new one made, not a delta. The stock maths for
+     * measured packs and countable variations lives only in those two paths, and reusing them is
+     * what keeps an edited gatepass reconciling exactly as if it had been entered this way to
+     * begin with. The gatepass number is kept — the printed note in the driver's hand still names
+     * this record.
+     */
+    public function gatepassUpdate(Request $request, $id)
+    {
+        $this->ensureSchema();
+        $storeId = $this->storeId();
+
+        $gp = DB::table('pos_stock_gatepass')->where('store_id', $storeId)->where('id', $id)->first();
+        if (!$gp) {
+            Toastr::error('Gatepass not found');
+            return redirect()->route('vendor.retail-pos.gatepass');
+        }
+
+        $branchId = (int) $request->input('branch_id');
+        $branch = Branch::where('store_id', $storeId)->where('id', $branchId)->first();
+        if (!$branch) {
+            Toastr::error('Select a valid branch');
+            return back();
+        }
+
+        $fromBranch = $this->gatepassSourceBranch($request, $storeId);
+        if ($fromBranch && $fromBranch->id == $branchId) {
+            Toastr::error('Source and destination branch cannot be the same');
+            return back();
+        }
+
+        $lines = $this->gatepassParseLines($request, $fromBranch);
+        if (empty($lines)) {
+            Toastr::error('Enter a transfer quantity for at least one item');
+            return back();
+        }
+
+        DB::beginTransaction();
+        try {
+            $this->gatepassReverseStock($storeId, $gp);
+            DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->delete();
+
+            // Checked only after the reversal, so the operator is measured against the stock they
+            // will actually have. Validating first would refuse them their own quantity back — a
+            // transfer that emptied the pool could never be edited at all.
+            if ($err = $this->gatepassValidateLines($storeId, $fromBranch, $lines)) {
+                DB::rollBack();
+                Toastr::error($err);
+                return back()->withInput();
+            }
+
+            $header = [
+                'branch_id'  => $branchId,
+                'note'       => $request->input('note'),
+                'updated_at' => now(),
+            ];
+            if ($this->gatepassHasSourceColumn()) {
+                $header['from_branch_id'] = $fromBranch?->id;
+            }
+            DB::table('pos_stock_gatepass')->where('id', $gp->id)->where('store_id', $storeId)->update($header);
+
+            $this->gatepassApplyLines($storeId, (int) $gp->id, $fromBranch, $branchId, $lines);
+            DB::commit();
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Toastr::error('Update failed: ' . $th->getMessage());
+            return back();
+        }
+
+        Toastr::success('Gatepass ' . $gp->gatepass_no . ' updated — stock re-adjusted from '
+            . ($fromBranch->name ?? 'Main Store') . ' to ' . $branch->name);
+        return redirect()->route('vendor.retail-pos.gatepass.print', $gp->id);
+    }
+
+    /**
+     * An existing gatepass's lines as the transfer form's picker payloads, pre-filled.
+     *
+     * Every ceiling is raised by what this gatepass itself took out, because saving the edit
+     * reverses it first. Reading live stock would cap the quantity box below the figure already
+     * on the form: a transfer that sent the last 50 kg would show a maximum of 0 and refuse the
+     * operator their own line back.
+     */
+    private function gatepassEditPayload(int $storeId, $gp): array
+    {
+        $lines = DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->get();
+        if ($lines->isEmpty()) {
+            return [];
+        }
+
+        $itemIds = $lines->pluck('inventory_item_id')->filter()->unique()->values()->all();
+        $items = InventoryItem::with('itemunit')->where('store_id', $storeId)
+            ->whereIn('id', $itemIds)->get()->keyBy('id');
+
+        $fromBranchId = $gp->from_branch_id ?? null;
+        $pool = $fromBranchId
+            ? DB::table('pos_branch_stock')->where('branch_id', $fromBranchId)
+                ->whereIn('inventory_item_id', $itemIds)->pluck('stock', 'inventory_item_id')
+            : collect();
+
+        $lastMoved = $this->gatepassLastTransfers($storeId, $itemIds);
+
+        $out = [];
+        foreach ($lines as $line) {
+            $item = $items->get($line->inventory_item_id);
+            if (!$item) {
+                continue;
+            }
+
+            $qty = (float) $line->qty;
+            $varType = $line->variation_type ?: null;
+
+            // Cloned so the add-back stays on the form's copy — the real row must not move.
+            $view = clone $item;
+
+            if ($fromBranchId) {
+                // A branch holds one flat pool per item and no variation breakdown, so the stored
+                // quantity is already in the pool's own unit and there is nothing to pick.
+                $view->stock = (float) ($pool[$line->inventory_item_id] ?? 0) + $qty;
+                $view->variations = '[]';
+                $varType = null;
+            } else {
+                $view->stock = (float) $item->stock + _stockQtyForLine($item, $qty, $item->unit, $varType);
+
+                // A countable variation carries its own count, and that is the ceiling the source
+                // dropdown reads — bumping only the umbrella figure would leave it capped.
+                if ($varType && _variationMode($item) === 'countable') {
+                    $vars = json_decode($item->variations, true) ?: [];
+                    foreach ($vars as $i => $v) {
+                        if (isset($v['type']) && mb_strtolower(trim($v['type'])) === mb_strtolower(trim($varType))) {
+                            $vars[$i]['stock'] = (float) ($v['stock'] ?? 0) + $qty;
+                        }
+                    }
+                    $view->variations = json_encode($vars);
+                }
+            }
+
+            $payload = $this->gatepassItemPayload($view, $lastMoved[$line->inventory_item_id] ?? null);
+            $payload['edit_qty'] = $qty;
+            $payload['edit_source'] = (string) ($varType ?? '');
+            $out[] = $payload;
+        }
+
+        return $out;
     }
 
     // Bulk-delete gatepasses. Each delete reverses its transfer: stock returns to the main
@@ -3821,46 +4068,7 @@ class RetailPosController extends Controller
         DB::beginTransaction();
         try {
             foreach ($gatepasses as $gp) {
-                $lines = DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->get();
-                foreach ($lines as $line) {
-                    $qty = (float) $line->qty;
-                    $itemId = $line->inventory_item_id;
-                    $varType = $line->variation_type ?? null;
-
-                    $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
-                    $fromBranchId = $gp->from_branch_id ?? null;
-
-                    if ($fromBranchId) {
-                        // A branch-to-branch transfer never touched the main store, so reversing it
-                        // must not either — the quantity simply goes back the way it came, in the
-                        // item's own unit.
-                        $branchQty = $qty;
-                        $existing = DB::table('pos_branch_stock')
-                            ->where('branch_id', $fromBranchId)->where('inventory_item_id', $itemId)->first();
-                        if ($existing) {
-                            DB::table('pos_branch_stock')->where('id', $existing->id)
-                                ->update(['stock' => DB::raw('stock + ' . $branchQty), 'updated_at' => now()]);
-                        } else {
-                            DB::table('pos_branch_stock')->insert([
-                                'branch_id' => $fromBranchId, 'inventory_item_id' => $itemId,
-                                'store_id' => $storeId, 'stock' => $branchQty,
-                                'created_at' => now(), 'updated_at' => now(),
-                            ]);
-                        }
-                    } else {
-                        // Return to main store — the exact mirror of the transfer, through the same
-                        // helper, so what comes back is what went out.
-                        if ($item) {
-                            _incrementInventoryStock($itemId, $qty, $item->unit, $varType);
-                        }
-                        $branchQty = $item ? _stockQtyForLine($item, $qty, $item->unit, $varType) : $qty;
-                    }
-
-                    // …and pull it back out of the destination branch, in the unit the branch holds.
-                    DB::table('pos_branch_stock')
-                        ->where('branch_id', $gp->branch_id)->where('inventory_item_id', $itemId)
-                        ->update(['stock' => DB::raw('GREATEST(stock - ' . $branchQty . ', 0)'), 'updated_at' => now()]);
-                }
+                $this->gatepassReverseStock($storeId, $gp);
                 DB::table('pos_stock_gatepass_items')->where('gatepass_id', $gp->id)->delete();
                 DB::table('pos_stock_gatepass')->where('id', $gp->id)->where('store_id', $storeId)->delete();
             }

@@ -41,12 +41,16 @@ class PosOfferEngine
         }
 
         // Quantity / value of each item currently in the cart (variations roll up to the parent).
+        // Both values are kept: what the line sells for, and what it lists for. A discount offer
+        // is measured against the list price so the everyday markdown is not conceded twice.
         $cartQty = [];
         $cartGross = [];
+        $cartMrp = [];
         foreach ($lines as $line) {
             $id = (int) $line['item']->id;
             $cartQty[$id]   = ($cartQty[$id] ?? 0) + (float) $line['qty'];
             $cartGross[$id] = ($cartGross[$id] ?? 0) + ((float) $line['price'] * (float) $line['qty']);
+            $cartMrp[$id]   = ($cartMrp[$id] ?? 0) + ($this->lineListPrice($line) * (float) $line['qty']);
         }
 
         $offers = $this->eligibleOffers($storeId, $branchId, $customer, $subtotal, $now);
@@ -60,11 +64,13 @@ class PosOfferEngine
 
             $qualQty = 0.0;
             $qualGross = 0.0;
+            $qualMrp = 0.0;
             $presentIds = [];
             foreach ($buyIds as $bid) {
                 if (!empty($cartQty[$bid])) {
                     $qualQty += $cartQty[$bid];
                     $qualGross += $cartGross[$bid] ?? 0;
+                    $qualMrp += $cartMrp[$bid] ?? 0;
                     $presentIds[] = $bid;
                 }
             }
@@ -75,6 +81,7 @@ class PosOfferEngine
             $result = $this->applyOffer($offer, [
                 'qual_qty'    => $qualQty,
                 'qual_gross'  => $qualGross,
+                'qual_mrp'    => $qualMrp,
                 'present_ids' => $presentIds,
                 'buy_ids'     => $buyIds,
                 'branch_id'   => $branchId,
@@ -191,16 +198,30 @@ class PosOfferEngine
         $weekday = strtolower($now->format('D')); // mon, tue …
         $time = $now->format('H:i:s');
 
+        // An offer set to run until stock is exhausted outlives its end date — the goods decide
+        // when it finishes, not the calendar. Everything else keeps the plain date window.
+        $stockRun = _ensureOfferStockRunColumn();
+
         $offers = InventoryOffer::where('store_id', $storeId)
             ->where('status', 'published')
             ->where('show_in_pos', true)
             ->whereDate('start_date', '<=', $today)
-            ->whereDate('end_date', '>=', $today)
+            ->when(
+                $stockRun,
+                fn($q) => $q->where(fn($w) => $w->whereDate('end_date', '>=', $today)
+                    ->orWhere('run_until_stock_out', 1)),
+                fn($q) => $q->whereDate('end_date', '>=', $today)
+            )
             ->orderBy('priority')
             ->orderBy('id')
             ->get();
 
-        return $offers->filter(function (InventoryOffer $o) use ($branchId, $customer, $subtotal, $weekday, $time, $storeId, $today) {
+        return $offers->filter(function (InventoryOffer $o) use ($branchId, $customer, $subtotal, $weekday, $time, $storeId, $today, $stockRun) {
+            // Stock-governed offers end the moment the qualifying goods run out — inside the
+            // date window as well as past it. "Until the apples are gone" cuts both ways.
+            if ($stockRun && $o->run_until_stock_out && !$this->qualifyingStockRemains($o, $branchId)) {
+                return false;
+            }
             // Time-of-day window
             if ($o->start_time && $o->end_time) {
                 if ($time < $o->start_time || $time > $o->end_time) {
@@ -235,6 +256,77 @@ class PosOfferEngine
             }
             return true;
         })->values();
+    }
+
+    /**
+     * One line's list price — the figure a discount offer is measured against.
+     *
+     * An item with no MRP recorded, or an MRP below its own selling price, has no everyday
+     * markdown to protect, so the selling price stands in and the offer behaves exactly as it
+     * did before this rule existed.
+     */
+    private function lineListPrice(array $line): float
+    {
+        $item  = $line['item'];
+        $price = (float) $line['price'];
+        $mrp   = (float) ($item->mrp ?? 0);
+
+        // mrp is held per item unit, so a measured pack is worth that much of it — the same
+        // conversion the receipt's "saved on MRP" line uses.
+        $varType = trim((string) ($line['var_type'] ?? ''));
+        if ($mrp > 0 && $varType !== '' && _variationMode($item) === 'measured'
+            && ($var = _variationRow($item, $varType)) && ($pack = _variationPack($item, $var))) {
+            $mrp = $mrp * _variationQtyInItemUnit($item, $pack, 1);
+        }
+
+        return max($mrp, $price);
+    }
+
+    /**
+     * Turn a discount taken off the list price into the discount that comes off the bill.
+     *
+     * The customer should pay MRP minus the offer. The bill charges the selling price, which is
+     * already below MRP, so what comes off it is only the difference between the two — a bench
+     * listed at 1800 and sold at 1600 with 20% off should reach 1440, which is 160 off the bill,
+     * not 320.
+     *
+     * Floored at zero because an offer smaller than the everyday markdown would otherwise price
+     * the item ABOVE its shelf price: 5% off 1800 is 1710, and no customer should pay more for
+     * taking an offer. Capped at the qualifying value so a discount can never exceed the goods.
+     */
+    private function billDiscountFromList(float $qualGross, float $qualMrp, float $listDiscount): float
+    {
+        $target = $qualMrp - $listDiscount;
+
+        return min($qualGross, max(0.0, $qualGross - $target));
+    }
+
+    /**
+     * Whether any of an offer's "buy" products still has stock to sell.
+     *
+     * Read at the counter's own location: a branch checks its own pool, the main store its own
+     * figure. Stock is only deducted at checkout, so the last 5 kg sitting in the cart still
+     * counts as available here — the offer holds for the sale that empties the shelf and stops
+     * only afterwards, which is what "until stock reaches zero" has to mean to be usable.
+     *
+     * An offer that names no buy products has nothing that can run out, so it is left alone.
+     */
+    private function qualifyingStockRemains(InventoryOffer $o, $branchId): bool
+    {
+        $buyIds = array_values(array_filter(array_map('intval', (array) $o->buy_product_ids)));
+        if (empty($buyIds)) {
+            return true;
+        }
+
+        if ($branchId) {
+            return DB::table('pos_branch_stock')
+                ->where('branch_id', $branchId)
+                ->whereIn('inventory_item_id', $buyIds)
+                ->where('stock', '>', 0)
+                ->exists();
+        }
+
+        return InventoryItem::whereIn('id', $buyIds)->where('stock', '>', 0)->exists();
     }
 
     private function customerEligible(InventoryOffer $o, $customer, int $storeId): bool
@@ -292,6 +384,9 @@ class PosOfferEngine
     {
         $qualQty   = (float) $c['qual_qty'];
         $qualGross = (float) $c['qual_gross'];
+        // Falls back to the selling total, which makes every formula below collapse to what it
+        // computed before whenever no MRP is on file.
+        $qualMrp   = (float) ($c['qual_mrp'] ?? $c['qual_gross']);
         $branchId  = $c['branch_id'] ?? null;
 
         $buyQty = max(1, (int) ($o->buy_quantity ?: 1));
@@ -309,7 +404,7 @@ class PosOfferEngine
                 if ($pct <= 0) {
                     return null;
                 }
-                $disc = $qualGross * $pct / 100;
+                $disc = $this->billDiscountFromList($qualGross, $qualMrp, $qualMrp * $pct / 100);
                 if ($cap !== null) {
                     $disc = min($disc, $cap);
                 }
@@ -317,14 +412,14 @@ class PosOfferEngine
             }
 
             case 'flat_discount': {
-                $disc = (float) ($o->reward_value ?? 0);
-                if ($disc <= 0) {
+                $flat = (float) ($o->reward_value ?? 0);
+                if ($flat <= 0) {
                     return null;
                 }
+                $disc = $this->billDiscountFromList($qualGross, $qualMrp, $flat);
                 if ($cap !== null) {
                     $disc = min($disc, $cap);
                 }
-                $disc = min($disc, $qualGross); // never discount more than the qualifying value
                 return ['free_lines' => [], 'discount' => max(0, $disc), 'free_qty' => 0];
             }
 
@@ -337,13 +432,16 @@ class PosOfferEngine
                     if ($val <= 0) {
                         return null;
                     }
-                    $disc = $o->reward_type === 'discount_percent'
-                        ? ($qualGross * $val / 100)
+                    // Same rule as the standalone discounts: measured off the list price, then
+                    // converted to what actually comes off the bill.
+                    $listDisc = $o->reward_type === 'discount_percent'
+                        ? ($qualMrp * $val / 100)
                         : ($val * $times);
+                    $disc = $this->billDiscountFromList($qualGross, $qualMrp, $listDisc);
                     if ($cap !== null) {
                         $disc = min($disc, $cap);
                     }
-                    return ['free_lines' => [], 'discount' => max(0, min($disc, $qualGross)), 'free_qty' => 0];
+                    return ['free_lines' => [], 'discount' => max(0, $disc), 'free_qty' => 0];
                 }
 
                 // Free product reward.

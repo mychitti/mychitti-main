@@ -275,8 +275,22 @@
                                             Date</label>
                                     </div>
                                 </div>
+                                <div class="col-md-6">
+                                    <div class="custom-control custom-switch mt-3">
+                                        <input type="checkbox" class="custom-control-input" id="runUntilStockOut"
+                                            name="run_until_stock_out" value="1">
+                                        <label class="custom-control-label" for="runUntilStockOut">Run until stock is
+                                            exhausted</label>
+                                    </div>
+                                </div>
                             </div>
-                            <small class="text-muted">Lower priority number means higher priority (e.g. 1 is highest).</small>
+                            <small class="text-muted d-block">Lower priority number means higher priority (e.g. 1 is highest).</small>
+                            <small class="text-muted d-block mt-1">
+                                <b>Run until stock is exhausted:</b> the offer keeps running past its End Date and stops
+                                only when every product listed under <i>Buy Products</i> is out of stock. Stock is checked
+                                at the counter's own location, and the last unit on the shelf still qualifies — so the sale
+                                that empties it gets the offer, and the next customer does not.
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -439,6 +453,7 @@
                 'combine_with_other_offers' => (bool) $offer->combine_with_other_offers,
                 'show_in_pos' => (bool) $offer->show_in_pos,
                 'auto_expire_after_end_date' => (bool) $offer->auto_expire_after_end_date,
+                'run_until_stock_out' => (bool) $offer->run_until_stock_out,
                 'start_date' => $offer->start_date,
                 'end_date' => $offer->end_date,
                 'start_time' => $offer->start_time,
@@ -499,6 +514,7 @@
                 $('input[name="min_bill_value"]').val(d.min_bill_value ?? '');
                 $('input[name="max_offer_value"]').val(d.max_offer_value ?? '');
                 $('#rewardStock').prop('checked', !!d.apply_only_if_reward_stock_available);
+                $('#runUntilStockOut').prop('checked', !!d.run_until_stock_out);
                 $('input[name="max_free_qty_per_bill"]').val(d.max_free_qty_per_bill ?? '');
                 $('input[name="max_uses_per_day"]').val(d.max_uses_per_day ?? '');
                 $('input[name="max_uses_per_customer"]').val(d.max_uses_per_customer ?? '');

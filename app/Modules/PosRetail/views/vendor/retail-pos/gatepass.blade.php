@@ -24,15 +24,34 @@
                 $isOwner = auth('vendor')->check();
                 $canTransfer = $isOwner || hasPermission('pos_gatepass', 'create');
                 $canDelete = $isOwner || hasPermission('pos_gatepass', 'delete');
+                $canEdit = $isOwner || hasPermission('pos_gatepass', 'edit') || $canTransfer;
+                $editing = $editing ?? null;
+                $editLines = $editLines ?? [];
+                $editFromId = $editing ? (string) ($editing->from_branch_id ?? '') : '';
+                $editToId = $editing ? (string) $editing->branch_id : '';
             @endphp
 
-            @if ($canTransfer)
-                <form method="post" action="{{ route('vendor.retail-pos.gatepass.store') }}">
+            @if ($canTransfer || $editing)
+                <form method="post"
+                    action="{{ $editing ? route('vendor.retail-pos.gatepass.update', $editing->id) : route('vendor.retail-pos.gatepass.store') }}">
                     @csrf
                     <div class="rp-card">
-                        <div class="hd">
-                            <span class="accent">New Transfer</span>
+                        <div class="hd d-flex justify-content-between align-items-center">
+                            <span class="accent">{{ $editing ? 'Edit Gatepass — ' . $editing->gatepass_no : 'New Transfer' }}</span>
+                            @if ($editing)
+                                <a class="btn btn-sm btn-outline-secondary"
+                                    href="{{ route('vendor.retail-pos.gatepass') }}">Cancel edit</a>
+                            @endif
                         </div>
+                        @if ($editing)
+                            <div class="bd" style="padding-bottom:0;">
+                                <div class="alert alert-warning" style="font-size:12px;margin-bottom:0;">
+                                    Saving undoes this transfer and re-applies it as entered below. Stock at both
+                                    locations lands exactly where it would have if the gatepass had always read this
+                                    way, and <b>{{ $editing->gatepass_no }}</b> stays the same number.
+                                </div>
+                            </div>
+                        @endif
                         <div class="bd">
                             <div class="d-flex flex-wrap" style="gap:12px;">
                                 @if ($hasSource ?? false)
@@ -41,7 +60,7 @@
                                         <select name="from_branch_id" id="gp-from-branch" class="rp-input" style="min-width:220px;">
                                             <option value="">Main Store</option>
                                             @foreach ($branches as $b)
-                                                <option value="{{ $b->id }}">{{ $b->name }}</option>
+                                                <option value="{{ $b->id }}" @selected($editFromId === (string) $b->id)>{{ $b->name }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -51,13 +70,14 @@
                                     <select name="branch_id" id="gp-to-branch" class="rp-input" required style="min-width:220px;">
                                         <option value="">Select branch</option>
                                         @foreach ($branches as $b)
-                                            <option value="{{ $b->id }}">{{ $b->name }}</option>
+                                            <option value="{{ $b->id }}" @selected($editToId === (string) $b->id)>{{ $b->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div style="flex:1; min-width:240px;">
                                     <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#555;">Note (optional)</label>
                                     <input type="text" name="note" class="rp-input" style="width:100%;"
+                                        value="{{ $editing->note ?? '' }}"
                                         placeholder="e.g. vehicle no / remarks">
                                 </div>
                             </div>
@@ -99,7 +119,7 @@
                                 gatepass records it.
                             </div>
                             <button class="rp-btn p" id="gp-submit" disabled>
-                                Transfer &amp; Generate Gatepass
+                                {{ $editing ? 'Save Changes & Reprint' : 'Transfer & Generate Gatepass' }}
                             </button>
                         </div>
                     </div>
@@ -130,7 +150,7 @@
                             </thead>
                             <tbody>
                                 @forelse ($gatepasses as $g)
-                                    <tr>
+                                    <tr @class(['table-warning' => $editing && $editing->id == $g->id])>
                                         @if ($canDelete)
                                             <td class="text-center">
                                                 <input type="checkbox" class="gp-check" name="ids[]" value="{{ $g->id }}">
@@ -142,6 +162,10 @@
                                         <td class="text-muted">{{ $g->note }}</td>
                                         <td class="text-muted">{{ \Carbon\Carbon::parse($g->created_at)->format('d M Y, h:i A') }}</td>
                                         <td class="text-right">
+                                            @if ($canEdit)
+                                                <a class="btn btn-sm btn-outline-primary"
+                                                    href="{{ route('vendor.retail-pos.gatepass.edit', $g->id) }}">✎ Edit</a>
+                                            @endif
                                             <a class="btn btn-sm btn-outline-warning" target="_blank"
                                                 href="{{ route('vendor.retail-pos.gatepass.print', $g->id) }}">🖨 Print</a>
                                         </td>
@@ -192,10 +216,12 @@
 {{-- Select2 and jQuery both arrive with the layout's vendor bundle, which loads after the
      content — so the picker has to be wired up here rather than inline above. --}}
 @push('script_2')
-    @if (auth("vendor")->check() || hasPermission("pos_gatepass", "create"))
+    @if (auth("vendor")->check() || hasPermission("pos_gatepass", "create") || hasPermission("pos_gatepass", "edit") || ($editing ?? null))
                 <script>
                     (function () {
                         var SEARCH_URL = '{{ route('vendor.retail-pos.gatepass.search') }}';
+                        var PREFILL = @json($editLines ?? []);
+                        var EDIT_NO = @json($editing->gatepass_no ?? '');
                         var $picker = $('#gp-item-picker');
                         var $lines  = $('#gp-lines');
                         var $from   = $('#gp-from-branch');
@@ -262,7 +288,7 @@
                             return html + '</select>';
                         }
 
-                        function addRow(it) {
+                        function addRow(it, presetQty, presetSource) {
                             if ($lines.find('tr[data-item="' + it.id + '"]').length) {
                                 // Already on the transfer — a second row would post the same input
                                 // name twice and silently drop one of the quantities.
@@ -292,7 +318,19 @@
                                 + '</tr>'
                             );
 
-                            $lines.find('tr[data-item="' + it.id + '"] .rp-gp-qty').focus();
+                            var $row = $lines.find('tr[data-item="' + it.id + '"]');
+
+                            // Seeding an edit: pick the source pool first, because that handler
+                            // rewrites the quantity box's ceiling and clears anything above it.
+                            if (presetSource) {
+                                $row.find('.rp-gp-source').val(presetSource).trigger('change');
+                            }
+                            if (presetQty != null && presetQty !== '') {
+                                $row.find('.rp-gp-qty').val(presetQty);
+                            } else {
+                                $row.find('.rp-gp-qty').focus();
+                            }
+
                             refresh();
                         }
 
@@ -377,11 +415,21 @@
                                 return false;
                             }
                             var dest = $to.find('option:selected').text().trim() || 'the selected branch';
+                            if (EDIT_NO) {
+                                return confirm('Re-issue ' + EDIT_NO + '? The original transfer is undone and '
+                                    + 'replaced by the quantities entered here, from ' + fromName()
+                                    + ' to ' + dest + '.');
+                            }
                             return confirm('Transfer the entered quantities from ' + fromName()
                                 + ' to ' + dest + '?');
                         });
 
                         onSourceChange();
+
+                        // Seeded last: onSourceChange() clears every row by design, so anything
+                        // added before this point would be wiped on the way in.
+                        PREFILL.forEach(function (it) { addRow(it, it.edit_qty, it.edit_source); });
+
                         refresh();
                     })();
                 </script>

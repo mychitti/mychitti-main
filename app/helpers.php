@@ -2858,6 +2858,33 @@ if (!function_exists('_ensureDecimalStockColumns')) {
         }
     }
 }
+if (!function_exists('_ensureOfferStockRunColumn')) {
+    /**
+     * "Run until stock is exhausted" — an offer whose end is decided by the goods rather than the
+     * calendar. Self-heals the column once per request, per the project's no-migrations rule.
+     *
+     * Returns whether the column is there to query, so callers can fall back to the plain
+     * date-window behaviour on a store whose DDL has not run yet instead of erroring out.
+     */
+    function _ensureOfferStockRunColumn(): bool
+    {
+        static $has = null;
+        if ($has !== null) {
+            return $has;
+        }
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_offers')) {
+                return $has = false;
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_offers', 'run_until_stock_out')) {
+                DB::statement("ALTER TABLE `inventory_offers` ADD COLUMN `run_until_stock_out` TINYINT(1) NOT NULL DEFAULT 0");
+            }
+            return $has = true;
+        } catch (\Throwable $e) {
+            return $has = false;
+        }
+    }
+}
 if (!function_exists('_updateInventoryStock')) {
 
     // $varType names the variation the line was sold as. When the item has variations this is
