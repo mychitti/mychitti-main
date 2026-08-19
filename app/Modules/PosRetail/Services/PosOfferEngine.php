@@ -82,6 +82,10 @@ class PosOfferEngine
                 'qual_qty'    => $qualQty,
                 'qual_gross'  => $qualGross,
                 'qual_mrp'    => $qualMrp,
+                // A combo is priced per basket, so it needs each member's own count and value
+                // rather than the qualifying totals the other offer types work from.
+                'cart_qty'    => $cartQty,
+                'cart_gross'  => $cartGross,
                 'present_ids' => $presentIds,
                 'buy_ids'     => $buyIds,
                 'branch_id'   => $branchId,
@@ -155,6 +159,11 @@ class PosOfferEngine
 
     private function summary(InventoryOffer $o, array $res): string
     {
+        if (($res['combo_sets'] ?? 0) > 0) {
+            $sets = (int) $res['combo_sets'];
+            return $sets . ' × combo @ ₹' . number_format((float) $o->combo_price, 2)
+                . ' (saves ₹' . number_format((float) ($res['discount'] ?? 0), 2) . ')';
+        }
         if (($res['free_qty'] ?? 0) > 0) {
             $name = $res['free_lines'][0]['item']->item_name ?? 'item';
             return $res['free_qty'] . ' × ' . $name . ' free';
@@ -200,7 +209,7 @@ class PosOfferEngine
 
         // An offer set to run until stock is exhausted outlives its end date — the goods decide
         // when it finishes, not the calendar. Everything else keeps the plain date window.
-        $stockRun = _ensureOfferStockRunColumn();
+        $stockRun = _ensureOfferColumns();
 
         $offers = InventoryOffer::where('store_id', $storeId)
             ->where('status', 'published')
@@ -256,6 +265,38 @@ class PosOfferEngine
             }
             return true;
         })->values();
+    }
+
+    /**
+     * A combo offer's fixed basket as [item_id => required qty].
+     *
+     * Falls back to one of each buy product when combo_items was never filled in, so an offer
+     * saved before the per-member quantity boxes existed still behaves sensibly.
+     */
+    private function comboBasket(InventoryOffer $o): array
+    {
+        $rows = json_decode((string) ($o->combo_items ?? ''), true);
+        $basket = [];
+
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $id  = (int) ($row['item_id'] ?? 0);
+                $qty = (float) ($row['qty'] ?? 0);
+                if ($id > 0 && $qty > 0) {
+                    $basket[$id] = ($basket[$id] ?? 0) + $qty;
+                }
+            }
+        }
+
+        if (empty($basket)) {
+            foreach (array_map('intval', (array) $o->buy_product_ids) as $id) {
+                if ($id > 0) {
+                    $basket[$id] = 1;
+                }
+            }
+        }
+
+        return $basket;
     }
 
     /**
@@ -421,6 +462,52 @@ class PosOfferEngine
                     $disc = min($disc, $cap);
                 }
                 return ['free_lines' => [], 'discount' => max(0, $disc), 'free_qty' => 0];
+            }
+
+            case 'combo_offer': {
+                $comboPrice = (float) ($o->combo_price ?? 0);
+                $basket = $this->comboBasket($o);
+                if ($comboPrice <= 0 || empty($basket)) {
+                    return null;
+                }
+
+                $cartQty   = (array) ($c['cart_qty'] ?? []);
+                $cartGross = (array) ($c['cart_gross'] ?? []);
+
+                // A combo only exists when every member is in the basket, so the number of
+                // complete combos is the scarcest member — two toothbrushes and one paste is
+                // still one combo, and the spare brush is billed normally.
+                $sets = null;
+                $listValue = 0.0;
+                foreach ($basket as $itemId => $need) {
+                    $have = (float) ($cartQty[$itemId] ?? 0);
+                    if ($need <= 0 || $have < $need) {
+                        return null;
+                    }
+                    $sets = min($sets ?? PHP_INT_MAX, (int) floor($have / $need));
+
+                    // What those units are actually being billed at, averaged over the line in
+                    // case the same product came in at two prices.
+                    $unit = $have > 0 ? ((float) ($cartGross[$itemId] ?? 0)) / $have : 0.0;
+                    $listValue += $unit * $need;
+                }
+
+                if (!$sets || $sets < 1) {
+                    return null;
+                }
+                if ($o->max_free_qty_per_bill) {
+                    $sets = min($sets, (int) $o->max_free_qty_per_bill);
+                }
+
+                // The combo price is what the customer pays, full stop — so the discount is
+                // whatever brings the bill down to it. Floored at zero: a combo priced above
+                // what the items already cost must never add to the bill.
+                $disc = max(0.0, ($listValue - $comboPrice)) * $sets;
+                if ($cap !== null) {
+                    $disc = min($disc, $cap);
+                }
+
+                return ['free_lines' => [], 'discount' => max(0, $disc), 'free_qty' => 0, 'combo_sets' => $sets];
             }
 
             case 'buy_x_get_y_free':

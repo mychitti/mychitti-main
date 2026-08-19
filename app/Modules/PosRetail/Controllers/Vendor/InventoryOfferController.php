@@ -147,7 +147,7 @@ class InventoryOfferController extends Controller
         $request->validate([
             'offer_name' => 'required|string|max:255',
             'offer_code' => 'required|string|max:100',
-            'offer_type' => 'required|in:buy_x_get_y_free,flat_discount,percent_discount,bundle_deal',
+            'offer_type' => 'required|in:buy_x_get_y_free,flat_discount,percent_discount,bundle_deal,combo_offer',
             'item_id' => 'nullable|integer',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
@@ -157,12 +157,36 @@ class InventoryOfferController extends Controller
             'reward_value' => 'nullable|numeric|min:0',
             'priority' => 'required|integer|min:1',
             'banner' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'combo_price' => 'required_if:offer_type,combo_offer|nullable|numeric|min:0.01',
+            'combo_qty' => 'nullable|array',
+            'combo_qty.*' => 'nullable|numeric|min:0',
         ]);
+    }
+
+    /**
+     * The combo basket as stored JSON: one row per selected product with the quantity the
+     * combo needs of it. Anything the form left blank counts as one, so a vendor who only
+     * picks the products still gets a working "one of each" combo.
+     */
+    private function comboItems(Request $request): ?string
+    {
+        if ($request->offer_type !== 'combo_offer') {
+            return null;
+        }
+
+        $qty = (array) $request->input('combo_qty', []);
+        $rows = [];
+        foreach (array_map('intval', array_filter((array) $request->buy_product_ids)) as $id) {
+            $need = (float) ($qty[$id] ?? 0);
+            $rows[] = ['item_id' => $id, 'qty' => $need > 0 ? $need : 1];
+        }
+
+        return $rows ? json_encode($rows) : null;
     }
 
     private function offerPayload(Request $request): array
     {
-        _ensureOfferStockRunColumn();
+        _ensureOfferColumns();
 
         return [
             'item_id' => $request->item_id,
@@ -199,6 +223,8 @@ class InventoryOfferController extends Controller
             'show_in_pos' => $request->boolean('show_in_pos'),
             'auto_expire_after_end_date' => $request->boolean('auto_expire_after_end_date'),
             'run_until_stock_out' => $request->boolean('run_until_stock_out'),
+            'combo_price' => $request->offer_type === 'combo_offer' ? $request->combo_price : null,
+            'combo_items' => $this->comboItems($request),
             'notify_sms' => $request->boolean('notify_sms'),
             'notify_whatsapp' => $request->boolean('notify_whatsapp'),
             'notify_push' => $request->boolean('notify_push'),

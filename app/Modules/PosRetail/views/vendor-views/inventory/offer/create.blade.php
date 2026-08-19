@@ -96,6 +96,7 @@
                                         <option value="flat_discount">Flat Discount</option>
                                         <option value="percent_discount">Percent Discount</option>
                                         <option value="bundle_deal">Bundle Deal</option>
+                                        <option value="combo_offer">Combo Offer (fixed basket price)</option>
                                     </select>
                                 </div>
                             </div>
@@ -111,7 +112,7 @@
                     <div class="card offer-card mb-3">
                         <div class="card-header"><span class="offer-section-no mr-2">2</span> Applicable Products (Buy - X)</div>
                         <div class="card-body">
-                            <div class="form-group">
+                            <div class="form-group" data-of="apply_on">
                                 <label>Apply On</label>
                                 <div class="d-flex flex-wrap" style="gap: 16px;">
                                     @foreach (['specific_products' => 'Specific Products', 'category' => 'Category', 'brand' => 'Brand', 'sku_combination' => 'SKU Combination', 'mix_match' => 'Mix & Match'] as $val => $lbl)
@@ -128,20 +129,46 @@
                                     placeholder="Search products by name or SKU" autocomplete="off">
                                 <div class="search-results d-none" id="buyResults"></div>
                                 <div id="buyProducts" class="mt-2"></div>
+                                <small class="text-muted d-none" id="comboHint">
+                                    Set how many of each product the combo contains — the boxes appear on every
+                                    selected product above. All of them must be in the cart for the combo to apply.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Combo basket price — only meaningful for the combo offer type --}}
+                    <div class="card offer-card mb-3 d-none" id="comboCard">
+                        <div class="card-header"><span class="offer-section-no mr-2">3</span> Combo Price</div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 form-group mb-0">
+                                    <label>Combo Price (₹) <span class="text-danger">*</span></label>
+                                    <input type="number" name="combo_price" step="0.01" min="0.01"
+                                        class="form-control" placeholder="e.g. 299">
+                                </div>
+                                <div class="col-md-8 form-group mb-0">
+                                    <small class="text-muted">
+                                        The all-in price for one complete basket. The customer pays exactly this for
+                                        the products listed above; the till works out the discount that gets the bill
+                                        there. A basket priced above what the items already cost adds nothing — the
+                                        discount floors at zero rather than inflating the bill.
+                                    </small>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {{-- 6. Buy Condition & 7. Reward --}}
-                    <div class="card offer-card mb-3">
+                    <div class="card offer-card mb-3" id="buyRewardCard">
                         <div class="card-header"><span class="offer-section-no mr-2">3</span> Buy Condition (X) &amp; Reward (Y)</div>
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4 form-group">
+                                <div class="col-md-4 form-group" data-of="buy_quantity">
                                     <label>Buy Quantity (X) <span class="text-danger">*</span></label>
-                                    <input type="number" name="buy_quantity" min="1" value="2" class="form-control" required>
+                                    <input type="number" name="buy_quantity" min="1" value="2" class="form-control" data-req="1" required>
                                 </div>
-                                <div class="col-md-4 form-group">
+                                <div class="col-md-4 form-group" data-of="buy_type">
                                     <label>Buy Type</label>
                                     <select name="buy_type" class="form-control">
                                         <option value="same_product">Same Product</option>
@@ -150,7 +177,7 @@
                                         <option value="brand">Brand</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4 form-group">
+                                <div class="col-md-4 form-group" data-of="count_based_on">
                                     <label>Count Based On</label>
                                     <select name="count_based_on" class="form-control">
                                         <option value="quantity">Quantity</option>
@@ -158,9 +185,9 @@
                                     </select>
                                 </div>
                             </div>
-                            <hr>
+                            <hr data-of="reward_type">
                             <div class="row">
-                                <div class="col-md-4 form-group">
+                                <div class="col-md-4 form-group" data-of="reward_type">
                                     <label>Reward Type</label>
                                     <select name="reward_type" class="form-control">
                                         <option value="free_product">Free Product</option>
@@ -168,7 +195,7 @@
                                         <option value="discount_amount">Discount Amount</option>
                                     </select>
                                 </div>
-                                <div class="col-md-4 form-group position-relative">
+                                <div class="col-md-4 form-group position-relative" data-of="reward_product">
                                     <label>Free / Reward Product</label>
                                     <input type="hidden" name="reward_product_id" id="rewardProductId">
                                     <input type="text" id="rewardSearch" class="form-control"
@@ -176,12 +203,12 @@
                                     <div class="search-results d-none" id="rewardResults"></div>
                                     <small class="text-muted" id="rewardSelected"></small>
                                 </div>
-                                <div class="col-md-4 form-group">
+                                <div class="col-md-4 form-group" data-of="free_quantity">
                                     <label>Free Quantity (Y) <span class="text-danger">*</span></label>
-                                    <input type="number" name="free_quantity" min="1" value="1" class="form-control" required>
+                                    <input type="number" name="free_quantity" min="1" value="1" class="form-control" data-req="1" required>
                                 </div>
                             </div>
-                            <div class="row">
+                            <div class="row" data-of="reward_value">
                                 <div class="col-md-4 form-group mb-0">
                                     <label>Reward Value <small class="text-muted">(% or ₹)</small></label>
                                     <input type="number" name="reward_value" step="0.01" min="0" class="form-control"
@@ -202,11 +229,11 @@
                                     <label>Minimum Bill Value</label>
                                     <input type="number" name="min_bill_value" step="0.01" class="form-control" placeholder="0">
                                 </div>
-                                <div class="col-md-4 form-group mb-0">
+                                <div class="col-md-4 form-group mb-0" data-of="max_offer_value">
                                     <label>Maximum Offer Value</label>
                                     <input type="number" name="max_offer_value" step="0.01" class="form-control" placeholder="0">
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-4" data-of="reward_stock">
                                     <div class="custom-control custom-switch mt-3">
                                         <input type="checkbox" class="custom-control-input" id="rewardStock"
                                             name="apply_only_if_reward_stock_available" value="1" checked>
@@ -223,8 +250,8 @@
                         <div class="card-header"><span class="offer-section-no mr-2">5</span> Offer Limits</div>
                         <div class="card-body">
                             <div class="row mb-0">
-                                <div class="col-md-3 form-group mb-0">
-                                    <label>Max Free Qty / Bill</label>
+                                <div class="col-md-3 form-group mb-0" data-of="max_free_qty_per_bill">
+                                    <label id="maxQtyLabel">Max Free Qty / Bill</label>
                                     <input type="number" name="max_free_qty_per_bill" class="form-control">
                                 </div>
                                 <div class="col-md-3 form-group mb-0">
@@ -454,6 +481,8 @@
                 'show_in_pos' => (bool) $offer->show_in_pos,
                 'auto_expire_after_end_date' => (bool) $offer->auto_expire_after_end_date,
                 'run_until_stock_out' => (bool) $offer->run_until_stock_out,
+                'combo_price' => $offer->combo_price,
+                'combo_items' => json_decode((string) $offer->combo_items, true) ?: [],
                 'start_date' => $offer->start_date,
                 'end_date' => $offer->end_date,
                 'start_time' => $offer->start_time,
@@ -490,6 +519,15 @@
                     '<small class="text-muted">SKU: ' + (p.sku || '—') + ' · Stock: ' + (p.stock ?? '—') + '</small></div>'
                 );
                 chip.append('<input type="hidden" name="buy_product_ids[]" value="' + p.id + '">');
+                // How many of this product one combo contains. Always posted, ignored by every
+                // other offer type, so switching type back and forth loses nothing.
+                chip.append(
+                    '<div class="combo-qty ml-auto mr-2" style="display:none;">' +
+                    '<label class="mb-0 mr-1" style="font-size:11px;">Qty in combo</label>' +
+                    '<input type="number" min="1" step="1" value="1" style="width:70px;" ' +
+                    'class="form-control form-control-sm d-inline-block" name="combo_qty[' + p.id + ']">' +
+                    '</div>'
+                );
                 var remove = $('<button type="button" class="btn btn-sm text-danger">&times;</button>');
                 remove.on('click', function() {
                     buyIds = buyIds.filter(function(id) { return id !== p.id; });
@@ -497,7 +535,80 @@
                 });
                 chip.append(remove);
                 $('#buyProducts').append(chip);
+                syncComboUi();
             }
+
+            // Which offer types actually consume each field, taken from what PosOfferEngine
+            // reads. A field the chosen type ignores is hidden rather than left on screen
+            // collecting a value that will never be used.
+            //
+            // Hidden inputs stay in the DOM so their defaults still post and server-side
+            // validation still passes; only 'required' is lifted, because the browser refuses to
+            // submit a form containing a required control it cannot focus.
+            var BXGY = ['buy_x_get_y_free', 'bundle_deal'];
+            var ALL_TYPES = BXGY.concat(['flat_discount', 'percent_discount', 'combo_offer']);
+
+            var FIELD_TYPES = {
+                buy_quantity:          BXGY,
+                reward_type:           BXGY,
+                reward_product:        BXGY,   // narrowed further by reward type below
+                free_quantity:         BXGY,   // ditto
+                reward_stock:          BXGY,   // ditto
+                max_free_qty_per_bill: BXGY.concat(['combo_offer']),
+                reward_value:          ['flat_discount', 'percent_discount'].concat(BXGY),
+                max_offer_value:       ALL_TYPES,
+                // Read by nothing, for any offer type — see offerPayload(): stored and never
+                // consumed. Kept in the DOM so saved values are preserved, but not shown.
+                apply_on:              [],
+                buy_type:              [],
+                count_based_on:        []
+            };
+
+            function syncComboUi() {
+                var type = $('select[name="offer_type"]').val();
+                var rewardType = $('select[name="reward_type"]').val() || 'free_product';
+                var isCombo = type === 'combo_offer';
+                var isBxgy = BXGY.indexOf(type) !== -1;
+                var freeProduct = isBxgy && rewardType === 'free_product';
+
+                $('[data-of]').each(function () {
+                    var key = $(this).data('of');
+                    var show = (FIELD_TYPES[key] || ALL_TYPES).indexOf(type) !== -1;
+
+                    // A free-product reward has no value to enter; a discount reward has no
+                    // product, no free quantity and no reward stock to check.
+                    if (key === 'reward_product' || key === 'free_quantity' || key === 'reward_stock') {
+                        show = show && freeProduct;
+                    }
+                    if (key === 'reward_value' && isBxgy) {
+                        show = !freeProduct;
+                    }
+                    // The cap only bites where a discount is computed.
+                    if (key === 'max_offer_value' && freeProduct) {
+                        show = false;
+                    }
+
+                    $(this).toggleClass('d-none', !show);
+                    $(this).find('input, select, textarea').prop('required', function () {
+                        return show && $(this).data('req') === 1;
+                    });
+                });
+
+                // Combo-only blocks, and a label that stops reading "free qty" on an offer that
+                // has no free product.
+                $('#comboCard').toggleClass('d-none', !isCombo);
+                $('#comboHint').toggleClass('d-none', !isCombo);
+                $('.combo-qty').toggle(isCombo);
+                $('input[name="combo_price"]').prop('required', isCombo);
+                $('#maxQtyLabel').text(isCombo ? 'Max Combos / Bill' : 'Max Free Qty / Bill');
+
+                // Section 3 is the only card made entirely of conditional fields, so it is the
+                // only one that can empty out. A combo hides all of it.
+                var section3Visible = $('#buyRewardCard [data-of]')
+                    .filter(function () { return !$(this).hasClass('d-none'); }).length > 0;
+                $('#buyRewardCard').toggleClass('d-none', !section3Visible);
+            }
+            $(document).on('change', 'select[name="offer_type"], select[name="reward_type"]', syncComboUi);
 
             function prefillEdit(d) {
                 $('input[name="offer_name"]').val(d.offer_name || '');
@@ -515,6 +626,8 @@
                 $('input[name="max_offer_value"]').val(d.max_offer_value ?? '');
                 $('#rewardStock').prop('checked', !!d.apply_only_if_reward_stock_available);
                 $('#runUntilStockOut').prop('checked', !!d.run_until_stock_out);
+                $('input[name="combo_price"]').val(d.combo_price ?? '');
+                syncComboUi();
                 $('input[name="max_free_qty_per_bill"]').val(d.max_free_qty_per_bill ?? '');
                 $('input[name="max_uses_per_day"]').val(d.max_uses_per_day ?? '');
                 $('input[name="max_uses_per_customer"]').val(d.max_uses_per_customer ?? '');
@@ -552,6 +665,13 @@
                     $('#rewardSelected').text(d.reward_product_name ? 'Selected: ' + d.reward_product_name : '');
                 }
                 (d.buy_products || []).forEach(renderBuyProduct);
+
+                // After the chips exist — the quantity boxes are rendered with them, so filling
+                // the basket any earlier would write into inputs that are not on the page yet.
+                (d.combo_items || []).forEach(function (row) {
+                    $('input[name="combo_qty[' + row.item_id + ']"]').val(row.qty);
+                });
+                syncComboUi();
             }
 
             if (editData) {
@@ -559,6 +679,7 @@
             } else if (initialItem) {
                 renderBuyProduct(initialItem);
             }
+            syncComboUi();
 
             function bindSearch(inputSel, resultSel, onPick) {
                 var timer = null;

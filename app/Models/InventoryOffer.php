@@ -45,6 +45,8 @@ class InventoryOffer extends Model
         'show_in_pos',
         'auto_expire_after_end_date',
         'run_until_stock_out',
+        'combo_price',
+        'combo_items',
         'notify_sms',
         'notify_whatsapp',
         'notify_push',

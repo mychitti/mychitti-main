@@ -1933,7 +1933,7 @@ class RetailPosController extends Controller
             return response()->json(['offers' => []]);
         }
         $today = date('Y-m-d');
-        $stockRun = _ensureOfferStockRunColumn();
+        $stockRun = _ensureOfferColumns();
         $offers = \App\Models\InventoryOffer::where('store_id', $storeId)->orderByDesc('id')->get();
 
         return response()->json(['offers' => $offers->map(fn($o) => [
