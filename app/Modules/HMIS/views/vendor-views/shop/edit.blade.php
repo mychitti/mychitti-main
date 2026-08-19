@@ -431,6 +431,36 @@
                                 {{-- RIGHT PANEL --}}
                                 <div>
                                 <div class="profile-card">
+
+                                    {{-- Hospital category — drives which clinical term lists OPD offers,
+                                         and which stores get the Dental intake screen.
+
+                                         Sits OUTSIDE .profile-header on purpose: that wrapper is
+                                         display:flex / space-between and was written to hold one child,
+                                         so a second one lands beside Service Location and overflows the
+                                         card instead of stacking above it.
+
+                                         No business_type guard here, unlike the base copy of this view:
+                                         ResolveModuleViews only swaps in this file for a hospital store,
+                                         so the check is always true. The base view's guard is what hid
+                                         this field — it was added there, and hospitals never render it. --}}
+                                    <div class="form-group">
+                                        <label class="small-label">Hospital Category</label>
+                                        <select name="hospital_category" class="form-control">
+                                            <option value="">Not specified</option>
+                                            @foreach (\App\Models\StoreConfig::HOSPITAL_CATEGORIES as $hcKey => $hcLabel)
+                                                <option value="{{ $hcKey }}"
+                                                    {{ old('hospital_category', $hospitalCategory ?? null) === $hcKey ? 'selected' : '' }}>
+                                                    {{ $hcLabel }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted" style="font-size:11px;">
+                                            Sets the diagnosis and treatment lists your doctors are offered in OPD.
+                                            No module is hidden or changed by this.
+                                        </small>
+                                    </div>
+
                                     <div class="profile-header">
 
                                         <div class="col-md-12 form-group">

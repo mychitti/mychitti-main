@@ -13,6 +13,9 @@ class OpdVisit extends Model
         'height', 'spo2', 'pulse_rate', 'respiratory_rate', 'notes', 'recorded_by', 'status',
         'consultation_receipt_id', 'consultation_visit_no',
         'cancelled_at', 'cancel_reason', 'cancelled_by',
+        // Label → value rows captured for this visit (dental intake). Overrides the patient's
+        // standing values when the bill is built — see DentalIntakeController::mergedFor().
+        'custom_info',
     ];
 
     protected $casts = [
@@ -57,6 +60,16 @@ class OpdVisit extends Model
 
     // Diagnosis and treatment are stored as a comma-joined string so they stay readable in
     // exports and receipts; the UI works with them as tag lists.
+    /**
+     * Complaints are stored in chief_complaint as a comma-separated list, exactly like diagnosis
+     * and treatment. Free text written before the field became a chip list still reads back — it
+     * simply comes through as one entry.
+     */
+    public function getComplaintListAttribute(): array
+    {
+        return self::splitTerms($this->chief_complaint);
+    }
+
     public function getDiagnosisListAttribute(): array
     {
         return self::splitTerms($this->diagnosis);

@@ -40,6 +40,7 @@ class OpdTermCatalogue extends Model
     public static function ensureTable(): void
     {
         if (Schema::hasTable('opd_term_catalogue')) {
+            static::seedNewTypes();
             return;
         }
 
@@ -91,6 +92,51 @@ class OpdTermCatalogue extends Model
         }
     }
 
+    /**
+     * Fill in a term type the catalogue has never carried.
+     *
+     * seed() only runs when the table is first created, which is right for the types that were
+     * there from the start — an admin who retires a term must not get it back on the next deploy.
+     * But a type added later (complaints) would otherwise stay empty forever on every hospital
+     * that is already live. Seeded only while the type has no rows at all, so it happens once and
+     * an admin's later edits to it are never overwritten.
+     */
+    private static function seedNewTypes(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        foreach ([OpdClinicalTerm::TYPE_COMPLAINT] as $type) {
+            if (static::where('type', $type)->exists()) {
+                continue;
+            }
+
+            $now  = now();
+            $rows = [];
+
+            foreach (static::SEED as $category => $types) {
+                foreach (array_values($types[$type] ?? []) as $i => $name) {
+                    $rows[] = [
+                        'category'   => $category,
+                        'type'       => $type,
+                        'name'       => $name,
+                        'sort_order' => $i,
+                        'active'     => 1,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+            }
+
+            foreach (array_chunk($rows, 200) as $chunk) {
+                static::insertOrIgnore($chunk);
+            }
+        }
+    }
+
     /** Active terms for a store's category, plus the shared list. */
     public static function namesFor(?string $category, string $type): array
     {
@@ -125,6 +171,15 @@ class OpdTermCatalogue extends Model
                 'Lab Investigation Advised', 'Radiology Advised',
                 'Referred to Specialist', 'Follow-Up Review',
             ],
+            // What the patient says, in their words — the presentation, not the finding.
+            OpdClinicalTerm::TYPE_COMPLAINT => [
+                'Fever', 'Cough', 'Cold / Running Nose', 'Sore Throat', 'Headache',
+                'Body Ache', 'Weakness / Fatigue', 'Loss of Appetite', 'Vomiting',
+                'Nausea', 'Loose Motions', 'Stomach Pain', 'Chest Pain', 'Breathlessness',
+                'Giddiness', 'Swelling', 'Itching', 'Rash', 'Burning Urination',
+                'Frequent Urination', 'Increased Thirst', 'Increased Hunger',
+                'Weight Loss', 'Hair Fall', 'Sleeplessness', 'Back Pain', 'Joint Pain',
+            ],
         ],
 
         'general' => [
@@ -158,6 +213,13 @@ class OpdTermCatalogue extends Model
                 'Complete Denture', 'Partial Denture', 'Orthodontic Braces', 'Clear Aligners',
                 'Teeth Whitening', 'Fluoride Application', 'Pit & Fissure Sealant',
                 'Flap Surgery', 'Oral Hygiene Instructions',
+            ],
+            OpdClinicalTerm::TYPE_COMPLAINT => [
+                'Toothache', 'Sensitivity to Cold', 'Sensitivity to Hot', 'Bleeding Gums',
+                'Swollen Gums', 'Bad Breath', 'Loose Tooth', 'Broken Tooth', 'Cavity',
+                'Food Lodgement', 'Difficulty Chewing', 'Jaw Pain', 'Clicking Jaw',
+                'Mouth Ulcer', 'Stained Teeth', 'Crooked Teeth', 'Missing Tooth',
+                'Denture Not Fitting', 'Pain After Extraction', 'Swelling of Face',
             ],
         ],
 

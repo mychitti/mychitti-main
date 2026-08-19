@@ -166,9 +166,12 @@ class HospitalDashboardController extends Controller
         $nextSerial  = max($autoNext, $serial);
         $previewMuid = strtoupper($prefix) . '-' . str_pad($nextSerial, $padding, '0', STR_PAD_LEFT);
 
+        // Which prescription languages this hospital offers its doctors. Empty = English only.
+        $rxLanguages = \App\Models\Prescription::enabledLanguages($store_id);
+
         return view('hmis::vendor.hospital.settings', compact(
             'prefix', 'padding', 'serial', 'previewMuid',
-            'opd_consultation_count', 'opd_consultation_validity_days'
+            'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages'
         ));
     }
 
@@ -180,6 +183,8 @@ class HospitalDashboardController extends Controller
             'serial'  => 'required|integer|min:1',
             'opd_consultation_count'         => 'required|integer|min:1|max:50',
             'opd_consultation_validity_days' => 'required|integer|min:1|max:365',
+            'rx_languages'                   => 'nullable|array',
+            'rx_languages.*'                 => 'string|in:' . implode(',', array_keys(\App\Models\Prescription::LANGUAGES)),
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -190,6 +195,11 @@ class HospitalDashboardController extends Controller
                 ADD COLUMN `patient_uid_prefix` VARCHAR(10) NULL,
                 ADD COLUMN `patient_uid_padding` INT NULL,
                 ADD COLUMN `patient_uid_serial` INT NULL");
+        }
+        // Which languages the prescription screen offers. Stored as JSON on the store's config so
+        // a hospital that only ever writes English never has to scroll past twenty-two others.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'rx_languages')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `rx_languages` TEXT NULL");
         }
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'opd_consultation_count')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}`
@@ -205,6 +215,11 @@ class HospitalDashboardController extends Controller
                 'patient_uid_serial'             => (int) $request->serial,
                 'opd_consultation_count'         => (int) $request->opd_consultation_count,
                 'opd_consultation_validity_days' => (int) $request->opd_consultation_validity_days,
+                // English is always kept: it is the fallback the printed sheet falls back to for
+                // anything without a translation, so it can never be switched off.
+                'rx_languages'                   => json_encode(
+                    collect($request->input('rx_languages', []))->prepend('en')->unique()->values()->all()
+                ),
             ]
         );
 

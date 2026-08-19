@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Jobs\SendVendorBulkWhatsAppJob;
 use App\Library\Payer;
 use App\Library\Payment as PaymentInfo;
 use App\Library\Receiver;
@@ -17,6 +18,7 @@ use App\Services\FeedbackFlow;
 use App\Services\HmisWhatsAppShare;
 use App\Services\WhatsAppAgent;
 use App\Services\WhatsAppBilling;
+use App\Services\WhatsAppBulkRun;
 use App\Services\WhatsAppRecurring;
 use App\Services\WhatsAppService;
 use App\Traits\Payment;
@@ -27,6 +29,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class WhatsAppController extends Controller
 {
@@ -35,9 +38,16 @@ class WhatsAppController extends Controller
     /** How many clients the bulk recipient picker will load at once. */
     const BULK_PICKER_LIMIT = 1000;
 
-    /** Recipients accepted per bulk-send call — the browser drives the batches so a long run
-     *  never hits max_execution_time and the vendor sees live progress. */
-    const BULK_BATCH_LIMIT = 25;
+    /** Most recipients one run may cover — the ceiling on the "MyChitti users" figure a vendor
+     *  can ask for in a single send. */
+    const BULK_RUN_LIMIT = 50000;
+
+    /**
+     * Most customers one run may be ticked for. Deliberately far above the picker limit: the
+     * picker only shows a page at a time, but a tick survives a search, so a patient vendor can
+     * gather a selection several pages deep before pressing Send.
+     */
+    const BULK_SELECT_LIMIT = 20000;
 
     /** Both knobs now live on WhatsAppService so the audience trait can read them without
      *  depending on a controller; kept here because the blades reference them by this name. */
@@ -170,10 +180,14 @@ class WhatsAppController extends Controller
             'platform' => WhatsAppBilling::messageCost('platform'),
         ];
 
+        // A send in flight, if there is one. It carries on with nobody watching, so the composer
+        // has to be able to pick the thread back up when the vendor reopens the page.
+        $activeRun = WhatsAppBulkRun::current($storeId);
+
         return view('vendor-views.whatsapp.bulk', array_merge(
             compact(
                 'connected', 'templates', 'templateError', 'clientCount', 'platformUserCount',
-                'optOutCount', 'customerStats', 'recentCustomers', 'rates', 'tab'
+                'optOutCount', 'customerStats', 'recentCustomers', 'rates', 'tab', 'activeRun'
             ),
             $this->bulkHistoryData()
         ));
@@ -690,25 +704,31 @@ class WhatsAppController extends Controller
     }
 
     /**
-     * Send one approved template to a batch of clients from the vendor's own number.
-     * Returns a per-recipient result so the composer can show exactly what failed and why.
+     * Start a bulk send.
+     *
+     * The composer used to drive the whole thing itself: post 25 recipients, wait, post the next
+     * 25, until the list ran out. That made the browser tab part of the machinery — closing it, or
+     * a laptop going to sleep, stopped a 17,000-person run halfway with nothing to pick it up.
+     *
+     * Now one call books the run and hands it to the queue. Everything that has to be refused
+     * (no connected number, a lapsed subscription, a media template with no file, an empty wallet)
+     * is still refused here, in front of the vendor, while the recipients themselves are claimed
+     * and messaged by SendVendorBulkWhatsAppJob. The composer follows along through
+     * bulkProgress(), and nothing breaks when it stops watching.
      */
     public function bulkSend(Request $request)
     {
-        // echo 'f';
         $request->validate([
-            'template'     => 'required|string',
-            'language'     => 'required|string',
-            'mode'         => 'required|in:clients,platform',
-            'run_id'       => 'required|string|max:40',
-            'client_ids'   => 'required_if:mode,clients|array|max:' . self::BULK_BATCH_LIMIT,
-            'client_ids.*' => 'integer',
-            'limit'        => 'required_if:mode,platform|integer|min:1|max:' . self::BULK_BATCH_LIMIT,
-            'params'       => 'nullable|array',
-            'params.*.key' => 'nullable|string|max:64',
+            'template'       => 'required|string',
+            'language'       => 'required|string',
+            'client_ids'     => 'nullable|array|max:' . self::BULK_SELECT_LIMIT,
+            'client_ids.*'   => 'integer',
+            'platform_limit' => 'nullable|integer|min:0|max:' . self::BULK_RUN_LIMIT,
+            'params'         => 'nullable|array',
+            'params.*.key'   => 'nullable|string|max:64',
             // The file for a media-header template. Meta fetches it themselves, so it has to be
             // a public URL — bulkHeaderMedia() below produces one from an upload.
-            'header_media' => 'nullable|url|max:1000',
+            'header_media'   => 'nullable|url|max:1000',
         ]);
 
         $storeId = Helpers::get_store_id();
@@ -730,200 +750,117 @@ class WhatsAppController extends Controller
             ], 402);
         }
 
-        $mode = $request->input('mode');
-        $platform = $mode === 'platform';
-        $runId = trim((string) $request->input('run_id'));
-
         WhatsAppService::ensureBulkSendTable();
+        WhatsAppBulkRun::ensureTable();
 
-        if ($platform) {
-            // No offset — the pool is walked by exclusion. An offset walk restarted at zero on
-            // every send, so a vendor asking for 500 got the same 500 lowest-numbered people
-            // every time, never reached the rest of the pool, and re-messaged whoever had
-            // already been served when a broken run was started again.
-            //
-            // outreachQuery drops everyone this store reached inside the rotation window; what
-            // is left here is the within-run exclusion, so a batch never re-offers someone an
-            // earlier batch of the same run already claimed. Between them, each batch returns the
-            // next unmessaged people.
-            //
-            // A subquery rather than an id list pulled into PHP: a 17,000-person run is hundreds
-            // of batches, and re-loading an ever-growing list of claimed numbers on each one
-            // turns a long send quadratic. This reads the unique key head-on (run_id, phone10).
-            $phone10 = $this->phone10Sql('t.phone');
-            // Column against column, so both sides are pinned to one collation — see
-            // collatedPhone(). The claim table and the contact tables can carry different ones.
-            $claimed = $this->collatedPhone('b.`phone10`');
-            $candidate = $this->collatedPhone($phone10);
-
-            $recipients = $this->outreachQuery($storeId)
-                ->whereNotExists(function ($q) use ($runId, $claimed, $candidate) {
-                    $q->select(DB::raw(1))->from('wa_bulk_sends as b')
-                        ->where('b.run_id', $runId)
-                        ->whereRaw("{$claimed} = {$candidate}");
-                })
-                ->orderByRaw($phone10)
-                ->limit((int) $request->input('limit'))
-                ->get()
-                ->map(fn($r) => (object) [
-                    'id'    => null,
-                    'name'  => trim((string) $r->name),
-                    'phone' => $r->phone,
-                ]);
-
-                // prx($recipients);
-        } else {
-            $recipients = $this->clientQuery($storeId)
-                ->whereIn('id', $request->input('client_ids'))
-                ->get(['id', 'f_name', 'phone'])
-                ->map(fn($c) => (object) [
-                    'id'    => $c->id,
-                    'name'  => trim((string) $c->f_name),
-                    'phone' => $c->phone,
-                ]);
-        }
-
-        // Per-message charges leave the wallet at dispatch, so price the whole batch before any
-        // of it goes out — a vendor would rather be told the batch is unaffordable than watch a
-        // campaign stop halfway through. The rate is uniform per mode: 'clients' recipients come
-        // from the store's own book, 'platform' recipients never do.
-        $rate = WhatsAppBilling::messageCost($platform ? 'platform' : 'own');
-        $batchCost = round($rate * $recipients->count(), 2);
-        if ($recipients->count() && WhatsAppBilling::walletBalance($storeId) < $batchCost) {
+        // One run at a time per store. Two overlapping runs would each claim under their own id,
+        // so the same customer could be messaged by both — and a double-clicked Send is exactly
+        // how that happens now that one press books a whole run rather than a single batch.
+        if ($live = WhatsAppBulkRun::current($storeId)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Wallet balance too low for this batch. ' . $recipients->count() . ' message'
-                    . ($recipients->count() === 1 ? '' : 's') . ' × ' . _price($rate) . ' = ' . _price($batchCost)
-                    . ' (GST included). Recharge your wallet and try again.',
-            ], 402);
+                'run_id'  => $live->run_id,
+                'message' => 'A bulk send is already running. Wait for it to finish, or stop it first.',
+            ], 409);
         }
 
-        $rawParams = array_values((array) $request->input('params', []));
-        $results = [];
-        $skipped = 0;
+        $clientIds = array_values(array_unique(array_map('intval', (array) $request->input('client_ids', []))));
+        $platformLimit = (int) $request->input('platform_limit', 0);
+        $requested = count($clientIds) + $platformLimit;
 
-        // Read once for the whole batch, then filled per recipient below. Kept so the history
-        // screen can show the vendor the words their customer read — the delivery log only has
-        // "template: {name}", and a template can be edited or deleted long before anyone asks.
-        $templateBody = WhatsAppService::templateBodyText($storeId, (string) $request->template, (string) $request->language);
+        if ($requested < 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pick at least one recipient before sending.',
+            ], 422);
+        }
 
         // A template is sent with the components it was created with. One with an image, video or
         // document header needs that file on every message, or Graph rejects the lot with
-        // "(#132012) Parameter format does not match format in the created template".
+        // "(#132012) Parameter format does not match format in the created template". Checked here
+        // rather than in the job so the vendor hears about it while they can still fix it.
         $headerFormat = WhatsAppService::templateHeaderFormat($storeId, (string) $request->template, (string) $request->language);
-        $headerComponent = null;
-        if (in_array($headerFormat, WhatsAppService::MEDIA_HEADERS, true)) {
-            $mediaUrl = trim((string) $request->input('header_media'));
-            if ($mediaUrl === '') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This template has ' . ($headerFormat === 'IMAGE' ? 'an image' : 'a ' . strtolower($headerFormat))
-                        . ' at the top, so a file has to be attached before it can be sent.',
-                ], 422);
-            }
-            $headerComponent = WhatsAppService::mediaHeaderComponent($headerFormat, $mediaUrl);
+        if (in_array($headerFormat, WhatsAppService::MEDIA_HEADERS, true) && trim((string) $request->input('header_media')) === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This template has ' . ($headerFormat === 'IMAGE' ? 'an image' : 'a ' . strtolower($headerFormat))
+                    . ' at the top, so a file has to be attached before it can be sent.',
+            ], 422);
         }
 
-        foreach ($recipients as $client) {
-            $name = trim((string) $client->name) ?: 'Customer';
-            $phone = trim((string) $client->phone);
-
-            // Claim the recipient before dispatching. The unique key on (run_id, phone10) is what
-            // guarantees the answer to "if the run breaks and I send again, do they get it twice?"
-            // — they do not. A repeat claim throws, and the person is skipped rather than
-            // messaged a second time. Claimed first, not after, so a crash between the claim and
-            // the API call still leaves the row behind to block a re-send.
-            $sendId = $this->claimBulkRecipient($runId, $storeId, $client, $phone, $name, $platform, $request->template);
-            if (!$sendId) {
-                $skipped++;
-                continue;
-            }
-
-            // {name} / {phone} are substituted inside whatever the vendor typed; the named
-            // slots ({{customer_name}}, {{customer_phone}}) are filled outright. Either way the
-            // number only ever lands in the message that number receives, so it stays hidden
-            // from the sender even in platform mode.
-            // Meta rejects newlines and runs of 4+ spaces inside a parameter.
-            $auto = ['customer_name' => $name, 'customer_phone' => $phone];
-            $tokens = [
-                '{name}'           => $name,
-                '{customer_name}'  => $name,
-                '{phone}'          => $phone,
-                '{customer_phone}' => $phone,
-            ];
-
-            $parameters = [];
-            $filled = [];
-            foreach ($rawParams as $i => $raw) {
-                // A slot is {key, value} for named templates; older callers send bare strings,
-                // which are positional in the order they arrive.
-                $key   = trim(is_array($raw) ? (string) ($raw['key'] ?? '') : '') ?: (string) ($i + 1);
-                $value = is_array($raw) ? (string) ($raw['value'] ?? '') : (string) $raw;
-
-                $value = array_key_exists($key, $auto) ? $auto[$key] : strtr($value, $tokens);
-
-                $clean = $this->sanitizeParam($value);
-                $filled[$key] = $clean;
-                $parameters[] = WhatsAppService::bodyParameter($key, $clean);
-            }
-            
-            // Header first — Meta matches components against the approved template in order.
-            $components = [];
-            if ($headerComponent) {
-                $components[] = $headerComponent;
-            }
-            if ($parameters) {
-                $components[] = ['type' => 'body', 'parameters' => $parameters];
-            }
-
-
-            // Context 'nearby' is what nearbyCappedPhones() counts — it must stay distinct
-            // from sends to the store's own book or the frequency cap silently stops working.
-            $res = $wa->sendTemplate(
-                $client->phone,
-                $request->template,
-                $request->language,
-                $components,
-                $platform ? 'nearby' : 'bulk'
-            );
-
-            DB::table('wa_bulk_sends')->where('id', $sendId)->update([
-                'wamid'      => $res['id'] ?? null,
-                'status'     => $res['success'] ? 'sent' : 'failed',
-                'error'      => $res['error'] ?? null,
-                // This recipient's own copy — {{customer_name}} carries their name, not the next
-                // person's, so the history reads back exactly what each number received.
-                'body'       => $templateBody ? mb_substr($this->fillTemplateBody($templateBody, $filled), 0, 2000) : null,
-                'language'   => mb_substr((string) $request->language, 0, 20),
-                'updated_at' => now(),
-            ]);
-
-            $results[] = [
-                'id'      => $client->id,
-                'name'    => $name,
-                // Platform users are not the vendor's contacts — report the outcome without
-                // handing their full number back to the sender.
-                'phone'   => $platform ? $this->maskPhone($client->phone) : $client->phone,
-                'success' => (bool) $res['success'],
-                'error'   => $res['error'] ?? null,
-            ];
+        // Per-message charges leave the wallet at dispatch. A run that empties the wallet partway
+        // stops by itself and says so, but a wallet that cannot cover even the opening batch is
+        // worth refusing outright rather than starting a send that halts immediately.
+        $rate = WhatsAppBilling::messageCost($clientIds ? 'own' : 'platform');
+        $upfront = round($rate * min($requested, SendVendorBulkWhatsAppJob::CHUNK), 2);
+        if (WhatsAppBilling::walletBalance($storeId) < $upfront) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Wallet balance too low to start this send — about ' . _price($upfront)
+                    . ' is needed to get going. Recharge your wallet and try again.',
+            ], 402);
         }
 
-        // These recipients have just entered this store's rotation window, so the displayed
-        // audience size is now out of date — drop it rather than let the composer keep offering
-        // people it can no longer reach for the next ten minutes.
-        if ($platform) {
-            $this->forgetOutreachCount($storeId);
-        }
+        // The run id is issued here rather than by the browser. It used to be the composer's job
+        // because the composer was what tied a run's batches together; the run row does that now,
+        // and a server-issued id cannot collide with one already in the claim table.
+        $runId = (string) Str::uuid();
+
+        WhatsAppBulkRun::open($storeId, $runId, [
+            'template'       => (string) $request->template,
+            'language'       => (string) $request->language,
+            'params'         => array_values((array) $request->input('params', [])),
+            'header_media'   => trim((string) $request->input('header_media')),
+            'client_ids'     => $clientIds,
+            'platform_limit' => $platformLimit,
+        ], $requested, [
+            'scope'    => 'vendor',
+            'template' => (string) $request->template,
+            'language' => (string) $request->language,
+            'audience' => $clientIds && $platformLimit ? 'mixed' : ($clientIds ? 'own' : 'platform'),
+        ]);
+
+        SendVendorBulkWhatsAppJob::dispatch($storeId, $runId);
 
         return response()->json([
             'success' => true,
-            'sent'    => count(array_filter($results, fn($r) => $r['success'])),
-            'failed'  => count(array_filter($results, fn($r) => !$r['success'])),
-            // Already messaged in this run — a resend after a broken batch, which is exactly what
-            // the claim is for. Reported so the composer can say so rather than double-counting.
-            'skipped' => $skipped,
-            'results' => $results,
+            'run_id'  => $runId,
+            'total'   => $requested,
+            'message' => 'Sending has started. It carries on in the background — you can close this page.',
+        ]);
+    }
+
+    /** How a run is going. Polled by the composer, and readable long after it stopped watching. */
+    public function bulkProgress(Request $request, $runId)
+    {
+        // Masked: platform recipients are not the vendor's contacts, and a failure report must
+        // not hand their full numbers back to the sender.
+        $progress = WhatsAppBulkRun::progress($runId, Helpers::get_store_id(), true);
+
+        return $progress
+            ? response()->json(['success' => true] + $progress)
+            : response()->json(['success' => false, 'message' => 'That send could not be found.'], 404);
+    }
+
+    /**
+     * Stop a run early.
+     *
+     * The pass carrying it finishes the message it is on and puts the run down — everyone past
+     * that point is left unclaimed and unmessaged, and the wallet is untouched by them.
+     */
+    public function bulkStop(Request $request, $runId)
+    {
+        $stopped = WhatsAppBulkRun::requestStop(
+            $runId,
+            Helpers::get_store_id(),
+            'Stopped from the composer. Nobody past this point was messaged.'
+        );
+
+        return response()->json([
+            'success' => $stopped,
+            'message' => $stopped
+                ? 'Stopping — the send halts within a few seconds.'
+                : 'That send has already finished.',
         ]);
     }
 
@@ -1120,52 +1057,6 @@ class WhatsAppController extends Controller
             Log::error('WhatsApp header media upload failed: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Could not upload that file. Try again.'], 500);
         }
-    }
-
-    /**
-     * Reserve one recipient for this run. Returns the claim row id, or null when someone else
-     * (an earlier batch, or a repeat of one) already holds them.
-     */
-    private function claimBulkRecipient(string $runId, int $storeId, $client, string $phone, string $name, bool $platform, ?string $template): ?int
-    {
-        $phone10 = substr(preg_replace('/[^0-9]/', '', $phone) ?? '', -10);
-        if ($phone10 === '') {
-            return null;
-        }
-
-        try {
-            return (int) DB::table('wa_bulk_sends')->insertGetId([
-                'store_id'   => $storeId,
-                'run_id'     => $runId,
-                'phone10'    => $phone10,
-                'phone'      => $phone,
-                'name'       => mb_substr($name, 0, 190),
-                'client_id'  => $client->id ?: null,
-                'audience'   => $platform ? 'platform' : 'own',
-                'template'   => $template ? mb_substr($template, 0, 190) : null,
-                'status'     => 'queued',
-                'sent_at'    => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        } catch (\Throwable $e) {
-            // Duplicate key — already claimed in this run. Any other failure is treated the same
-            // way on purpose: without a claim we cannot promise the person is not messaged twice,
-            // and not sending is the safer half of that bargain.
-            return null;
-        }
-    }
-
-    /** Put this recipient's parameter values into the template body, for the record kept of it. */
-    private function fillTemplateBody(string $body, array $values): string
-    {
-        $tokens = [];
-        foreach ($values as $key => $value) {
-            $tokens['{{' . $key . '}}'] = $value;
-            $tokens['{{ ' . $key . ' }}'] = $value;
-        }
-
-        return strtr($body, $tokens);
     }
 
     /**

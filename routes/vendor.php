@@ -116,6 +116,10 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/test-message', 'WhatsAppController@sendTestMessage')->name('whatsapp.test-message')->middleware('throttle:5,1');
         Route::get('whatsapp/bulk/recipients', 'WhatsAppController@bulkRecipients')->name('whatsapp.bulk.recipients');
         Route::post('whatsapp/bulk/send', 'WhatsAppController@bulkSend')->name('whatsapp.bulk.send');
+        // A send runs on the queue, so the composer follows it rather than driving it — and can
+        // pick the thread back up on a page it reopens hours later.
+        Route::get('whatsapp/bulk/progress/{runId}', 'WhatsAppController@bulkProgress')->name('whatsapp.bulk.progress');
+        Route::post('whatsapp/bulk/stop/{runId}', 'WhatsAppController@bulkStop')->name('whatsapp.bulk.stop');
         // Sent-message record: which numbers each batch went to, and what they were sent.
         // Bulk Message — composer, customer book and send history on one page. The history GET
         // stays as a redirect into its tab so old links keep working.

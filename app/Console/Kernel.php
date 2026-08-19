@@ -13,6 +13,7 @@ use App\Jobs\Scheduled\EmployeeAttendanceMarkJob;
 use App\Jobs\Scheduled\MonthlyMaintenanceReminderJob;
 use App\Jobs\Scheduled\PruneSharedPdfsJob;
 use App\Jobs\Scheduled\RegenerateSitemapJob;
+use App\Jobs\Scheduled\ResumeWhatsAppBulkRunsJob;
 use App\Jobs\Scheduled\RunWhatsAppCampaignsJob;
 use App\Jobs\Scheduled\SendDueHmisMessagesJob;
 use App\Jobs\Scheduled\SendAppointmentRebookRemindersJob;
@@ -117,6 +118,14 @@ class Kernel extends ConsoleKernel
         $schedule->job(new RunWhatsAppCampaignsJob)->everyFiveMinutes()
             ->timezone($tz)
             ->name('whatsapp-campaign-runner')
+            ->withoutOverlapping();
+
+        // Bulk WhatsApp sends run as a chain of queued passes. A worker lost mid-run (deploy,
+        // OOM, supervisor bounce) breaks the chain, and nothing is watching now that the send no
+        // longer lives in the sender's browser — this hands any stalled run to a fresh job.
+        $schedule->job(new ResumeWhatsAppBulkRunsJob)->everyFiveMinutes()
+            ->timezone($tz)
+            ->name('whatsapp-bulk-resume')
             ->withoutOverlapping();
 
         $schedule->job(new RegenerateSitemapJob)->dailyAt('00:00')

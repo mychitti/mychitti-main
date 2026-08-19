@@ -251,7 +251,10 @@ class OpdController extends Controller
             }
         }
 
-        return view('hmis::vendor.opd.create', compact('patients', 'doctors', 'nextToken', 'prefillPatient', 'prefillBooking'));
+        $complaintOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT);
+        $complaintGroups  = \App\Models\OpdComplaintGroup::listFor($store_id);
+
+        return view('hmis::vendor.opd.create', compact('patients', 'doctors', 'nextToken', 'prefillPatient', 'prefillBooking', 'complaintOptions', 'complaintGroups'));
     }
 
     public function store(Request $request)
@@ -297,7 +300,8 @@ class OpdController extends Controller
 
         $request->validate([
             'visit_time'       => 'nullable|date_format:H:i',
-            'chief_complaint'  => 'nullable|string|max:500',
+            'chief_complaint'   => 'nullable|array',
+            'chief_complaint.*' => 'string|max:150',
             'bp_systolic'      => 'nullable|integer|min:0|max:300',
             'bp_diastolic'     => 'nullable|integer|min:0|max:200',
             'temperature'      => 'nullable|numeric|min:90|max:110',
@@ -335,7 +339,7 @@ class OpdController extends Controller
             // honest answer there too — the booked slot time lives on the appointment, not here.
             'visit_time'          => $request->visit_time ?: now()->format('H:i'),
             'token_number'        => $request->token_number ?? $nextToken,
-            'visit_type'          => $visitType,
+            'chief_complaint'     => \App\Models\OpdClinicalTerm::absorb($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT, $request->chief_complaint),
             'chief_complaint'     => $request->chief_complaint,
             'bp_systolic'         => $request->bp_systolic,
             'bp_diastolic'        => $request->bp_diastolic,
@@ -471,8 +475,12 @@ class OpdController extends Controller
                 ->orderByDesc('created_at')->get()
             : collect();
 
+        $complaintOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT);
         $diagnosisOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS);
         $treatmentOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_TREATMENT);
+
+        // The sets this hospital keeps recording together, one tap each.
+        $complaintGroups = \App\Models\OpdComplaintGroup::listFor($store_id);
 
         // This hospital's own casemix — how often each term is used and which treatments actually
         // accompany which diagnosis here. Drives the ordering and the suggestion chips.
@@ -491,6 +499,7 @@ class OpdController extends Controller
         return view('hmis::vendor.opd.show', compact(
             'visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions',
             'labTests', 'radiologyTests', 'labOrders', 'radiologyStudies',
+            'complaintOptions', 'complaintGroups',
             'diagnosisOptions', 'treatmentOptions', 'upcomingVisits', 'termInsights'
         ));
     }
@@ -545,6 +554,54 @@ class OpdController extends Controller
         return Redirect::route('vendor.opd.show', $visit->id);
     }
 
+    /**
+     * Save the complaints currently selected as a named group.
+     *
+     * Re-using a name overwrites that group rather than erroring: "save as Diabetes screen" twice
+     * is a doctor refining the set, not a mistake to be scolded for.
+     */
+    public function complaintGroupStore(Request $request)
+    {
+        $request->validate([
+            'name'    => 'required|string|max:100',
+            'terms'   => 'required|array|min:1',
+            'terms.*' => 'string|max:150',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+        $terms    = collect($request->input('terms', []))
+            ->map(fn($term) => trim($term))->filter()->unique()->values();
+
+        if ($terms->isEmpty()) {
+            return response()->json(['ok' => false, 'msg' => 'Pick at least one complaint first.'], 422);
+        }
+
+        \App\Models\OpdComplaintGroup::ensureSchema();
+
+        // Anything the doctor typed by hand joins this store's complaint list too, so a group
+        // cannot hold a term the dropdown has never heard of.
+        \App\Models\OpdClinicalTerm::remember($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT, $terms->all());
+
+        $group = \App\Models\OpdComplaintGroup::updateOrCreate(
+            ['store_id' => $store_id, 'name' => trim($request->name)],
+            ['terms' => $terms->implode(', '), 'created_by' => auth('vendor_employee')->id() ?? auth('vendor')->id()]
+        );
+
+        return response()->json([
+            'ok'    => true,
+            'group' => ['id' => $group->id, 'name' => $group->name, 'terms' => $group->term_list],
+        ]);
+    }
+
+    public function complaintGroupDestroy(Request $request, $id)
+    {
+        \App\Models\OpdComplaintGroup::ensureSchema();
+
+        \App\Models\OpdComplaintGroup::forStore(Helpers::get_store_id())->where('id', $id)->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
     public function quickUpdate(Request $request, $id)
     {
         $this->ensureClinicalSchema();
@@ -554,6 +611,8 @@ class OpdController extends Controller
         $request->validate([
             'chief_complaint' => 'nullable|string|max:500',
             'notes'           => 'nullable|string',
+            'complaint'       => 'nullable|array',
+            'complaint.*'     => 'string|max:150',
             'diagnosis'       => 'nullable|array',
             'diagnosis.*'     => 'string|max:150',
             'treatment'       => 'nullable|array',
@@ -571,7 +630,10 @@ class OpdController extends Controller
         }
 
         $saved = [];
-        foreach (['diagnosis' => \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS,
+        // `complaint` writes to chief_complaint — the column it has always lived in, now holding a
+        // comma-separated list rather than a sentence, so old free text still reads back as one entry.
+        foreach (['complaint' => \App\Models\OpdClinicalTerm::TYPE_COMPLAINT,
+                  'diagnosis' => \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS,
                   'treatment' => \App\Models\OpdClinicalTerm::TYPE_TREATMENT] as $field => $type) {
             if (!$request->has($field)) {
                 continue;
@@ -584,8 +646,9 @@ class OpdController extends Controller
 
             \App\Models\OpdClinicalTerm::remember($store_id, $type, $terms->all());
 
-            $visit->{$field} = $terms->isEmpty() ? null : $terms->implode(', ');
-            $saved[$field]   = $terms->all();
+            $column = $field === 'complaint' ? 'chief_complaint' : $field;
+            $visit->{$column} = $terms->isEmpty() ? null : $terms->implode(', ');
+            $saved[$field]    = $terms->all();
         }
 
         $visit->save();
@@ -843,7 +906,11 @@ class OpdController extends Controller
         $patients = Patient::where('store_id', $store_id)->where('status', 1)->orderBy('name')->get();
         $doctors  = DoctorProfile::where('store_id', $store_id)->with('employee')->get();
 
-        return view('hmis::vendor.opd.edit', compact('visit', 'patients', 'doctors'));
+        $complaintOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT);
+
+        $complaintGroups = \App\Models\OpdComplaintGroup::listFor($store_id);
+
+        return view('hmis::vendor.opd.edit', compact('visit', 'patients', 'doctors', 'complaintOptions', 'complaintGroups'));
     }
 
     public function update(Request $request, $id)
@@ -853,7 +920,8 @@ class OpdController extends Controller
 
         $request->validate([
             'visit_type'       => 'required|in:' . implode(',', array_keys(OpdVisit::VISIT_TYPES)),
-            'chief_complaint'  => 'nullable|string|max:500',
+            'chief_complaint'   => 'nullable|array',
+            'chief_complaint.*' => 'string|max:150',
             'bp_systolic'      => 'nullable|integer|min:0|max:300',
             'bp_diastolic'     => 'nullable|integer|min:0|max:200',
             'temperature'      => 'nullable|numeric|min:90|max:110',
@@ -867,7 +935,7 @@ class OpdController extends Controller
 
         $visit->update([
             'visit_type'        => $request->visit_type,
-            'chief_complaint'   => $request->chief_complaint,
+            'chief_complaint'   => \App\Models\OpdClinicalTerm::absorb($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT, $request->chief_complaint),
             'bp_systolic'       => $request->bp_systolic,
             'bp_diastolic'      => $request->bp_diastolic,
             'temperature'       => $request->temperature,

@@ -1125,14 +1125,18 @@ $countryCode = strtolower($country ? $country->value : 'auto');
     <script>
         "use strict";
 
+        // Only attaches where the page actually has a tel input. Passing null threw, and the throw
+        // took the digit-filtering handler below down with it on every page without one.
         const input = document.querySelector('input[type="tel"]');
-        window.intlTelInput(input, {
-            initialCountry: "{{ $countryCode }}",
-            utilsScript: "{{ asset('public/assets/admin/intltelinput/js/utils.js') }}",
-            autoInsertDialCode: true,
-            nationalMode: false,
-            formatOnDisplay: false,
-        });
+        if (input) {
+            window.intlTelInput(input, {
+                initialCountry: "{{ $countryCode }}",
+                utilsScript: "{{ asset('public/assets/admin/intltelinput/js/utils.js') }}",
+                autoInsertDialCode: true,
+                nationalMode: false,
+                formatOnDisplay: false,
+            });
+        }
 
 
         function keepNumbersAndPlus(inputString) {

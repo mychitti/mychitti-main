@@ -36,7 +36,7 @@ class OpdTermCatalogueController extends Controller
         }
 
         $type = $request->get('type', OpdClinicalTerm::TYPE_DIAGNOSIS);
-        if (!in_array($type, [OpdClinicalTerm::TYPE_DIAGNOSIS, OpdClinicalTerm::TYPE_TREATMENT], true)) {
+        if (!in_array($type, OpdClinicalTerm::TYPES, true)) {
             $type = OpdClinicalTerm::TYPE_DIAGNOSIS;
         }
 
@@ -61,7 +61,7 @@ class OpdTermCatalogueController extends Controller
     {
         $request->validate([
             'category' => 'required|string|max:40',
-            'type'     => 'required|in:' . OpdClinicalTerm::TYPE_DIAGNOSIS . ',' . OpdClinicalTerm::TYPE_TREATMENT,
+            'type'     => 'required|in:' . implode(',', OpdClinicalTerm::TYPES),
             'names'    => 'required|string',
         ]);
 

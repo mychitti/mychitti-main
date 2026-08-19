@@ -490,6 +490,59 @@
         color: #6d28d9;
     }
 
+    /* ── Complaints ──
+       Amber, so what the patient reports reads apart at a glance from what the doctor
+       concluded (blue diagnosis) and what was given (violet treatment). */
+    .cc-badge {
+        display: inline-block;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+        border-radius: 5px;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 2px 8px;
+        margin: 0 4px 4px 0;
+    }
+    #ccEdit .select2-container--default .select2-selection--multiple {
+        border-color: #e7eaf3;
+        min-height: 34px;
+    }
+    #ccEdit .cc-select2 .select2-selection__choice {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 1px 6px;
+    }
+    .cc-group {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        border-radius: 999px;
+        margin: 0 6px 6px 0;
+        overflow: hidden;
+    }
+    .cc-group-apply {
+        border: 0;
+        background: transparent;
+        color: #1d4ed8;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 3px 4px 3px 11px;
+        cursor: pointer;
+    }
+    .cc-group-del {
+        color: #93a3b8;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0 9px 0 4px;
+        cursor: pointer;
+    }
+    .cc-group-del:hover { color: #dc3545; }
+
     /* ── Tab Content Panes ── */
     .tab-pane {
         display: none;
@@ -994,11 +1047,33 @@
                                 @endif
                             </div>
                             <div class="card-body py-3" id="ccView">
-                                <span id="ccText" style="font-size:13px; color:#334155;">{{ $visit->chief_complaint ?: '—' }}</span>
+                                <div id="ccBadges">
+                                    @forelse($visit->complaint_list as $term)
+                                        <span class="cc-badge">{{ $term }}</span>
+                                    @empty
+                                        <span class="text-muted small">Not recorded yet.</span>
+                                    @endforelse
+                                </div>
                             </div>
                             <div class="card-body py-3" id="ccEdit" style="display:none;">
-                                <textarea class="form-control form-control-sm" id="ccInput" rows="3" placeholder="Enter chief complaint…">{{ $visit->chief_complaint }}</textarea>
-                                <div class="mt-2 d-flex gap-2">
+                                <div class="form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Complaints</label>
+                                    {{-- id overridden so this screen's own save/badge code keeps
+                                         addressing it as ccSelect; the groups row, the Save-as-group
+                                         button and their behaviour all come from the partial. --}}
+                                    {{-- autoInit off: this card starts hidden, and Select2 sizes
+                                         itself wrong when built against a hidden container. Built
+                                         on first open instead, by initCcSelect2(). --}}
+                                    @include('hmis::vendor.opd._complaint_picker', [
+                                        'id'       => 'ccSelect',
+                                        'selected' => $visit->complaint_list,
+                                        'options'  => $complaintOptions ?? [],
+                                        'groups'   => $complaintGroups ?? [],
+                                        'autoInit' => false,
+                                    ])
+                                </div>
+
+                                <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
                                     <button class="btn btn-sm btn-primary" onclick="saveField('cc')">Save</button>
                                     <button class="btn btn-sm btn-outline-secondary" onclick="toggleEdit('cc')">Cancel</button>
                                 </div>
@@ -1327,7 +1402,10 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-5">
+                            {{-- Full width, not a narrow side column: the medicines table is read
+                                 down its columns — same dose, same duration across five lines —
+                                 which a 5-of-12 column cannot show without wrapping every cell. --}}
+                            <div class="col-12">
                                 <div class="card border shadow-none mb-3">
                                     <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                                         <h6 class="mb-0 font-weight-bold" style="font-size:12px">Medicines</h6>
@@ -1346,50 +1424,38 @@
                                             <ul id="pharmacySuggestions"></ul>
                                         </div>
                                     </div>
-
-                                    <div class="card-body p-2" id="medTable" style="max-height:280px; overflow-y:auto;">
-                                        @if($currentPrescription && $currentPrescription->items->count())
-                                            @foreach($currentPrescription->items as $i => $item)
-                                                <div class="med-row" data-index="{{ $i }}">
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <span class="font-weight-bold text-dark small">Medication #{{ $i+1 }}</span>
-                                                        <button type="button" class="btn-remove-row" onclick="removeCustomMedRow(this)"><i class="tio-delete-outlined"></i></button>
-                                                    </div>
-                                                    <input type="hidden" name="medicines[{{ $i }}][inventory_item_id]" class="med-inv-id" value="{{ $item->inventory_item_id }}">
-                                                    <input type="text" name="medicines[{{ $i }}][medicine_name]" class="form-control form-control-sm mb-1 font-weight-bold" placeholder="Medicine Name" value="{{ $item->medicine_name }}" required>
-                                                    <div class="row no-gutters gap-1">
-                                                        <div class="col"><input type="text" name="medicines[{{ $i }}][dosage]" class="form-control form-control-sm" placeholder="Dosage" value="{{ $item->dosage }}"></div>
-                                                        <div class="col"><input type="text" name="medicines[{{ $i }}][frequency]" class="form-control form-control-sm" placeholder="Freq" value="{{ $item->frequency }}"></div>
-                                                        <div class="col"><input type="text" name="medicines[{{ $i }}][duration]" class="form-control form-control-sm" placeholder="Dur" value="{{ $item->duration }}"></div>
-                                                        <div class="col" style="max-width:50px;"><input type="number" name="medicines[{{ $i }}][quantity]" class="form-control form-control-sm" placeholder="Qty" value="{{ $item->quantity }}"></div>
-                                                    </div>
-                                                    <input type="text" name="medicines[{{ $i }}][instructions]" class="form-control form-control-sm mt-1" placeholder="Instructions (Optional)" value="{{ $item->instructions }}">
-                                                </div>
-                                            @endforeach
-                                        @else
-                                            {{-- First default row --}}
-                                            <div class="med-row" data-index="0">
-                                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                                    <span class="font-weight-bold text-dark small">Medication #1</span>
-                                                    <button type="button" class="btn-remove-row" onclick="removeCustomMedRow(this)"><i class="tio-delete-outlined"></i></button>
-                                                </div>
-                                                <input type="hidden" name="medicines[0][inventory_item_id]" class="med-inv-id">
-                                                <input type="text" name="medicines[0][medicine_name]" class="form-control form-control-sm mb-1 font-weight-bold" placeholder="Medicine Name" required>
-                                                <div class="row no-gutters gap-1">
-                                                    <div class="col"><input type="text" name="medicines[0][dosage]" class="form-control form-control-sm" placeholder="Dosage"></div>
-                                                    <div class="col"><input type="text" name="medicines[0][frequency]" class="form-control form-control-sm" placeholder="Freq"></div>
-                                                    <div class="col"><input type="text" name="medicines[0][duration]" class="form-control form-control-sm" placeholder="Dur"></div>
-                                                    <div class="col" style="max-width:50px;"><input type="number" name="medicines[0][quantity]" class="form-control form-control-sm" placeholder="Qty"></div>
-                                                </div>
-                                                <input type="text" name="medicines[0][instructions]" class="form-control form-control-sm mt-1" placeholder="Instructions (Optional)">
-                                            </div>
-                                        @endif
+                                    <div class="table-responsive" style="max-height:340px; overflow-y:auto;">
+                                        <table class="table rx-table mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width:34px;">#</th>
+                                                    <th style="width:92px;">Type</th>
+                                                    <th style="min-width:220px;">Medicine</th>
+                                                    <th style="width:130px;">Dose</th>
+                                                    <th style="width:130px;">When</th>
+                                                    <th style="width:130px;">Frequency</th>
+                                                    <th style="width:110px;">Duration</th>
+                                                    <th style="width:74px;">Qty</th>
+                                                    <th style="min-width:160px;">Notes / Instructions</th>
+                                                    <th style="width:40px;"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="medTable">
+                                                @if($currentPrescription && $currentPrescription->items->count())
+                                                    @foreach($currentPrescription->items as $i => $item)
+                                                        @include('hmis::vendor.prescription._med_row', ['i' => $i, 'item' => $item])
+                                                    @endforeach
+                                                @else
+                                                    @include('hmis::vendor.prescription._med_row', ['i' => 0, 'item' => null])
+                                                @endif
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="d-flex gap-2">
+                        <div class="rx-actions">
                             <button type="submit" class="btn btn-sm btn-primary" name="action" value="draft">
                                 <i class="tio-save"></i> Save Draft
                             </button>
@@ -1399,6 +1465,7 @@
                             @if($currentPrescription)
                                 <button type="button" class="btn btn-sm btn-light" onclick="togglePrescriptionEdit(false)">Cancel</button>
                             @endif
+                            @include('hmis::vendor.prescription._rx_language', ['selected' => $currentPrescription->language ?? null])
                         </div>
                     </form>
                 </div>
@@ -2160,28 +2227,56 @@
         const showing = edit.style.display === 'none';
         view.style.display = showing ? 'none' : '';
         edit.style.display = showing ? '' : 'none';
+        // Select2 needs a visible container to size itself, so build it on first open.
+        if (field === 'cc' && showing) initCcSelect2();
+    }
+
+    let ccSelect2Ready = false;
+    function initCcSelect2() {
+        if (ccSelect2Ready || typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+        jQuery('#ccSelect').select2({
+            tags: true,
+            width: '100%',
+            tokenSeparators: [','],
+            placeholder: 'Select or type a complaint…',
+            containerCssClass: 'cc-select2'
+        });
+        ccSelect2Ready = true;
     }
 
     function saveField(field) {
-        const isCC    = field === 'cc';
-        const value   = document.getElementById(isCC ? 'ccInput' : 'notesInput').value;
-        const textEl  = document.getElementById(isCC ? 'ccText' : 'notesText');
+        // Complaints are a term list now, like diagnosis and treatment; notes stay free text.
+        const isCC  = field === 'cc';
+        const terms = isCC ? selectedTerms('ccSelect') : [];
+        const value = isCC ? '' : document.getElementById('notesInput').value;
 
         fetch(opdQuickUpdateUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify(isCC ? { chief_complaint: value } : { notes: value })
+            body: JSON.stringify(isCC ? { complaint: terms } : { notes: value })
         })
         .then(r => r.json())
         .then(data => {
-            if (data.ok) {
-                textEl.textContent = value || '—';
-                toggleEdit(field);
-                updateSaveTime();
+            if (!data.ok) return;
+
+            if (isCC) {
+                renderComplaintBadges(terms);
+            } else {
+                document.getElementById('notesText').textContent = value || '—';
             }
+            toggleEdit(field);
+            updateSaveTime();
         })
         .catch(() => alert('Save failed.'));
     }
+
+    function renderComplaintBadges(terms) {
+        const box = document.getElementById('ccBadges');
+        box.innerHTML = terms.length
+            ? terms.map(t => `<span class="cc-badge">${t}</span>`).join('')
+            : '<span class="text-muted small">Not recorded yet.</span>';
+    }
+
 
     // ── Diagnosis & Treatment (Select2 tags: pick from the list or type a new term) ──
     let dxSelect2Ready = false;
@@ -2582,42 +2677,37 @@
         medTable.querySelectorAll('input[name$="[medicine_name]"]').forEach(rxBannedCheck);
     })();
 
+    // Built from the same partial the table renders, so this screen can never drift from the
+    // standalone Rx form again — which is exactly how it ended up with its own markup.
     function addCustomMedRow(prefill) {
         medIdx++;
-        const row = document.createElement('div');
-        row.className = 'med-row';
-        row.dataset.index = medIdx;
-        row.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <span class="font-weight-bold text-dark small">Medication #${medIdx+1}</span>
-                <button type="button" class="btn-remove-row" onclick="removeCustomMedRow(this)"><i class="tio-delete-outlined"></i></button>
-            </div>
-            <input type="hidden" name="medicines[${medIdx}][inventory_item_id]" class="med-inv-id" value="${prefill ? prefill.id : ''}">
-            <input type="text" name="medicines[${medIdx}][medicine_name]" class="form-control form-control-sm mb-1 font-weight-bold" placeholder="Medicine Name" value="${prefill ? prefill.name : ''}" required>
-            <div class="row no-gutters gap-1">
-                <div class="col"><input type="text" name="medicines[${medIdx}][dosage]" class="form-control form-control-sm" placeholder="Dosage"></div>
-                <div class="col"><input type="text" name="medicines[${medIdx}][frequency]" class="form-control form-control-sm" placeholder="Freq"></div>
-                <div class="col"><input type="text" name="medicines[${medIdx}][duration]" class="form-control form-control-sm" placeholder="Dur"></div>
-                <div class="col" style="max-width:50px;"><input type="number" name="medicines[${medIdx}][quantity]" class="form-control form-control-sm" placeholder="Qty"></div>
-            </div>
-            <input type="text" name="medicines[${medIdx}][instructions]" class="form-control form-control-sm mt-1" placeholder="Instructions (Optional)">
-        `;
+        const tpl = document.getElementById('medRowTpl').innerHTML.replace(/__IDX__/g, medIdx);
+        // Parsed inside a <tbody>: a <tr> assigned to a <div>'s innerHTML is discarded outright.
+        const host = document.createElement('tbody');
+        host.innerHTML = tpl;
+        const row = host.firstElementChild;
+
+        if (prefill) {
+            const nameInput = row.querySelector('input[name$="[medicine_name]"]');
+            if (nameInput) nameInput.value = prefill.name;
+            const invInput = row.querySelector('.med-inv-id');
+            if (invInput && prefill.id) invInput.value = prefill.id;
+        }
+
         document.getElementById('medTable').appendChild(row);
         rxBannedCheck(row.querySelector('input[name$="[medicine_name]"]'));
         row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    // Row numbers come from a CSS counter now, so nothing has to be renumbered after a delete.
     function removeCustomMedRow(btn) {
         const rows = document.querySelectorAll('#medTable .med-row');
         if (rows.length <= 1) {
             btn.closest('.med-row').querySelectorAll('input').forEach(el => el.value = '');
+            btn.closest('.med-row').querySelectorAll('select').forEach(el => el.selectedIndex = 0);
             return;
         }
         btn.closest('.med-row').remove();
-        // Re-index remaining rows
-        document.querySelectorAll('#medTable .med-row').forEach((row, i) => {
-            row.querySelector('.small').textContent = `Medication #${i+1}`;
-        });
     }
 
     // Pharmacy Search
@@ -2695,4 +2785,8 @@
     }
 </script>
 @endpush
+{{-- Hidden template for new medicine rows — the same partial the table renders. --}}
+<template id="medRowTpl">
+    @include('hmis::vendor.prescription._med_row', ['i' => '__IDX__', 'item' => null])
+</template>
 @endsection

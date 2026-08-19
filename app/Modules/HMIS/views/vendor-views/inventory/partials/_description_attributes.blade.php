@@ -1,5 +1,9 @@
-@php $description_attributes = $description_attributes ?? []; @endphp
-<div class="product_elem col-md-8 my-2 p-2"
+@php
+    $description_attributes = $description_attributes ?? [];
+    // Full width on its own; the item form pairs it with Custom Attributes and passes col-md-6.
+    $width = $width ?? 'col-12';
+@endphp
+<div class="product_elem desc-attr-panel {{ $width }} my-2 p-2"
     style="background: #fffdf6; border-radius: 10px; border: 2px dashed #e2e2e2;">
     <div class="mb-2 d-flex justify-content-between align-items-center">
         <label class="font-weight-bold mb-0">Description Attributes</label>

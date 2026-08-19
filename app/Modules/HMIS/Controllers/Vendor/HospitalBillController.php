@@ -98,9 +98,13 @@ class HospitalBillController extends Controller
         $context   = 'ipd';
         $contextId = $admissionId;
 
+        // An admission has no intake visit of its own, so only the patient's standing rows apply.
+        $customInfo   = DentalIntakeController::decode($patient->custom_info ?? null);
+        $presetLabels = DentalIntakeController::PRESET_LABELS;
+
         return view('hmis::vendor.hospital.create_bill', compact(
             'patient', 'serviceItems', 'medicineItems',
-            'context', 'contextId', 'admission'
+            'context', 'contextId', 'admission', 'customInfo', 'presetLabels'
         ));
     }
 
@@ -156,9 +160,14 @@ class HospitalBillController extends Controller
         $context   = 'opd';
         $contextId = $visitId;
 
+        // Whatever the intake recorded for this patient and this visit, ready to print above the
+        // lines. Visit values win over the patient's standing ones — see mergedFor().
+        $customInfo   = DentalIntakeController::mergedFor($visit);
+        $presetLabels = DentalIntakeController::PRESET_LABELS;
+
         return view('hmis::vendor.hospital.create_bill', compact(
             'patient', 'serviceItems', 'medicineItems',
-            'context', 'contextId', 'visit'
+            'context', 'contextId', 'visit', 'customInfo', 'presetLabels'
         ));
     }
 
@@ -270,6 +279,9 @@ class HospitalBillController extends Controller
                 'tax_type'       => $taxType,
                 'reference_number' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : [],
                 'meta'           => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : null,
+                // Intake's "more info", as edited on this screen. Same label → value shape the
+                // other billing screens write, so the printed bill needs no special handling.
+                'custom_headers' => json_encode(DentalIntakeController::rowsFrom($request)),
             ]);
 
             $invIds = $request->input('inv_id', []);

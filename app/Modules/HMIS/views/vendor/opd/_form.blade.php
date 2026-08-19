@@ -127,17 +127,61 @@
             </div>
             <div class="modal-body">
                 <div id="quickPatientError" class="alert alert-danger" style="display:none;"></div>
-                <div class="form-group">
-                    <label class="input-label">Name <span class="text-danger">*</span></label>
-                    <input type="text" id="qp_name" class="form-control" placeholder="Full name" >
+                <div class="form-row">
+                    <div class="form-group col-md-7">
+                        <label class="input-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" id="qp_name" class="form-control" placeholder="Full name">
+                    </div>
+                    <div class="form-group col-md-5">
+                        <label class="input-label">Phone Number <span class="text-danger">*</span></label>
+                        {{-- Deliberately type="text", not type="tel": the layout attaches
+                             intl-tel-input to the first tel input on the page, which puts a country
+                             flag on the box and auto-inserts "+91 " — neither of which can live with
+                             a hard 10-digit cap. --}}
+                        <input type="text" id="qp_phone" class="form-control" inputmode="numeric"
+                            maxlength="10" autocomplete="off" placeholder="10-digit mobile">
+                        <small class="text-danger d-none" id="qp_phone_err" style="font-size:9.5px;"></small>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="input-label">Phone Number</label>
-                    <input type="text" id="qp_phone" class="form-control" placeholder="Phone number">
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label class="input-label">Age <span class="text-danger">*</span></label>
+                        <input type="number" id="qp_age" class="form-control" min="0" max="150"
+                            autocomplete="off" placeholder="Years">
+                    </div>
+                    <div class="form-group col-md-8">
+                        <label class="input-label">Gender <span class="text-danger">*</span></label>
+                        <select id="qp_gender" class="form-control">
+                            <option value="">Select</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group mb-0">
-                    <label class="input-label">Address</label>
+
+                <div class="form-group">
+                    <label class="input-label">Address <span class="text-danger">*</span></label>
                     <input type="text" id="qp_address" class="form-control" placeholder="Address">
+                </div>
+
+                {{-- More Info — the same named chips the intake and the bill use, so anything
+                     recorded here is already in the shape the bill prints.
+
+                     No name= attributes anywhere in this modal on purpose: it sits inside the OPD
+                     <form>, so a named input would be posted with the visit as well. The rows are
+                     read by class and sent on the quick-save AJAX instead. --}}
+                <div class="form-group mb-0">
+                    <label class="input-label">More Info <span class="text-muted" style="font-weight:400;">— optional</span></label>
+                    <div id="qp-custom-buttons" class="mb-2">
+                        @foreach (\App\Modules\HMIS\Controllers\Vendor\DentalIntakeController::PRESET_LABELS as $qpLabel)
+                            <button type="button" class="btn btn-outline-primary btn-sm mr-2 mb-2 qp-cf-btn"
+                                data-label="{{ $qpLabel }}" style="border-radius:999px;font-size:12px;">+ {{ $qpLabel }}</button>
+                        @endforeach
+                        <button type="button" class="btn btn-outline-danger btn-sm mr-2 mb-2 qp-cf-btn"
+                            data-label="Other" style="border-radius:999px;font-size:12px;">+ Other</button>
+                    </div>
+                    <div id="qp-custom-fields"></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -164,20 +208,132 @@ $(function () {
         if (e.params.data.id === 'add_new') {
             // Reset back to empty so the select stays "blank" until patient is created
             $(this).val('').trigger('change');
-            $('#qp_name, #qp_phone, #qp_address').val('');
+            $('#qp_name, #qp_phone, #qp_age, #qp_address').val('');
+            $('#qp_gender').val('');
+            $('#qp_phone').removeClass('is-invalid');
+            $('#qp_phone_err').addClass('d-none').text('');
+            // Clear any rows left from a previous patient and put every chip back.
+            $('#qp-custom-fields').empty();
+            $('#qp-custom-buttons button').show();
             $('#quickPatientError').hide();
             $('#quickPatientModal').modal('show');
         }
     });
 
+    // Phone — digits only, never more than ten, and told as it is typed whether it is a usable
+    // number. The box holds the national number alone (no country code), so the rule is exact:
+    // ten digits starting 6-9.
+    function qpPhoneCheck(showWhileEmpty) {
+        const v   = $('#qp_phone').val();
+        const err = $('#qp_phone_err');
+        let msg   = '';
+
+        if (v.length === 0) {
+            msg = showWhileEmpty ? 'Phone number is required.' : '';
+        } else if (v.length < 10) {
+            msg = 'Phone number must be 10 digits — ' + (10 - v.length) + ' to go.';
+        } else if (!/^[6-9]\d{9}$/.test(v)) {
+            msg = 'Not a valid mobile number — it should start with 6, 7, 8 or 9.';
+        }
+
+        err.text(msg).toggleClass('d-none', msg === '');
+        $('#qp_phone').toggleClass('is-invalid', msg !== '');
+        return msg === '';
+    }
+
+    // `input` rather than `keyup` so pasting and autofill are caught too. Anything that is not a
+    // digit is dropped on the spot, and the value is cut at ten.
+    $('#qp_phone').on('input', function () {
+        const kept = this.value.replace(/\D/g, '').slice(0, 10);
+        if (kept !== this.value) this.value = kept;
+        qpPhoneCheck(false);
+    }).on('blur', function () {
+        qpPhoneCheck(true);
+    });
+
+    // More Info rows — same interaction as the intake screen and the advanced bill: a named chip
+    // drops a row with that label fixed, "+ Other" drops one where the label is typed too.
+    $('#qp-custom-buttons').on('click', '.qp-cf-btn', function () {
+        const label = $(this).data('label');
+        let row;
+
+        if (label === 'Other') {
+            row = `
+            <div class="form-group qp-cf-row" data-label="Other">
+                <div class="d-flex">
+                    <input type="text" class="form-control form-control-sm mr-2 qp-cf-label" placeholder="Label">
+                    <input type="text" class="form-control form-control-sm mr-2 qp-cf-value" placeholder="Value">
+                    <a type="button" class="text-danger qp-cf-remove" style="align-self:center;"><i class="tio-delete-outlined"></i></a>
+                </div>
+            </div>`;
+        } else {
+            row = `
+            <div class="form-group qp-cf-row" data-label="${label}">
+                <label style="font-size:12px;font-weight:600;color:#56606e;">${label}</label>
+                <div class="d-flex">
+                    <input type="hidden" class="qp-cf-label" value="${label}">
+                    <input type="text" class="form-control form-control-sm mr-2 qp-cf-value" placeholder="${label}">
+                    <a type="button" class="text-danger qp-cf-remove" style="align-self:center;"><i class="tio-delete-outlined"></i></a>
+                </div>
+            </div>`;
+
+            $(this).hide();
+        }
+
+        $('#qp-custom-fields').append(row);
+    });
+
+    $('#qp-custom-fields').on('click', '.qp-cf-remove', function () {
+        const $row  = $(this).closest('.qp-cf-row');
+        const label = $row.data('label');
+
+        $('#qp-custom-buttons button').each(function () {
+            if ($(this).data('label') === label) $(this).show();
+        });
+
+        $row.remove();
+    });
+
     // Save new patient via AJAX
     $('#quickPatientSaveBtn').on('click', function () {
         const name    = $('#qp_name').val().trim();
-        const phone   = $('#qp_phone').val().trim();
+        // Separators stripped before checking and before sending, so "+91 98765 43210" and
+        // "9876543210" are the same number here, on the intake screen and on the server.
+        const phone   = $('#qp_phone').val().trim().replace(/[\s\-()]/g, '');
+        const age     = $('#qp_age').val().trim();
+        const gender  = $('#qp_gender').val();
         const address = $('#qp_address').val().trim();
+
+        // Posted as header_label[] / header_field[] — the same keys the intake form and the bill
+        // submit, so the server reads them with one shared helper.
+        const headerLabels = [];
+        const headerFields = [];
+        $('#qp-custom-fields .qp-cf-row').each(function () {
+            const l = $(this).find('.qp-cf-label').val().trim();
+            const v = $(this).find('.qp-cf-value').val().trim();
+            if (l && v) { headerLabels.push(l); headerFields.push(v); }
+        });
 
         if (!name) {
             $('#quickPatientError').text('Name is required.').show();
+            return;
+        }
+        if (!qpPhoneCheck(true)) {
+            $('#qp_phone').focus();
+            return;
+        }
+        if (age === '' || isNaN(age) || Number(age) < 0 || Number(age) > 150) {
+            $('#quickPatientError').text('Enter an age between 0 and 150.').show();
+            $('#qp_age').focus();
+            return;
+        }
+        if (!gender) {
+            $('#quickPatientError').text('Gender is required.').show();
+            $('#qp_gender').focus();
+            return;
+        }
+        if (!address) {
+            $('#quickPatientError').text('Address is required.').show();
             return;
         }
 
@@ -189,10 +345,14 @@ $(function () {
             url: '{{ route("vendor.patient.quick-save") }}',
             method: 'POST',
             data: {
-                _token:  '{{ csrf_token() }}',
-                name:    name,
-                phone:   phone,
-                address: address,
+                _token:       '{{ csrf_token() }}',
+                name:         name,
+                phone:        phone,
+                age:          age,
+                gender:       gender,
+                address:      address,
+                header_label: headerLabels,
+                header_field: headerFields,
             },
             success: function (res) {
                 if (res.success) {

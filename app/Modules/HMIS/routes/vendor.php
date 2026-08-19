@@ -14,6 +14,7 @@ Route::group(['middleware' => ['planwise:hospital_manage']], function () {
     require __DIR__ . '/vendor/nurse.php';
     require __DIR__ . '/vendor/ward.php';
     require __DIR__ . '/vendor/opd.php';
+    require __DIR__ . '/vendor/dental.php';
     require __DIR__ . '/vendor/ipd.php';
     require __DIR__ . '/vendor/consent.php';
     require __DIR__ . '/vendor/billing.php';

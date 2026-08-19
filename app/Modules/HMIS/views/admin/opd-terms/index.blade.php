@@ -31,6 +31,7 @@
                     <label class="input-label mb-1" style="font-size:12px;">List</label>
                     <select name="type" class="form-control form-control-sm" style="min-width:160px;"
                             onchange="this.form.submit()">
+                        <option value="complaint" {{ $type === 'complaint' ? 'selected' : '' }}>Complaint</option>
                         <option value="diagnosis" {{ $type === 'diagnosis' ? 'selected' : '' }}>Diagnosis</option>
                         <option value="treatment" {{ $type === 'treatment' ? 'selected' : '' }}>Treatment</option>
                     </select>

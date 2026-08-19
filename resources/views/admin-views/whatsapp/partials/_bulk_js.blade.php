@@ -1,11 +1,16 @@
     <script>
         (function () {
             var TEMPLATES = @json($templates);
-            var BATCH = {{ \App\Http\Controllers\Admin\WhatsAppBulkController::BATCH_LIMIT }};
             var RECIPIENTS_URL = '{{ route('admin.business-settings.third-party.whatsapp-bulk.recipients') }}';
             var SEND_URL = '{{ route('admin.business-settings.third-party.whatsapp-bulk.send') }}';
             var MEDIA_URL = '{{ route('admin.business-settings.third-party.whatsapp-bulk.header-media') }}';
             var HISTORY_URL = '{{ route('admin.business-settings.third-party.whatsapp-bulk', ['tab' => 'history']) }}';
+            // Built with a placeholder id: the run being watched changes, the route does not.
+            var PROGRESS_URL = '{{ route('admin.business-settings.third-party.whatsapp-bulk.progress', ['runId' => '__RUN__']) }}';
+            var STOP_URL = '{{ route('admin.business-settings.third-party.whatsapp-bulk.stop', ['runId' => '__RUN__']) }}';
+            // A send already in flight when this page loaded. It belongs to the platform, not to
+            // the tab that started it, so any reopened composer picks it back up.
+            var RUNNING = @json($activeRun->run_id ?? null);
             var CSRF = '{{ csrf_token() }}';
 
             // Built by concatenation so Blade never sees a literal double-brace in this script.
@@ -42,6 +47,8 @@
             var $bar = document.getElementById('wb-progress-bar');
             var $ptext = document.getElementById('wb-progress-text');
             var $results = document.getElementById('wb-results');
+            var $stopWrap = document.getElementById('wb-stop-wrap');
+            var $stop = document.getElementById('wb-stop');
 
             var $media = document.getElementById('wb-media');
             var $mediaFile = document.getElementById('wb-media-file');
@@ -303,7 +310,7 @@
                         : 'selected ' + LABEL[audience]);
 
                 $summary.innerHTML = 'This send goes to <b>' + n.toLocaleString() + '</b> ' + how +
-                    ', in batches of ' + BATCH + '.' +
+                    '. It runs in the background — you can close this page once it has started.' +
                     ($skip.checked && audience !== 'manual'
                         ? '<div class="text-muted mt-1">Anyone the platform messaged in the last 30 days is skipped.</div>'
                         : '');
@@ -332,139 +339,153 @@
             }
 
             // ---- sending --------------------------------------------------------------------
-            function buildBatches() {
-                var f = filters();
-                var batches = [];
-                var i;
+            // The composer no longer drives the send. One POST books the run, the queue works
+            // through it, and everything below is only watching — close the tab and the messages
+            // keep going out.
+            var pollTimer = null;
+            var activeRun = null;
+
+            function startRun() {
+                var t = currentTemplate();
+                var body = Object.assign({
+                    template: t.name,
+                    language: t.language,
+                    params: paramValues(),
+                    header_media: mediaUrl,
+                    audience: audience,
+                    mode: audience === 'manual' ? 'selected' : (sendAll() ? 'all' : 'selected')
+                }, filters());
 
                 if (audience === 'manual') {
-                    var nums = parseNumbers();
-                    for (i = 0; i < nums.length; i += BATCH) {
-                        batches.push({ audience: 'manual', mode: 'selected', numbers: nums.slice(i, i + BATCH) });
-                    }
-                    return batches;
+                    body.numbers = parseNumbers();
+                } else if (sendAll()) {
+                    body.limit = allCount();
+                } else {
+                    body.ids = Array.from(selectedSet());
                 }
-
-                if (sendAll()) {
-                    // No offset. The server excludes everyone already claimed in this run, so each
-                    // batch returns the NEXT unmessaged people — an offset walk would restart at
-                    // the same rows every time.
-                    var n = allCount();
-                    for (i = 0; i < n; i += BATCH) {
-                        batches.push(Object.assign({
-                            audience: audience, mode: 'all', limit: Math.min(BATCH, n - i)
-                        }, f));
-                    }
-                    return batches;
-                }
-
-                var ids = Array.from(selectedSet());
-                for (i = 0; i < ids.length; i += BATCH) {
-                    batches.push(Object.assign({
-                        audience: audience, mode: 'selected', ids: ids.slice(i, i + BATCH)
-                    }, f));
-                }
-                return batches;
-            }
-
-            function batchSize(b) {
-                return b.mode === 'all' ? b.limit : (b.numbers || b.ids).length;
-            }
-
-            function sendBatches() {
-                var t = currentTemplate();
-                var total = recipientCount();
-
-                // One id for the whole send. The server claims each recipient against it before
-                // dispatching, so a retried batch — or a whole run started again after a break —
-                // skips anyone already messaged instead of messaging them twice.
-                var runId = (window.crypto && crypto.randomUUID)
-                    ? crypto.randomUUID()
-                    : 'r' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
-
-                var batches = buildBatches();
-                var done = 0, sent = 0, skipped = 0, blocked = 0, failures = [];
 
                 $send.disabled = true;
                 $progress.style.display = 'block';
                 $results.style.display = 'none';
+                $ptext.textContent = 'Starting…';
 
-                function step(index, attempt) {
-                    attempt = attempt || 0;
-                    if (index >= batches.length) {
-                        $ptext.textContent = 'Finished — ' + sent + ' sent, ' + failures.length + ' failed'
-                            + (skipped ? ', ' + skipped + ' already messaged' : '')
-                            + (blocked ? ', ' + blocked + ' opted out' : '') + '.';
-                        showResults(sent, skipped, blocked, failures);
-                        $send.disabled = false;
-                        return;
-                    }
-
-                    fetch(SEND_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': CSRF,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(Object.assign({
-                            template: t.name,
-                            language: t.language,
-                            params: paramValues(),
-                            header_media: mediaUrl,
-                            run_id: runId
-                        }, batches[index]))
-                    })
-                    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-                    .then(function (res) {
-                        if (!res.ok) {
-                            failures.push({ name: '—', phone: '—', error: res.d.message || 'Request rejected.' });
-                        } else {
-                            sent += res.d.sent || 0;
-                            skipped += res.d.skipped || 0;
-                            blocked += res.d.blocked || 0;
-                            (res.d.results || []).forEach(function (r) { if (!r.success) failures.push(r); });
-                        }
-                        done += batchSize(batches[index]);
-                        $bar.style.width = Math.round((done / total) * 100) + '%';
-                        $ptext.textContent = done.toLocaleString() + ' of ' + total.toLocaleString() + ' processed…';
-                        step(index + 1);
-                    })
-                    .catch(function () {
-                        // Retrying a lost request is safe: the server claims each recipient before
-                        // dispatching, so anyone the first attempt already messaged comes back as
-                        // skipped rather than as a duplicate.
-                        if (attempt < 1) {
-                            step(index, attempt + 1);
+                fetch(SEND_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                })
+                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                .then(function (res) {
+                    if (!res.ok) {
+                        // A run already in flight is not an error worth throwing away — attach to
+                        // it instead, which is what pressing Send was asking for anyway.
+                        if (res.d && res.d.run_id) {
+                            watch(res.d.run_id);
                             return;
                         }
-                        failures.push({
-                            name: '—', phone: '—',
-                            error: 'Network error on a batch of ' + batchSize(batches[index]) +
-                                '. Nobody in it was messaged twice — send again to cover them.'
-                        });
-                        done += batchSize(batches[index]);
-                        step(index + 1);
-                    });
-                }
-
-                step(0, 0);
+                        $progress.style.display = 'none';
+                        $send.disabled = false;
+                        $results.innerHTML = '<div class="alert alert-danger" style="font-size:13px;">' +
+                            esc((res.d && res.d.message) || 'That send could not be started.') + '</div>';
+                        $results.style.display = 'block';
+                        return;
+                    }
+                    watch(res.d.run_id);
+                })
+                .catch(function () {
+                    $progress.style.display = 'none';
+                    $send.disabled = false;
+                    $results.innerHTML = '<div class="alert alert-danger" style="font-size:13px;">' +
+                        'Could not reach the server. Nothing was sent — try again.</div>';
+                    $results.style.display = 'block';
+                });
             }
 
-            function showResults(sent, skipped, blocked, failures) {
-                var html = '<div class="alert ' + (failures.length ? 'alert-warning' : 'alert-success') + '" style="font-size:13px;">' +
-                    '<b>' + sent.toLocaleString() + '</b> message' + (sent === 1 ? '' : 's') + ' sent' +
-                    (failures.length ? ', <b>' + failures.length + '</b> failed' : '') +
-                    (skipped ? ', <b>' + skipped + '</b> skipped (already messaged in this run)' : '') +
-                    (blocked ? ', <b>' + blocked + '</b> skipped (opted out)' : '') + '.</div>';
+            // Follow a run that is already going: after a page reload, or after a Send. Polling
+            // rather than holding a request open, so a dropped connection costs nothing.
+            function watch(runId) {
+                // Never two pollers on one run.
+                clearTimeout(pollTimer);
+                activeRun = runId;
+                $send.disabled = true;
+                $progress.style.display = 'block';
+                $stopWrap.style.display = 'inline-block';
+                poll();
+            }
 
-                if (failures.length) {
+            function poll() {
+                if (!activeRun) return;
+
+                fetch(PROGRESS_URL.replace('__RUN__', encodeURIComponent(activeRun)), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) { throw new Error(d.message || 'gone'); }
+                    render(d);
+
+                    if (d.finished) {
+                        activeRun = null;
+                        $stopWrap.style.display = 'none';
+                        $send.disabled = false;
+                        syncSend();
+                        return;
+                    }
+                    pollTimer = setTimeout(poll, 3000);
+                })
+                .catch(function () {
+                    // A lost poll says nothing about the send, which is running on the server —
+                    // keep asking rather than reporting a failure that has not happened.
+                    pollTimer = setTimeout(poll, 6000);
+                });
+            }
+
+            function render(d) {
+                var done = d.sent + d.failed;
+                var pct = d.total ? Math.round((done / d.total) * 100) : 0;
+                $bar.style.width = pct + '%';
+
+                if (!d.finished) {
+                    $ptext.textContent = d.status === 'queued'
+                        ? 'Queued — starting shortly. You can close this page; sending carries on.'
+                        : done.toLocaleString() + ' of ' + d.total.toLocaleString() +
+                          ' sent — this carries on in the background, even if you close this page.';
+                    return;
+                }
+
+                $bar.style.width = '100%';
+                $ptext.textContent = 'Finished — ' + d.sent.toLocaleString() + ' sent, ' + d.failed.toLocaleString() + ' failed'
+                    + (d.skipped ? ', ' + d.skipped.toLocaleString() + ' not sent' : '')
+                    + (d.blocked ? ', ' + d.blocked.toLocaleString() + ' opted out' : '') + '.';
+                showResults(d);
+            }
+
+            function showResults(d) {
+                var stopped = d.status !== 'done';
+                var html = '<div class="alert ' + ((d.failed || stopped) ? 'alert-warning' : 'alert-success') + '" style="font-size:13px;">' +
+                    '<b>' + d.sent.toLocaleString() + '</b> message' + (d.sent === 1 ? '' : 's') + ' sent' +
+                    (d.failed ? ', <b>' + d.failed.toLocaleString() + '</b> failed' : '') +
+                    (d.skipped ? ', <b>' + d.skipped.toLocaleString() + '</b> skipped (already messaged in this run, or no longer reachable)' : '') +
+                    (d.blocked ? ', <b>' + d.blocked.toLocaleString() + '</b> skipped (opted out)' : '') + '.' +
+                    (stopped && d.message ? '<div class="mt-1">' + esc(d.message) + '</div>' : '') +
+                    (stopped && d.pending ? '<div class="mt-1">' + d.pending.toLocaleString() + ' recipient' +
+                        (d.pending === 1 ? ' was' : 's were') + ' not messaged.</div>' : '') + '</div>';
+
+                if (d.failures && d.failures.length) {
                     html += '<div class="border rounded" style="max-height:220px;overflow-y:auto;">' +
-                        failures.map(function (f) {
+                        d.failures.map(function (f) {
                             return '<div class="px-3 py-2 border-bottom" style="font-size:12px;">' +
                                 '<b>' + esc(f.name) + '</b> <span class="text-muted">' + esc(f.phone) + '</span><br>' +
                                 '<span class="text-danger">' + esc(f.error) + '</span></div>';
                         }).join('') + '</div>';
+                    if (d.failed > d.failures.length) {
+                        html += '<small class="text-muted d-block mt-1">Showing the last ' + d.failures.length +
+                            ' of ' + d.failed.toLocaleString() + ' failures — the full list is in the history.</small>';
+                    }
                 }
 
                 html += '<div class="mt-2"><a href="' + HISTORY_URL + '" class="btn btn-sm btn-outline-secondary">' +
@@ -473,6 +494,19 @@
                 $results.innerHTML = html;
                 $results.style.display = 'block';
             }
+
+            $stop.addEventListener('click', function () {
+                if (!activeRun) return;
+                if (!confirm('Stop this send? Anyone already messaged stays messaged; nobody after that is contacted.')) return;
+
+                $stop.disabled = true;
+                fetch(STOP_URL.replace('__RUN__', encodeURIComponent(activeRun)), {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
+                })
+                .then(function () { $stop.disabled = false; })
+                .catch(function () { $stop.disabled = false; });
+            });
 
             // ---- media header ---------------------------------------------------------------
             function syncMedia() {
@@ -571,9 +605,16 @@
                 var n = recipientCount();
                 var who = audience === 'manual' ? 'pasted number' + (n === 1 ? '' : 's') : LABEL[audience];
                 if (!confirm('Send this template to ' + n.toLocaleString() + ' ' + who + ' from the MyChitti number?')) return;
-                sendBatches();
+                startRun();
             });
 
             setAudience('vendors');
+
+            // Reattach to whatever the platform already has going, so a reopened page shows the
+            // live run instead of an idle composer over the top of one.
+            if (RUNNING) {
+                $results.style.display = 'none';
+                watch(RUNNING);
+            }
         })();
     </script>

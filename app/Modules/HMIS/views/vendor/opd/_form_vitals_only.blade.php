@@ -2,9 +2,12 @@
 
 <div class="form-group">
     <label class="input-label">Chief Complaint</label>
-    <textarea name="chief_complaint" class="form-control @error('chief_complaint') is-invalid @enderror"
-        rows="2" placeholder="Patient's main complaint...">{{ old('chief_complaint', $visit?->chief_complaint) }}</textarea>
-    @error('chief_complaint')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    @include('hmis::vendor.opd._complaint_picker', [
+        'field'    => 'chief_complaint',
+        'selected' => old('chief_complaint', $visit?->complaint_list ?? []),
+        'options'  => $complaintOptions ?? [],
+        'groups'   => $complaintGroups ?? [],
+    ])
 </div>
 
 <div class="card mb-3">

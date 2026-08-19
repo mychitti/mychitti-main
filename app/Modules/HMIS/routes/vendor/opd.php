@@ -21,6 +21,11 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::post('{id}/cancel',       [OpdController::class, 'cancel'])->name('cancel')->middleware('permission:opd_register,cancel');
     Route::delete('{id}',            [OpdController::class, 'destroy'])->name('destroy')->middleware('permission:opd_register,delete');
 
+    // Complaint groups — the sets of complaints this hospital keeps recording together, saved from
+    // whatever the doctor has selected. Store-scoped, so one clinic's habits stay its own.
+    Route::post('complaint-groups',        [OpdController::class, 'complaintGroupStore'])->name('complaint-groups.store')->middleware('permission:opd_register,edit');
+    Route::delete('complaint-groups/{id}', [OpdController::class, 'complaintGroupDestroy'])->name('complaint-groups.destroy')->middleware('permission:opd_register,edit');
+
     // The hospital's own view of the clinical dropdowns: what the platform offers for its
     // category, plus anything its doctors added, with a switch to stop offering a term.
     Route::get('terms/manage',        [OpdController::class, 'terms'])->name('terms')->middleware('permission:opd_register,edit');

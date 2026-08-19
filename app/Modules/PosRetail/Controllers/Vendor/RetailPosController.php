@@ -4031,8 +4031,7 @@ class RetailPosController extends Controller
                     ->where('branch_id', $branchId)->where('inventory_item_id', $itemId)
                     ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)'), 'updated_at' => now()]);
             } else {
-                InventoryItem::where('id', $itemId)->where('store_id', $storeId)
-                    ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)')]);
+                $this->deductWriteoffStock($storeId, $itemId, $qty);
             }
 
             DB::table('pos_stock_writeoff')->insert([
@@ -4070,6 +4069,21 @@ class RetailPosController extends Controller
         }
         $managerId = (int) (Branch::where('store_id', $this->storeId())->where('id', $branchId)->value('branch_manager_id') ?? 0);
         return $managerId && $managerId === (int) auth('vendor_employee')->id();
+    }
+
+    private function deductWriteoffStock($storeId, $itemId, $qty): void
+    {
+        if ($qty <= 0) {
+            return;
+        }
+        // Mass update bypasses model events, so the stock_base dual-write and the
+        // items.stock mirror would both be skipped — the vendor would see the write-off
+        // logged but the stock unchanged. Go through the model so the hooks fire.
+        $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
+        if ($item) {
+            $item->stock = max(0, (float) $item->stock - $qty);
+            $item->save();
+        }
     }
 
     private function restoreWriteoffStock($storeId, $branchId, $itemId, $qty): void
@@ -4206,15 +4220,7 @@ class RetailPosController extends Controller
 
         DB::beginTransaction();
         try {
-            $qty = (float) $rec->qty;
-            if ($rec->branch_id) {
-                DB::table('pos_branch_stock')
-                    ->where('branch_id', $rec->branch_id)->where('inventory_item_id', $rec->inventory_item_id)
-                    ->update(['stock' => DB::raw('stock + ' . $qty), 'updated_at' => now()]);
-            } else {
-                InventoryItem::where('id', $rec->inventory_item_id)->where('store_id', $storeId)
-                    ->update(['stock' => DB::raw('stock + ' . $qty)]);
-            }
+            $this->restoreWriteoffStock($storeId, $rec->branch_id, $rec->inventory_item_id, (float) $rec->qty);
             DB::table('pos_stock_writeoff')->where('id', $id)->where('store_id', $storeId)->delete();
             DB::commit();
         } catch (\Throwable $th) {

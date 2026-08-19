@@ -25,6 +25,13 @@ class PatientController extends Controller
 {
     public function index(Request $request)
     {
+        // A dental chair needs five details to start work, not twenty-three. For those stores this
+        // entry point serves the trimmed intake instead — same URL and the same place in the menu,
+        // so nothing has to be found somewhere new. Every other category keeps the full form.
+        if (DentalIntakeController::isDental((int) Helpers::get_store_id())) {
+            return app(DentalIntakeController::class)->create($request);
+        }
+
         return view('hmis::vendor.patient.index');
     }
 
@@ -958,14 +965,28 @@ class PatientController extends Controller
 
     public function quickSave(Request $request)
     {
+        // Separators stripped before validating, so the stored number is the tidy one however it
+        // was keyed. Identical handling to the dental intake screen.
+        $request->merge([
+            'phone' => preg_replace('/[\s\-()]/', '', (string) $request->input('phone')),
+        ]);
+
         $request->validate([
-            'name'  => 'required|string|max:150',
-            'phone' => 'nullable|string|max:20',
+            'name'    => 'required|string|max:150',
+            // Optional +91 / 0 trunk prefix, then a 10-digit mobile — Indian numbers start 6-9.
+            'phone'   => ['required', 'string', 'max:20', 'regex:/^(?:\+?91|0)?[6-9]\d{9}$/'],
+            'age'     => 'required|integer|min:0|max:150',
+            'gender'  => 'required|in:male,female,other',
+            'address' => 'required|string|max:500',
+        ], [
+            'phone.regex' => 'Enter a valid 10-digit mobile number.',
         ]);
 
         $store_id = Helpers::get_store_id();
 
         \App\Services\PatientCustomerLink::ensureSchema();
+        // DDL before the transaction, same reason as the link table above.
+        DentalIntakeController::ensureSchema();
 
         DB::beginTransaction();
         try {
@@ -974,7 +995,12 @@ class PatientController extends Controller
             $patient->patient_uid = $this->generateUid($store_id);
             $patient->name       = $request->name;
             $patient->phone      = $request->phone;
+            $patient->age        = $request->age;
+            $patient->gender     = $request->gender;
             $patient->address    = $request->address;
+            // "More Info" rows off the quick-add modal, in the same label → value shape the intake
+            // screen and the bill use, so a patient added here bills identically to one added there.
+            $patient->custom_info = json_encode(DentalIntakeController::rowsFrom($request));
             $patient->created_by = auth('vendor_employee')->id() ?? auth('vendor')->id();
             $patient->save();
 

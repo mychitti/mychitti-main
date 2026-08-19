@@ -1667,6 +1667,11 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::get('whatsapp-bulk', 'WhatsAppBulkController@index')->name('whatsapp-bulk');
                 Route::get('whatsapp-bulk/recipients', 'WhatsAppBulkController@recipients')->name('whatsapp-bulk.recipients');
                 Route::post('whatsapp-bulk/send', 'WhatsAppBulkController@send')->name('whatsapp-bulk.send');
+                // A send runs on the queue, so the composer follows it rather than driving it —
+                // and can pick the thread back up on a page reopened hours later. Both sit above
+                // the {runId} history route, which would otherwise swallow them.
+                Route::get('whatsapp-bulk/progress/{runId}', 'WhatsAppBulkController@progress')->name('whatsapp-bulk.progress');
+                Route::post('whatsapp-bulk/stop/{runId}', 'WhatsAppBulkController@stop')->name('whatsapp-bulk.stop');
                 Route::post('whatsapp-bulk/header-media', 'WhatsAppBulkController@headerMedia')->name('whatsapp-bulk.header-media');
                 Route::get('whatsapp-bulk/{runId}', 'WhatsAppBulkController@run')->name('whatsapp-bulk.run');
                 Route::get('whatsapp-bulk/{runId}/export', 'WhatsAppBulkController@export')->name('whatsapp-bulk.export');

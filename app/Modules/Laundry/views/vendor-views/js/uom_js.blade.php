@@ -42,13 +42,15 @@
             $('.add-alternate-btn').on('click', function(e) {
                 e.preventDefault();
                 $(".secondary_unit_elem").show()
+                $('.stock-section').removeClass('uom-plain')
                 $('.add-alternate-btn').hide()
                 $('.remove-alternate-btn').show()
             }); 
             $('.remove-alternate-btn').on('click', function(e) {
-                $("#primary_qty").val('')
+                $("#primary_qty").val(1)
                $("#conversion_example").removeClass('show')
                 $(".secondary_unit_elem").hide()
+                $('.stock-section').addClass('uom-plain')
                 $('.add-alternate-btn').show()
                 $('.remove-alternate-btn').hide()
                 $('#choice_attributes').val(null).trigger('change');

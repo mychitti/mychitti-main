@@ -25,6 +25,13 @@ class OpdClinicalTerm extends Model
 
     const TYPE_DIAGNOSIS = 'diagnosis';
     const TYPE_TREATMENT = 'treatment';
+    // What the patient reports, as opposed to what the doctor concludes. Kept apart from
+    // diagnosis on purpose: "frequent urination" is a complaint, "Type 2 Diabetes" is the finding
+    // it leads to, and a hospital wants to count and group the two separately.
+    const TYPE_COMPLAINT = 'complaint';
+
+    /** Every type the catalogue and the store-level list understand. */
+    const TYPES = [self::TYPE_COMPLAINT, self::TYPE_DIAGNOSIS, self::TYPE_TREATMENT];
 
     /**
      * The general-medicine list every store used to be seeded with. Kept as a fingerprint for the
@@ -119,6 +126,30 @@ class OpdClinicalTerm extends Model
         }
 
         return collect(array_values($names))->sort(SORT_NATURAL | SORT_FLAG_CASE)->values();
+    }
+
+    /**
+     * A term-picker field off a request, ready to store.
+     *
+     * Trimmed, de-duplicated, remembered for the store (so anything typed by hand joins the list),
+     * and joined the way every term column in HMIS holds its list. Returns null for an empty pick
+     * so the column reads as "not recorded" rather than as an empty string.
+     */
+    public static function absorb(int $storeId, string $type, $input): ?string
+    {
+        $terms = collect((array) $input)
+            ->map(fn($term) => trim((string) $term))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($terms->isEmpty()) {
+            return null;
+        }
+
+        static::remember($storeId, $type, $terms->all());
+
+        return $terms->implode(', ');
     }
 
     /**

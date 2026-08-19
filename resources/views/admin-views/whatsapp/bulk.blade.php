@@ -224,6 +224,11 @@
 
                                         <div class="d-flex align-items-center" style="gap:12px;">
                                             <button id="wb-send" class="btn btn-primary" disabled>{{ translate('Send') }}</button>
+                                            {{-- The send runs on the server, so it outlives this page —
+                                                 which is exactly why it needs a way to be called off. --}}
+                                            <span id="wb-stop-wrap" style="display:none;">
+                                                <button id="wb-stop" class="btn btn-outline-danger btn-sm" type="button">{{ translate('Stop') }}</button>
+                                            </span>
                                             <div id="wb-progress" class="flex-grow-1" style="display:none;">
                                                 <div class="progress" style="height:6px;">
                                                     <div id="wb-progress-bar" class="progress-bar bg-success" style="width:0%;"></div>

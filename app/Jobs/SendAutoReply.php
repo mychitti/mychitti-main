@@ -50,6 +50,14 @@ class SendAutoReply implements ShouldQueue
     /** How much of the thread the model sees for context. */
     const HISTORY_MESSAGES = 12;
 
+    /**
+     * Minimum RAG similarity for a chunk to count as knowledge. Deliberately low: measured
+     * against the live store_0 index, an exact topical hit scores ~0.59, a usable cross-topic
+     * hit ~0.26, and pure noise ~0.15. This only strips noise — anything higher would discard
+     * chunks that do answer the question.
+     */
+    const RAG_MIN_SCORE = 0.2;
+
     /** Marker the model appends when the knowledge does not cover the question. */
     const ESCALATE_MARKER = '[[NEEDS_VENDOR]]';
 
@@ -336,7 +344,14 @@ class SendAutoReply implements ShouldQueue
             ]);
             if ($resp->successful()) {
                 $chunks = (array) data_get($resp->json(), 'results', []);
+                // Relevance floor. /rag/search returns the top_k nearest chunks however poor the
+                // match, so a question the knowledge does not cover still comes back with four
+                // confident-looking ones. Handing those over as "your ONLY source of truth" hides
+                // the fact that nothing matched: the model has nothing to answer from and takes
+                // whichever rule below has ready-made wording instead of escalating. Dropping them
+                // leaves $knowledge empty, so the full-docs fallback answers the question instead.
                 $knowledge = collect($chunks)
+                    ->filter(fn($c) => (float) data_get($c, 'score', 0) >= self::RAG_MIN_SCORE)
                     ->map(fn($c) => '### ' . data_get($c, 'title') . "\n" . data_get($c, 'content'))
                     ->implode("\n\n");
             }
@@ -370,10 +385,12 @@ class SendAutoReply implements ShouldQueue
             . "KNOWLEDGE (your ONLY source of truth):\n\n{$knowledge}\n\n"
             . "RULES:\n"
             . "- Answer ONLY from the knowledge above. Never invent prices, timings, availability or policies.\n"
-            . "- If the answer is not in the knowledge, say you will pass the question to the team and they will reply shortly. Do not guess. "
+            . "- If the answer is not in the knowledge, do NOT guess and do NOT fall back to a greeting. Say you will pass the "
+            . "question to the team — e.g. \"Thanks for asking! Let me check that with our team and they'll get back to you shortly.\" "
             . "Then append the exact marker " . self::ESCALATE_MARKER . " at the very end of your reply (the sender never sees it; it alerts the team).\n"
-            . "- If the message is just a greeting (hi, hello, hii, hey) or has no clear question, greet them warmly by name — "
-            . "e.g. \"Hi! Welcome to {$greetingName}. How can I help you today?\" — and do NOT append the marker.\n"
+            . "- Greet ONLY when the message carries no question or request at all — a bare greeting (hi, hello, hii, hey) or small talk. "
+            . "e.g. \"Hi! Welcome to {$greetingName}. How can I help you today?\" — and do NOT append the marker. "
+            . "If the sender asked anything at all, never reply with a greeting: answer it from the knowledge, or use the pass-to-the-team reply above.\n"
             . "- Keep replies short and WhatsApp-friendly: 1–4 sentences, plain text. No markdown, no headings, no asterisks.\n"
             . "- ALWAYS reply in English unless the sender clearly wrote a full sentence in another language — then match that language. "
             . "Short words like \"hi\", \"hii\", \"ok\", \"k\" are English; never assume any other language from them.\n"

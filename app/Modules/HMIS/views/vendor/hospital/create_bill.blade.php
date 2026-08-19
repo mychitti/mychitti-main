@@ -84,6 +84,40 @@
                 </div>
                 @endif
 
+                {{-- More Info — the intake's custom rows, printed above the lines on the bill.
+                     Prefilled from the patient's standing values plus anything entered for this
+                     visit, and editable here so a one-off correction never has to go back to the
+                     intake screen. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2"><h6 class="mb-0"><i class="tio-label-outlined mr-1"></i>More Info</h6></div>
+                    <div class="card-body py-2">
+                        <div id="custom-buttons" class="mb-2">
+                            @foreach ($presetLabels ?? [] as $label)
+                                @if (!array_key_exists($label, $customInfo ?? []))
+                                    <button type="button" class="btn btn-outline-primary btn-sm mr-2 mb-2 custom-header-btn"
+                                        data-label="{{ $label }}" style="border-radius:999px;font-size:12px;">+ {{ $label }}</button>
+                                @endif
+                            @endforeach
+                            <button type="button" class="btn btn-outline-danger btn-sm mr-2 mb-2 custom-header-btn"
+                                data-label="Other" style="border-radius:999px;font-size:12px;">+ Other</button>
+                        </div>
+
+                        <div id="custom-fields">
+                            @foreach ($customInfo ?? [] as $label => $value)
+                                <div class="form-group custom-field" data-label="{{ $label }}">
+                                    <label style="font-size:12px;font-weight:600;color:#56606e;">{{ $label }}</label>
+                                    <div class="d-flex">
+                                        <input type="hidden" name="header_label[]" value="{{ $label }}">
+                                        <input type="text" class="form-control form-control-sm mr-2" name="header_field[]"
+                                            value="{{ $value }}">
+                                        <a type="button" class="text-danger remove-field" style="align-self:center;"><i class="tio-delete-outlined"></i></a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Payment --}}
                 @php
                     $storeGstEnabled = \App\CentralLogics\Helpers::get_store_data()->gst &&
@@ -449,5 +483,50 @@ const gstPctInput = document.getElementById('gstPercent');
 if (gstPctInput) gstPctInput.addEventListener('input', recalc);
 
 document.addEventListener('DOMContentLoaded', recalc);
+
+// More Info rows — same interaction as the intake screen and the advanced bill: a named chip
+// drops a row with that label fixed, "+ Other" drops one where the label is typed too.
+$(document).on('click', '.custom-header-btn', function () {
+    const label = $(this).data('label');
+    let row;
+
+    if (label === 'Other') {
+        row = `
+        <div class="form-group custom-field" data-label="Other">
+            <div class="d-flex">
+                <input type="text" class="form-control form-control-sm mr-2" placeholder="Label" name="header_label[]">
+                <input type="text" class="form-control form-control-sm mr-2" placeholder="Value" name="header_field[]">
+                <a type="button" class="text-danger remove-field" style="align-self:center;"><i class="tio-delete-outlined"></i></a>
+            </div>
+        </div>`;
+    } else {
+        row = `
+        <div class="form-group custom-field" data-label="${label}">
+            <label style="font-size:12px;font-weight:600;color:#56606e;">${label}</label>
+            <div class="d-flex">
+                <input type="hidden" name="header_label[]" value="${label}">
+                <input type="text" class="form-control form-control-sm mr-2" placeholder="${label}" name="header_field[]">
+                <a type="button" class="text-danger remove-field" style="align-self:center;"><i class="tio-delete-outlined"></i></a>
+            </div>
+        </div>`;
+
+        $(this).hide();
+    }
+
+    $('#custom-fields').append(row);
+});
+
+$('#custom-fields').on('click', '.remove-field', function () {
+    const $row  = $(this).closest('.custom-field');
+    const label = $row.data('label');
+
+    $('#custom-buttons button').each(function () {
+        if ($(this).data('label') === label) {
+            $(this).show();
+        }
+    });
+
+    $row.remove();
+});
 </script>
 @endpush

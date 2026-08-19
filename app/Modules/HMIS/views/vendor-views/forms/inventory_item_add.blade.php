@@ -7,6 +7,11 @@
         width: 100%;
     }
 
+    .uom-hint { font-size:12px; color:#8d97a5; margin:0 0 10px; line-height:1.45; }
+
+    .stock-section.uom-plain { background:transparent; border:0; border-radius:0; padding:0 !important; }
+
+    .stock-section.uom-plain .section-header { padding:0; border:0; margin-bottom:8px; justify-content:flex-start; }
     .secondary_unit_elem {
         display: none;
     }
@@ -390,12 +395,12 @@
                         <label for="exampleInputEmail1">Barcode</label>
                         <input type="file" name="barcode" class="form-control" />
                     </div>
-                    <div class="col-12">
-                        <div class="col-md-8 p-0 mt-2">
-                            <div class="stock-section p-2 ">
+                    <div class="col-md-4">
+                        <div class="w-100 p-0 mt-2">
+                            <div class="stock-section uom-plain p-2">
                                 <div class="section-header">
 
-                                    <span>Multi-UOM Setup</span>
+                                    <span class="secondary_unit_elem">Multi-UOM Setup</span>
 
                                     <a href="#" class="add-alternate-btn">
                                         <i class="fas fa-plus-circle me-1"></i>
@@ -407,6 +412,7 @@
                                         Remove Alternate Unit
                                     </a>
                                 </div>
+                                <p class="uom-hint uom-hint-open secondary_unit_elem">Enter how much of the base unit one alternate unit is worth.</p>
 
                                 <div class="unit-converter">
                                     <div class="input-group-modern">
@@ -434,7 +440,7 @@
                                             <i class="fas fa-exchange-alt"></i>
                                         </div>
 
-                                        <div class="input-field">
+                                        <div class="input-field secondary_unit_elem">
                                             <label class="field-label">Quantity</label>
                                             <input type="number" class="form-control" id="primary_qty"
                                                 name="primary_qty" min="1" value="1"
@@ -463,11 +469,13 @@
                         </div>
                     </div>
 
-                    <div class="product_elem col-md-8 mt-2 p-2 custom_attributes"
+                    <div class="w-100"></div>
+                    @include('hmis::vendor-views.inventory.partials._attributes_styles')
+                    <div class="product_elem col-md-6 mt-2 p-2 custom_attributes"
                         style="background: #f8fdff;
                             border-radius: 10px;
                             border: 2px dashed #e2e2e2;">
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label class="font-weight-bold d-block mb-2">Custom Attributes</label>
                             <div id="custom-buttons">
                                 <button type="button"
@@ -491,6 +499,7 @@
 
                     @include('vendor-views.inventory.partials._description_attributes', [
                         'description_attributes' => [],
+                        'width'                  => 'col-md-6',
                     ])
 
                     <div class="col-12 service_elem">

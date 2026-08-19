@@ -276,22 +276,41 @@
                     </ul>
                 </div>
 
-                <div class="card-body p-2" id="medTable">
-                    {{-- Existing rows --}}
-                    @if(isset($rx) && $rx->items->count())
-                        @foreach($rx->items as $i => $item)
-                            @include('hmis::vendor.prescription._med_row', ['i' => $i, 'item' => $item])
-                        @endforeach
-                    @else
-                        @include('hmis::vendor.prescription._med_row', ['i' => 0, 'item' => null])
-                    @endif
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table rx-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width:34px;">#</th>
+                                    <th style="width:92px;">Type</th>
+                                    <th style="min-width:220px;">Medicine</th>
+                                    <th style="width:130px;">Dose</th>
+                                    <th style="width:130px;">When</th>
+                                    <th style="width:130px;">Frequency</th>
+                                    <th style="width:110px;">Duration</th>
+                                    <th style="width:74px;">Qty</th>
+                                    <th style="min-width:160px;">Notes / Instructions</th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="medTable">
+                                @if(isset($rx) && $rx->items->count())
+                                    @foreach($rx->items as $i => $item)
+                                        @include('hmis::vendor.prescription._med_row', ['i' => $i, 'item' => $item])
+                                    @endforeach
+                                @else
+                                    @include('hmis::vendor.prescription._med_row', ['i' => 0, 'item' => null])
+                                @endif
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     {{-- Footer actions --}}
-    <div class="d-flex gap-2 mt-1 mb-4">
+    <div class="rx-actions mt-1 mb-4">
         <button type="submit" class="btn btn--primary" name="action" value="draft">
             <i class="tio-save"></i> Save Draft
         </button>
@@ -300,6 +319,7 @@
             <i class="tio-checkmark-circle"></i> Finalize &amp; Print
         </button>
         <a href="{{ route('vendor.prescription.list') }}" class="btn btn-outline-secondary">Cancel</a>
+        @include('hmis::vendor.prescription._rx_language', ['selected' => $rx->language ?? null])
     </div>
 </form>
 
@@ -309,6 +329,7 @@
 </template>
 
 <style>
+
 .rx-avatar {
     width:44px; height:44px; border-radius:50%;
     background:#dbeafe; color:#2563eb;
@@ -364,9 +385,11 @@ function addMedRow(prefill) {
     medIdx++;
     const tpl = document.getElementById('medRowTpl').innerHTML
         .replace(/__IDX__/g, medIdx);
-    const div = document.createElement('div');
-    div.innerHTML = tpl;
-    const row = div.firstElementChild;
+    // Parsed inside a <tbody>: a <tr> assigned to a <div>'s innerHTML is discarded by the HTML
+    // parser, which silently produced no row at all once these became table rows.
+    const host = document.createElement('tbody');
+    host.innerHTML = tpl;
+    const row = host.firstElementChild;
     if (prefill) {
         const nameInput = row.querySelector('input[name$="[medicine_name]"]');
         if (nameInput) nameInput.value = prefill.name;

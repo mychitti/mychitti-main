@@ -1,10 +1,15 @@
     <script>
         (function () {
             var TEMPLATES = @json($templates);
-            var BATCH = {{ \App\Http\Controllers\Vendor\WhatsAppController::BULK_BATCH_LIMIT }};
             var RECIPIENTS_URL = '{{ route('vendor.whatsapp.bulk.recipients') }}';
             var SEND_URL = '{{ route('vendor.whatsapp.bulk.send') }}';
             var HISTORY_URL = '{{ route('vendor.whatsapp.bulk.history') }}';
+            // Built with a placeholder id: the run being watched changes, the route does not.
+            var PROGRESS_URL = '{{ route('vendor.whatsapp.bulk.progress', ['runId' => '__RUN__']) }}';
+            var STOP_URL = '{{ route('vendor.whatsapp.bulk.stop', ['runId' => '__RUN__']) }}';
+            // A send already in flight when this page loaded. It belongs to the store, not to the
+            // tab that started it, so any reopened composer picks it back up.
+            var RUNNING = @json($activeRun->run_id ?? null);
             var CSRF = '{{ csrf_token() }}';
 
             var PLATFORM_MAX = {{ $platformUserCount }};
@@ -31,6 +36,8 @@
             var $bar = document.getElementById('wb-progress-bar');
             var $ptext = document.getElementById('wb-progress-text');
             var $results = document.getElementById('wb-results');
+            var $stopWrap = document.getElementById('wb-stop-wrap');
+            var $stop = document.getElementById('wb-stop');
             var $summary = document.getElementById('wb-summary');
             var $pillClients = document.getElementById('wb-pill-clients');
             var $pillPlatform = document.getElementById('wb-pill-platform');
@@ -286,115 +293,143 @@
                 });
             }
 
-            function sendBatches() {
+            // ---- sending --------------------------------------------------------------------
+            // The composer no longer drives the send. One POST books the run, the queue works
+            // through it, and everything below is only watching — close the tab and the messages
+            // keep going out.
+            var pollTimer = null;
+            var activeRun = null;
+
+            function startRun() {
                 var t = currentTemplate();
-                var total = recipientCount();
-                var batches = [];
 
-                // One id for the whole send — across BOTH audiences. The server claims each
-                // recipient against it before dispatching, so a batch that is retried - or a whole
-                // run started again after a break - skips anyone already messaged instead of
-                // messaging them twice. Sharing the id between the two audiences is also what
-                // stops someone who sits in the vendor's book *and* the platform pool being
-                // messaged once as each: the claim is on the number, not on the list it came from.
-                var runId = (window.crypto && crypto.randomUUID)
-                    ? crypto.randomUUID()
-                    : 'r' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
-
-                // Own customers first. They are the cheaper audience and the relationship the
-                // vendor actually has, so if a wallet runs dry mid-run it should run dry on
-                // strangers, not on the people who already buy from them.
-                var ids = Array.from(selected);
-                for (var i = 0; i < ids.length; i += BATCH) {
-                    batches.push({ mode: 'clients', client_ids: ids.slice(i, i + BATCH) });
-                }
-
-                // No offset: the server excludes everyone already reached and everyone
-                // already claimed in this run, so each batch returns the next unmessaged
-                // people. An offset walk restarted at zero on every send, which is why the
-                // same lowest-numbered people were reached over and over.
-                var plat = platformCount();
-                for (var o = 0; o < plat; o += BATCH) {
-                    batches.push({ mode: 'platform', limit: Math.min(BATCH, plat - o) });
-                }
-
-                var done = 0, sent = 0, skipped = 0, failures = [];
                 $send.disabled = true;
                 $progress.style.display = 'block';
                 $results.style.display = 'none';
+                $ptext.textContent = 'Starting…';
 
-                function batchSize(b) {
-                    return b.mode === 'clients' ? b.client_ids.length : b.limit;
-                }
-
-                function step(index, attempt) {
-                    attempt = attempt || 0;
-                    if (index >= batches.length) {
-                        $ptext.textContent = 'Finished — ' + sent + ' sent, ' + failures.length + ' failed'
-                            + (skipped ? ', ' + skipped + ' already messaged' : '') + '.';
-                        showResults(sent, skipped, failures);
-                        $send.disabled = false;
-                        return;
-                    }
-                    fetch(SEND_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': CSRF,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(Object.assign({
-                            template: t.name,
-                            language: t.language,
-                            params: paramValues(),
-                            header_media: mediaUrl,
-                            run_id: runId
-                        }, batches[index]))
+                fetch(SEND_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        template: t.name,
+                        language: t.language,
+                        params: paramValues(),
+                        header_media: mediaUrl,
+                        client_ids: Array.from(selected),
+                        platform_limit: platformCount()
                     })
-                    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-                    .then(function (res) {
-                        if (!res.ok) {
-                            failures.push({ name: '—', phone: '—', error: res.d.message || 'Request rejected.' });
-                        } else {
-                            sent += res.d.sent || 0;
-                            skipped += res.d.skipped || 0;
-                            (res.d.results || []).forEach(function (r) { if (!r.success) failures.push(r); });
-                        }
-                        done += batchSize(batches[index]);
-                        var pct = Math.round((done / total) * 100);
-                        $bar.style.width = pct + '%';
-                        $ptext.textContent = done + ' of ' + total + ' processed…';
-                        step(index + 1);
-                    })
-                    .catch(function () {
-                        // Retrying a lost request is safe because the server claims each
-                        // recipient before dispatching: anyone the first attempt already
-                        // messaged is claimed, so they come back as skipped, not as a duplicate.
-                        if (attempt < 1) {
-                            step(index, attempt + 1);
+                })
+                .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+                .then(function (res) {
+                    if (!res.ok) {
+                        // A run already in flight is not an error worth throwing away — attach to
+                        // it instead, which is what the vendor wanted by pressing Send anyway.
+                        if (res.d && res.d.run_id) {
+                            watch(res.d.run_id);
                             return;
                         }
-                        failures.push({ name: '—', phone: '—', error: 'Network error on a batch of ' + batchSize(batches[index]) + '. Nobody in it was messaged twice — send again to cover them.' });
-                        done += batchSize(batches[index]);
-                        step(index + 1);
-                    });
-                }
-                step(0, 0);
+                        $progress.style.display = 'none';
+                        $send.disabled = false;
+                        $results.innerHTML = '<div class="alert alert-danger" style="font-size:13px;">' +
+                            esc((res.d && res.d.message) || 'That send could not be started.') + '</div>';
+                        $results.style.display = 'block';
+                        return;
+                    }
+                    watch(res.d.run_id);
+                })
+                .catch(function () {
+                    $progress.style.display = 'none';
+                    $send.disabled = false;
+                    $results.innerHTML = '<div class="alert alert-danger" style="font-size:13px;">' +
+                        'Could not reach the server. Nothing was sent — try again.</div>';
+                    $results.style.display = 'block';
+                });
             }
 
-            function showResults(sent, skipped, failures) {
-                var html = '<div class="alert ' + (failures.length ? 'alert-warning' : 'alert-success') + '" style="font-size:13px;">' +
-                    '<b>' + sent + '</b> message' + (sent === 1 ? '' : 's') + ' sent' +
-                    (failures.length ? ', <b>' + failures.length + '</b> failed' : '') +
-                    (skipped ? ', <b>' + skipped + '</b> skipped (already messaged in this run)' : '') + '.</div>';
+            // Follow a run that is already going: after a page reload, or after a Send. Polling
+            // rather than holding a request open, so a dropped connection costs nothing.
+            function watch(runId) {
+                // Never two pollers on one run — a Send pressed while an earlier run was still
+                // being followed would otherwise leave both timers ticking.
+                clearTimeout(pollTimer);
+                activeRun = runId;
+                $send.disabled = true;
+                $progress.style.display = 'block';
+                $stopWrap.style.display = 'inline-block';
+                poll();
+            }
 
-                if (failures.length) {
+            function poll() {
+                if (!activeRun) return;
+
+                fetch(PROGRESS_URL.replace('__RUN__', encodeURIComponent(activeRun)), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (!d.success) { throw new Error(d.message || 'gone'); }
+                    render(d);
+
+                    if (d.finished) {
+                        activeRun = null;
+                        $stopWrap.style.display = 'none';
+                        $send.disabled = false;
+                        syncSend();
+                        return;
+                    }
+                    pollTimer = setTimeout(poll, 3000);
+                })
+                .catch(function () {
+                    // A lost poll says nothing about the send, which is running on the server —
+                    // keep asking rather than reporting a failure that has not happened.
+                    pollTimer = setTimeout(poll, 6000);
+                });
+            }
+
+            function render(d) {
+                var done = d.sent + d.failed;
+                var pct = d.total ? Math.round((done / d.total) * 100) : 0;
+                $bar.style.width = pct + '%';
+
+                if (!d.finished) {
+                    $ptext.textContent = d.status === 'queued'
+                        ? 'Queued — starting shortly. You can close this page; sending carries on.'
+                        : done + ' of ' + d.total + ' sent — this carries on in the background, even if you close this page.';
+                    return;
+                }
+
+                $bar.style.width = '100%';
+                $ptext.textContent = 'Finished — ' + d.sent + ' sent, ' + d.failed + ' failed'
+                    + (d.skipped ? ', ' + d.skipped + ' not sent' : '') + '.';
+                showResults(d);
+            }
+
+            function showResults(d) {
+                var stopped = d.status !== 'done';
+                var html = '<div class="alert ' + ((d.failed || stopped) ? 'alert-warning' : 'alert-success') + '" style="font-size:13px;">' +
+                    '<b>' + d.sent + '</b> message' + (d.sent === 1 ? '' : 's') + ' sent' +
+                    (d.failed ? ', <b>' + d.failed + '</b> failed' : '') +
+                    (d.skipped ? ', <b>' + d.skipped + '</b> skipped (already messaged in this run, or no longer reachable)' : '') + '.' +
+                    (stopped && d.message ? '<div class="mt-1">' + esc(d.message) + '</div>' : '') +
+                    (stopped && d.pending ? '<div class="mt-1">' + d.pending + ' recipient' + (d.pending === 1 ? ' was' : 's were') +
+                        ' not messaged.</div>' : '') + '</div>';
+
+                if (d.failures && d.failures.length) {
                     html += '<div class="border rounded" style="max-height:200px;overflow-y:auto;">' +
-                        failures.map(function (f) {
+                        d.failures.map(function (f) {
                             return '<div class="px-3 py-2 border-bottom" style="font-size:12px;">' +
                                 '<b>' + esc(f.name) + '</b> <span class="text-muted">' + esc(f.phone) + '</span><br>' +
                                 '<span class="text-danger">' + esc(f.error) + '</span></div>';
                         }).join('') + '</div>';
+                    if (d.failed > d.failures.length) {
+                        html += '<small class="text-muted d-block mt-1">Showing the last ' + d.failures.length +
+                            ' of ' + d.failed + ' failures — the full list is in the history.</small>';
+                    }
                 }
 
                 // Where the full list of numbers lives — the results box only keeps what failed,
@@ -405,6 +440,20 @@
                 $results.innerHTML = html;
                 $results.style.display = 'block';
             }
+
+            $stop.addEventListener('click', function () {
+                if (!activeRun) return;
+                if (!confirm('Stop this send? Anyone already messaged stays messaged; nobody after that is contacted.')) return;
+
+                var runId = activeRun;
+                $stop.disabled = true;
+                fetch(STOP_URL.replace('__RUN__', encodeURIComponent(runId)), {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
+                })
+                .then(function () { $stop.disabled = false; })
+                .catch(function () { $stop.disabled = false; });
+            });
 
             // ---- Media header ---------------------------------------------------------------
             // Templates approved with an image / video / document at the top need that file on
@@ -510,9 +559,16 @@
                 if (plat) parts.push(plat + ' MyChitti user' + (plat === 1 ? '' : 's'));
 
                 if (!confirm('Send this template to ' + parts.join(' and ') + '?')) return;
-                sendBatches();
+                startRun();
             });
 
             loadClients();
+
+            // Reattach to whatever this store already has going, so a reopened page shows the
+            // live run instead of an idle composer over the top of one.
+            if (RUNNING) {
+                $results.style.display = 'none';
+                watch(RUNNING);
+            }
         })();
     </script>

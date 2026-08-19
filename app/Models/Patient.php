@@ -16,6 +16,10 @@ class Patient extends Model
         'patient_uid',
         'name',
         'dob',
+        // Recorded directly where the desk is told an age rather than a birth date (dental
+        // intake). Independent of dob — deriving one from the other invents a birthday.
+        'age',
+        'custom_info',
         'gender',
         'blood_group',
         'phone',

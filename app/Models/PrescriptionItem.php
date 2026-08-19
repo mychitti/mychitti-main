@@ -10,6 +10,11 @@ class PrescriptionItem extends Model
         'prescription_id',
         'medicine_name',
         'inventory_item_id',
+        // Dosage form the line is written as — TAB., CAP., SYR. — kept apart from the name so the
+        // printed sheet can column it, and free notes kept apart from the food timing so "After
+        // food" stays a pickable value rather than being buried in a sentence.
+        'type',
+        'notes',
         'dosage',
         'frequency',
         'duration',

@@ -26,7 +26,40 @@ class PrescriptionController extends Controller
 {
     private function storeId()
     {
+        // Deliberately does NOT run ensureItemSchema(): this is called from inside the save
+        // transactions, and DDL there implicitly commits it — the next DB::commit() then dies with
+        // "There is no active transaction" and the prescription is half-written. Schema is
+        // ensured at the top of the actions that need it, before any transaction opens.
         return Helpers::get_store_id();
+    }
+
+    /**
+     * The medicines table columns, added in place — no migration files (see CLAUDE.md).
+     *
+     * `type` is the dosage form (TAB. / CAP. / SYR.), which used to be typed into the medicine
+     * name. `notes` is free instruction text, split out from `instructions` so that column can
+     * stay a picked food timing ("After food") rather than a sentence nobody can group by.
+     */
+    public static function ensureItemSchema(): void
+    {
+        static $done = false;
+        if ($done || !\Illuminate\Support\Facades\Schema::hasTable('prescription_items')) {
+            return;
+        }
+        $done = true;
+
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('prescription_items', 'type')) {
+            DB::statement("ALTER TABLE `prescription_items` ADD COLUMN `type` VARCHAR(20) NULL AFTER `medicine_name`");
+        }
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('prescription_items', 'notes')) {
+            DB::statement("ALTER TABLE `prescription_items` ADD COLUMN `notes` VARCHAR(255) NULL");
+        }
+
+        // The language the patient's copy should read in — see Prescription::LANGUAGES.
+        if (\Illuminate\Support\Facades\Schema::hasTable('prescriptions')
+            && !\Illuminate\Support\Facades\Schema::hasColumn('prescriptions', 'language')) {
+            DB::statement("ALTER TABLE `prescriptions` ADD COLUMN `language` VARCHAR(10) NULL DEFAULT 'en'");
+        }
     }
 
     private function currentUserId(): int
@@ -142,6 +175,7 @@ class PrescriptionController extends Controller
 
     public function create(Request $request)
     {
+        self::ensureItemSchema();
         if (!auth('vendor')->check() && !hasPermission('prescription', 'add')) abort(403);
         $storeId = $this->storeId();
         $doctors = DoctorProfile::where('store_id', $storeId)->with('employee')->get();
@@ -194,6 +228,7 @@ class PrescriptionController extends Controller
 
     public function store(Request $request)
     {
+        self::ensureItemSchema();
         $request->validate([
             'patient_id'        => 'required|integer',
             'doctor_profile_id' => 'required|integer',
@@ -202,6 +237,10 @@ class PrescriptionController extends Controller
             'follow_up_date'    => 'nullable|date|after_or_equal:today',
             'medicines'         => 'nullable|array',
             'medicines.*.medicine_name' => 'required_with:medicines|string|max:200',
+            'medicines.*.type'          => 'nullable|string|max:20',
+            'medicines.*.dosage'        => 'nullable|string|max:50',
+            'medicines.*.notes'         => 'nullable|string|max:255',
+            'language'                  => 'nullable|string|in:' . implode(',', array_keys(Prescription::LANGUAGES)),
         ]);
 
         DB::beginTransaction();
@@ -215,6 +254,7 @@ class PrescriptionController extends Controller
                 'diagnosis'          => $request->diagnosis,
                 'notes'              => $request->notes,
                 'follow_up_date'     => $request->follow_up_date ?: null,
+                'language'           => $request->input('language') ?: 'en',
                 'is_finalized'       => $request->has('finalize'),
                 'created_by'         => $this->currentUserId(),
                 'created_by_type'    => $this->currentUserType(),
@@ -231,6 +271,8 @@ class PrescriptionController extends Controller
                     'duration'          => $med['duration'] ?? null,
                     'instructions'      => $med['instructions'] ?? null,
                     'quantity'          => $med['quantity'] ?? null,
+                    'type'              => $med['type'] ?? null,
+                    'notes'             => $med['notes'] ?? null,
                 ]);
             }
 
@@ -330,6 +372,7 @@ class PrescriptionController extends Controller
 
     public function edit($id)
     {
+        self::ensureItemSchema();
         if (!auth('vendor')->check() && !hasPermission('prescription', 'edit')) abort(403);
         $storeId = $this->storeId();
         $rx = Prescription::where('store_id', $storeId)->with('items')->findOrFail($id);
@@ -675,6 +718,7 @@ class PrescriptionController extends Controller
 
     public function update(Request $request, $id)
     {
+        self::ensureItemSchema();
         $storeId = $this->storeId();
         $rx = Prescription::where('store_id', $storeId)->findOrFail($id);
 
@@ -689,6 +733,10 @@ class PrescriptionController extends Controller
             'follow_up_date' => 'nullable|date',
             'medicines'      => 'nullable|array',
             'medicines.*.medicine_name' => 'required_with:medicines|string|max:200',
+            'medicines.*.type'          => 'nullable|string|max:20',
+            'medicines.*.dosage'        => 'nullable|string|max:50',
+            'medicines.*.notes'         => 'nullable|string|max:255',
+            'language'                  => 'nullable|string|in:' . implode(',', array_keys(Prescription::LANGUAGES)),
         ]);
 
         DB::beginTransaction();
@@ -697,6 +745,7 @@ class PrescriptionController extends Controller
                 'diagnosis'      => $request->diagnosis,
                 'notes'          => $request->notes,
                 'follow_up_date' => $request->follow_up_date ?: null,
+                'language'       => $request->input('language') ?: ($rx->language ?: 'en'),
                 'is_finalized'   => $request->has('finalize'),
             ]);
 
@@ -712,6 +761,8 @@ class PrescriptionController extends Controller
                     'duration'          => $med['duration'] ?? null,
                     'instructions'      => $med['instructions'] ?? null,
                     'quantity'          => $med['quantity'] ?? null,
+                    'type'              => $med['type'] ?? null,
+                    'notes'             => $med['notes'] ?? null,
                 ]);
             }
 

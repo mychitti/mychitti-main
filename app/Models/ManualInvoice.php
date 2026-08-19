@@ -44,6 +44,9 @@ class ManualInvoice extends Model
         'financial_year',
         'subtotal_amount',
         'round_off',
+        // Label → value rows printed above the lines. Set by property assignment on the older
+        // billing screens; listed here so the invoices built with ::create() can carry it too.
+        'custom_headers',
     ];
     protected $casts = [
         'reference_number' => 'array',

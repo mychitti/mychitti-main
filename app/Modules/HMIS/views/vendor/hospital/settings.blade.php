@@ -82,6 +82,36 @@
                             <small class="text-muted">Days a paid OP stays valid for follow-up visits (e.g. 7 = 1 week).</small>
                             @error('opd_consultation_validity_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+
+                        {{-- Prescription languages — which ones the doctor is offered when writing
+                             an Rx. Everything not ticked stays out of that dropdown, so a clinic
+                             that writes English and Tamil never scrolls past twenty others. --}}
+                        <div class="col-12">
+                            <hr class="mt-1 mb-3">
+                            <label class="input-label mb-1">Prescription Languages</label>
+                            <p class="text-muted mb-2" style="font-size:12px;">
+                                Tick the languages your doctors write prescriptions in. Only these appear
+                                in the language dropdown on the prescription screen.
+                            </p>
+                            <div class="row no-gutters" style="max-height:220px; overflow-y:auto;">
+                                @foreach (\App\Models\Prescription::LANGUAGES as $code => $label)
+                                    <div class="col-md-4 col-sm-6">
+                                        <label class="d-flex align-items-center mb-1"
+                                            style="font-size:12.5px; cursor:{{ $code === 'en' ? 'default' : 'pointer' }};">
+                                            <input type="checkbox" name="rx_languages[]" value="{{ $code }}"
+                                                class="mr-2"
+                                                {{ array_key_exists($code, $rxLanguages ?? []) ? 'checked' : '' }}
+                                                {{ $code === 'en' ? 'checked disabled' : '' }}>
+                                            {{ $label }}
+                                            @if($code === 'en')
+                                                <span class="text-muted ml-1" style="font-size:11px;">(always on)</span>
+                                            @endif
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                            @error('rx_languages.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
                     </div>
                     <div class="card-footer text-right">
                         <button type="submit" class="btn btn--primary">Save Settings</button>
