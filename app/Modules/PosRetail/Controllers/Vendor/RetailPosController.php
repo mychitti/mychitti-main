@@ -1771,7 +1771,14 @@ class RetailPosController extends Controller
             // a countable variation (Red) takes it off its own count and the main figure follows
             // as the sum. Deducting from both — which is what happened here before — took the
             // quantity out twice.
-            _updateInventoryStock($line['item']->id, $line['qty'], $line['item']->unit, $line['var_type']);
+            //
+            // Main-store stock ONLY for a sale that is not billed at a branch. Stock reaches a
+            // branch by gatepass, and that transfer has already taken the quantity off the main
+            // pool (see gatepassStore). Deducting here as well took a branch sale out twice —
+            // once from the branch, once from a main figure that no longer holds those goods.
+            if (!$billingBranchId) {
+                _updateInventoryStock($line['item']->id, $line['qty'], $line['item']->unit, $line['var_type']);
+            }
 
             // Decrement the branch's stock too (availability at the counter's branch). Branch
             // stock is held in the item's own unit, so a measured pack takes its converted
@@ -2527,10 +2534,14 @@ class RetailPosController extends Controller
             // catalog stays accurate. A void bill already restored stock; leave it alone.
             if ($invoice->pos_status !== 'void') {
                 foreach ($lines->whereNotNull('inv_id') as $line) {
-                    $item = InventoryItem::where('id', $line->inv_id)->where('store_id', $storeId)->first();
-                    if ($item) {
-                        $item->stock = (float) $item->stock + (float) $line->qty;
-                        $item->save();
+                    // Mirrors the sale: a branch bill never took anything off the main pool, so putting it
+                    // back here would credit the store with goods that are still sitting at the branch.
+                    if (!$invoice->pos_branch_id) {
+                        $item = InventoryItem::where('id', $line->inv_id)->where('store_id', $storeId)->first();
+                        if ($item) {
+                            $item->stock = (float) $item->stock + (float) $line->qty;
+                            $item->save();
+                        }
                     }
                     if ($invoice->pos_branch_id) {
                         DB::table('pos_branch_stock')
@@ -2571,10 +2582,14 @@ class RetailPosController extends Controller
 
         // Restore stock for each line (global + branch, if the bill was branch-tagged).
         foreach (InvoiceItem::where('manual_invoice_id', $invoice->id)->whereNotNull('inv_id')->get() as $line) {
-            $item = InventoryItem::where('id', $line->inv_id)->where('store_id', $storeId)->first();
-            if ($item) {
-                $item->stock = (float) $item->stock + (float) $line->qty;
-                $item->save();
+            // Mirrors the sale: a branch bill never took anything off the main pool, so putting it
+            // back here would credit the store with goods that are still sitting at the branch.
+            if (!$invoice->pos_branch_id) {
+                $item = InventoryItem::where('id', $line->inv_id)->where('store_id', $storeId)->first();
+                if ($item) {
+                    $item->stock = (float) $item->stock + (float) $line->qty;
+                    $item->save();
+                }
             }
             if ($invoice->pos_branch_id) {
                 DB::table('pos_branch_stock')
