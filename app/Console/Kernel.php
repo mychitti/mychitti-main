@@ -232,6 +232,16 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
 
+        // QUEUE WATCHDOG ============================================
+        // ->command(), never ->job(): scheduling this as a queued job would put the watchdog
+        // into the queue it exists to watch. That is precisely how ResumeWhatsAppBulkRunsJob
+        // ended up queued 335 times and never run while the worker was hung.
+        $schedule->command('queue:guard --restart')
+            ->everyFiveMinutes()
+            ->timezone($tz)
+            ->name('queue-guard')
+            ->withoutOverlapping();
+
         // LEAD ROUND DISPATCH =======================================
         $schedule->command('leads:dispatch-rounds')
             ->everyMinute()
