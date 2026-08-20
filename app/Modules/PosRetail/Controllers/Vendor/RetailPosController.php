@@ -3218,6 +3218,70 @@ class RetailPosController extends Controller
     }
 
     // ── Per-branch stock management ──────────────────────────────────────────────
+    /**
+     * Damaged / theft quantities that are genuinely still out of stock, keyed by item.
+     *
+     * Two things have to come off the raw write-off total or the Total column stops adding up,
+     * because Total is derived as remaining + sold + damaged + theft:
+     *
+     *   - a REJECTED request had its stock handed straight back, so counting it as damaged
+     *     inflates Total by the quantity that is now sitting on the shelf again;
+     *   - an accepted request may have had part of it marked "convert to resell", and that
+     *     portion also went back.
+     *
+     * Pending requests stay counted: their stock was deducted the moment they were raised.
+     *
+     * @param  \Closure|null $scope  extra constraints (location, item ids)
+     * @return array{0:array,1:array}  [damagedByItem, theftByItem] keyed by inventory_item_id
+     */
+    private function writeoffNetByItem(int $storeId, ?\Closure $scope = null, string $key = 'inventory_item_id'): array
+    {
+        // Only accepted requests have moved stock. A pending one is a claim with the goods
+        // still on the shelf, and a rejected one never happened — counting either as damaged
+        // would inflate Total, which is derived as remaining + sold + damaged + theft.
+        //
+        // A NULL status predates the approval workflow, back when the deduction happened at
+        // request time; those rows really are out of stock, so they still count.
+        $q = DB::table('pos_stock_writeoff')->where('store_id', $storeId)
+            ->where(fn($w) => $w->whereNull('status')->orWhere('status', '=', 'accepted'));
+
+        if ($scope) {
+            $scope($q);
+        }
+
+        $rows = $q->get(['id', 'inventory_item_id', 'branch_id', 'type', 'qty']);
+        if ($rows->isEmpty()) {
+            return [[], []];
+        }
+
+        $resold = collect();
+        if (Schema::hasTable('pos_writeoff_dispositions')) {
+            $resold = DB::table('pos_writeoff_dispositions')
+                ->whereIn('writeoff_id', $rows->pluck('id'))
+                ->where('disposition', 'resell')
+                ->groupBy('writeoff_id')
+                ->selectRaw('writeoff_id, SUM(qty) as q')
+                ->pluck('q', 'writeoff_id');
+        }
+
+        $damaged = [];
+        $theft = [];
+        foreach ($rows as $r) {
+            $net = (float) $r->qty - (float) ($resold[$r->id] ?? 0);
+            if ($net <= 0) {
+                continue;
+            }
+            $k = $key === 'branch_id' ? (int) ($r->branch_id ?? 0) : $r->inventory_item_id;
+            if ($r->type === 'theft') {
+                $theft[$k] = ($theft[$k] ?? 0) + $net;
+            } else {
+                $damaged[$k] = ($damaged[$k] ?? 0) + $net;
+            }
+        }
+
+        return [$damaged, $theft];
+    }
+
     public function branchStock(Request $request)
     {
         $this->ensureSchema();
@@ -3281,17 +3345,12 @@ class RetailPosController extends Controller
                 ->whereIn('ii.inv_id', $itemIds)
                 ->groupBy('ii.inv_id')->selectRaw('ii.inv_id as id, SUM(ii.qty) as qty')->pluck('qty', 'id');
 
-            // Damaged / theft write-offs at this location.
-            $damaged = [];
-            $theft = [];
-            $wo = DB::table('pos_stock_writeoff')->where('store_id', $storeId)
-                ->when($branchId, fn($q) => $q->where('branch_id', $branchId), fn($q) => $q->whereNull('branch_id'))
-                ->whereIn('inventory_item_id', $itemIds)
-                ->groupBy('inventory_item_id', 'type')->selectRaw('inventory_item_id as id, type, SUM(qty) as qty')->get();
-            foreach ($wo as $r) {
-                if ($r->type === 'theft') { $theft[$r->id] = (float) $r->qty; }
-                else { $damaged[$r->id] = (float) $r->qty; }
-            }
+            // Damaged / theft still out of stock at this location — rejected requests and
+            // resold portions excluded, since both went back on the shelf.
+            [$damaged, $theft] = $this->writeoffNetByItem($storeId, function ($q) use ($branchId, $itemIds) {
+                $branchId ? $q->where('branch_id', $branchId) : $q->whereNull('branch_id');
+                $q->whereIn('inventory_item_id', $itemIds);
+            });
 
             foreach ($items as $it) {
                 $rem = $remaining[$it->id] ?? 0;
@@ -3328,15 +3387,8 @@ class RetailPosController extends Controller
             $soldByLoc[(int) ($r->bid ?? 0)] = (float) $r->s;
         }
 
-        // Damaged / theft per location.
-        $dmgByLoc = [];
-        $thfByLoc = [];
-        foreach (DB::table('pos_stock_writeoff')->where('store_id', $storeId)
-            ->groupBy('branch_id', 'type')->selectRaw('branch_id as bid, type, SUM(qty) as s')->get() as $r) {
-            $bid = (int) ($r->bid ?? 0);
-            if ($r->type === 'theft') { $thfByLoc[$bid] = (float) $r->s; }
-            else { $dmgByLoc[$bid] = (float) $r->s; }
-        }
+        // Damaged / theft per location, on the same net basis as the per-item table above.
+        [$dmgByLoc, $thfByLoc] = $this->writeoffNetByItem($storeId, null, 'branch_id');
 
         $mk = fn($key, $name, $rem, $active) => [
             'key' => $key, 'name' => $name, 'active' => $active,
@@ -4226,6 +4278,9 @@ class RetailPosController extends Controller
         }
 
         // Available stock at the chosen location (branch pool, else main store).
+        // Sanity check only. Stock does not move until a manager accepts, so this is an early
+        // warning against an obviously impossible entry rather than the rule — writeoffDecide()
+        // re-checks against whatever is actually on the shelf at approval time.
         $available = $branchId ? $this->branchItemStock($branchId, $itemId) : (float) $item->stock;
         if ($qty > $available + 0.0001) {
             Toastr::error('Quantity exceeds available stock (have ' . rtrim(rtrim(number_format($available, 3), '0'), '.') . ')');
@@ -4234,14 +4289,9 @@ class RetailPosController extends Controller
 
         DB::beginTransaction();
         try {
-            if ($branchId) {
-                DB::table('pos_branch_stock')
-                    ->where('branch_id', $branchId)->where('inventory_item_id', $itemId)
-                    ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)'), 'updated_at' => now()]);
-            } else {
-                $this->deductWriteoffStock($storeId, $itemId, $qty);
-            }
-
+            // The request is a claim, not a movement. Nothing leaves inventory here: an approval
+            // that has already taken effect is not an approval, and a mistyped entry would
+            // otherwise cut sellable stock until somebody noticed.
             DB::table('pos_stock_writeoff')->insert([
                 'store_id'          => $storeId,
                 'branch_id'         => $branchId,
@@ -4262,7 +4312,7 @@ class RetailPosController extends Controller
         }
 
         $this->logAudit('writeoff', $item->item_name, ucfirst($type) . ' ' . rtrim(rtrim(number_format($qty, 3), '0'), '.') . ($branchId ? ' (branch)' : ' (main store)'));
-        Toastr::success(ucfirst($type) . ' request submitted for manager approval.');
+        Toastr::success(ucfirst($type) . ' request submitted. Stock is deducted once a manager accepts it.');
         return back();
     }
 
@@ -4279,11 +4329,19 @@ class RetailPosController extends Controller
         return $managerId && $managerId === (int) auth('vendor_employee')->id();
     }
 
-    private function deductWriteoffStock($storeId, $itemId, $qty): void
+    private function deductWriteoffStock($storeId, $branchId, $itemId, $qty): void
     {
         if ($qty <= 0) {
             return;
         }
+
+        if ($branchId) {
+            DB::table('pos_branch_stock')
+                ->where('branch_id', $branchId)->where('inventory_item_id', $itemId)
+                ->update(['stock' => DB::raw('GREATEST(stock - ' . $qty . ', 0)'), 'updated_at' => now()]);
+            return;
+        }
+
         // Mass update bypasses model events, so the stock_base dual-write and the
         // items.stock mirror would both be skipped — the vendor would see the write-off
         // logged but the stock unchanged. Go through the model so the hooks fire.
@@ -4294,26 +4352,6 @@ class RetailPosController extends Controller
         }
     }
 
-    private function restoreWriteoffStock($storeId, $branchId, $itemId, $qty): void
-    {
-        if ($qty <= 0) {
-            return;
-        }
-        if ($branchId) {
-            DB::table('pos_branch_stock')->where('branch_id', $branchId)->where('inventory_item_id', $itemId)
-                ->update(['stock' => DB::raw('stock + ' . $qty), 'updated_at' => now()]);
-        } else {
-            // Mass update bypasses model events, so the stock_base dual-write would be skipped.
-            // Go through the model instead — one row, and the saving hook keeps both in step.
-            $item = InventoryItem::where('id', $itemId)->where('store_id', $storeId)->first();
-            if ($item) {
-                $item->stock = (float) $item->stock + $qty;
-                $item->save();
-            }
-        }
-    }
-
-    // Manager decision on a pending write-off: reject (restore stock) or accept (split dispositions).
     public function writeoffDecide(Request $request, $id)
     {
         $this->ensureSchema();
@@ -4339,8 +4377,8 @@ class RetailPosController extends Controller
         if ($action === 'reject') {
             DB::beginTransaction();
             try {
-                // Deducted at request time — return it to normal inventory.
-                $this->restoreWriteoffStock($storeId, $rec->branch_id, $rec->inventory_item_id, (float) $rec->qty);
+                // Nothing to give back: stock only moves on accept, so a rejected request has
+                // never touched inventory.
                 DB::table('pos_stock_writeoff')->where('id', $id)->update([
                     'status' => 'rejected', 'manager_note' => $request->input('manager_note'),
                     'decided_by' => $deciderId, 'decided_by_role' => $deciderRole, 'decided_at' => now(), 'updated_at' => now(),
@@ -4351,7 +4389,7 @@ class RetailPosController extends Controller
                 Toastr::error('Reject failed: ' . $th->getMessage());
                 return back();
             }
-            Toastr::success('Request rejected — stock returned to inventory.');
+            Toastr::success('Request rejected. Stock was never deducted, so nothing changes.');
             return back();
         }
 
@@ -4378,17 +4416,40 @@ class RetailPosController extends Controller
             return back();
         }
 
+        // Only scrap and return-to-supplier actually leave. "Convert to resell" puts the goods
+        // back on the shelf, and since nothing was deducted at request time that now means
+        // simply not deducting it.
+        $leaving = 0.0;
+        foreach ($rows as $r) {
+            if ($r['type'] !== 'resell') {
+                $leaving += $r['qty'];
+            }
+        }
+
+        // Re-checked here rather than trusting the figure from request time: the goods may have
+        // been sold, transferred or written off again while this sat waiting for a manager.
+        $available = $rec->branch_id
+            ? $this->branchItemStock($rec->branch_id, $rec->inventory_item_id)
+            : (float) (InventoryItem::where('id', $rec->inventory_item_id)->where('store_id', $storeId)->value('stock') ?? 0);
+
+        if ($leaving > $available + 0.0001) {
+            Toastr::error('Only ' . rtrim(rtrim(number_format($available, 3), '0'), '.')
+                . ' left in stock — not enough to write off ' . rtrim(rtrim(number_format($leaving, 3), '0'), '.')
+                . '. Reject this request, or raise a new one for what is actually there.');
+            return back();
+        }
+
         DB::beginTransaction();
         try {
+            if ($leaving > 0) {
+                $this->deductWriteoffStock($storeId, $rec->branch_id, $rec->inventory_item_id, $leaving);
+            }
+
             foreach ($rows as $i => $r) {
                 $attachment = null;
                 if ($request->hasFile("disp_file.$i")) {
                     $f = $request->file("disp_file.$i");
                     $attachment = Helpers::upload('writeoff/', $f->getClientOriginalExtension(), $f);
-                }
-                // Convert to resell → stock goes back to inventory; supplier/scrap stay out.
-                if ($r['type'] === 'resell') {
-                    $this->restoreWriteoffStock($storeId, $rec->branch_id, $rec->inventory_item_id, $r['qty']);
                 }
                 DB::table('pos_writeoff_dispositions')->insert([
                     'writeoff_id' => $id, 'disposition' => $r['type'], 'qty' => $r['qty'],
@@ -4407,11 +4468,13 @@ class RetailPosController extends Controller
             Toastr::error('Approval failed: ' . $th->getMessage());
             return back();
         }
-        Toastr::success('Request accepted and dispositions recorded.');
+        Toastr::success($leaving > 0
+            ? 'Request accepted — ' . rtrim(rtrim(number_format($leaving, 3), '0'), '.') . ' deducted from stock.'
+            : 'Request accepted — everything was kept for resale, so stock is unchanged.');
         return back();
     }
 
-    // Deleting a write-off restores the removed stock (corrects a mistaken entry).
+    // Deleting a pending write-off just drops the request — nothing was deducted to give back.
     public function writeoffDelete(Request $request, $id)
     {
         $this->ensureSchema();
@@ -4428,7 +4491,6 @@ class RetailPosController extends Controller
 
         DB::beginTransaction();
         try {
-            $this->restoreWriteoffStock($storeId, $rec->branch_id, $rec->inventory_item_id, (float) $rec->qty);
             DB::table('pos_stock_writeoff')->where('id', $id)->where('store_id', $storeId)->delete();
             DB::commit();
         } catch (\Throwable $th) {
@@ -4437,7 +4499,7 @@ class RetailPosController extends Controller
             return back();
         }
 
-        Toastr::success('Write-off reversed and stock restored');
+        Toastr::success('Request deleted. Stock was never deducted, so nothing changes.');
         return back();
     }
 }

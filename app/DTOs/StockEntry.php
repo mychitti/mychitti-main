@@ -55,11 +55,11 @@ class StockEntry
     }
 
     /**
-     * A damaged / theft / leaked write-off.
+     * An accepted damaged / theft / leaked write-off.
      *
-     * Stock leaves inventory when the request is RAISED, not when a manager decides it, so the
-     * request itself is the movement. Scrap and return-to-supplier keep the quantity out for
-     * good; anything that comes back is reported separately by fromWriteoffReturn().
+     * Stock leaves when the manager accepts, so the decision is the movement and the row is
+     * dated to it. $row->qty has already had any "kept for resale" portion taken off by the
+     * caller, so what appears here is only what actually left the shelf.
      */
     public static function fromWriteoff($row): self
     {
@@ -68,39 +68,19 @@ class StockEntry
 
         if (!empty($row->dispositions)) {
             $ref .= ' (' . $row->dispositions . ')';
-        } elseif (($row->status ?? '') === 'pending') {
-            $ref .= ' (awaiting approval)';
         }
         if (!empty($row->branch_name)) {
             $ref .= ' at ' . $row->branch_name;
         }
 
         return new self([
-            'date'            => \Carbon\Carbon::parse($row->created_at),
+            'date'            => \Carbon\Carbon::parse($row->decided_at),
             'item_id'         => $row->item_name ? $row->inventory_item_id : null,
             'item_name'       => ucwords((string) $row->item_name),
             'invoice_pdf'     => null,
             'invoice_id'      => $ref,
             'type'            => 'Stock-out',
             'qty'             => $row->qty,
-            'remaining_stock' => $row->stock,
-        ]);
-    }
-
-    /**
-     * Stock a write-off gave back — the manager rejected the request, or accepted part of it as
-     * "convert to resell". Dated to the decision, because that is when the quantity returned.
-     */
-    public static function fromWriteoffReturn($row, $qty, string $reason): self
-    {
-        return new self([
-            'date'            => \Carbon\Carbon::parse($row->decided_at),
-            'item_id'         => $row->item_name ? $row->inventory_item_id : null,
-            'item_name'       => ucwords((string) $row->item_name),
-            'invoice_pdf'     => null,
-            'invoice_id'      => 'WO-' . $row->id . ' ' . $reason,
-            'type'            => 'Stock-in',
-            'qty'             => $qty,
             'remaining_stock' => $row->stock,
         ]);
     }

@@ -24,7 +24,7 @@
 
         @if ($canCreate)
             <form method="post" action="{{ route('vendor.retail-pos.writeoff.store') }}"
-                onsubmit="return confirm('Submit this write-off request for manager approval? The quantity is held out of stock until decided.');">
+                onsubmit="return confirm('Submit this write-off request for manager approval? Stock is not deducted until a manager accepts it.');">
                 @csrf
                 <div class="rp-card">
                     <div class="hd"><span class="accent">New Damaged / Theft Request</span></div>
@@ -111,7 +111,7 @@
                                     @endif
                                     @if ($canDelete && $st === 'pending')
                                         <form method="post" action="{{ route('vendor.retail-pos.writeoff.delete', $r->id) }}" style="display:inline"
-                                            onsubmit="return confirm('Delete this pending request and restore {{ $fmt($r->qty) }} to stock?');">
+                                            onsubmit="return confirm('Delete this pending request? Stock was never deducted, so nothing changes.');">
                                             @csrf
                                             <button class="btn btn-sm btn-outline-danger">Delete</button>
                                         </form>
