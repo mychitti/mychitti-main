@@ -236,7 +236,12 @@ class Kernel extends ConsoleKernel
         // ->command(), never ->job(): scheduling this as a queued job would put the watchdog
         // into the queue it exists to watch. That is precisely how ResumeWhatsAppBulkRunsJob
         // ended up queued 335 times and never run while the worker was hung.
-        $schedule->command('queue:guard --restart')
+        //
+        // Alert-only for now: --restart is deliberately OFF until the 156k stale backlog from
+        // the July hang has been purged. With it on, the guard would see a stalled queue, start
+        // the stopped worker, and drain six weeks of old reminders at real people. Add --restart
+        // back once `jobs` is clear and the worker is running normally.
+        $schedule->command('queue:guard')
             ->everyFiveMinutes()
             ->timezone($tz)
             ->name('queue-guard')
