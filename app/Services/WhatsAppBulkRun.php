@@ -172,7 +172,10 @@ class WhatsAppBulkRun
             ->update([
                 'lock_token'   => $token,
                 'locked_until' => now()->addMinutes(self::LOCK_MINUTES),
-                'started_at'   => DB::raw('COALESCE(`started_at`, NOW())'),
+                // Laravel's now(), not MySQL's NOW(): the app runs on Asia/Kolkata and the
+                // database on UTC, so the raw form stamped this row 5.5 hours behind every
+                // other timestamp on it and made a run look like it started before it existed.
+                'started_at'   => DB::raw('COALESCE(`started_at`, ' . DB::getPdo()->quote(now()->toDateTimeString()) . ')'),
                 'updated_at'   => now(),
             ]);
 
