@@ -237,11 +237,10 @@ class Kernel extends ConsoleKernel
         // into the queue it exists to watch. That is precisely how ResumeWhatsAppBulkRunsJob
         // ended up queued 335 times and never run while the worker was hung.
         //
-        // Alert-only for now: --restart is deliberately OFF until the 156k stale backlog from
-        // the July hang has been purged. With it on, the guard would see a stalled queue, start
-        // the stopped worker, and drain six weeks of old reminders at real people. Add --restart
-        // back once `jobs` is clear and the worker is running normally.
-        $schedule->command('queue:guard')
+        // --restart matters more since admin and vendor moved off the `sync` driver: auto-replies,
+        // bulk sends and campaigns now all depend on a live worker, where they used to run inline
+        // in the request and could not be stopped by a dead queue.
+        $schedule->command('queue:guard --restart')
             ->everyFiveMinutes()
             ->timezone($tz)
             ->name('queue-guard')
