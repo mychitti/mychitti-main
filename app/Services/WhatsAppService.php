@@ -801,6 +801,36 @@ class WhatsAppService
     }
 
     /**
+     * Free-form image / video / document by public link. Same 24h-window rule as sendText().
+     *
+     * WhatsApp keys the payload on the media kind rather than taking one generic "file", and
+     * only a document may carry a filename, so the shape is built per kind here instead of at
+     * every call site. The link must be publicly fetchable: Meta pulls the bytes itself.
+     */
+    public function sendMedia(string $to, string $link, string $kind, ?string $filename = null, ?string $caption = null, ?string $context = null): array
+    {
+        $kind = in_array($kind, ['image', 'video', 'document'], true) ? $kind : 'document';
+
+        $media = ['link' => $link];
+        if ($caption !== null && $caption !== '') {
+            $media['caption'] = $caption;
+        }
+        if ($kind === 'document' && $filename) {
+            $media['filename'] = $filename;
+        }
+
+        return $this->send([
+            'to'   => $this->normalizePhone($to),
+            'type' => $kind,
+            $kind  => $media,
+        ], [
+            'body'      => $caption ?: $filename,
+            'context'   => $context,
+            'media_url' => $link,
+        ]);
+    }
+
+    /**
      * Approved template message — required for business-initiated conversations
      * (OTP, order updates, marketing) outside the 24h window.
      */
@@ -2501,6 +2531,10 @@ class WhatsAppService
         // to them. The alert that fires alongside is deduped to one per number per half hour and
         // can be missed in a busy notification list, so the obligation is recorded on the
         // conversation itself: a flag that survives, and that only a human reply clears.
+        if (!Schema::hasColumn('whatsapp_messages', 'media_url')) {
+            DB::statement("ALTER TABLE `whatsapp_messages` ADD COLUMN `media_url` VARCHAR(500) NULL");
+        }
+
         if (!Schema::hasColumn('whatsapp_messages', 'needs_reply')) {
             DB::statement("ALTER TABLE `whatsapp_messages` ADD COLUMN `needs_reply` TINYINT(1) NOT NULL DEFAULT 0");
             DB::statement("ALTER TABLE `whatsapp_messages` ADD KEY `wam_needs_reply_idx` (`store_id`, `needs_reply`)");
@@ -3503,6 +3537,9 @@ class WhatsAppService
                 'type'      => $payload['type'] ?? null,
                 'body'      => isset($meta['body']) ? mb_substr((string) $meta['body'], 0, 1000) : null,
                 'context'   => $meta['context'] ?? null,
+                // Where the file lives, so the chat can show the picture back rather than the
+                // word "[image]". Null on every text message.
+                'media_url' => isset($meta['media_url']) ? mb_substr((string) $meta['media_url'], 0, 500) : null,
                 'audience'  => $audience,
                 'status'    => $result['success'] ? 'accepted' : 'failed',
                 'error'     => $result['error'] ?? null,

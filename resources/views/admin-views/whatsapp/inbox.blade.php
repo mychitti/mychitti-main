@@ -27,6 +27,18 @@
                            background:#fff; color:#56606e; cursor:pointer; }
     .wchat-filter button.on { background:#128c7e; border-color:#128c7e; color:#fff; }
     .wchat-filter .cnt { font-weight:700; }
+    /* The composer is align-items:flex-end, so the attach button needs its own height to sit
+       level with the round send button rather than riding up as the textarea grows. */
+    .wchat-attach { background:none; border:none; color:#54656f; font-size:20px; height:44px; width:36px;
+                    flex-shrink:0; cursor:pointer; }
+    .wchat-attach:hover { color:#128c7e; }
+    .wchat-attach:disabled { opacity:.5; cursor:default; }
+    .wbubble img.wmedia, .wbubble video.wmedia { max-width:230px; max-height:230px; border-radius:8px; display:block; margin-bottom:4px; }
+    .wbubble a.wfile { display:flex; align-items:center; gap:7px; padding:7px 9px; background:rgba(0,0,0,.05);
+                       border-radius:8px; margin-bottom:4px; color:inherit; text-decoration:none; font-size:12.5px; }
+    .wbubble a.wfile i { font-size:18px; }
+    .wchat-pending { display:none; align-items:center; gap:8px; padding:6px 12px; font-size:12px; color:#54656f;
+                     background:#fffaf0; border-top:1px solid #f0e4cf; }
     .wchat-main { flex:1; display:flex; flex-direction:column; min-width:0; background:#efeae2; }
     .wchat-head { padding:10px 16px; background:#f0f2f5; border-bottom:1px solid #e7eaf3; display:flex; align-items:center; gap:10px; }
     .wchat-msgs { flex:1; overflow-y:auto; padding:18px 7% 10px;
@@ -121,7 +133,18 @@
                         <i class="tio-time"></i> {{ translate('This contact last messaged more than 24 hours ago — WhatsApp may not deliver free-text replies outside the 24-hour window.') }}
                     </div>
 
+                    <div class="wchat-pending" id="wchatPending">
+                        <i class="tio-attachment"></i> <span id="wchatPendingName"></span>
+                        <span class="text-muted" id="wchatPendingSize"></span>
+                    </div>
+
                     <div class="wchat-input" id="wchatInput" style="display:none;">
+                        {{-- WhatsApp fetches the file from a public link, so the upload has to land
+                             before the send. The picker posts to send-media, which does both. --}}
+                        <input type="file" id="wchatFile" style="display:none;"
+                               accept=".jpg,.jpeg,.png,.webp,.mp4,.3gp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                        <button type="button" class="wchat-attach" id="wchatAttach"
+                                title="{{ translate('Attach image, video or document') }}"><i class="tio-attachment"></i></button>
                         <textarea id="wchatText" rows="1" placeholder="{{ translate('Type a message') }}"></textarea>
                         <button type="button" class="wchat-send" id="wchatSend" title="{{ translate('Send') }}"><i class="tio-send"></i></button>
                     </div>
@@ -138,6 +161,7 @@
     var THREADS_URL = '{{ route('admin.business-settings.third-party.whatsapp-inbox.threads') }}';
     var THREAD_URL  = '{{ route('admin.business-settings.third-party.whatsapp-inbox.thread') }}';
     var SEND_URL    = '{{ route('admin.business-settings.third-party.whatsapp-inbox.send') }}';
+    var MEDIA_URL   = '{{ route('admin.business-settings.third-party.whatsapp-inbox.send-media') }}';
     var CSRF        = '{{ csrf_token() }}';
 
     var threads = [];
@@ -228,8 +252,27 @@
         msgs.forEach(function (m) {
             var d = fmtDay(m.sent_at);
             if (d && d !== day) { day = d; html += '<div class="wchat-day"><span>' + esc(d) + '</span></div>'; }
+            // An inbound attachment has no link stored - WhatsApp keeps those behind its own
+            // media API - so only outbound files can be shown inline. Everything else falls
+            // back to naming the type, as before.
+            var media = '';
+            if (m.media_url) {
+                var u = esc(m.media_url);
+                if (m.type === 'image') {
+                    media = '<a href="' + u + '" target="_blank"><img class="wmedia" src="' + u + '"></a>';
+                } else if (m.type === 'video') {
+                    media = '<video class="wmedia" src="' + u + '" controls></video>';
+                } else {
+                    media = '<a class="wfile" href="' + u + '" target="_blank">'
+                        + '<i class="tio-file-outlined"></i><span>' + esc(m.body || 'Document') + '</span></a>';
+                }
+            }
+
+            var caption = m.body ? esc(m.body) : (media ? '' : '[' + esc(m.type || 'message') + ']');
+            if (media && m.type === 'document') { caption = ''; }
+
             html += '<div class="wbubble ' + (m.direction === 'in' ? 'in' : 'out') + '">'
-                + esc(m.body || '[' + (m.type || 'message') + ']')
+                + media + caption
                 + '<div class="wmeta">' + fmtTime(m.sent_at) + ticks(m) + '</div>'
                 + '</div>';
         });
@@ -282,6 +325,48 @@
             toastr.error(msg);
         });
     }
+
+    function sendFile(file) {
+        if (!file || !activeKey) { return; }
+
+        $('#wchatPendingName').text(file.name);
+        $('#wchatPendingSize').text('(' + (file.size / 1048576).toFixed(1) + ' MB) uploading...');
+        $('#wchatPending').css('display', 'flex');
+        $('#wchatAttach, #wchatSend').prop('disabled', true);
+
+        var fd = new FormData();
+        fd.append('_token', CSRF);
+        fd.append('phone', activeKey);
+        fd.append('file', file);
+        // Whatever is already typed rides along as the caption, the way WhatsApp itself does it.
+        fd.append('caption', ($('#wchatText').val() || '').trim());
+
+        $.ajax({ url: MEDIA_URL, method: 'POST', data: fd, processData: false, contentType: false })
+            .done(function (res) {
+                if (res && res.success) {
+                    $('#wchatText').val('').trigger('input');
+                    lastRenderSignature = '';
+                    fetchThread();
+                    loadThreads();
+                } else {
+                    toastr.error((res && res.error) || 'File could not be sent.');
+                }
+            })
+            .fail(function (xhr) {
+                var msg = (xhr.responseJSON && (xhr.responseJSON.error || xhr.responseJSON.message))
+                    || 'File could not be sent.';
+                toastr.error(msg);
+            })
+            .always(function () {
+                $('#wchatPending').hide();
+                $('#wchatAttach, #wchatSend').prop('disabled', false);
+                // Cleared so picking the same file twice in a row still fires change.
+                $('#wchatFile').val('');
+            });
+    }
+
+    $('#wchatAttach').on('click', function () { $('#wchatFile').trigger('click'); });
+    $('#wchatFile').on('change', function () { sendFile(this.files && this.files[0]); });
 
     $(document).on('click', '.wchat-thread', function () {
         openThread($(this).data('key') + '', $(this).data('label') + '', $(this).data('phone') + '');

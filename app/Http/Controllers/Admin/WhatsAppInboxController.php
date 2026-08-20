@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
@@ -123,6 +124,7 @@ class WhatsAppInboxController extends Controller
     public function thread(Request $request)
     {
         $request->validate(['phone' => 'required|digits:10']);
+        WhatsAppService::ensureMessagesTable();
         $key = $request->phone;
 
         $messages = DB::table('whatsapp_messages')
@@ -130,7 +132,7 @@ class WhatsAppInboxController extends Controller
             ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
             ->orderByDesc('sent_at')
             ->limit(300)
-            ->get(['id', 'direction', 'type', 'body', 'context', 'status', 'error', 'sent_at'])
+            ->get(['id', 'direction', 'type', 'body', 'context', 'status', 'error', 'sent_at', 'media_url'])
             ->reverse()
             ->values();
 
@@ -145,6 +147,95 @@ class WhatsAppInboxController extends Controller
     }
 
     /** Send a manual reply (free text) from the MyChitti platform number. */
+    /**
+     * What each accepted kind may be, and the size WhatsApp itself will take.
+     *
+     * Meta's own ceilings: 5 MB for an image, 16 MB for video, 100 MB for a document. The
+     * upload helper refuses anything over 30 MB, so documents are held to that rather than
+     * promising a limit the storage layer will reject.
+     */
+    const MEDIA_KINDS = [
+        'image'    => ['jpg', 'jpeg', 'png', 'webp'],
+        'video'    => ['mp4', '3gp'],
+        'document' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt'],
+    ];
+    const MEDIA_MAX_KB = ['image' => 5120, 'video' => 16384, 'document' => 30720];
+
+    /**
+     * Attach a file to the conversation: stored on the public disk, then sent as a link.
+     *
+     * WhatsApp fetches the bytes itself, so the file has to be publicly reachable before the
+     * send - which is why this uploads first and sends second rather than streaming.
+     */
+    public function sendMedia(Request $request)
+    {
+        $request->validate([
+            'phone'   => 'required|digits:10',
+            'file'    => 'required|file',
+            'caption' => 'nullable|string|max:1000',
+        ]);
+
+        $file = $request->file('file');
+        $ext  = strtolower($file->getClientOriginalExtension());
+
+        $kind = null;
+        foreach (self::MEDIA_KINDS as $k => $exts) {
+            if (in_array($ext, $exts, true)) {
+                $kind = $k;
+                break;
+            }
+        }
+        if (!$kind) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'That file type is not supported. Allowed: '
+                    . implode(', ', array_merge(...array_values(self::MEDIA_KINDS))) . '.',
+            ], 422);
+        }
+
+        $kb = (int) ceil($file->getSize() / 1024);
+        if ($kb > self::MEDIA_MAX_KB[$kind]) {
+            return response()->json([
+                'success' => false,
+                'error'   => ucfirst($kind) . ' is too large (' . round($kb / 1024, 1) . ' MB). '
+                    . 'WhatsApp accepts up to ' . round(self::MEDIA_MAX_KB[$kind] / 1024) . ' MB for a ' . $kind . '.',
+            ], 422);
+        }
+
+        $wa = WhatsAppService::make();
+        if (!$wa->isConfigured()) {
+            return response()->json(['success' => false, 'error' => 'MyChitti WhatsApp is not configured.'], 422);
+        }
+
+        try {
+            $name = Helpers::upload('whatsapp-chat/', $ext, $file);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Upload failed: ' . $e->getMessage()], 500);
+        }
+
+        $link = asset('storage/app/public/whatsapp-chat/' . $name);
+
+        $res = $wa->sendMedia(
+            $request->phone,
+            $link,
+            $kind,
+            $file->getClientOriginalName(),
+            trim((string) $request->input('caption')) ?: null,
+            'chat reply'
+        );
+
+        if ($res['success']) {
+            $this->clearNeedsReply($request->phone);
+        }
+
+        return response()->json([
+            'success' => (bool) $res['success'],
+            'error'   => $res['error'] ?? null,
+            'kind'    => $kind,
+            'url'     => $link,
+        ]);
+    }
+
     /** Drop the needs-reply flag from every message in one platform conversation. */
     protected function clearNeedsReply(string $phone): void
     {

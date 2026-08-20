@@ -1680,6 +1680,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::get('whatsapp-inbox/threads', 'WhatsAppInboxController@threads')->name('whatsapp-inbox.threads');
                 Route::get('whatsapp-inbox/thread', 'WhatsAppInboxController@thread')->name('whatsapp-inbox.thread');
                 Route::post('whatsapp-inbox/send', 'WhatsAppInboxController@send')->name('whatsapp-inbox.send');
+                Route::post('whatsapp-inbox/send-media', 'WhatsAppInboxController@sendMedia')->name('whatsapp-inbox.send-media');
                 Route::get('whatsapp-knowledge', 'WhatsAppKnowledgeController@index')->name('whatsapp-knowledge');
                 Route::post('whatsapp-knowledge/store', 'WhatsAppKnowledgeController@store')->name('whatsapp-knowledge.store');
                 Route::post('whatsapp-knowledge/update', 'WhatsAppKnowledgeController@update')->name('whatsapp-knowledge.update');
