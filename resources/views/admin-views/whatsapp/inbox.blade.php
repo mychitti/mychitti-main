@@ -33,6 +33,19 @@
                     flex-shrink:0; cursor:pointer; }
     .wchat-attach:hover { color:#128c7e; }
     .wchat-attach:disabled { opacity:.5; cursor:default; }
+    .wchat-attach.open { color:#128c7e; }
+    .wchat-menu { position:absolute; bottom:58px; left:12px; background:#fff; border:1px solid #e7eaf3;
+                  border-radius:12px; box-shadow:0 6px 22px rgba(16,24,40,.14); padding:6px; z-index:30;
+                  min-width:186px; display:none; }
+    .wchat-menu button { display:flex; align-items:center; gap:11px; width:100%; border:0; background:none;
+                         padding:9px 11px; border-radius:8px; font-size:13.5px; color:#3b4658; cursor:pointer; text-align:left; }
+    .wchat-menu button:hover { background:#f3f5f9; }
+    .wchat-menu .ic { width:31px; height:31px; border-radius:50%; display:flex; align-items:center;
+                      justify-content:center; color:#fff; font-size:15px; flex-shrink:0; }
+    .wchat-menu .ic.img { background:#7d6cf0; }
+    .wchat-menu .ic.vid { background:#e8663d; }
+    .wchat-menu .ic.doc { background:#4a90d9; }
+    .wchat-menu small { display:block; font-size:10.5px; color:#98a2b3; font-weight:400; }
     .wbubble img.wmedia, .wbubble video.wmedia { max-width:230px; max-height:230px; border-radius:8px; display:block; margin-bottom:4px; }
     .wbubble a.wfile { display:flex; align-items:center; gap:7px; padding:7px 9px; background:rgba(0,0,0,.05);
                        border-radius:8px; margin-bottom:4px; color:inherit; text-decoration:none; font-size:12.5px; }
@@ -57,7 +70,7 @@
     .wchat-day { text-align:center; margin:10px 0; }
     .wchat-day span { background:#fff; color:#54656f; font-size:11px; padding:4px 10px; border-radius:8px; box-shadow:0 1px 0.5px rgba(11,20,26,.13); }
     .wchat-window-note { background:#fff8e1; color:#7a6a1f; font-size:12px; padding:6px 14px; border-top:1px solid #f0e6bb; }
-    .wchat-input { display:flex; gap:8px; padding:10px 14px; background:#f0f2f5; align-items:flex-end; }
+    .wchat-input { display:flex; gap:8px; padding:10px 14px; background:#f0f2f5; align-items:flex-end; position:relative; }
     .wchat-input textarea { flex:1; resize:none; border-radius:10px; border:1px solid #e7eaf3; font-size:14px; padding:9px 12px; max-height:110px; }
     .wchat-send { width:44px; height:44px; border-radius:50%; background:#25D366; color:#fff; border:0; font-size:18px; flex-shrink:0; }
     .wchat-send:disabled { opacity:.5; }
@@ -140,11 +153,26 @@
 
                     <div class="wchat-input" id="wchatInput" style="display:none;">
                         {{-- WhatsApp fetches the file from a public link, so the upload has to land
-                             before the send. The picker posts to send-media, which does both. --}}
-                        <input type="file" id="wchatFile" style="display:none;"
-                               accept=".jpg,.jpeg,.png,.webp,.mp4,.3gp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                             before the send. The picker posts to send-media, which does both.
+                             One input, with `accept` set by whichever menu row was chosen, so the
+                             file dialog opens already filtered to that kind. --}}
+                        <input type="file" id="wchatFile" style="display:none;">
+                        <div class="wchat-menu" id="wchatMenu">
+                            <button type="button" data-accept=".jpg,.jpeg,.png,.webp">
+                                <span class="ic img"><i class="tio-image"></i></span>
+                                <span>{{ translate('Photo') }}<small>JPG, PNG, WEBP &middot; up to 5 MB</small></span>
+                            </button>
+                            <button type="button" data-accept=".mp4,.3gp">
+                                <span class="ic vid"><i class="tio-video-camera"></i></span>
+                                <span>{{ translate('Video') }}<small>MP4, 3GP &middot; up to 16 MB</small></span>
+                            </button>
+                            <button type="button" data-accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                                <span class="ic doc"><i class="tio-file-outlined"></i></span>
+                                <span>{{ translate('Document') }}<small>PDF, Word, Excel &middot; up to 30 MB</small></span>
+                            </button>
+                        </div>
                         <button type="button" class="wchat-attach" id="wchatAttach"
-                                title="{{ translate('Attach image, video or document') }}"><i class="tio-attachment"></i></button>
+                                title="{{ translate('Attach photo, video or document') }}"><i class="tio-attachment"></i></button>
                         <textarea id="wchatText" rows="1" placeholder="{{ translate('Type a message') }}"></textarea>
                         <button type="button" class="wchat-send" id="wchatSend" title="{{ translate('Send') }}"><i class="tio-send"></i></button>
                     </div>
@@ -365,7 +393,29 @@
             });
     }
 
-    $('#wchatAttach').on('click', function () { $('#wchatFile').trigger('click'); });
+    function closeAttachMenu() {
+        $('#wchatMenu').hide();
+        $('#wchatAttach').removeClass('open');
+    }
+
+    $('#wchatAttach').on('click', function (e) {
+        e.stopPropagation();
+        $('#wchatMenu').toggle();
+        $(this).toggleClass('open', $('#wchatMenu').is(':visible'));
+    });
+
+    $('#wchatMenu').on('click', 'button', function (e) {
+        e.stopPropagation();
+        // Filter the dialog to the chosen kind. The server checks the extension again, so this
+        // is a convenience rather than the guard.
+        $('#wchatFile').attr('accept', $(this).data('accept')).trigger('click');
+        closeAttachMenu();
+    });
+
+    // Anywhere else on the page dismisses it, including Escape.
+    $(document).on('click', closeAttachMenu);
+    $(document).on('keydown', function (e) { if (e.key === 'Escape') { closeAttachMenu(); } });
+
     $('#wchatFile').on('change', function () { sendFile(this.files && this.files[0]); });
 
     $(document).on('click', '.wchat-thread', function () {
