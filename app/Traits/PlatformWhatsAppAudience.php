@@ -76,7 +76,7 @@ trait PlatformWhatsAppAudience
         $search = $filters['search'] ?? null;
 
         $query = $audience === 'vendors'
-            ? $this->vendorQuery($zoneId, $search, $filters['status'] ?? 'active')
+            ? $this->vendorQuery($zoneId, $search, $filters['status'] ?? 'active', $filters['category_id'] ?? null)
             : $this->customerQuery($zoneId, $search);
 
         $skipDays = (int) ($filters['skip_days'] ?? 0);
@@ -127,12 +127,20 @@ trait PlatformWhatsAppAudience
     }
 
     /** Vendors, by the phone on their store record. */
-    protected function vendorQuery(?int $zoneId = null, ?string $search = null, string $status = 'active')
+    protected function vendorQuery(?int $zoneId = null, ?string $search = null, string $status = 'active', ?int $categoryId = null)
     {
         $query = DB::table('stores')
             ->whereNotNull('stores.phone')
             ->where('stores.phone', '!=', '')
             ->select('stores.id as id', 'stores.name as name', 'stores.phone as phone');
+
+        // The trade the vendor signed up under. category_1 is the one that is actually filled —
+        // 4,933 of 4,940 stores carry it, against 91 for category_2 and 3 for subcategories — so
+        // it is what "the vendor's category" means in practice. Stored as a varchar holding a
+        // category id, which MySQL compares to an integer happily enough.
+        if ($categoryId) {
+            $query->where('stores.category_1', $categoryId);
+        }
 
         // Deactivated stores are still real businesses an admin may need to reach (an onboarding
         // nudge, a billing notice), so 'all' is offered — it is simply not the default.

@@ -10,6 +10,7 @@ use App\Models\DoctorService;
 use App\Models\Patient;
 use App\Models\ServiceRequest;
 use App\Models\User;
+use App\Services\LeadAppointmentService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -224,14 +225,48 @@ class WhatsAppAppointmentBot
         // — identical to a website appointment request.
         ProcessNewLeadNotifications::dispatch($sr->id, [$storeId], true);
 
+        // Register the patient and the appointment here and now.
+        //
+        // A web booking waits for the customer to tap a confirmation, which is why leads sat as
+        // enquiries with no patient record behind them. On WhatsApp that confirmation has already
+        // happened in the conversation — the marker is only emitted after the customer has agreed
+        // to the details read back to them — and the request goes out as a push notification they
+        // may never see, so waiting for a second confirmation strands the booking indefinitely.
+        //
+        // provision() is idempotent on appointments.service_request_id and creates the patient
+        // (resolvePatient) with the age, gender and address collected above, then issues a token.
+        // Best-effort: the enquiry is already recorded, so a failure here must not lose it.
+        $appointment = null;
+        try {
+            $appointment = LeadAppointmentService::provision((int) $sr->id, $storeId);
+        } catch (\Throwable $e) {
+            Log::warning("WA booking provisioned no appointment (lead {$sr->id}): " . $e->getMessage());
+        }
+
         $drName = trim(($doctor->employee->f_name ?? '') . ' ' . ($doctor->employee->l_name ?? ''));
+
+        $who = $forOther ? ' for ' . $patientName : '';
+        $whenText = $when->format('d M Y') . ' at ' . $when->format('h:i A')
+            . ($drName ? " with Dr. {$drName}" : '');
+
+        // Told as it now stands. Promising "the clinic will confirm shortly" was wrong twice over:
+        // the clinic had already auto-accepted, and it was the customer who was being waited on.
+        if ($appointment) {
+            $token = $appointment->token?->token_number;
+
+            return [
+                'message' => '✅ Booked' . $who . ' at ' . ($store->name ?? 'the clinic') . ' on ' . $whenText . '.'
+                    . ($token ? " Your token number is {$token}." : '')
+                    . " We'll remind you before the visit.",
+                'escalate' => false,
+                'reason'   => '',
+            ];
+        }
 
         return [
             'message' => '✅ Your appointment request at ' . ($store->name ?? 'the clinic') . ' has been sent'
-                . ($forOther ? ' for ' . $patientName : '') . ' on '
-                . $when->format('d M Y') . ' at ' . $when->format('h:i A')
-                . ($drName ? " with Dr. {$drName}" : '')
-                . ". The clinic will confirm it shortly — you'll get a message here once it's confirmed.",
+                . $who . ' on ' . $whenText
+                . '. The clinic will contact you shortly to confirm it.',
             'escalate' => false,
             'reason'   => '',
         ];

@@ -2496,6 +2496,15 @@ class WhatsAppService
             DB::statement("ALTER TABLE `whatsapp_messages` ADD COLUMN `audience` VARCHAR(10) NULL");
             DB::statement("ALTER TABLE `whatsapp_messages` ADD KEY `wam_billing_idx` (`store_id`, `direction`, `sent_at`)");
         }
+
+        // Set on the inbound question whenever the bot told the sender the team would get back
+        // to them. The alert that fires alongside is deduped to one per number per half hour and
+        // can be missed in a busy notification list, so the obligation is recorded on the
+        // conversation itself: a flag that survives, and that only a human reply clears.
+        if (!Schema::hasColumn('whatsapp_messages', 'needs_reply')) {
+            DB::statement("ALTER TABLE `whatsapp_messages` ADD COLUMN `needs_reply` TINYINT(1) NOT NULL DEFAULT 0");
+            DB::statement("ALTER TABLE `whatsapp_messages` ADD KEY `wam_needs_reply_idx` (`store_id`, `needs_reply`)");
+        }
     }
 
     /**

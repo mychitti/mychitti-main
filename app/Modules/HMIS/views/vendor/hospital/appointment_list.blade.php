@@ -258,9 +258,9 @@
             // pointing into the wrong patient encounter is worse than one offering to register.
             $hStoreId = \App\CentralLogics\Helpers::get_store_id();
             if (!$hOpdVisit && $lead->preferred_doctor_id && $lead->preferred_date) {
-                $hPatientFallback = \App\Models\Patient::where('store_id', $hStoreId)
-                    ->where('user_id', $lead->uid)
-                    ->first();
+                // Resolved by who the appointment is FOR, not by whose account booked it — the two
+                // differ whenever someone books for a parent or a child.
+                $hPatientFallback = \App\Services\LeadAppointmentService::locatePatient($hStoreId, $lead);
                 if ($hPatientFallback) {
                     $hUnclaimed = \App\Models\OpdVisit::where('store_id', $hStoreId)
                         ->where('doctor_profile_id', $lead->preferred_doctor_id)
@@ -287,10 +287,10 @@
             $hPatientRecord = null;
             $hPatientHistory = null;
             if ($isAcceptedReq) {
-                $hPatientRecord = \App\Models\Patient::where('store_id', $hStoreId)
-                    ->where('user_id', $lead->uid)
-                    ->with('medicalHistory')
-                    ->first();
+                // Same resolver as the conversion: for a booking made on somebody's behalf this is
+                // the patient's own record, not the record of the account that did the booking.
+                $hPatientRecord = \App\Services\LeadAppointmentService::locatePatient($hStoreId, $lead);
+                $hPatientRecord?->load('medicalHistory');
                 $hPatientHistory = $hPatientRecord?->medicalHistory;
             }
         @endphp

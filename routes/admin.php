@@ -1685,6 +1685,7 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::post('whatsapp-knowledge/update', 'WhatsAppKnowledgeController@update')->name('whatsapp-knowledge.update');
                 Route::post('whatsapp-knowledge/toggle', 'WhatsAppKnowledgeController@toggle')->name('whatsapp-knowledge.toggle');
                 Route::post('whatsapp-knowledge/delete', 'WhatsAppKnowledgeController@delete')->name('whatsapp-knowledge.delete');
+                Route::post('whatsapp-knowledge/preview', 'WhatsAppKnowledgeController@preview')->name('whatsapp-knowledge.preview');
             });
             // Offline payment Methods
             Route::get('/offline-payment', 'OfflinePaymentMethodController@index')->name('offline');

@@ -162,6 +162,16 @@
                                                         <option value="all">{{ translate('All stores') }}</option>
                                                     </select>
                                                 </div>
+                                                {{-- The trade a vendor signed up under. Store-only, like the status
+                                                     filter beside it — customers have no category. --}}
+                                                <div class="col-md-4 mb-2" id="wb-category-wrap">
+                                                    <select id="wb-category" class="form-control form-control-sm">
+                                                        <option value="">{{ translate('All categories') }}</option>
+                                                        @foreach ($categories ?? [] as $category)
+                                                            <option value="{{ $category->id }}">{{ $category->name }} ({{ $category->stores }})</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
                                                 <div class="col-md-4 mb-2">
                                                     <input id="wb-search" type="text" class="form-control form-control-sm"
                                                            placeholder="{{ translate('Search name or phone…') }}">

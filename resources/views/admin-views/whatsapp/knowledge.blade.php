@@ -87,6 +87,29 @@
             </div>
 
             <div class="col-lg-5">
+                {{-- Test console. Puts the question through the live auto-reply composer and shows
+                     the answer it would send, so the knowledge can be checked before a real
+                     customer finds the gap. Nothing is sent to WhatsApp. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">{{ translate('Test the Assistant') }}</h5>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="kbClear">{{ translate('Clear') }}</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="kbChat" style="max-height:340px;overflow-y:auto;margin-bottom:10px;display:none;"></div>
+                        <div id="kbEmpty" class="text-muted text-center py-3" style="font-size:13px;">
+                            {{ translate('Ask what a vendor or customer might ask. Nothing is sent to WhatsApp.') }}
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="kbInput" class="form-control" maxlength="1000"
+                                   placeholder="{{ translate('e.g. How do I connect my WhatsApp number?') }}" autocomplete="off">
+                            <div class="input-group-append">
+                                <button class="btn btn--primary" type="button" id="kbSend">{{ translate('Ask') }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header py-2"><h5 class="card-title mb-0">{{ translate('Add Knowledge') }}</h5></div>
                     <div class="card-body">
@@ -157,8 +180,109 @@
     </div>
 @endsection
 
+@push('css_or_js')
+<style>
+    .kb-msg { margin-bottom:10px; font-size:13px; line-height:1.5; }
+    .kb-msg .kb-bubble { display:inline-block; padding:7px 11px; border-radius:12px; max-width:92%; white-space:pre-wrap; }
+    .kb-you { text-align:right; }
+    .kb-you .kb-bubble { background:#dcf8c6; border-bottom-right-radius:3px; text-align:left; }
+    .kb-bot .kb-bubble { background:#f1f3f6; border-bottom-left-radius:3px; }
+    .kb-meta { font-size:11px; color:#8a94a6; margin-top:3px; }
+    .kb-meta .kb-toggle { color:#6c7a91; text-decoration:underline; cursor:pointer; }
+    .kb-detail { background:#fbfcfd; border:1px solid #eceff3; border-radius:8px; padding:8px 10px;
+                 margin-top:6px; font-size:11px; color:#4b5563; max-height:230px; overflow:auto; }
+    .kb-detail pre { white-space:pre-wrap; font-size:10.5px; margin:0; color:#4b5563; }
+    .kb-chip { display:inline-block; padding:1px 7px; border-radius:999px; font-size:10.5px; margin:2px 3px 2px 0; }
+    .kb-chip.on { background:#e8f7ef; color:#128c7e; }
+    .kb-chip.off { background:#f4f5f7; color:#98a2b3; text-decoration:line-through; }
+</style>
+@endpush
+
 @push('script_2')
 <script>
+    (function () {
+        var URL = "{{ route('admin.business-settings.third-party.whatsapp-knowledge.preview') }}";
+        var CSRF = "{{ csrf_token() }}";
+        var $chat = $('#kbChat'), $input = $('#kbInput'), $send = $('#kbSend');
+
+        function esc(t) {
+            return $('<div>').text(t == null ? '' : t).html();
+        }
+
+        function add(who, $body) {
+            $('#kbEmpty').hide();
+            $chat.show().append($('<div class="kb-msg kb-' + who + '"></div>').append($body));
+            $chat.scrollTop($chat[0].scrollHeight);
+        }
+
+        function bubble(text, cls) {
+            return $('<span class="kb-bubble"></span>').addClass(cls || '').text(text);
+        }
+
+        function ask() {
+            var q = ($input.val() || '').trim();
+            if (!q) { return; }
+
+            add('you', bubble(q));
+            $input.val('').prop('disabled', true);
+            $send.prop('disabled', true).text('...');
+
+            var $pending = $('<div class="kb-msg kb-bot"></div>').append(bubble('Thinking...', 'text-muted'));
+            $chat.append($pending);
+            $chat.scrollTop($chat[0].scrollHeight);
+
+            $.post(URL, { _token: CSRF, message: q })
+                .done(function (res) {
+                    $pending.remove();
+
+                    // Which chunks the semantic search returned and which cleared the score
+                    // floor. This is the part that explains an answer that looks wrong.
+                    var chips = (res.rag || []).map(function (c) {
+                        return '<span class="kb-chip ' + (c.kept ? 'on' : 'off') + '">'
+                            + esc(c.title) + ' ' + c.score + '</span>';
+                    }).join('');
+
+                    var $detail = $('<div class="kb-detail" style="display:none;"></div>');
+                    if (chips) {
+                        $detail.append('<div class="mb-2">' + chips + '</div>');
+                    }
+                    $detail.append('<b>Knowledge handed to the model</b>')
+                        .append($('<pre></pre>').text(res.knowledge || '(none)'))
+                        .append('<hr class="my-2"><b>Full system prompt</b>')
+                        .append($('<pre></pre>').text(res.system || ''));
+
+                    var $meta = $('<div class="kb-meta"></div>');
+                    if (res.escalated) {
+                        $meta.append('<span class="text-danger">Not covered by the knowledge &mdash; would alert the team</span> &middot; ');
+                    }
+                    $meta.append(document.createTextNode(res.source + ' \u00b7 ' + res.doc_count + ' active docs \u00b7 '));
+
+                    var $toggle = $('<span class="kb-toggle">show what it used</span>').on('click', function () {
+                        $detail.toggle();
+                    });
+                    $meta.append($toggle);
+
+                    add('bot', [bubble(res.reply), $meta, $detail]);
+                })
+                .fail(function (xhr) {
+                    $pending.remove();
+                    var m = (xhr.responseJSON && xhr.responseJSON.message) || 'Request failed.';
+                    add('bot', bubble(m, 'text-danger'));
+                })
+                .always(function () {
+                    $input.prop('disabled', false).focus();
+                    $send.prop('disabled', false).text('Ask');
+                });
+        }
+
+        $send.on('click', ask);
+        $input.on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ask(); } });
+        $('#kbClear').on('click', function () {
+            $chat.empty().hide();
+            $('#kbEmpty').show();
+        });
+    })();
+
     $(document).on('click', '.kn-edit', function () {
         var d = $(this).data();
         $('#knId').val(d.id);

@@ -2837,6 +2837,75 @@ class BusinessSettingsController extends Controller
     }
 
     /**
+     * Up to two buttons from the create form; blank rows are just unused slots.
+     *
+     * Mirrors Vendor\WhatsAppController::templateButtons so a template built here carries the same
+     * shapes as one a vendor builds — WhatsAppService::createTemplate reads them identically.
+     */
+    private function platformTemplateButtons(Request $request): array
+    {
+        $buttons = [];
+
+        foreach ((array) $request->input('tpl_btn', []) as $row) {
+            $text = trim((string) ($row['text'] ?? ''));
+            $type = strtoupper((string) ($row['type'] ?? ''));
+            if ($text === '' || $type === '') {
+                continue;
+            }
+            $buttons[] = [
+                'type'  => $type,
+                'text'  => $text,
+                'url'   => trim((string) ($row['url'] ?? '')),
+                'phone' => trim((string) ($row['phone'] ?? '')),
+            ];
+        }
+
+        // The single-link pair the edit modal still posts, kept as the fallback so an older form
+        // (or a saved edit) does not silently lose its button.
+        if (!$buttons && $request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
+            $buttons[] = [
+                'type' => 'URL',
+                'text' => trim((string) $request->tpl_btn_text),
+                'url'  => trim((string) $request->tpl_btn_url),
+            ];
+        }
+
+        return $buttons;
+    }
+
+    /**
+     * What Meta will refuse about this set of buttons, said in advance.
+     *
+     * Graph rejects a second call button (and a call button with no number) with a bare
+     * "Invalid parameter", which says nothing about which of the two rows to fix.
+     */
+    private function platformTemplateButtonError(array $buttons): ?string
+    {
+        $phoneButtons = array_values(array_filter($buttons, fn($b) => ($b['type'] ?? '') === 'PHONE_NUMBER'));
+
+        if (count($phoneButtons) > 1) {
+            return 'A template can carry only one "Call now" button. Remove one of them.';
+        }
+
+        foreach ($phoneButtons as $btn) {
+            if (($btn['phone'] ?? '') === '') {
+                return 'Enter the phone number the "Call now" button should dial.';
+            }
+            if (strlen(preg_replace('/[^0-9]/', '', $btn['phone']) ?? '') < 10) {
+                return 'That "Call now" number does not look complete — enter the full number including area or country code.';
+            }
+        }
+
+        foreach ($buttons as $btn) {
+            if (($btn['type'] ?? '') === 'URL' && ($btn['url'] ?? '') === '') {
+                return 'Enter the web address the link button should open.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The header for a template being created on the PLATFORM's own WhatsApp account.
      *
      * Returns a string for a TEXT header, an ['format', 'handle'] pair for a media one, null for
@@ -2889,6 +2958,11 @@ class BusinessSettingsController extends Controller
             'tpl_body'          => 'required',
             'tpl_header_format' => 'nullable|in:TEXT,IMAGE,DOCUMENT,VIDEO',
             'tpl_header_file'   => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:16384',
+            'tpl_btn'           => 'nullable|array|max:2',
+            'tpl_btn.*.type'    => 'nullable|in:URL,PHONE_NUMBER,QUICK_REPLY',
+            'tpl_btn.*.text'    => 'nullable|string|max:25',
+            'tpl_btn.*.url'     => 'nullable|url|max:2000',
+            'tpl_btn.*.phone'   => 'nullable|string|max:20',
         ], [
             'tpl_name.regex'      => translate('Template name must be lowercase letters, numbers and underscores only.'),
             'tpl_header_file.max' => translate('Header files must be 16 MB or smaller.'),
@@ -2913,9 +2987,11 @@ class BusinessSettingsController extends Controller
         }
 
         $example = array_values(array_filter(array_map('trim', explode('|', (string) $request->tpl_example)), fn($v) => $v !== ''));
-        $buttons = [];
-        if ($request->filled('tpl_btn_text') && $request->filled('tpl_btn_url')) {
-            $buttons[] = ['text' => trim((string) $request->tpl_btn_text), 'url' => trim((string) $request->tpl_btn_url)];
+
+        $buttons = $this->platformTemplateButtons($request);
+        if ($buttonError = $this->platformTemplateButtonError($buttons)) {
+            Toastr::error(translate($buttonError));
+            return back()->withInput();
         }
         // English (US) only — the form no longer offers a choice, so it is not read from the
         // request at all.

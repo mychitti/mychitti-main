@@ -65,6 +65,20 @@ class SendAutoReply implements ShouldQueue
     const PLATFORM_SCOPE = 0;
 
     /**
+     * Phone key used by preview(). Ten zeroes is not a number any real thread can be keyed on,
+     * so the history lookup in callAi() finds nothing: a test question neither inherits from nor
+     * pollutes a live conversation.
+     */
+    const PREVIEW_KEY = '0000000000';
+
+    /**
+     * Filled in as a reply is composed so the admin's test console can show WHY the assistant
+     * answered as it did: the knowledge it was handed, where that came from, and the exact
+     * system prompt. Never read on the live path.
+     */
+    public array $debug = [];
+
+    /**
      * $numberId is the store's own number the message arrived on. Replying from the default
      * instead would move the conversation to a different number mid-thread, which reads as a
      * stranger answering. Null for the platform number and for stores on a single number.
@@ -254,8 +268,80 @@ class SendAutoReply implements ShouldQueue
      * Notify a human that a message is waiting: the vendor (vendor mode) or the admin
      * (platform mode). Throttled to one per contact per 30 minutes.
      */
+    /**
+     * Compose a reply exactly as an inbound message would, and return it without sending.
+     *
+     * Deliberately runs the real generateReply() rather than a copy of it. A test console that
+     * drifts from the live prompt is worse than no console at all: it would show an answer the
+     * assistant does not actually give.
+     *
+     * Nothing leaves the building. handle() is what sends and logs the WhatsApp message; this
+     * only does the RAG lookup and the AI call. Wallet metering is skipped too, because it is
+     * already gated on !isPlatform() and previews run at platform scope.
+     *
+     * @return array{reply:string, debug:array}
+     */
+    public function preview(): array
+    {
+        $docs = StoreKnowledgeDoc::activeForStore($this->scopeId());
+
+        $storeName = $this->isPlatform()
+            ? 'MyChitti'
+            : (DB::table('stores')->where('id', $this->storeId)->value('name') ?: 'our store');
+
+        $this->debug = ['doc_count' => $docs->count()];
+        $reply = $this->generateReply($storeName, $docs, self::PREVIEW_KEY);
+
+        // The marker never reaches a sender; surfaced here because "the knowledge did not cover
+        // this" is the single most useful thing the console can tell an admin.
+        $escalated = str_contains($reply, self::ESCALATE_MARKER);
+
+        return [
+            'reply'     => trim(str_replace(self::ESCALATE_MARKER, '', $reply)),
+            'escalated' => $escalated,
+            'debug'     => $this->debug,
+        ];
+    }
+
+    /**
+     * Mark this conversation as owing the sender a human reply.
+     *
+     * Written on the most recent inbound message from the number rather than as a row of its
+     * own, so the inbox can find waiting threads with one indexed lookup and a human answering
+     * clears it without any extra bookkeeping. Best-effort: a bot that already sent its reply
+     * must not throw here.
+     */
+    protected function flagNeedsReply(string $key): void
+    {
+        try {
+            WhatsAppService::ensureMessagesTable();
+
+            $id = $this->applyMsgScope(
+                DB::table('whatsapp_messages')
+                    ->where('direction', 'in')
+                    ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
+            )->orderByDesc('id')->value('id');
+
+            if ($id) {
+                DB::table('whatsapp_messages')->where('id', $id)
+                    ->update(['needs_reply' => 1, 'updated_at' => now()]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('WA needs-reply flag failed: ' . $e->getMessage());
+        }
+    }
+
     protected function escalate(string $key, string $reason): void
     {
+        // Flag the conversation FIRST, and unconditionally.
+        //
+        // Both guards below can stop the alert: a store that muted escalation pushes, and the
+        // half-hourly dedupe. Neither stops the sender being told "the team will get back to
+        // you" — that reply has already gone out by the time this runs. Recording the promise on
+        // the thread before either guard is what keeps the two from drifting apart: the alert is
+        // a convenience, the flag is the obligation.
+        $this->flagNeedsReply($key);
+
         if (!$this->isPlatform() && !NotificationPrefs::enabled($this->storeId, 'push_receive', 'chat_escalation')) {
             return;
         }
@@ -350,6 +436,12 @@ class SendAutoReply implements ShouldQueue
                 // the fact that nothing matched: the model has nothing to answer from and takes
                 // whichever rule below has ready-made wording instead of escalating. Dropping them
                 // leaves $knowledge empty, so the full-docs fallback answers the question instead.
+                $this->debug['rag'] = collect($chunks)->map(fn($c) => [
+                    'title' => (string) data_get($c, 'title'),
+                    'score' => round((float) data_get($c, 'score', 0), 4),
+                    'kept'  => (float) data_get($c, 'score', 0) >= self::RAG_MIN_SCORE,
+                ])->values()->all();
+
                 $knowledge = collect($chunks)
                     ->filter(fn($c) => (float) data_get($c, 'score', 0) >= self::RAG_MIN_SCORE)
                     ->map(fn($c) => '### ' . data_get($c, 'title') . "\n" . data_get($c, 'content'))
@@ -363,7 +455,12 @@ class SendAutoReply implements ShouldQueue
             $knowledge = $docs->map(function ($d) {
                 return '### ' . StoreKnowledgeDoc::typeLabel($d->doc_type) . " — {$d->title}\n{$d->content}";
             })->implode("\n\n");
+            $this->debug['source'] = 'All active documents (RAG returned nothing above the score floor)';
+            $this->debug['doc_count'] = $docs->count();
+        } else {
+            $this->debug['source'] = 'RAG semantic search';
         }
+        $this->debug['knowledge'] = $knowledge;
 
         // The business's own owner or staff writing in. Everything below this point is built for
         // a stranger — "answer only from the knowledge", "never share information about other
@@ -443,6 +540,8 @@ class SendAutoReply implements ShouldQueue
      */
     protected function callAi(string $system, string $key): string
     {
+        $this->debug['system_prompt'] = $system;
+
         // Thread history, oldest first. The webhook stored the current inbound before
         // dispatching this job, so drop the trailing user turn — it goes as `message`.
         $history = $this->applyMsgScope(

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendAutoReply;
 use App\Models\StoreKnowledgeDoc;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
@@ -17,6 +18,9 @@ class WhatsAppKnowledgeController extends Controller
     const PLATFORM = 0;
     const MAX_DOCS = 60;
 
+    /** Placeholder sender for the test console. Never messaged; only keys the (empty) history. */
+    const PREVIEW_FROM = '910000000000';
+
     public function index(Request $request)
     {
         StoreKnowledgeDoc::ensureTable();
@@ -30,6 +34,55 @@ class WhatsAppKnowledgeController extends Controller
         $docTypes = StoreKnowledgeDoc::DOC_TYPES;
 
         return view('admin-views.whatsapp.knowledge', compact('docs', 'docTypes'));
+    }
+
+    /**
+     * Test console: ask the assistant something and see the answer it would send, plus the
+     * knowledge it used to get there.
+     *
+     * Runs the real auto-reply composer at platform scope (storeId null), so what comes back is
+     * what a vendor or customer messaging the MyChitti number would actually receive. Nothing is
+     * sent, nothing is written to the message log, and no wallet is metered.
+     */
+    public function preview(Request $request)
+    {
+        $request->validate(['message' => 'required|string|max:1000']);
+
+        StoreKnowledgeDoc::ensureTable();
+
+        $active = StoreKnowledgeDoc::where('store_id', self::PLATFORM)->where('active', 1)->count();
+        if ($active === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active knowledge documents - the assistant has nothing to answer from.',
+            ], 422);
+        }
+
+        try {
+            $job = new SendAutoReply(null, self::PREVIEW_FROM, trim($request->input('message')));
+            $out = $job->preview();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA knowledge preview failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Preview failed: ' . $e->getMessage()], 500);
+        }
+
+        if (trim((string) ($out['reply'] ?? '')) === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'The AI service returned nothing. Check the AI service is reachable and a model is configured.',
+            ], 502);
+        }
+
+        return response()->json([
+            'success'   => true,
+            'reply'     => $out['reply'],
+            'escalated' => (bool) ($out['escalated'] ?? false),
+            'source'    => $out['debug']['source'] ?? 'unknown',
+            'doc_count' => $out['debug']['doc_count'] ?? 0,
+            'rag'       => $out['debug']['rag'] ?? [],
+            'knowledge' => mb_substr((string) ($out['debug']['knowledge'] ?? ''), 0, 6000),
+            'system'    => mb_substr((string) ($out['debug']['system_prompt'] ?? ''), 0, 12000),
+        ]);
     }
 
     public function store(Request $request)

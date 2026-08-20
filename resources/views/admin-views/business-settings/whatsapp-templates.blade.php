@@ -211,22 +211,65 @@
                                             <input type="text" class="form-control" name="tpl_example" placeholder="John | KHB_3">
                                             <small class="text-muted">{{ translate('Pipe-separate ( | ) sample values for each variable. Required by Meta when the body has variables.') }}</small>
                                         </div>
+                                        {{-- Buttons. Up to two, each a link, a call button or a quick reply —
+                                             the same set the vendor composer offers. --}}
                                         <div class="border-top pt-2 mb-2">
-                                            <small class="text-muted d-block mb-2"><b>{{ translate('Call-to-action button') }}</b> — {{ translate('optional URL button shown under the message.') }}</small>
-                                            <div class="row">
-                                                <div class="col-5">
-                                                    <div class="form-group mb-1">
-                                                        <label class="form-label mb-1">{{ translate('Button Text') }}</label>
-                                                        <input type="text" class="form-control" name="tpl_btn_text" placeholder="View Leads">
-                                                    </div>
-                                                </div>
-                                                <div class="col-7">
-                                                    <div class="form-group mb-1">
-                                                        <label class="form-label mb-1">{{ translate('Button URL') }}</label>
-                                                        <input type="url" class="form-control" name="tpl_btn_url" value="{{ rtrim(config('app.vendor_panel_url'), '/') . '/service/leads' }}">
-                                                    </div>
-                                                </div>
+                                            <label class="form-label"><b>{{ translate('Buttons') }}</b>
+                                                <span class="text-muted">{{ translate('(optional, up to 2)') }}</span></label>
+
+                                            {{-- The pair almost every campaign wants. Fills both slots as quick
+                                                 replies so nobody has to know what that means. --}}
+                                            <div class="mb-2">
+                                                <button type="button" class="btn btn-sm btn-outline-success tpl-btn-preset"
+                                                        data-yes="{{ translate('Interested') }}" data-no="{{ translate('Not interested') }}">
+                                                    <i class="tio-add-circle-outlined"></i> {{ translate('Interested / Not interested') }}
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary ml-1 tpl-btn-clear">
+                                                    {{ translate('Clear') }}
+                                                </button>
+                                                <small class="text-muted d-block mt-1">
+                                                    {{ translate("One tap and the customer's answer lands in your") }}
+                                                    <a href="{{ route('admin.business-settings.third-party.whatsapp-inbox') }}" target="_blank">{{ translate('Inbox') }}</a>
+                                                    {{ translate('as a reply — no typing, and it opens the 24-hour window so you can message them freely.') }}
+                                                </small>
                                             </div>
+
+                                            @for ($b = 0; $b < 2; $b++)
+                                                <div class="row align-items-end mb-2">
+                                                    <div class="col-4">
+                                                        <label class="form-label mb-1" style="font-size:12px;">{{ translate('Type') }}</label>
+                                                        <select class="form-control form-control-sm tpl-btn-type" name="tpl_btn[{{ $b }}][type]">
+                                                            <option value="">—</option>
+                                                            <option value="URL">{{ translate('Link') }}</option>
+                                                            <option value="PHONE_NUMBER">{{ translate('Call now') }}</option>
+                                                            <option value="QUICK_REPLY">{{ translate('Quick reply') }}</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-3">
+                                                        <label class="form-label mb-1" style="font-size:12px;">{{ translate('Label') }}</label>
+                                                        <input type="text" class="form-control form-control-sm" maxlength="25"
+                                                               name="tpl_btn[{{ $b }}][text]" placeholder="{{ $b === 0 ? translate('Book now') : translate('Not now') }}">
+                                                    </div>
+                                                    <div class="col-5 tpl-btn-url-wrap" style="display:none;">
+                                                        <label class="form-label mb-1" style="font-size:12px;">{{ translate('URL') }}</label>
+                                                        <input type="url" class="form-control form-control-sm" name="tpl_btn[{{ $b }}][url]"
+                                                               placeholder="{{ rtrim(config('app.vendor_panel_url'), '/') . '/service/leads' }}">
+                                                    </div>
+                                                    <div class="col-5 tpl-btn-phone-wrap" style="display:none;">
+                                                        <label class="form-label mb-1" style="font-size:12px;">{{ translate('Phone number') }}</label>
+                                                        <input type="tel" class="form-control form-control-sm tpl-btn-phone"
+                                                               name="tpl_btn[{{ $b }}][phone]"
+                                                               data-default="{{ data_get(\App\CentralLogics\Helpers::get_business_settings('whatsapp_config'), 'display_phone_number', '') }}"
+                                                               placeholder="+91 98765 43210">
+                                                    </div>
+                                                </div>
+                                            @endfor
+                                            <small class="text-muted d-block">
+                                                {{ translate('A link button opens a web page; call now dials a number straight from the chat; a quick reply sends its label back to you as a message, which is how a customer answers without typing.') }}
+                                            </small>
+                                            <small class="text-muted d-block mt-1">
+                                                {{ translate('Include the country code on a call number, and use at most one call button per template — Meta rejects the rest.') }}
+                                            </small>
                                         </div>
                                         <button type="{{ env('APP_MODE') != 'demo' ? 'submit' : 'button' }}" class="btn btn--primary btn-block">{{ translate('Submit to Meta') }}</button>
                                     </form>
@@ -383,6 +426,47 @@
         el.value = text.slice(0, at) + chunk + text.slice(end);
         el.focus();
         el.selectionStart = el.selectionEnd = at + chunk.length;
+    });
+
+    // Each button type needs a different second field: a link needs a URL, a call button needs a
+    // number, a quick reply needs neither — it just sends its own label back.
+    $(document).on('change', '.tpl-btn-type', function () {
+        var type = $(this).val();
+        var $row = $(this).closest('.row');
+        $row.find('.tpl-btn-url-wrap').toggle(type === 'URL');
+        $row.find('.tpl-btn-phone-wrap').toggle(type === 'PHONE_NUMBER');
+
+        // Offer the platform's own number the first time a call button is picked, and only while
+        // the field is still empty, so a number typed by hand is never overwritten.
+        if (type === 'PHONE_NUMBER') {
+            var $phone = $row.find('.tpl-btn-phone');
+            if (!$phone.val()) {
+                $phone.val($phone.data('default') || '');
+            }
+        }
+    });
+
+    // One-click Interested / Not interested. Writes into the same two rows that can be filled by
+    // hand, so what reaches Meta is identical either way. Scoped to the surrounding form.
+    $(document).on('click', '.tpl-btn-preset', function () {
+        var labels = [$(this).data('yes'), $(this).data('no')];
+        $(this).closest('form').find('.tpl-btn-type').each(function (i) {
+            if (i > 1) return;
+            $(this).val('QUICK_REPLY').trigger('change');
+            var $row = $(this).closest('.row');
+            $row.find('input[name^="tpl_btn"][name$="[text]"]').val(labels[i]);
+            $row.find('input[name^="tpl_btn"][name$="[url]"]').val('');
+            $row.find('input[name^="tpl_btn"][name$="[phone]"]').val('');
+        });
+    });
+
+    $(document).on('click', '.tpl-btn-clear', function () {
+        var $form = $(this).closest('form');
+        $form.find('.tpl-btn-type').val('').trigger('change');
+        $form.find('input[name^="tpl_btn"]').val('');
+        // The edit modal's legacy pair is what the server falls back to when no row is filled;
+        // leaving it behind would silently restore the old link button on save.
+        $form.find('#waeBtnText, #waeBtnUrl').val('');
     });
 </script>
 @endpush

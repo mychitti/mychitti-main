@@ -80,6 +80,7 @@ class WhatsAppBulkController extends Controller
 
         $counts = $this->audienceCounts();
         $zones = Zone::active()->orderBy('name')->get(['id', 'name']);
+        $categories = $this->vendorCategories();
         $optOutCount = count($this->optOutSuffixes());
 
         // A send in flight, if there is one. It carries on with nobody watching, so the composer
@@ -87,9 +88,33 @@ class WhatsAppBulkController extends Controller
         $activeRun = WhatsAppBulkRun::current(self::PLATFORM_SCOPE);
 
         return view('admin-views.whatsapp.bulk', array_merge(
-            compact('connected', 'templates', 'templateError', 'counts', 'zones', 'optOutCount', 'tab', 'activeRun'),
+            compact('connected', 'templates', 'templateError', 'counts', 'zones', 'categories', 'optOutCount', 'tab', 'activeRun'),
             $this->historyData()
         ));
+    }
+
+    /**
+     * The trades vendors are actually signed up under, for the picker's category filter.
+     *
+     * Only categories some store sits in, with the count beside each: the categories table runs to
+     * hundreds of rows including sub-categories and disabled ones, and a filter listing options
+     * that match nobody is a filter that mostly returns an empty list. Counted off stores with a
+     * phone, since a store without one is not a WhatsApp recipient in the first place.
+     *
+     * Cached with the audience counts above — this is a full scan of a table the page reads on
+     * every open, and a category being added is not news that has to arrive within the minute.
+     */
+    private function vendorCategories()
+    {
+        return Cache::remember('wa_admin_bulk_categories', 600, function () {
+            return DB::table('stores as s')
+                ->join('categories as c', 'c.id', '=', DB::raw('CAST(s.category_1 AS UNSIGNED)'))
+                ->whereNotNull('s.phone')->where('s.phone', '!=', '')
+                ->selectRaw('c.id, MAX(c.name) as name, COUNT(*) as stores')
+                ->groupBy('c.id')
+                ->orderBy('name')
+                ->get();
+        });
     }
 
     /**
@@ -102,11 +127,12 @@ class WhatsAppBulkController extends Controller
     public function recipients(Request $request)
     {
         $request->validate([
-            'audience'  => 'required|in:vendors,customers',
-            'search'    => 'nullable|string|max:120',
-            'zone_id'   => 'nullable|integer',
-            'status'    => 'nullable|in:active,all',
-            'skip_days' => 'nullable|integer|min:0|max:365',
+            'audience'    => 'required|in:vendors,customers',
+            'search'      => 'nullable|string|max:120',
+            'zone_id'     => 'nullable|integer',
+            'category_id' => 'nullable|integer',
+            'status'      => 'nullable|in:active,all',
+            'skip_days'   => 'nullable|integer|min:0|max:365',
         ]);
 
         $query = $this->audienceQuery($request->audience, $this->filters($request));
@@ -150,6 +176,7 @@ class WhatsAppBulkController extends Controller
             'numbers.*'    => 'string|max:32',
             'limit'        => 'required_if:mode,all|integer|min:1|max:' . self::RUN_LIMIT,
             'zone_id'      => 'nullable|integer',
+            'category_id'  => 'nullable|integer',
             'search'       => 'nullable|string|max:120',
             'status'       => 'nullable|in:active,all',
             'skip_days'    => 'nullable|integer|min:0|max:365',
@@ -421,9 +448,10 @@ class WhatsAppBulkController extends Controller
     private function filters(Request $request): array
     {
         return [
-            'zone_id'   => (int) $request->input('zone_id'),
-            'search'    => trim((string) $request->input('search')),
-            'status'    => (string) $request->input('status', 'active'),
+            'zone_id'     => (int) $request->input('zone_id'),
+            'category_id' => (int) $request->input('category_id'),
+            'search'      => trim((string) $request->input('search')),
+            'status'      => (string) $request->input('status', 'active'),
             // Default 30 rather than 0: the composer's own "send to all" walk is only protected
             // from restarting at the same people while one run id lives, and a run resumed
             // tomorrow is a new one. This is what keeps the second press from messaging everybody

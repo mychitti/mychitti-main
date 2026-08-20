@@ -38,6 +38,8 @@ class WhatsAppInboxController extends Controller
     /** Conversation list: one row per contact, newest activity first. */
     public function threads(Request $request)
     {
+        WhatsAppService::ensureMessagesTable();
+
         $rows = DB::table('whatsapp_messages')
             ->whereNull('store_id')
             ->whereNotNull('recipient')
@@ -52,7 +54,7 @@ class WhatsAppInboxController extends Controller
             })
             ->orderByDesc('sent_at')
             ->limit(2000)
-            ->get(['recipient', 'direction', 'body', 'type', 'sent_at']);
+            ->get(['recipient', 'direction', 'body', 'type', 'sent_at', 'needs_reply']);
 
         $threads = [];
         foreach ($rows as $m) {
@@ -62,14 +64,20 @@ class WhatsAppInboxController extends Controller
             }
             if (!isset($threads[$key])) {
                 $threads[$key] = [
-                    'key'       => $key,
-                    'phone'     => $m->recipient,
-                    'name'      => null,
-                    'kind'      => null,
-                    'last_body' => mb_substr((string) $m->body, 0, 80),
-                    'last_dir'  => $m->direction,
-                    'last_at'   => $m->sent_at,
+                    'key'         => $key,
+                    'phone'       => $m->recipient,
+                    'name'        => null,
+                    'kind'        => null,
+                    'last_body'   => mb_substr((string) $m->body, 0, 80),
+                    'last_dir'    => $m->direction,
+                    'last_at'     => $m->sent_at,
+                    'needs_reply' => false,
                 ];
+            }
+            // Any unanswered question in the thread marks the whole thread, not just the newest
+            // message: the promise was made once and stands until somebody answers it.
+            if (!empty($m->needs_reply)) {
+                $threads[$key]['needs_reply'] = true;
             }
         }
 
@@ -93,7 +101,22 @@ class WhatsAppInboxController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'threads' => array_values($threads)]);
+        $threads = array_values($threads);
+        $waiting = count(array_filter($threads, fn($t) => $t['needs_reply']));
+
+        if ($request->boolean('needs_reply')) {
+            $threads = array_values(array_filter($threads, fn($t) => $t['needs_reply']));
+        }
+
+        // Threads owed a reply float to the top; everything else keeps its recency order.
+        usort($threads, fn($a, $b) => ($b['needs_reply'] <=> $a['needs_reply'])
+            ?: (strcmp((string) $b['last_at'], (string) $a['last_at'])));
+
+        return response()->json([
+            'success' => true,
+            'threads' => $threads,
+            'waiting' => $waiting,
+        ]);
     }
 
     /** Full message history with one contact + whether the 24h free-text window is open. */
@@ -122,6 +145,25 @@ class WhatsAppInboxController extends Controller
     }
 
     /** Send a manual reply (free text) from the MyChitti platform number. */
+    /** Drop the needs-reply flag from every message in one platform conversation. */
+    protected function clearNeedsReply(string $phone): void
+    {
+        $key = substr(preg_replace('/[^0-9]/', '', $phone) ?? '', -10);
+        if (strlen($key) < 10) {
+            return;
+        }
+
+        try {
+            DB::table('whatsapp_messages')
+                ->whereNull('store_id')
+                ->where('needs_reply', 1)
+                ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
+                ->update(['needs_reply' => 0, 'updated_at' => now()]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA clear needs-reply failed: ' . $e->getMessage());
+        }
+    }
+
     public function send(Request $request)
     {
         $request->validate([
@@ -135,6 +177,13 @@ class WhatsAppInboxController extends Controller
         }
 
         $res = $wa->sendText($request->phone, trim((string) $request->message), false, 'chat reply');
+
+        // A human has answered, so the thread no longer owes anyone a reply. Cleared only on a
+        // send that actually went out — a failed send leaves the flag standing, which is the
+        // safe way round.
+        if ($res['success']) {
+            $this->clearNeedsReply($request->phone);
+        }
 
         return response()->json([
             'success' => (bool) $res['success'],

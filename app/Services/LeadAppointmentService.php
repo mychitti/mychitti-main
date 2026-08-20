@@ -214,6 +214,42 @@ class LeadAppointmentService
     }
 
     /**
+     * The patient record an enquiry refers to, without creating one.
+     *
+     * Screens used to find this with `where('user_id', $lead->uid)`, which answers "whose account
+     * booked it" — not "who is the patient". The two are the same person only when someone books
+     * for themselves; for a booking made on behalf of a parent or child it returned the BOOKER's
+     * record, so the card showed the wrong person's age, allergies and history. Matches
+     * resolvePatient()'s rules so the card and the conversion can never point at different people.
+     *
+     * @param  object  $lead  anything carrying patient_for / patient_name / patient_phone and a
+     *                        user id as either `user_id` or `uid` (the leads listing aliases it).
+     */
+    public static function locatePatient(int $storeId, $lead): ?Patient
+    {
+        $isOther = ($lead->patient_for ?? '') === 'other' && ($lead->patient_name ?? '');
+
+        if ($isOther) {
+            $phone = trim((string) ($lead->patient_phone ?? ''));
+            if ($phone === '') {
+                return null;
+            }
+
+            // Name first, so two family members sharing one contact number resolve to the right
+            // record; the number alone is the fallback, exactly as at conversion.
+            return Patient::where('store_id', $storeId)->where('phone', $phone)
+                    ->where('name', $lead->patient_name)->first()
+                ?? Patient::where('store_id', $storeId)->where('phone', $phone)->first();
+        }
+
+        $userId = $lead->user_id ?? $lead->uid ?? null;
+
+        return $userId
+            ? Patient::where('store_id', $storeId)->where('user_id', $userId)->first()
+            : null;
+    }
+
+    /**
      * Age, gender and address as the enquiry captured them.
      *
      * The WhatsApp booking bot asks for these whether the appointment is for the caller or for
@@ -221,11 +257,46 @@ class LeadAppointmentService
      */
     protected static function patientDetails(ServiceRequest $sr): array
     {
-        return array_filter([
-            'age'     => trim((string) ($sr->patient_age ?? '')) ?: null,
+        // patients.age is a whole number of years, while the enquiry stores the answer as given —
+        // "8 months" is a real reply at a clinic. Only a plain year count is copied across;
+        // anything else is left off rather than filed as that many YEARS, which would put an
+        // infant on the record as an eight-year-old.
+        $age = trim((string) ($sr->patient_age ?? ''));
+        $years = ctype_digit($age) && (int) $age > 0 && (int) $age <= 120 ? (int) $age : null;
+
+        $details = array_filter([
+            'age'     => $years,
             'gender'  => trim((string) ($sr->patient_gender ?? '')) ?: null,
             'address' => trim((string) ($sr->patient_address ?? '')) ?: null,
         ], fn($v) => $v !== null);
+
+        // `age` is not part of the base patients table — it arrived with dental intake, which
+        // adds it on first use (DentalIntakeController). A WhatsApp booking asks every HMIS store
+        // for an age, so the column has to be there before one is written, and if it cannot be
+        // added the age is dropped rather than failing a confirmed appointment.
+        if (isset($details['age']) && !static::ensureAgeColumn()) {
+            unset($details['age']);
+        }
+
+        return $details;
+    }
+
+    protected static function ensureAgeColumn(): bool
+    {
+        static $ready = null;
+        if ($ready !== null) {
+            return $ready;
+        }
+
+        try {
+            if (!Schema::hasColumn('patients', 'age')) {
+                DB::statement("ALTER TABLE `patients` ADD COLUMN `age` SMALLINT UNSIGNED NULL AFTER `dob`");
+            }
+            return $ready = true;
+        } catch (\Throwable $e) {
+            Log::warning('patients.age unavailable: ' . $e->getMessage());
+            return $ready = false;
+        }
     }
 
     /**

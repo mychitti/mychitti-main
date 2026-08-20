@@ -31,6 +31,8 @@
             var $zone = document.getElementById('wb-zone');
             var $status = document.getElementById('wb-status');
             var $statusWrap = document.getElementById('wb-status-wrap');
+            var $category = document.getElementById('wb-category');
+            var $categoryWrap = document.getElementById('wb-category-wrap');
             var $search = document.getElementById('wb-search');
             var $total = document.getElementById('wb-total');
             var $all = document.getElementById('wb-all');
@@ -83,6 +85,7 @@
             function filters() {
                 return {
                     zone_id: $zone.value || '',
+                    category_id: $category ? ($category.value || '') : '',
                     status: $status.value,
                     search: $search.value.trim(),
                     skip_days: $skip.checked ? 30 : 0
@@ -296,6 +299,10 @@
                 document.getElementById('wb-pane-manual').style.display = next === 'manual' ? 'block' : 'none';
                 // "Active stores only" is a store column — it means nothing for customers.
                 $statusWrap.style.display = next === 'vendors' ? '' : 'none';
+                // Same for the category: only a store carries one, so the filter would silently
+                // match nobody on the customers tab.
+                if ($categoryWrap) { $categoryWrap.style.display = next === 'vendors' ? '' : 'none'; }
+                if (next !== 'vendors' && $category) { $category.value = ''; }
 
                 if (next !== 'manual') loadRows();
                 syncSend();
@@ -575,6 +582,7 @@
                 searchTimer = setTimeout(loadRows, 300);
             });
             $zone.addEventListener('change', loadRows);
+            if ($category) { $category.addEventListener('change', loadRows); }
             $status.addEventListener('change', loadRows);
             $skip.addEventListener('change', function () {
                 // The exclusion changes who is in the audience, so the counts behind it have to

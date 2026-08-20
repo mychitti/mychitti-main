@@ -20,6 +20,13 @@
     .wchat-kind { font-size:10px; padding:1px 6px; border-radius:8px; margin-left:4px; }
     .wchat-kind.vendor { background:#e0ecff; color:#1e40af; }
     .wchat-kind.customer { background:#e7f7ec; color:#137a3e; }
+    .wchat-wait { font-size:10px; padding:1px 6px; border-radius:8px; margin-left:4px; background:#fdeaea; color:#c0392b; font-weight:700; }
+    .wchat-thread.waiting { background:#fffaf0; border-left:3px solid #e8a33d; }
+    .wchat-filter { display:flex; gap:6px; margin-top:6px; }
+    .wchat-filter button { flex:1; font-size:11.5px; padding:3px 8px; border-radius:999px; border:1px solid #dfe3e8;
+                           background:#fff; color:#56606e; cursor:pointer; }
+    .wchat-filter button.on { background:#128c7e; border-color:#128c7e; color:#fff; }
+    .wchat-filter .cnt { font-weight:700; }
     .wchat-main { flex:1; display:flex; flex-direction:column; min-width:0; background:#efeae2; }
     .wchat-head { padding:10px 16px; background:#f0f2f5; border-bottom:1px solid #e7eaf3; display:flex; align-items:center; gap:10px; }
     .wchat-msgs { flex:1; overflow-y:auto; padding:18px 7% 10px;
@@ -78,6 +85,15 @@
                 <div class="wchat-side">
                     <div class="wchat-side-head">
                         <input type="search" id="wchatSearch" class="form-control form-control-sm wchat-search" placeholder="{{ translate('Search name / number') }}">
+                        {{-- Threads the bot promised a human follow-up on. The alert that fires at
+                             the same time is deduped and easily missed, so this list is the one
+                             durable place those promises can be found. --}}
+                        <div class="wchat-filter">
+                            <button type="button" class="wchat-tab on" data-filter="">{{ translate('All chats') }}</button>
+                            <button type="button" class="wchat-tab" data-filter="1">
+                                {{ translate('Needs reply') }} <span class="cnt" id="wchatWaitCount">0</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="wchat-threads" id="wchatThreads">
                         <div class="text-center text-muted py-4" style="font-size:13px;">{{ translate('Loading chats…') }}</div>
@@ -169,10 +185,11 @@
             var label = t.name || ('+' + (t.phone || t.key).replace(/^\+/, ''));
             if (q && label.toLowerCase().indexOf(q) === -1 && t.key.indexOf(q) === -1) return;
             var kind = t.kind ? '<span class="wchat-kind ' + (t.kind === 'Vendor' ? 'vendor' : 'customer') + '">' + esc(t.kind) + '</span>' : '';
-            html += '<div class="wchat-thread' + (t.key === activeKey ? ' active' : '') + '" data-key="' + esc(t.key) + '" data-label="' + esc(label) + '" data-phone="' + esc(t.phone || t.key) + '">'
+            var wait = t.needs_reply ? '<span class="wchat-wait">Needs reply</span>' : '';
+            html += '<div class="wchat-thread' + (t.key === activeKey ? ' active' : '') + (t.needs_reply ? ' waiting' : '') + '" data-key="' + esc(t.key) + '" data-label="' + esc(label) + '" data-phone="' + esc(t.phone || t.key) + '">'
                 + '<div class="wchat-avatar">' + initials(t) + '</div>'
                 + '<div class="wchat-thread-main">'
-                +   '<div class="wchat-thread-name">' + esc(label) + kind + '</div>'
+                +   '<div class="wchat-thread-name">' + esc(label) + kind + wait + '</div>'
                 +   '<div class="wchat-thread-last">' + (t.last_dir === 'out' ? '<span style="color:#53bdeb;">You: </span>' : '') + esc(t.last_body || '') + '</div>'
                 + '</div>'
                 + '<div class="wchat-thread-time">' + fmtTime(t.last_at) + '</div>'
@@ -181,11 +198,26 @@
         $('#wchatThreads').html(html || '<div class="text-center text-muted py-4" style="font-size:13px;">No chats yet.</div>');
     }
 
+    var needsReplyOnly = '';
+
     function loadThreads() {
-        $.get(THREADS_URL, function (res) {
-            if (res && res.success) { threads = res.threads || []; renderThreads(threads); }
+        $.get(THREADS_URL, { needs_reply: needsReplyOnly }, function (res) {
+            if (res && res.success) {
+                threads = res.threads || [];
+                // Always the unfiltered total, so the tab still shows what is waiting while
+                // you are looking at it.
+                $('#wchatWaitCount').text(res.waiting || 0);
+                renderThreads(threads);
+            }
         });
     }
+
+    $(document).on('click', '.wchat-tab', function () {
+        $('.wchat-tab').removeClass('on');
+        $(this).addClass('on');
+        needsReplyOnly = $(this).data('filter') + '';
+        loadThreads();
+    });
 
     function renderMessages(msgs) {
         var sig = msgs.map(function (m) { return m.id + ':' + (m.status || ''); }).join(',');

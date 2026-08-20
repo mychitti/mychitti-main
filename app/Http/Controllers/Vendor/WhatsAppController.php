@@ -2402,9 +2402,13 @@ class WhatsAppController extends Controller
             'tpl_header_format' => 'nullable|in:TEXT,IMAGE,DOCUMENT,VIDEO',
             'tpl_header_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,mp4|max:16384',
             'tpl_btn'         => 'nullable|array|max:2',
-            'tpl_btn.*.type'  => 'nullable|in:URL,QUICK_REPLY',
+            // PHONE_NUMBER belongs here: the form has offered "Call now" all along, and leaving it
+            // out of the rule bounced the submit with a validation error before templateButtonError
+            // — which exists purely to explain call-button problems — ever got to run.
+            'tpl_btn.*.type'  => 'nullable|in:URL,PHONE_NUMBER,QUICK_REPLY',
             'tpl_btn.*.text'  => 'nullable|string|max:25',
             'tpl_btn.*.url'   => 'nullable|url|max:2000',
+            'tpl_btn.*.phone' => 'nullable|string|max:20',
         ], [
             'tpl_name.regex' => 'Template name must be lowercase letters, numbers and underscores only.',
             'tpl_header_file.max' => 'Header files must be 16 MB or smaller.',
