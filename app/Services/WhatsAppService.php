@@ -801,17 +801,63 @@ class WhatsAppService
     }
 
     /**
-     * Free-form image / video / document by public link. Same 24h-window rule as sendText().
+     * Hand a file to WhatsApp's own media store and get back the id a message can carry.
+     *
+     * The alternative — sending a public link and letting Meta fetch it — needs the file served
+     * unauthenticated from our own host, which on this platform means a storage path carved out
+     * of the auth rules and a chat attachment readable by anyone holding the URL. Uploading the
+     * bytes avoids both: nothing of ours has to be public, and the file lives on Meta's side for
+     * the 30 days they keep it.
+     *
+     * Returns the media id, or null with the reason logged.
+     */
+    public function uploadMedia(string $path, string $mime, ?string $filename = null): ?string
+    {
+        if (!$this->isConfigured()) {
+            return null;
+        }
+
+        try {
+            $url = sprintf(
+                'https://graph.facebook.com/%s/%s/media',
+                $this->cfg['api_version'],
+                $this->cfg['phone_number_id']
+            );
+
+            $resp = Http::withToken($this->cfg['token'])
+                ->attach('file', file_get_contents($path), $filename ?: basename($path), ['Content-Type' => $mime])
+                ->post($url, [
+                    'messaging_product' => 'whatsapp',
+                    'type'              => $mime,
+                ]);
+
+            $id = data_get($resp->json(), 'id');
+            if (!$id) {
+                Log::warning('WA media upload failed', ['status' => $resp->status(), 'body' => $resp->json()]);
+                return null;
+            }
+
+            return (string) $id;
+        } catch (\Throwable $e) {
+            Log::error('WA media upload exception: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Free-form image / video / document, by uploaded media id or by public link.
      *
      * WhatsApp keys the payload on the media kind rather than taking one generic "file", and
      * only a document may carry a filename, so the shape is built per kind here instead of at
      * every call site. The link must be publicly fetchable: Meta pulls the bytes itself.
      */
-    public function sendMedia(string $to, string $link, string $kind, ?string $filename = null, ?string $caption = null, ?string $context = null): array
+    public function sendMedia(string $to, string $link, string $kind, ?string $filename = null, ?string $caption = null, ?string $context = null, ?string $mediaId = null): array
     {
         $kind = in_array($kind, ['image', 'video', 'document'], true) ? $kind : 'document';
 
-        $media = ['link' => $link];
+        // An uploaded id is preferred: it needs nothing of ours to be publicly readable, and it
+        // cannot fail on Meta fetching an HTML error page instead of the file.
+        $media = $mediaId ? ['id' => $mediaId] : ['link' => $link];
         if ($caption !== null && $caption !== '') {
             $media['caption'] = $caption;
         }

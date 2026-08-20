@@ -207,13 +207,31 @@ class WhatsAppInboxController extends Controller
             return response()->json(['success' => false, 'error' => 'MyChitti WhatsApp is not configured.'], 422);
         }
 
+        // Meta first, while the upload is still sitting untouched in its temp path — the local
+        // store below reads the same handle, and doing it the other way round would leave this
+        // depending on whether the helper copies or moves.
+        $mediaId = $wa->uploadMedia($file->getRealPath(), $file->getMimeType(), $file->getClientOriginalName());
+
         try {
             $name = Helpers::upload('whatsapp-chat/', $ext, $file);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'error' => 'Upload failed: ' . $e->getMessage()], 500);
         }
 
-        $link = asset('storage/app/public/whatsapp-chat/' . $name);
+        // Upload the bytes to WhatsApp rather than sending a link to our own storage.
+        //
+        // The link route needs the file served unauthenticated from this host, and on the admin
+        // vhost everything under /storage/ except /storage/store/ is routed through Laravel —
+        // so Meta fetched the 404 page and rejected the send with "Unsupported Image mime type
+        // text/html". Handing over the bytes sidesteps the whole question, and keeps chat
+        // attachments off a public URL.
+        //
+        // Kept as the fallback, and as the copy the chat shows back in the bubble.
+        $link = url('storage/whatsapp-chat/' . $name);
+
+        if (!$mediaId) {
+            \Illuminate\Support\Facades\Log::warning('WA chat media upload failed, falling back to link: ' . $link);
+        }
 
         $res = $wa->sendMedia(
             $request->phone,
@@ -221,7 +239,8 @@ class WhatsAppInboxController extends Controller
             $kind,
             $file->getClientOriginalName(),
             trim((string) $request->input('caption')) ?: null,
-            'chat reply'
+            'chat reply',
+            $mediaId
         );
 
         if ($res['success']) {
