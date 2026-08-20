@@ -6,25 +6,33 @@ use App\CentralLogics\Helpers;
 use App\Models\DocValidationLog;
 use App\Models\DocValidationRule;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Reads an uploaded vendor document with Claude and checks it against what the vendor typed
- * into the form, plus whatever rules the admin has added under Doc AI Validation.
+ * Reads an uploaded vendor document and checks it against what the vendor typed into the
+ * form, plus whatever rules the admin has added under Doc AI Validation.
  *
- * Fails open on purpose: an API outage, a missing key or an unreadable scan returns a
+ * Goes through the same AI service every other AI feature uses, on the stateless
+ * `agent_test` guard the WhatsApp auto-reply takes: provider, model and key follow whatever
+ * the admin configured for the active agent, so this never depends on a hardcoded key, and
+ * nothing is written to conversation memory.
+ *
+ * Fails open on purpose: an outage, an unconfigured service or an unreadable scan returns a
  * "review" verdict that lets the upload through and leaves a log row for a human, rather
  * than locking vendors out of onboarding. The admin can flip that with the on_error setting.
  */
 class DocumentValidationService
 {
-    private const ENDPOINT = 'https://api.anthropic.com/v1/messages';
-    private const API_VERSION = '2023-06-01';
-    private const DEFAULT_MODEL = 'claude-opus-5';
-    private const MAX_BYTES = 10485760; // 10 MB — comfortably inside the 32 MB request cap
+    /** Synthetic caller id. Stateless guard, so this never accumulates memory. */
+    private const CALLER_ID = 950000001;
+
+    private const MAX_BYTES = 10485760; // 10 MB
 
     private const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+    /** Providers the AI service can actually forward a PDF to. Gemini flattens to text. */
+    private const PDF_PROVIDERS = ['anthropic', 'openai'];
 
     private const DOC_LABELS = [
         'id_doc'    => 'government photo ID proof (Aadhaar, PAN, Passport, Voter ID or Driving Licence)',
@@ -32,6 +40,8 @@ class DocumentValidationService
         'fssai_doc' => 'FSSAI food licence',
         'other'     => 'business document',
     ];
+
+    public function __construct(private AiServiceClient $ai) {}
 
     /**
      * @param  array  $expected  ['number' => '...', 'name' => '...', 'doc_name' => '...']
@@ -49,11 +59,6 @@ class DocumentValidationService
             return $this->skipped('AI validation is switched off for this form.');
         }
 
-        $apiKey = (string) config('services.anthropic.key');
-        if ($apiKey === '') {
-            return $this->failOpen($settings, $file, $docType, $expected, $context, 'Document check unavailable — no AI key configured.');
-        }
-
         if (!$file->isValid()) {
             return $this->skipped('Upload could not be read.');
         }
@@ -62,50 +67,47 @@ class DocumentValidationService
             return $this->failOpen($settings, $file, $docType, $expected, $context, 'Document is too large to verify automatically. It has been saved for manual review.');
         }
 
+        $modelConfig = $this->modelConfig($settings);
+        $provider    = strtolower((string) ($modelConfig['ai_provider'] ?: 'anthropic'));
+
         $block = $this->contentBlock($file);
         if ($block === null) {
             return $this->skipped('This file type is not verified automatically.');
         }
 
+        // Only some providers carry a PDF through. The AI service converts `document` blocks
+        // for Anthropic and OpenAI; on anything else it drops them with no error, which would
+        // leave the model answering about a file it never received. Send those to a human.
+        // Keep this list in step with ClaudeService::chatOpenAI/chatClaude in the ai-agent repo.
+        if ($block['type'] === 'document' && !in_array($provider, self::PDF_PROVIDERS, true)) {
+            return $this->failOpen($settings, $file, $docType, $expected, $context, 'PDF documents cannot be checked automatically on the current AI provider. Your file was saved for manual review — upload a photo or screenshot instead for an instant check.');
+        }
+
         try {
-            $response = Http::withHeaders([
-                'x-api-key'         => $apiKey,
-                'anthropic-version' => self::API_VERSION,
-                'content-type'      => 'application/json',
-            ])->timeout(150)->post(self::ENDPOINT, [
-                'model'         => $settings['model'],
-                'max_tokens'    => 8000,
-                'system'        => $this->systemPrompt($docType, $expected, $settings),
-                'output_config' => [
-                    'effort' => $settings['effort'],
-                    'format' => ['type' => 'json_schema', 'schema' => $this->schema()],
-                ],
-                'messages' => [[
-                    'role'    => 'user',
-                    'content' => [$block, ['type' => 'text', 'text' => $this->instruction($docType, $expected)]],
-                ]],
-            ]);
+            $response = $this->ai->chat(
+                userId: self::CALLER_ID,
+                guard: 'agent_test',
+                message: $this->instruction($docType, $expected),
+                fileContent: $block,
+                systemPrompt: $this->systemPrompt($docType, $settings),
+                modelConfig: $modelConfig,
+                type: 'text'
+            );
         } catch (\Throwable $e) {
-            Log::error('Doc AI validation request failed', ['doc_type' => $docType, 'error' => $e->getMessage()]);
+            Log::error('Doc AI validation call failed', ['doc_type' => $docType, 'error' => $e->getMessage()]);
 
             return $this->failOpen($settings, $file, $docType, $expected, $context, 'Document check could not run just now. Your file was saved for manual review.');
         }
 
-        if ($response->failed()) {
-            Log::error('Doc AI validation API error', ['status' => $response->status(), 'body' => $response->body()]);
+        if (empty($response['success'])) {
+            Log::error('Doc AI validation service error', ['doc_type' => $docType, 'response' => $response['message'] ?? null]);
 
             return $this->failOpen($settings, $file, $docType, $expected, $context, 'Document check could not run just now. Your file was saved for manual review.');
         }
 
-        $data = $response->json();
-
-        if (($data['stop_reason'] ?? null) === 'refusal') {
-            return $this->failOpen($settings, $file, $docType, $expected, $context, 'This document could not be verified automatically. It has been sent for manual review.');
-        }
-
-        $parsed = $this->parse($data);
+        $parsed = $this->parse((string) ($response['message'] ?? ''));
         if ($parsed === null) {
-            Log::warning('Doc AI validation returned unparseable output', ['doc_type' => $docType, 'body' => $response->body()]);
+            Log::warning('Doc AI validation returned unparseable output', ['doc_type' => $docType, 'reply' => $response['message'] ?? null]);
 
             return $this->failOpen($settings, $file, $docType, $expected, $context, 'Document check returned an unclear result. Your file was saved for manual review.');
         }
@@ -139,8 +141,8 @@ class DocumentValidationService
         return [
             'status'   => (int) ($stored['status'] ?? 0) === 1,
             'mode'     => in_array($stored['mode'] ?? '', ['block', 'warn'], true) ? $stored['mode'] : 'block',
-            'model'    => !empty($stored['model']) ? $stored['model'] : self::DEFAULT_MODEL,
-            'effort'   => in_array($stored['effort'] ?? '', ['low', 'medium', 'high'], true) ? $stored['effort'] : 'medium',
+            // Blank means "whatever the admin's active AI agent is set to".
+            'model'    => trim((string) ($stored['model'] ?? '')),
             'on_error' => ($stored['on_error'] ?? 'allow') === 'block' ? 'block' : 'allow',
             'sources'  => [
                 'registration' => (int) ($sources['registration'] ?? 1),
@@ -153,6 +155,46 @@ class DocumentValidationService
     public static function docLabel(string $docType): string
     {
         return self::DOC_LABELS[$docType] ?? self::DOC_LABELS['other'];
+    }
+
+    /**
+     * The provider, model and key document checks borrow — deliberately the *same row the
+     * WhatsApp auto-reply resolves* (`user_type = 'user'`, active, newest), so this feature
+     * rides the agent that is already known to be working and funded.
+     *
+     * Do not "improve" this by preferring the admin agent: the persona is irrelevant here
+     * (the guard is stateless and the system prompt is overridden), so the only thing being
+     * borrowed is provider/model/key — and an admin agent pointed at a provider nobody uses
+     * silently breaks every upload while chat and auto-reply keep working.
+     */
+    public static function resolvedAgent(): ?object
+    {
+        $columns = ['user_type', 'ai_provider', 'ai_model', 'api_key_override'];
+
+        $agent = DB::table('system_prompts')
+            ->where('user_type', 'user')
+            ->where('status', 'active')
+            ->orderByDesc('updated_at')
+            ->first($columns);
+
+        // Any active agent stands in when that row is missing.
+        return $agent ?: DB::table('system_prompts')
+            ->where('status', 'active')
+            ->orderByDesc('updated_at')
+            ->first($columns);
+    }
+
+    private function modelConfig(array $settings): array
+    {
+        $agent = self::resolvedAgent();
+
+        return [
+            'ai_provider'      => $agent->ai_provider ?? 'anthropic',
+            // A blank override in settings falls through to the agent's own model.
+            'ai_model'         => $settings['model'] !== '' ? $settings['model'] : ($agent->ai_model ?? null),
+            'max_tokens'       => 2000,
+            'api_key_override' => $agent->api_key_override ?? null,
+        ];
     }
 
     // ── Request building ──────────────────────────────────────────────────
@@ -183,7 +225,7 @@ class DocumentValidationService
         return null;
     }
 
-    private function systemPrompt(string $docType, array $expected, array $settings): string
+    private function systemPrompt(string $docType, array $settings): string
     {
         $label = self::docLabel($docType);
         $rules = DocValidationRule::promptBlock($docType);
@@ -193,7 +235,7 @@ You verify documents uploaded by vendors registering on MyChitti, an Indian mult
 
 The vendor was asked to upload a {$label}. Read the document image or PDF and report what it actually contains.
 
-How to compare numbers: ignore case, spaces, hyphens, slashes and dots on both sides before deciding whether the number on the document matches the number the vendor typed. "ABCDE 1234 F" and "abcde1234f" are the same number. If the document shows the number only partially masked (for example an Aadhaar shown as XXXX XXXX 1234), compare only the visible digits and set number_match to "match" if they agree, and add a warn issue noting the masking.
+How to compare numbers: ignore case, spaces, hyphens, slashes and dots on both sides before deciding whether the number on the document matches the number the vendor typed. "ABCDE 1234 F" and "abcde1234f" are the same number. If the document shows the number partially masked (for example an Aadhaar shown as XXXX XXXX 1234), compare only the visible digits and set number_match to "match" if they agree, adding a warn issue noting the masking.
 
 Verdict rules, applied in this order:
 1. "fail" — the document is clearly the wrong kind of document, the number on it does not match the number the vendor entered, the document is expired, or it breaks any blocking rule below.
@@ -211,7 +253,41 @@ TXT;
             $prompt .= "\n\nThe platform is in advisory mode, but still return the honest verdict — the application decides what to do with it.";
         }
 
+        $prompt .= "\n\n" . $this->outputContract();
+
         return $prompt;
+    }
+
+    /**
+     * The reply is parsed as JSON, so the shape has to be stated in the prompt — this path
+     * goes through the shared AI service, which returns plain text and may be pointed at a
+     * provider with no schema enforcement.
+     */
+    private function outputContract(): string
+    {
+        return <<<'TXT'
+Reply with a single JSON object and nothing else. No explanation before or after it, no markdown code fences. Use exactly these keys:
+
+{
+  "is_readable": true or false,
+  "detected_document_type": "what the document actually is, e.g. PAN card, GST registration certificate, electricity bill",
+  "matches_expected_type": true or false,
+  "extracted": {
+    "document_number": "the identifying number printed on the document, or empty string",
+    "holder_name": "who the document is issued to, or empty string",
+    "issuing_authority": "who issued it, or empty string",
+    "issue_date": "as printed, or empty string",
+    "expiry_date": "as printed, or empty string"
+  },
+  "number_match": "match" or "mismatch" or "not_found" or "not_provided",
+  "verdict": "pass" or "fail" or "review",
+  "confidence": a number between 0 and 1,
+  "issues": [{"code": "short_slug", "severity": "block" or "warn", "detail": "one plain sentence"}],
+  "summary": "one sentence summarising the check for the admin"
+}
+
+Use an empty array for "issues" when there is nothing to report.
+TXT;
     }
 
     private function instruction(string $docType, array $expected): string
@@ -232,67 +308,36 @@ TXT;
             $lines[] = 'The business or owner name on file is "' . $expected['name'] . '". Note it as an issue if the document is clearly issued to someone unrelated.';
         }
 
-        $lines[] = 'Verify the document and return your findings.';
+        $lines[] = 'Verify the document and reply with the JSON object only.';
 
         return implode("\n", $lines);
     }
 
-    private function schema(): array
-    {
-        return [
-            'type'       => 'object',
-            'properties' => [
-                'is_readable'             => ['type' => 'boolean', 'description' => 'Whether the document is legible enough to verify.'],
-                'detected_document_type'  => ['type' => 'string', 'description' => 'What the document actually is, e.g. "PAN card", "GST registration certificate", "electricity bill".'],
-                'matches_expected_type'   => ['type' => 'boolean', 'description' => 'Whether the document is the kind the vendor was asked to upload.'],
-                'extracted'               => [
-                    'type'       => 'object',
-                    'properties' => [
-                        'document_number'   => ['type' => 'string', 'description' => 'The identifying number printed on the document, or "" if not visible.'],
-                        'holder_name'       => ['type' => 'string', 'description' => 'The person or business the document is issued to, or "".'],
-                        'issuing_authority' => ['type' => 'string', 'description' => 'Who issued the document, or "".'],
-                        'issue_date'        => ['type' => 'string', 'description' => 'Issue date as printed, or "".'],
-                        'expiry_date'       => ['type' => 'string', 'description' => 'Expiry date as printed, or "".'],
-                    ],
-                    'required'             => ['document_number', 'holder_name', 'issuing_authority', 'issue_date', 'expiry_date'],
-                    'additionalProperties' => false,
-                ],
-                'number_match' => [
-                    'type'        => 'string',
-                    'enum'        => ['match', 'mismatch', 'not_found', 'not_provided'],
-                    'description' => 'How the number on the document compares to the one the vendor typed.',
-                ],
-                'verdict'    => ['type' => 'string', 'enum' => ['pass', 'fail', 'review']],
-                'confidence' => ['type' => 'number', 'description' => 'Confidence in the verdict, 0 to 1.'],
-                'issues'     => [
-                    'type'  => 'array',
-                    'items' => [
-                        'type'       => 'object',
-                        'properties' => [
-                            'code'     => ['type' => 'string', 'description' => 'Short slug, e.g. "number_mismatch", "wrong_document_type", "expired", "unreadable".'],
-                            'severity' => ['type' => 'string', 'enum' => ['block', 'warn']],
-                            'detail'   => ['type' => 'string', 'description' => 'One plain sentence the vendor can act on.'],
-                        ],
-                        'required'             => ['code', 'severity', 'detail'],
-                        'additionalProperties' => false,
-                    ],
-                ],
-                'summary' => ['type' => 'string', 'description' => 'One sentence summarising the check for the admin.'],
-            ],
-            'required'             => ['is_readable', 'detected_document_type', 'matches_expected_type', 'extracted', 'number_match', 'verdict', 'confidence', 'issues', 'summary'],
-            'additionalProperties' => false,
-        ];
-    }
-
     // ── Response handling ─────────────────────────────────────────────────
 
-    private function parse(array $data): ?array
+    /** Pulls the JSON object out of the reply, tolerating code fences and stray prose. */
+    private function parse(string $reply): ?array
     {
-        foreach ($data['content'] ?? [] as $block) {
-            if (($block['type'] ?? '') !== 'text') {
-                continue;
-            }
-            $decoded = json_decode((string) ($block['text'] ?? ''), true);
+        $reply = trim($reply);
+        if ($reply === '') {
+            return null;
+        }
+
+        $decoded = json_decode($reply, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        $stripped = trim(preg_replace('/^```(?:json)?|```$/mi', '', $reply));
+        $decoded  = json_decode($stripped, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        $start = strpos($stripped, '{');
+        $end   = strrpos($stripped, '}');
+        if ($start !== false && $end !== false && $end > $start) {
+            $decoded = json_decode(substr($stripped, $start, $end - $start + 1), true);
             if (is_array($decoded)) {
                 return $decoded;
             }
@@ -373,9 +418,9 @@ TXT;
     }
 
     /**
-     * The check could not produce a verdict — no key, oversized file, API down, refusal or
-     * unparseable output. Returns "review" so the upload proceeds, and still writes a log row
-     * so the admin can see the documents that went through unverified.
+     * The check could not produce a verdict — oversized file, service down or unparseable
+     * output. Returns "review" so the upload proceeds, and still writes a log row so the
+     * admin can see the documents that went through unverified.
      */
     private function failOpen(array $settings, UploadedFile $file, string $docType, array $expected, array $context, string $message): array
     {

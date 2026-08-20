@@ -175,19 +175,36 @@
                                     <option value="block" {{ $settings['on_error'] === 'block' ? 'selected' : '' }}>{{ translate('Block the upload') }}</option>
                                 </select>
                             </div>
-                            <div class="row">
-                                <div class="col-7 form-group">
-                                    <label class="form-label">{{ translate('Model') }}</label>
-                                    <input type="text" name="model" class="form-control" value="{{ $settings['model'] }}" required>
-                                </div>
-                                <div class="col-5 form-group">
-                                    <label class="form-label">{{ translate('Effort') }}</label>
-                                    <select name="effort" class="form-control">
-                                        @foreach (['low', 'medium', 'high'] as $level)
-                                            <option value="{{ $level }}" {{ $settings['effort'] === $level ? 'selected' : '' }}>{{ ucfirst($level) }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                            <div class="form-group">
+                                <label class="form-label">{{ translate('AI Provider') }}</label>
+                                @if ($agent)
+                                    <div class="border rounded px-2 py-2" style="font-size:13px;background:#f8f9fa;">
+                                        <b>{{ ucfirst($agent->ai_provider ?: 'anthropic') }}</b>
+                                        @if ($agent->ai_model)
+                                            — <code>{{ $agent->ai_model }}</code>
+                                        @endif
+                                        <span class="text-muted d-block">
+                                            {{ translate('Inherited from the active') }} "{{ $agent->user_type }}"
+                                            {{ translate('AI agent, the same one WhatsApp auto-reply uses.') }}
+                                            <a href="{{ route('admin.agent.index', ['user_type' => $agent->user_type]) }}">{{ translate('Change it there') }}</a>.
+                                        </span>
+                                    </div>
+                                    @if (!in_array(strtolower($agent->ai_provider ?: 'anthropic'), ['anthropic', 'openai']))
+                                        <div class="alert alert-warning mt-2 mb-0" style="font-size:12px;">
+                                            {{ translate('Photos and screenshots are checked normally, but PDF uploads cannot be read on this provider — they are logged for manual review instead. Switch the agent to Anthropic or OpenAI to check PDFs automatically.') }}
+                                        </div>
+                                    @endif
+                                @else
+                                    <div class="alert alert-warning mb-0" style="font-size:13px;">
+                                        {{ translate('No active AI agent found, so checks will fall back to the default provider. Set one up first.') }}
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">{{ translate('Model override') }} <small class="text-muted">({{ translate('optional') }})</small></label>
+                                <input type="text" name="model" class="form-control" value="{{ $settings['model'] }}"
+                                       placeholder="{{ translate('Leave blank to use the agent model above') }}">
+                                <small class="text-muted">{{ translate('Only set this if document reading needs a different model from the rest of the AI features.') }}</small>
                             </div>
                             <button type="submit" class="btn btn--primary">{{ translate('Save Settings') }}</button>
                         </form>

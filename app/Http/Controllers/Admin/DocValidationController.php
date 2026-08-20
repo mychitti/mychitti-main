@@ -36,16 +36,17 @@ class DocValidationController extends Controller
 
         $docTypes = DocValidationRule::DOC_TYPES;
         $settings = DocumentValidationService::settings();
+        // Shown so the admin can see which AI agent's provider/model/key this borrows.
+        $agent = DocumentValidationService::resolvedAgent();
 
-        return view('admin-views.doc-validation.index', compact('rules', 'logs', 'docTypes', 'settings'));
+        return view('admin-views.doc-validation.index', compact('rules', 'logs', 'docTypes', 'settings', 'agent'));
     }
 
     public function settings(Request $request)
     {
         $request->validate([
             'mode'     => 'required|in:block,warn',
-            'model'    => 'required|string|max:60',
-            'effort'   => 'required|in:low,medium,high',
+            'model'    => 'nullable|string|max:60',
             'on_error' => 'required|in:allow,block',
         ]);
 
@@ -53,8 +54,8 @@ class DocValidationController extends Controller
         $setting->value = json_encode([
             'status'   => $request->has('status') ? 1 : 0,
             'mode'     => $request->mode,
+            // Blank falls through to the model on the admin's active AI agent.
             'model'    => trim((string) $request->model),
-            'effort'   => $request->effort,
             'on_error' => $request->on_error,
             'sources'  => [
                 'registration' => $request->has('source_registration') ? 1 : 0,
