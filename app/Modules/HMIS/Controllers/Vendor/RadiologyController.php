@@ -408,7 +408,10 @@ class RadiologyController extends Controller
         $this->boot();
         $study = RadiologyStudy::where('store_id', $this->storeId())->with('patient', 'doctorProfile.employee')->findOrFail($id);
         $store = Helpers::get_store_data();
-        return view('hmis::vendor.radiology.report_print', compact('study', 'store'));
+        // Imaging usually reports under its own AERB/PCPNDT registrations and, when it sits at a
+        // separate premises, its own address and GSTIN.
+        $letterhead = \App\Models\HospitalDepartmentProfile::letterhead($this->storeId(), 'radiology', $store);
+        return view('hmis::vendor.radiology.report_print', compact('study', 'store', 'letterhead'));
     }
 
     // ── TAB 5: Urgent Findings ─────────────────────────────────────────────
@@ -603,7 +606,7 @@ class RadiologyController extends Controller
                 'payment_date' => now()->toDateString(), 'invoice_date' => now()->toDateString(), 'tax_type' => $taxType,
                 'cash_amount' => $isOnline ? 0 : $payable, 'online_amount' => $isOnline ? $payable : 0,
                 'reference_number' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : [],
-                'meta' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : null,
+                'meta' => array_filter(['source' => 'radiology', 'transaction_id' => $isOnline ? $request->transaction_id : null]),
             ]);
             InvoiceItem::create([
                 'rand_invoice_id' => $invoiceId, 'manual_invoice_id' => $manual->id,

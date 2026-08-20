@@ -1631,16 +1631,46 @@ function processVendorBillFrom($invoice, &$bill_data)
         }
     }
 
+    // HMIS department bill — a lab, pharmacy or scan centre given its own premises and GSTIN
+    // bills under those rather than the hospital's. Only invoices tagged with one of these
+    // sources are touched, and only for the fields the department actually filled in; the tax
+    // treatment still follows the store, since a department GSTIN does not by itself turn a
+    // non-GST bill into a GST one.
+    $fromName    = $store->name;
+    $fromGst     = $store->gst;
+    $fromPhone   = $store->phone;
+    $fromEmail   = $store->email;
+    $fromPinCode = $store->pin_code;
+
+    $deptMap = [
+        'lab'             => 'lab',
+        'pharmacy'        => 'pharmacy',
+        'pharmacy_walkin' => 'pharmacy',
+        'radiology'       => 'radiology',
+    ];
+    $deptKey = $deptMap[data_get($invoice, 'meta.source')] ?? null;
+    if ($deptKey) {
+        $deptProfile = \App\Models\HospitalDepartmentProfile::forDepartment($store->id, $deptKey);
+        if ($deptProfile) {
+            $fromName    = $deptProfile->display_name ?: $fromName;
+            $fromGst     = $deptProfile->gst_no ?: $fromGst;
+            $fromPhone   = $deptProfile->phone ?: $fromPhone;
+            $fromEmail   = $deptProfile->email ?: $fromEmail;
+            $fromPinCode = $deptProfile->pincode ?: $fromPinCode;
+            $fromAddress = $deptProfile->fullAddress() ?: $fromAddress;
+        }
+    }
+
     return [
         'id' => $store->id,
         'logo' => $store->logo,
-        'name' => $store->name,
-        'gst' => $store->gst,
-        'phone' => $store->phone,
-        'email' => $store->email,
+        'name' => $fromName,
+        'gst' => $fromGst,
+        'phone' => $fromPhone,
+        'email' => $fromEmail,
         'address' => $fromAddress,
-        'state_code' => getStateCodeFromPincode($store->pin_code),
-        'pin_code' => $store->pin_code,
+        'state_code' => getStateCodeFromPincode($fromPinCode),
+        'pin_code' => $fromPinCode,
         'cin_number' => null,
     ];
 }

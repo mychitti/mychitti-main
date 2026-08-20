@@ -685,7 +685,10 @@ class LabController extends Controller
             ->with(['patient', 'doctorProfile.employee', 'items.results'])
             ->findOrFail($id);
         $store = Helpers::get_store_data();
-        return view('hmis::vendor.lab.report', compact('order', 'store'));
+        // The lab prints under its own address, GSTIN and licences when it has been given them;
+        // otherwise the helper hands back the hospital's own details unchanged.
+        $letterhead = \App\Models\HospitalDepartmentProfile::letterhead($this->storeId(), 'lab', $store);
+        return view('hmis::vendor.lab.report', compact('order', 'store', 'letterhead'));
     }
 
     // ── TAB 4: Critical Values ────────────────────────────────────────────
@@ -1015,7 +1018,10 @@ class LabController extends Controller
                 'cash_amount'    => $isOnline ? 0 : $payable,
                 'online_amount'  => $isOnline ? $payable : 0,
                 'reference_number' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : [],
-                'meta'           => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : null,
+                'meta'           => array_filter([
+                    'source'         => 'lab',
+                    'transaction_id' => $isOnline ? $request->transaction_id : null,
+                ]),
             ]);
 
             foreach ($order->items as $it) {

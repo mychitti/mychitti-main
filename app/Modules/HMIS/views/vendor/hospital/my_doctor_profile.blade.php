@@ -24,6 +24,11 @@
         <span><i class="tio-certificate mr-1"></i> <strong>Reg. No.:</strong> {{ $doctor->registration_number ?: '—' }}</span>
         <span><i class="tio-building mr-1"></i> <strong>Department:</strong> {{ $doctor->department ?: '—' }}</span>
         <span><i class="tio-door mr-1"></i> <strong>OPD Room:</strong> {{ $doctor->opd_room ?: '—' }}</span>
+        @foreach ($licenses as $license)
+            <span><i class="tio-verified mr-1"></i> <strong>{{ $license->license_type ?: 'Licence' }}:</strong>
+                {{ $license->license_no }}@if ($license->valid_till) <small class="{{ $license->isExpired() ? 'text-danger' : 'text-muted' }}">(till {{ $license->valid_till->format('d M Y') }})</small>@endif
+            </span>
+        @endforeach
     </div>
 
     <div class="row">

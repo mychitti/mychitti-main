@@ -169,9 +169,23 @@ class HospitalDashboardController extends Controller
         // Which prescription languages this hospital offers its doctors. Empty = English only.
         $rxLanguages = \App\Models\Prescription::enabledLanguages($store_id);
 
+        // Address, GSTIN and licence book for the lab, pharmacy and radiology departments. A
+        // scan centre or a lab often runs from its own premises under its own registrations, so
+        // each one carries its own letterhead rather than borrowing the hospital's.
+        $departments = [];
+        foreach (\App\Models\HospitalDepartmentProfile::DEPARTMENTS as $key => $label) {
+            $departments[$key] = [
+                'label'    => $label,
+                'profile'  => \App\Models\HospitalDepartmentProfile::forDepartment($store_id, $key)
+                                ?? new \App\Models\HospitalDepartmentProfile(),
+                'licenses' => \App\Models\HospitalLicense::listFor($store_id, $key),
+            ];
+        }
+
         return view('hmis::vendor.hospital.settings', compact(
             'prefix', 'padding', 'serial', 'previewMuid',
-            'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages'
+            'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages',
+            'departments'
         ));
     }
 
@@ -224,6 +238,64 @@ class HospitalDashboardController extends Controller
         );
 
         \Brian2694\Toastr\Facades\Toastr::success('Hospital settings saved.');
+        return back();
+    }
+
+    /**
+     * Save one department's letterhead — address, GSTIN and its licence list.
+     *
+     * The licences arrive from a repeater, so the whole set is rewritten on every save: rows the
+     * user deleted are simply absent from the post and must not survive in the table.
+     */
+    public function saveDepartment(Request $request, $department)
+    {
+        if (!array_key_exists($department, \App\Models\HospitalDepartmentProfile::DEPARTMENTS)) {
+            abort(404);
+        }
+
+        $request->validate([
+            'display_name'               => 'nullable|string|max:190',
+            'address'                    => 'nullable|string|max:500',
+            'city'                       => 'nullable|string|max:100',
+            'state'                      => 'nullable|string|max:100',
+            'pincode'                    => 'nullable|string|max:20',
+            'phone'                      => 'nullable|string|max:40',
+            'email'                      => 'nullable|email|max:190',
+            'gst_no'                     => 'nullable|string|max:30',
+            'licenses'                   => 'nullable|array',
+            'licenses.*.license_type'    => 'nullable|string|max:150',
+            'licenses.*.license_no'      => 'nullable|string|max:150',
+            'licenses.*.issuing_authority' => 'nullable|string|max:190',
+            'licenses.*.issued_on'       => 'nullable|date',
+            'licenses.*.valid_till'      => 'nullable|date',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+
+        \App\Models\HospitalDepartmentProfile::ensureTable();
+        \App\Models\HospitalDepartmentProfile::updateOrCreate(
+            ['store_id' => $store_id, 'department' => $department],
+            [
+                'display_name' => $request->display_name,
+                'address'      => $request->address,
+                'city'         => $request->city,
+                'state'        => $request->state,
+                'pincode'      => $request->pincode,
+                'phone'        => $request->phone,
+                'email'        => $request->email,
+                'gst_no'       => $request->gst_no ? strtoupper(trim($request->gst_no)) : null,
+            ]
+        );
+
+        \App\Models\HospitalLicense::syncFor($store_id, $department, 0, $request->input('licenses', []));
+
+        $label = \App\Models\HospitalDepartmentProfile::DEPARTMENTS[$department];
+        \App\Models\HospitalActivityLog::record(
+            $store_id, 'settings', null, 'updated',
+            "{$label} details and licences updated"
+        );
+
+        \Brian2694\Toastr\Facades\Toastr::success($label . ' details saved.');
         return back();
     }
 }

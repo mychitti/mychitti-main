@@ -15,6 +15,7 @@ use App\Models\Category;
 use App\Models\StoreDocument;
 use App\Models\StoreType;
 use App\Models\Translation;
+use App\Services\DocumentValidationService;
 use Illuminate\Support\Facades\DB;
 use Gregwar\Captcha\CaptchaBuilder;
 use Brian2694\Toastr\Facades\Toastr;
@@ -65,6 +66,43 @@ class VendorController extends Controller
     {
         return str_contains(request()->getHost(), 'mcvendorhub.com');
     }
+
+    /**
+     * Runs the GST and ID uploads on the signup form past the AI checker, and turns anything
+     * it rejects into the {code, message} shape the registration wizard already renders.
+     */
+    private function aiValidateSignupDocs(Request $request): array
+    {
+        $validator = app(DocumentValidationService::class);
+        $ownerName = trim(($request->f_name ?? '') . ' ' . ($request->l_name ?? ''));
+        $context   = ['source' => 'registration', 'store_id' => null, 'vendor_id' => null];
+        $errors    = [];
+
+        $documents = [
+            'gst_doc' => $request->gst_number,
+            'id_doc'  => $request->id_number,
+        ];
+
+        foreach ($documents as $field => $number) {
+            if (!$request->hasFile($field)) {
+                continue;
+            }
+
+            $result = $validator->validate(
+                $request->file($field),
+                $field,
+                ['number' => $number, 'name' => $ownerName],
+                $context
+            );
+
+            if (!$result['ok']) {
+                $errors[] = ['code' => $field, 'message' => $result['message']];
+            }
+        }
+
+        return $errors;
+    }
+
     public function check_business(Request $request)
     {
         $store =  Store::withoutGlobalScopes()->where('phone', $request->phone)->first();
@@ -140,6 +178,13 @@ class VendorController extends Controller
         if (!$verify_mobile) {
             Toastr::error('Mobile not verified');
             return response()->json(['status' => false, 'message' => 'Mobile not verified']);
+        }
+
+        // AI document check. Runs before the OTP row is consumed so a rejected document can be
+        // re-uploaded without the applicant having to verify their phone all over again.
+        $docErrors = $this->aiValidateSignupDocs($request);
+        if (!empty($docErrors)) {
+            return response()->json(['errors' => $docErrors]);
         }
 
         DB::table('phone_otp')->where('phone', $request->phone)->delete();

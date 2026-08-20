@@ -1687,6 +1687,14 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::post('whatsapp-knowledge/toggle', 'WhatsAppKnowledgeController@toggle')->name('whatsapp-knowledge.toggle');
                 Route::post('whatsapp-knowledge/delete', 'WhatsAppKnowledgeController@delete')->name('whatsapp-knowledge.delete');
                 Route::post('whatsapp-knowledge/preview', 'WhatsAppKnowledgeController@preview')->name('whatsapp-knowledge.preview');
+                // Doc AI Validation: the rules the AI applies to vendor document uploads.
+                Route::get('doc-validation', 'DocValidationController@index')->name('doc-validation');
+                Route::post('doc-validation/settings', 'DocValidationController@settings')->name('doc-validation.settings');
+                Route::post('doc-validation/store', 'DocValidationController@store')->name('doc-validation.store');
+                Route::post('doc-validation/update', 'DocValidationController@update')->name('doc-validation.update');
+                Route::post('doc-validation/toggle', 'DocValidationController@toggle')->name('doc-validation.toggle');
+                Route::post('doc-validation/delete', 'DocValidationController@delete')->name('doc-validation.delete');
+                Route::post('doc-validation/preview', 'DocValidationController@preview')->name('doc-validation.preview');
             });
             // Offline payment Methods
             Route::get('/offline-payment', 'OfflinePaymentMethodController@index')->name('offline');

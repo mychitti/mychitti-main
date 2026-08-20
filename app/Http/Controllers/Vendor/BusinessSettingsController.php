@@ -21,6 +21,7 @@ use App\Models\TempStoreStatus;
 use App\Models\Translation;
 use App\Models\VendorEmployee;
 use App\Models\VendorRequirement;
+use App\Services\DocumentValidationService;
 use Illuminate\Support\Facades\Validator;
 
 class BusinessSettingsController extends Controller
@@ -281,6 +282,34 @@ class BusinessSettingsController extends Controller
         $type = $request->file_type; // id_doc | gst_doc | fssai_doc
         $fileFieldFront = $type; // upload field name matches the doc_type
 
+        // AI check before anything is written — a rejected document must leave the store's
+        // existing number and file exactly as they were.
+        if ($request->hasFile($fileFieldFront)) {
+            $expectedNumber = [
+                'gst_doc'   => $request->gst_number ?: $store->gst_number,
+                'id_doc'    => $request->id_number ?: $store->id_number,
+                'fssai_doc' => $request->fssai_number ?: ($store->fssai_number ?? null),
+            ][$type] ?? null;
+
+            $check = app(DocumentValidationService::class)->validate(
+                $request->file($fileFieldFront),
+                $type,
+                ['number' => $expectedNumber, 'name' => $store->name],
+                ['source' => 'vendor_panel', 'store_id' => $storeId, 'vendor_id' => $store->vendor_id]
+            );
+
+            if (!$check['ok']) {
+                Toastr::error($check['message']);
+                return back();
+            }
+
+            // Reached here with a non-pass verdict only in advisory mode, or on a review —
+            // the document is saved either way, so say why it is being flagged.
+            if ($check['verdict'] !== 'pass' && $check['verdict'] !== 'skipped') {
+                Toastr::warning($check['message']);
+            }
+        }
+
         // Save number fields if provided
         if ($type == 'gst_doc' && $request->filled('gst_number')) {
             $store->gst_number = $request->gst_number;
@@ -391,6 +420,23 @@ class BusinessSettingsController extends Controller
         $store = Store::findOrFail($storeId);
 
         $front = $request->file('other_doc');
+
+        $check = app(DocumentValidationService::class)->validate(
+            $front,
+            'other',
+            ['number' => $request->doc_number, 'name' => $store->name, 'doc_name' => $request->doc_name],
+            ['source' => 'vendor_panel', 'store_id' => $storeId, 'vendor_id' => $store->vendor_id]
+        );
+
+        if (!$check['ok']) {
+            Toastr::error($check['message']);
+            return back()->withInput();
+        }
+
+        if ($check['verdict'] !== 'pass' && $check['verdict'] !== 'skipped') {
+            Toastr::warning($check['message']);
+        }
+
         $frontPath = Helpers::upload('store/docs/', $front->getClientOriginalExtension(), $front);
 
         $backPath = null;

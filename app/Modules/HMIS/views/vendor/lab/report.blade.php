@@ -39,9 +39,15 @@
 
     <div class="head">
         <div>
-            <div class="name">{{ $store->name ?? 'Laboratory' }}</div>
-            <div class="meta">{{ $store->address ?? '' }}</div>
-            <div class="meta">{{ $store->phone ?? '' }}{{ ($store->phone ?? '') && ($store->email ?? '') ? ' · ' : '' }}{{ $store->email ?? '' }}</div>
+            <div class="name">{{ $letterhead['name'] }}</div>
+            <div class="meta">{{ $letterhead['address'] }}</div>
+            <div class="meta">{{ $letterhead['phone'] }}{{ $letterhead['phone'] && $letterhead['email'] ? ' · ' : '' }}{{ $letterhead['email'] }}</div>
+            @if ($letterhead['gst_no'])
+                <div class="meta"><strong>GSTIN:</strong> {{ $letterhead['gst_no'] }}</div>
+            @endif
+            @foreach ($letterhead['licenses'] as $license)
+                <div class="meta">{{ $license->label() }}{{ $license->valid_till ? ' (valid till ' . $license->valid_till->format('d M Y') . ')' : '' }}</div>
+            @endforeach
         </div>
         <div style="text-align:right">
             <div class="meta"><strong>Report No:</strong> {{ $order->order_no }}</div>

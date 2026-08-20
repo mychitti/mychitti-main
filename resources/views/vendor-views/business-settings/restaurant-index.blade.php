@@ -703,6 +703,14 @@
                                                 @csrf
                                                 <input type="hidden" name="file_type" value="id_doc">
                                                 <div class="form-group">
+                                                    <label for="id_number">ID Number</label>
+                                                    <input type="text" class="form-control" id="id_number"
+                                                        name="id_number" value="{{ $store->id_number }}"
+                                                        placeholder="Number printed on the ID">
+                                                    <small class="text-muted">The number on the document you upload must
+                                                        match this.</small>
+                                                </div>
+                                                <div class="form-group">
                                                     <label for="id_doc">New ID Proof (Front / both sides)</label>
                                                     <input type="file" class="form-control" id="id_doc"
                                                         name="id_doc" required>
@@ -783,14 +791,22 @@
                                     @endif
 
                                     <button class="btn btn-outline-primary" type="button" data-toggle="collapse"
-                                        data-target="#collapseExample" aria-expanded="false"
-                                        aria-controls="collapseExample">Update</button>
-                                    <div class="collapse w-100" id="collapseExample">
+                                        data-target="#gstCollapse" aria-expanded="false"
+                                        aria-controls="gstCollapse">Update</button>
+                                    <div class="collapse w-100" id="gstCollapse">
                                         <div class="card card-body">
                                             <form method="POST" enctype="multipart/form-data"
                                                 action="{{ route('vendor.business-settings.update-doc') }}">
                                                 @csrf
                                                 <input type="hidden" name="file_type" value="gst_doc">
+                                                <div class="form-group">
+                                                    <label for="gst_number">GST Number</label>
+                                                    <input type="text" class="form-control" id="gst_number"
+                                                        name="gst_number" value="{{ $store->gst_number }}"
+                                                        placeholder="15-character GSTIN">
+                                                    <small class="text-muted">The GSTIN on the certificate you upload
+                                                        must match this.</small>
+                                                </div>
                                                 <div class="form-group">
                                                     <label for="gst_doc">Upload New GST Document</label>
                                                     <input type="file" class="form-control" id="gst_doc"

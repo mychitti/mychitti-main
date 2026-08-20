@@ -59,7 +59,11 @@ class MyDoctorProfileController extends Controller
         $store_services = \App\Models\Item::withoutGlobalScopes()->whereIn('id', $serviceIds)->select('id', 'name')->get();
         $days           = DoctorSlot::DAYS;
 
-        return view('hmis::vendor.hospital.my_doctor_profile', compact('doctor', 'store_services', 'days'));
+        // Read-only here: credentials are entered by the hospital on the doctor record, the same
+        // way the primary registration number already is.
+        $licenses = \App\Models\HospitalLicense::listFor($store_id, 'doctor', $doctor->id);
+
+        return view('hmis::vendor.hospital.my_doctor_profile', compact('doctor', 'store_services', 'days', 'licenses'));
     }
 
     public function update(Request $request)

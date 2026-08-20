@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DoctorProfile;
 use App\Models\DoctorSlot;
 use App\Models\EmployeeRole;
+use App\Models\HospitalLicense;
 use App\Models\Item;
 use App\Models\NurseProfile;
 use App\Models\Store;
@@ -64,7 +65,9 @@ class DoctorController extends Controller
 
         $store_services = $this->getStoreServices($store_id);
 
-        return view('hmis::vendor.doctor.add', compact('employees', 'store_services'));
+        $licenses = collect();
+
+        return view('hmis::vendor.doctor.add', compact('employees', 'store_services', 'licenses'));
     }
 
     public function store(Request $request)
@@ -74,6 +77,12 @@ class DoctorController extends Controller
             'consultation_fee' => 'nullable|numeric|min:0',
             'available_from'  => 'nullable|date_format:H:i,H:i:s',
             'available_to'    => 'nullable|date_format:H:i,H:i:s',
+            'licenses'                     => 'nullable|array',
+            'licenses.*.license_type'      => 'nullable|string|max:150',
+            'licenses.*.license_no'        => 'nullable|string|max:150',
+            'licenses.*.issuing_authority' => 'nullable|string|max:190',
+            'licenses.*.issued_on'         => 'nullable|date',
+            'licenses.*.valid_till'        => 'nullable|date',
         ];
 
         if ($request->filled('emp_id')) {
@@ -126,6 +135,7 @@ class DoctorController extends Controller
 
             $this->applyRebookInterval($doctor, $request);
             $this->syncServices($doctor->id, $request->input('services', []));
+            HospitalLicense::syncFor($store_id, 'doctor', $doctor->id, $request->input('licenses', []));
 
             $doctorRole = EmployeeRole::firstOrCreate(
                 ['store_id' => $store_id, 'name' => 'Doctor'],
@@ -173,7 +183,11 @@ class DoctorController extends Controller
 
         $days = DoctorSlot::DAYS;
 
-        return view('hmis::vendor.doctor.edit', compact('doctor', 'employees', 'days', 'store_services'));
+        // A doctor commonly registers with more than one council or board, so the licence book is
+        // a list rather than the single registration number the profile carries.
+        $licenses = HospitalLicense::listFor($store_id, 'doctor', $doctor->id);
+
+        return view('hmis::vendor.doctor.edit', compact('doctor', 'employees', 'days', 'store_services', 'licenses'));
     }
 
     public function update(Request $request, $id)
@@ -184,6 +198,12 @@ class DoctorController extends Controller
             'consultation_fee' => 'nullable|numeric|min:0',
             'available_from'   => 'nullable|date_format:H:i,H:i:s',
             'available_to'     => 'nullable|date_format:H:i,H:i:s',
+            'licenses'                     => 'nullable|array',
+            'licenses.*.license_type'      => 'nullable|string|max:150',
+            'licenses.*.license_no'        => 'nullable|string|max:150',
+            'licenses.*.issuing_authority' => 'nullable|string|max:190',
+            'licenses.*.issued_on'         => 'nullable|date',
+            'licenses.*.valid_till'        => 'nullable|date',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -205,6 +225,7 @@ class DoctorController extends Controller
 
         $this->applyRebookInterval($doctor, $request);
         $this->syncServices($doctor->id, $request->input('services', []));
+        HospitalLicense::syncFor($store_id, 'doctor', $doctor->id, $request->input('licenses', []));
 
         $doctor->load('employee');
         $drName = 'Dr. ' . trim(($doctor->employee?->f_name ?? '') . ' ' . ($doctor->employee?->l_name ?? ''));
@@ -222,6 +243,8 @@ class DoctorController extends Controller
         if (!auth('vendor')->check() && !hasPermission('staff_doctor', 'delete')) abort(403);
         $store_id = Helpers::get_store_id();
         DoctorProfile::where('store_id', $store_id)->findOrFail($id)->delete();
+        HospitalLicense::ensureTable();
+        HospitalLicense::where('store_id', $store_id)->where('owner_type', 'doctor')->where('owner_id', $id)->delete();
 
         Toastr::success('Doctor profile deleted');
         return redirect()->route('vendor.doctor.list');

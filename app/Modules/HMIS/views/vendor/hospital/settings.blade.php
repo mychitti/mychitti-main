@@ -121,6 +121,100 @@
             </form>
         </div>
     </div>
+
+    {{-- Department letterheads. A lab, pharmacy or scan centre frequently sits at its own
+         address under its own GSTIN and its own registrations, so each keeps a separate
+         identity block; anything left blank falls back to the hospital's own details. --}}
+    <div class="card mb-3">
+        <div class="card-header py-2">
+            <h6 class="mb-0"><i class="tio-city mr-1"></i> Department Details &mdash; Address, GSTIN &amp; Licences</h6>
+        </div>
+        <div class="card-body pt-2">
+            <ul class="nav nav-tabs mb-3" role="tablist">
+                @foreach ($departments as $key => $dept)
+                    <li class="nav-item">
+                        <a class="nav-link {{ $loop->first ? 'active' : '' }}" data-toggle="tab"
+                           href="#dept-{{ $key }}" role="tab">
+                            {{ $dept['label'] }}
+                            @if ($dept['licenses']->count())
+                                <span class="badge badge-soft-info ml-1">{{ $dept['licenses']->count() }}</span>
+                            @endif
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
+
+            <div class="tab-content">
+                @foreach ($departments as $key => $dept)
+                    <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="dept-{{ $key }}" role="tabpanel">
+                        <form action="{{ route('vendor.hospital.department.save', $key) }}" method="POST">
+                            @csrf
+                            <div class="row">
+                                <div class="col-md-4 form-group">
+                                    <label class="input-label">{{ $dept['label'] }} Name</label>
+                                    <input type="text" name="display_name" class="form-control"
+                                           value="{{ old('display_name', $dept['profile']->display_name) }}"
+                                           placeholder="Prints on the report header">
+                                    <small class="text-muted">Blank = the hospital's own name.</small>
+                                </div>
+                                <div class="col-md-4 form-group">
+                                    <label class="input-label">GSTIN</label>
+                                    <input type="text" name="gst_no" class="form-control text-uppercase"
+                                           value="{{ old('gst_no', $dept['profile']->gst_no) }}"
+                                           maxlength="30" placeholder="e.g. 33ABCDE1234F1Z5">
+                                </div>
+                                <div class="col-md-2 form-group">
+                                    <label class="input-label">Phone</label>
+                                    <input type="text" name="phone" class="form-control"
+                                           value="{{ old('phone', $dept['profile']->phone) }}" maxlength="40">
+                                </div>
+                                <div class="col-md-2 form-group">
+                                    <label class="input-label">Email</label>
+                                    <input type="email" name="email" class="form-control"
+                                           value="{{ old('email', $dept['profile']->email) }}" maxlength="190">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    <label class="input-label">Address</label>
+                                    <textarea name="address" class="form-control" rows="2" maxlength="500"
+                                              placeholder="Door no., street, area">{{ old('address', $dept['profile']->address) }}</textarea>
+                                </div>
+                                <div class="col-md-2 form-group">
+                                    <label class="input-label">City</label>
+                                    <input type="text" name="city" class="form-control"
+                                           value="{{ old('city', $dept['profile']->city) }}" maxlength="100">
+                                </div>
+                                <div class="col-md-2 form-group">
+                                    <label class="input-label">State</label>
+                                    <input type="text" name="state" class="form-control"
+                                           value="{{ old('state', $dept['profile']->state) }}" maxlength="100">
+                                </div>
+                                <div class="col-md-2 form-group">
+                                    <label class="input-label">PIN Code</label>
+                                    <input type="text" name="pincode" class="form-control"
+                                           value="{{ old('pincode', $dept['profile']->pincode) }}" maxlength="20">
+                                </div>
+                            </div>
+
+                            <hr class="mt-1 mb-3">
+
+                            @include('hmis::vendor.hospital._licenses', [
+                                'uid'         => $key,
+                                'licenses'    => $dept['licenses'],
+                                'note'        => \App\Models\HospitalDepartmentProfile::LICENSE_HINTS[$key]['note'] ?? '',
+                                'suggestions' => \App\Models\HospitalDepartmentProfile::LICENSE_HINTS[$key]['types'] ?? [],
+                            ])
+
+                            <div class="text-right mt-3">
+                                <button type="submit" class="btn btn--primary">Save {{ $dept['label'] }} Details</button>
+                            </div>
+                        </form>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 

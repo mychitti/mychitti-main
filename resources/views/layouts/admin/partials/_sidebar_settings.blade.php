@@ -179,6 +179,12 @@
                                 </li>
                             </ul>
                         </li>
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party/doc-validation*') ? 'active' : '' }}">
+                            <a class="nav-link " href="{{ route('admin.business-settings.third-party.doc-validation') }}" title="{{ translate('Vendor Document AI Validation') }}">
+                                <span class="tio-shield-outlined nav-indicator-icon"></span>
+                                <span class="text-truncate">{{ translate('Doc AI Validation') }}</span>
+                            </a>
+                        </li>
                         <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/login-url-setup*') ? 'active' : '' }}">
                             <a class="nav-link " href="{{ route('admin.business-settings.login_url_page') }}" title="{{ translate('messages.login_url_page') }}">
                                 <span class="tio-circle nav-indicator-icon"></span>

@@ -126,6 +126,18 @@
             </div>
         </div>
 
+        <div class="card mb-3">
+            <div class="card-header"><h5 class="card-title mb-0">Licences &amp; Registrations</h5></div>
+            <div class="card-body">
+                @include('hmis::vendor.hospital._licenses', [
+                    'uid'         => 'doctor',
+                    'licenses'    => old('licenses') ? \App\Models\HospitalLicense::fromInput(old('licenses')) : $licenses,
+                    'note'        => 'A doctor often holds more than one registration — state medical council, NMC, a super-speciality board. Add a row for each; the Registration Number above stays the primary one shown on prescriptions.',
+                    'suggestions' => ['State Medical Council Registration', 'NMC Registration', 'Speciality Board Certification', 'Fellowship / Membership', 'Indemnity Insurance'],
+                ])
+            </div>
+        </div>
+
         <div class="d-flex justify-content-between align-items-center mb-4">
             <small class="text-muted"><i class="tio-info-outined mr-1"></i> Appointment slots can be configured after saving.</small>
             <div>

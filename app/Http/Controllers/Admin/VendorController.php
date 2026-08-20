@@ -34,6 +34,7 @@ use App\Exports\StoreListExport;
 use App\Models\OrderTransaction;
 use App\CentralLogics\StoreLogic;
 use App\Models\AccountTransaction;
+use App\Services\DocumentValidationService;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Brian2694\Toastr\Facades\Toastr;
@@ -74,6 +75,47 @@ use Stripe\BankAccount;
 
 class VendorController extends Controller
 {
+    /**
+     * Puts the GST and ID uploads on the admin store form past the AI checker. Returns the
+     * rejection message, or null when everything the admin attached is acceptable. Note the
+     * GST number field on this form is `gst_num`, not `gst_number`.
+     */
+    private function aiValidateStoreDocs(Request $request, ?Store $store): ?string
+    {
+        $validator = app(DocumentValidationService::class);
+        $storeName = $store->name ?? ($request->name[0] ?? '');
+
+        $context = [
+            'source'    => 'admin_panel',
+            'store_id'  => $store->id ?? null,
+            'vendor_id' => $store->vendor_id ?? null,
+        ];
+
+        $documents = [
+            'gst_doc' => $request->gst_num ?: $request->gst_number,
+            'id_doc'  => $request->id_number,
+        ];
+
+        foreach ($documents as $field => $number) {
+            if (!$request->hasFile($field)) {
+                continue;
+            }
+
+            $result = $validator->validate(
+                $request->file($field),
+                $field,
+                ['number' => $number, 'name' => $storeName],
+                $context
+            );
+
+            if (!$result['ok']) {
+                return $result['message'];
+            }
+        }
+
+        return null;
+    }
+
     public function index()
     {
         $module_categories = Category::where('module_id', Config::get('module.current_module_id'))->where('status', 1)->get();
@@ -304,6 +346,11 @@ class VendorController extends Controller
                 ->withErrors($validator)
                 ->withInput();
         }
+
+        if ($docError = $this->aiValidateStoreDocs($request, null)) {
+            return back()->withErrors(['gst_doc' => $docError])->withInput();
+        }
+
         $faker = Faker::create();
         $randomEmail = $faker->unique()->safeEmail;
         $randomPhone = $faker->phoneNumber;
@@ -1296,6 +1343,10 @@ class VendorController extends Controller
             return back()
                 ->withErrors($validator)
                 ->withInput();
+        }
+
+        if ($docError = $this->aiValidateStoreDocs($request, $store)) {
+            return back()->withErrors(['gst_doc' => $docError])->withInput();
         }
 
         //account details
