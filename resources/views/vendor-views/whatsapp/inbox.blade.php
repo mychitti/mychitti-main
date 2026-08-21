@@ -138,8 +138,18 @@
     .wbubble.reply { border-left:3px solid #25d366; padding-left:10px; }
     .wbubble.reply .wreply-lbl { font-size:10.5px; color:#3c6e47; font-weight:600; display:block; margin-bottom:2px; }
 
-    /* Media we can see the type of but not the contents — Meta keeps the file behind its own
-       CDN and we never download it, so name the attachment rather than pretend to preview it. */
+    /* A photo or voice note is fetched off Meta's media API when it arrives and kept as our own
+       file, so it shows here as itself. The name-the-attachment card below is the fallback for
+       anything that download did not manage to bring back. */
+    .wbubble .wfile-img { display:block; margin-bottom:4px; }
+    .wbubble .wfile-img img { max-width:230px; max-height:260px; border-radius:9px; display:block; cursor:zoom-in; }
+    .wbubble video.wfile-vid { max-width:230px; max-height:260px; border-radius:9px; display:block; margin-bottom:4px; }
+    .wbubble audio.wfile-aud { max-width:240px; height:38px; display:block; margin-bottom:4px; }
+    .wbubble a.wfile-doc {
+        display:flex; align-items:center; gap:9px; padding:7px 10px; margin-bottom:4px;
+        background:rgba(11,20,26,.05); border-radius:9px; color:inherit; text-decoration:none; font-size:12.5px;
+    }
+    .wbubble a.wfile-doc i { font-size:18px; color:#54656f; }
     .wbubble .wmedia { display:flex; align-items:center; gap:9px; padding:2px 0; }
     .wbubble .wmedia-ico {
         width:34px; height:34px; border-radius:8px; flex-shrink:0; display:flex; align-items:center;
@@ -439,17 +449,37 @@
         var ctx  = (m.context || '').toLowerCase();
         var placeholder = /^\[[a-z_]+\]$/i.test(body.trim());
 
-        // Attachment: Meta keeps the file on its own CDN and we never download it, so name it
-        // rather than show a broken preview. Any caption we did get still shows.
+        // Attachment. FetchWhatsAppMedia downloads inbound files a moment after they land and
+        // outbound ones are ours already, so media_url is usually there and the file is shown as
+        // itself. Until it is — or if the download failed — the card names the attachment, which
+        // is what this always used to do. Any caption shows underneath either way.
         if (MEDIA[type]) {
             var media = MEDIA[type];
+            var caption = placeholder ? '' : '<div style="margin-top:5px;">' + esc(body) + '</div>';
+            var url = m.media_url ? esc(m.media_url) : '';
+
+            if (url && (type === 'image' || type === 'sticker')) {
+                return { cls: '', tag: '', html: '<a class="wfile-img" href="' + url + '" target="_blank" rel="noopener">'
+                    + '<img src="' + url + '" alt="' + esc(media.label) + '" loading="lazy"></a>' + caption };
+            }
+            if (url && type === 'video') {
+                return { cls: '', tag: '', html: '<video class="wfile-vid" src="' + url + '" controls preload="metadata"></video>' + caption };
+            }
+            if (url && (type === 'audio' || type === 'voice')) {
+                return { cls: '', tag: '', html: '<audio class="wfile-aud" src="' + url + '" controls preload="none"></audio>' + caption };
+            }
+            if (url) {
+                return { cls: '', tag: '', html: '<a class="wfile-doc" href="' + url + '" target="_blank" rel="noopener">'
+                    + '<i class="' + media.icon + '"></i><span>' + esc(placeholder ? media.label : body) + '</span></a>' };
+            }
+
             return {
                 cls: '',
                 tag: '',
                 html: '<div class="wmedia"><div class="wmedia-ico"><i class="' + media.icon + '"></i></div>'
                     + '<div><div class="wmedia-t">' + media.label + '</div>'
                     + '<div class="wmedia-s">Opens in WhatsApp on your phone</div></div></div>'
-                    + (placeholder ? '' : '<div style="margin-top:5px;">' + esc(body) + '</div>')
+                    + caption
             };
         }
 
@@ -510,7 +540,10 @@
     function renderMessages(msgs) {
         // Signature covers every message's status — a delivered/read tick landing on an
         // EARLIER bubble must trigger a re-render too, not just new messages.
-        var sig = msgs.map(function (m) { return m.id + ':' + (m.status || ''); }).join(',');
+        // The media flag is part of the signature: an attachment downloaded seconds after the
+        // message arrived changes no status, and without it the bubble would sit on its
+        // placeholder until the vendor reloaded the page.
+        var sig = msgs.map(function (m) { return m.id + ':' + (m.status || '') + ':' + (m.media_url ? 1 : 0); }).join(',');
         if (sig === lastRenderSignature) return;
         lastRenderSignature = sig;
 

@@ -475,9 +475,18 @@ class WhatsAppController extends Controller
             ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$key])
             ->orderByDesc('sent_at')
             ->limit(300)
-            ->get(['id', 'direction', 'type', 'body', 'context', 'status', 'error', 'sent_at'])
+            ->get(['id', 'direction', 'type', 'body', 'context', 'status', 'error', 'sent_at', 'media_url'])
             ->reverse()
             ->values();
+
+        // An outbound send stored a full link (it was already public somewhere); an inbound file
+        // stored the path it was saved to, so it resolves against whichever panel is asking.
+        $messages->transform(function ($m) {
+            if ($m->media_url && !str_starts_with($m->media_url, 'http')) {
+                $m->media_url = asset('storage/app/public/' . ltrim($m->media_url, '/'));
+            }
+            return $m;
+        });
 
         // Free-form text only delivers within 24h of the customer's last inbound message;
         // outside that, Meta requires an approved template.

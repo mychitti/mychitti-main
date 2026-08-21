@@ -105,7 +105,15 @@ class WhatsAppWebhookController extends Controller
                             ?: data_get($msg, 'interactive.button_reply.title')
                             ?: data_get($msg, 'interactive.list_reply.title');
 
-                        $body = data_get($msg, 'text.body') ?: ($buttonLabel ?: '[' . $type . ']');
+                        // An attachment carries an id, not a file, and its caption is the only
+                        // text it has — a photo sent with "is this normal?" written under it used
+                        // to be logged as a bare "[image]" with the question thrown away.
+                        $mediaId  = data_get($msg, $type . '.id');
+                        $caption  = data_get($msg, $type . '.caption');
+                        $mediaDoc = data_get($msg, $type . '.filename');
+
+                        $body = data_get($msg, 'text.body')
+                            ?: ($buttonLabel ?: ($caption ?: ($mediaDoc ?: '[' . $type . ']')));
 
                         // "STOP" and friends must actually stop the marketing — otherwise the
                         // recipient blocks the number instead, and that hits the sender's
@@ -116,7 +124,7 @@ class WhatsAppWebhookController extends Controller
                             WhatsAppService::recordOptOut($storeId, $from, $buttonLabel ? 'button' : 'reply');
                         }
 
-                        DB::table('whatsapp_messages')->insert([
+                        $messageId = DB::table('whatsapp_messages')->insertGetId([
                             'store_id'   => $storeId,
                             'wamid'      => $msg['id'] ?? null,
                             'direction'  => 'in',
@@ -130,6 +138,19 @@ class WhatsAppWebhookController extends Controller
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
+
+                        // Go and get the actual photo, voice note or document. After the 200,
+                        // like everything else here — the download is two calls to Meta and can be
+                        // megabytes, and a webhook that waits on that gets retried then disabled.
+                        if ($mediaId) {
+                            \App\Jobs\FetchWhatsAppMedia::dispatch(
+                                $storeId ?: null,
+                                (int) $messageId,
+                                (string) $mediaId,
+                                $mediaDoc ? (string) $mediaDoc : null,
+                                WhatsAppService::numberIdByPhoneNumberId($phoneNumberId)
+                            )->afterResponse();
+                        }
 
                         // Score the answer against any drip campaign this number is in.
                         // context.id is the message being replied to — WhatsApp sends it with

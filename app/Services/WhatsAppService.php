@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Meta WhatsApp Cloud API client.
@@ -842,6 +843,96 @@ class WhatsAppService
             Log::error('WA media upload exception: ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Pull an INBOUND attachment off Meta's media API and keep our own copy.
+     *
+     * A photo a customer sends never arrives in the webhook — only an id does, and the bytes sit
+     * behind a Graph endpoint that needs the store's token, which is why the inbox could do
+     * nothing but print the word "Photo". Two calls: the id resolves to a short-lived CDN URL,
+     * and that URL only serves the file to a request carrying the same bearer token.
+     *
+     * The copy lands under whatsapp/inbox/, which the storage route leaves auth-gated — a picture
+     * a patient sent their clinic is not something to publish under a guessable name, and only a
+     * logged-in vendor ever looks at it.
+     *
+     * Returns ['path' => ..., 'mime' => ...] — a path on the public disk, not a URL. The
+     * webhook runs on whichever host Meta was given, and the inbox is read on the vendor and
+     * admin panels; a link baked here would carry the wrong host to whoever is looking at it.
+     * The Spaces mount is shared, so the path resolves from all three.
+     */
+    public function downloadMedia(string $mediaId, ?string $filename = null): ?array
+    {
+        if (!$this->isConfigured() || $mediaId === '') {
+            return null;
+        }
+
+        try {
+            $lookup = Http::withToken($this->cfg['token'])->acceptJson()->timeout(20)
+                ->get(sprintf('https://graph.facebook.com/%s/%s', $this->cfg['api_version'], $mediaId));
+
+            $link = data_get($lookup->json(), 'url');
+            $mime = (string) (data_get($lookup->json(), 'mime_type') ?: 'application/octet-stream');
+            if (!$link) {
+                Log::warning('WA media lookup failed', ['status' => $lookup->status(), 'body' => $lookup->json()]);
+                return null;
+            }
+
+            // Meta serves the file only to a token-bearing request, and refuses one that does not
+            // look like a browser — a plain fetch comes back 400.
+            $file = Http::withToken($this->cfg['token'])
+                ->withHeaders(['User-Agent' => 'MyChitti/1.0'])
+                ->timeout(60)
+                ->get($link);
+
+            if (!$file->successful()) {
+                Log::warning('WA media fetch failed', ['status' => $file->status(), 'media' => $mediaId]);
+                return null;
+            }
+
+            $bytes = $file->body();
+            if ($bytes === '' || strlen($bytes) > 26214400) {
+                Log::warning('WA media skipped — empty or over 25MB', ['media' => $mediaId, 'bytes' => strlen($bytes)]);
+                return null;
+            }
+
+            $ext  = static::extensionFor($mime, $filename);
+            $dir  = 'whatsapp/inbox/' . ($this->storeId ?: 'platform');
+            $name = $dir . '/' . bin2hex(random_bytes(16)) . ($ext ? '.' . $ext : '');
+
+            Storage::disk('public')->put($name, $bytes);
+
+            return ['path' => $name, 'mime' => $mime];
+        } catch (\Throwable $e) {
+            Log::error('WA media download exception: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /** File extension for a Meta mime type. The sender's own filename wins when there is one. */
+    protected static function extensionFor(string $mime, ?string $filename = null): string
+    {
+        $fromName = strtolower(pathinfo((string) $filename, PATHINFO_EXTENSION));
+        if ($fromName !== '' && preg_match('/^[a-z0-9]{1,5}$/', $fromName)) {
+            return $fromName;
+        }
+
+        $map = [
+            'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif',
+            'video/mp4' => 'mp4', 'video/3gpp' => '3gp',
+            'audio/mpeg' => 'mp3', 'audio/mp4' => 'm4a', 'audio/amr' => 'amr',
+            'audio/ogg' => 'ogg', 'audio/ogg; codecs=opus' => 'ogg',
+            'application/pdf' => 'pdf',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            'application/vnd.ms-excel' => 'xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+            'text/plain' => 'txt',
+        ];
+
+        $clean = strtolower(trim(explode(';', $mime)[0]));
+        return $map[strtolower($mime)] ?? $map[$clean] ?? 'bin';
     }
 
     /**

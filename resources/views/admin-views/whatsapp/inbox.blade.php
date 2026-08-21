@@ -272,7 +272,10 @@
     });
 
     function renderMessages(msgs) {
-        var sig = msgs.map(function (m) { return m.id + ':' + (m.status || ''); }).join(',');
+        // media_url is part of the signature: an inbound attachment is downloaded seconds after
+        // the message itself arrives and changes no status, so without it the bubble would sit
+        // empty until the page was reloaded.
+        var sig = msgs.map(function (m) { return m.id + ':' + (m.status || '') + ':' + (m.media_url ? 1 : 0); }).join(',');
         if (sig === lastRenderSignature) return;
         lastRenderSignature = sig;
 
@@ -280,9 +283,9 @@
         msgs.forEach(function (m) {
             var d = fmtDay(m.sent_at);
             if (d && d !== day) { day = d; html += '<div class="wchat-day"><span>' + esc(d) + '</span></div>'; }
-            // An inbound attachment has no link stored - WhatsApp keeps those behind its own
-            // media API - so only outbound files can be shown inline. Everything else falls
-            // back to naming the type, as before.
+            // Inbound attachments are pulled off Meta's media API by FetchWhatsAppMedia and
+            // outbound ones are our own files, so both sides show inline. A message whose
+            // download failed has no media_url and still falls back to naming the type.
             var media = '';
             if (m.media_url) {
                 var u = esc(m.media_url);

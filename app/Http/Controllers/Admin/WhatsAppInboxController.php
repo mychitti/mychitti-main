@@ -136,6 +136,15 @@ class WhatsAppInboxController extends Controller
             ->reverse()
             ->values();
 
+        // An outbound send stored a full link (it was already public somewhere); an inbound file
+        // stored the path it was saved to, so it resolves against whichever panel is asking.
+        $messages->transform(function ($m) {
+            if ($m->media_url && !str_starts_with($m->media_url, 'http')) {
+                $m->media_url = asset('storage/app/public/' . ltrim($m->media_url, '/'));
+            }
+            return $m;
+        });
+
         $lastInbound = $messages->where('direction', 'in')->last();
         $windowOpen = $lastInbound && Carbon::parse($lastInbound->sent_at)->gt(now()->subHours(24));
 
