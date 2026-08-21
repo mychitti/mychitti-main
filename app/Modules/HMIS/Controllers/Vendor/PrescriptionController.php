@@ -386,6 +386,19 @@ class PrescriptionController extends Controller
         $rxText = $showOriginal
             ? null
             : \App\Services\PrescriptionTranslator::content($rx, request()->boolean('retranslate'));
+ 
+        // Surface translation failures so the doctor knows why the sheet stayed in English.
+        $rxLang = $rx->language ?: 'en';
+        if ($rxLang !== 'en' && empty($rxText) && !$showOriginal) {
+            $reason = \App\Services\PrescriptionTranslator::lastError();
+            $langName = \App\Services\PrescriptionTranslator::languageName($rxLang);
+            Toastr::warning(
+                $reason
+                    ? "Translation to {$langName} failed: {$reason}"
+                    : "Could not translate to {$langName}. The AI service may be unavailable — try Retranslate.",
+                'Translation'
+            );
+        }
 
         return view('hmis::vendor.prescription.show', compact('rx', 'canEditRx', 'rxLabels', 'rxText', 'showOriginal'));
     }
