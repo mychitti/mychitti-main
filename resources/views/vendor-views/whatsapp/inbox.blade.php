@@ -211,6 +211,10 @@
         .wchat-wrap.chat-open .wchat-side { display:none; }
         .wchat-wrap.chat-open .wchat-main { display:flex; }
     }
+    .wfwd-staff-list { max-height:190px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:6px; padding:6px 10px; background:#fff; }
+    .wfwd-staff-item { display:flex; align-items:center; gap:8px; padding:5px 2px; font-size:13.5px; color:#111b21; cursor:pointer; margin:0; }
+    .wfwd-staff-item + .wfwd-staff-item { border-top:1px solid #f2f4f6; }
+    .wfwd-staff-item input { margin:0; }
 </style>
 @endpush
 
@@ -319,7 +323,7 @@
             </div>
 
             <small class="wa-sub d-block mt-2">
-                <i class="tio-info-outined"></i> Hover any message to forward it to a staff member.
+                <i class="tio-info-outined"></i> Hover any message to forward it to one or more staff members, or to any other number.
             </small>
 
             {{-- Forward-to-staff modal --}}
@@ -332,20 +336,16 @@
                         </div>
                         <div class="modal-body">
                             <div class="form-group">
-                                <label class="input-label">Staff member</label>
-                                <select id="wfwdStaff" class="form-control">
-                                    <option value="">Loading staff…</option>
-                                </select>
+                                <label class="input-label">Staff members <span class="text-muted" style="font-weight:400;">(pick one or more)</span></label>
+                                <div id="wfwdStaff" class="wfwd-staff-list">
+                                    <div class="text-muted" style="font-size:12.5px;">Loading staff…</div>
+                                </div>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group col-sm-6">
-                                    <label class="input-label">From (name)</label>
-                                    <input type="text" id="wfwdName" class="form-control" maxlength="200">
-                                </div>
-                                <div class="form-group col-sm-6">
-                                    <label class="input-label">Phone</label>
-                                    <input type="text" id="wfwdPhone" class="form-control" maxlength="40">
-                                </div>
+                            <div class="form-group">
+                                <label class="input-label">Other numbers <span class="text-muted" style="font-weight:400;">(optional)</span></label>
+                                <input type="text" id="wfwdExternal" class="form-control" maxlength="2000"
+                                       placeholder="e.g. +91 98765 43210, 9876543211">
+                                <small class="text-muted" style="font-size:11.5px;">Separate multiple numbers with a comma.</small>
                             </div>
                             <div class="form-group mb-1">
                                 <label class="input-label">Message</label>
@@ -355,7 +355,7 @@
                                 <i class="tio-info-outined"></i> Sent from your WhatsApp number using the
                                 <b>Forward to Staff</b> template. Submit and get it approved on the
                                 <a href="{{ route('vendor.whatsapp.templates') }}">Templates</a> page first. Until then it
-                                falls back to free text, which only delivers if the staff member messaged your number in the last 24 hours.
+                                falls back to free text, which only delivers if the recipient messaged your number in the last 24 hours.
                             </small>
                         </div>
                         <div class="modal-footer">
@@ -386,6 +386,7 @@
     var activeLabel = '';
     var activePhone = '';
     var staffLoaded = false;
+    var fwdSenderName = '', fwdSenderPhone = '';
     var lastRenderSignature = '';
     var filter = 'all';
 
@@ -431,8 +432,9 @@
         return '<span class="wticks' + cls + '">' + t + '</span>';
     }
 
-    // The customer sent the last message, so the ball is in the vendor's court.
-    function needsReply(t) { return t.last_dir === 'in'; }
+    // The ball is in the vendor's court: either the customer sent the last message, or the bot
+    // answered but promised a human would follow up (needs_reply, set when it escalated).
+    function needsReply(t) { return !!t.needs_reply || t.last_dir === 'in'; }
 
     var MEDIA = {
         image:    { icon: 'tio-image', label: 'Photo' },
@@ -675,46 +677,59 @@
         if (staffLoaded) return;
         staffLoaded = true;
         $.get(STAFF_URL, function (res) {
-            var opts = '<option value="">Select staff member…</option>';
+            var html = '';
             if (res && res.success) {
                 (res.staff || []).forEach(function (s) {
-                    opts += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
+                    html += '<label class="wfwd-staff-item">'
+                          + '<input type="checkbox" class="wfwd-staff-cb" value="' + s.id + '"> '
+                          + '<span>' + esc(s.name) + '</span></label>';
                 });
-                if (!(res.staff || []).length) {
-                    opts = '<option value="">No staff with a phone number on file</option>';
-                }
             }
-            $('#wfwdStaff').html(opts);
+            if (!html) {
+                html = '<div class="text-muted" style="font-size:12.5px;">No staff with a phone number on file</div>';
+            }
+            $('#wfwdStaff').html(html);
         }).fail(function () {
             staffLoaded = false;
-            $('#wfwdStaff').html('<option value="">Could not load staff</option>');
+            $('#wfwdStaff').html('<div class="text-danger" style="font-size:12.5px;">Could not load staff</div>');
         });
     }
 
     function openForward(body) {
         if (!activeKey) return;
         loadStaffOnce();
-        $('#wfwdName').val(activeLabel || 'Customer');
-        $('#wfwdPhone').val('+' + String(activePhone || activeKey).replace(/^\+/, ''));
+        // The customer's name and number are taken from the open conversation, not edited by hand.
+        fwdSenderName  = activeLabel || 'Customer';
+        fwdSenderPhone = '+' + String(activePhone || activeKey).replace(/^\+/, '');
         $('#wfwdText').val(body);
-        $('#wfwdStaff').val('');
+        $('#wfwdExternal').val('');
+        $('.wfwd-staff-cb').prop('checked', false);
         $('#wfwdModal').modal('show');
     }
 
     function sendForward() {
-        var staffId = $('#wfwdStaff').val();
-        var name    = ($('#wfwdName').val() || '').trim();
-        var phone   = ($('#wfwdPhone').val() || '').trim();
-        var text    = ($('#wfwdText').val() || '').trim();
-        if (!staffId) { toastr.error('Choose a staff member to forward to.'); return; }
+        var staffIds = $('.wfwd-staff-cb:checked').map(function () { return this.value; }).get();
+        var external = ($('#wfwdExternal').val() || '').trim();
+        var text     = ($('#wfwdText').val() || '').trim();
+        if (!staffIds.length && !external) { toastr.error('Choose a staff member or enter a number to forward to.'); return; }
         if (!text)    { toastr.error('The message is empty.'); return; }
 
         $('#wfwdSend').prop('disabled', true);
-        $.post(FORWARD_URL, { _token: CSRF, staff_id: staffId, sender_name: name, sender_phone: phone, message: text }, function (res) {
+        $.post(FORWARD_URL, {
+            _token: CSRF,
+            staff_ids: staffIds,
+            external_phones: external,
+            sender_name: fwdSenderName,
+            sender_phone: fwdSenderPhone,
+            message: text
+        }, function (res) {
             $('#wfwdSend').prop('disabled', false);
             if (res && res.success) {
                 $('#wfwdModal').modal('hide');
-                toastr.success('Forwarded to ' + (res.staff || 'staff') + '.');
+                toastr.success('Forwarded to ' + ((res.delivered || []).join(', ') || 'staff') + '.');
+                if ((res.failed || []).length) {
+                    toastr.error('Could not reach: ' + res.failed.join(', ') + '.');
+                }
             } else {
                 toastr.error((res && res.error) || 'Could not forward the message.');
             }

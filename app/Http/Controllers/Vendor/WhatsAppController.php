@@ -342,21 +342,23 @@ class WhatsAppController extends Controller
     }
 
     /**
-     * Forward an inbox message (with the customer's details) to a staff member's WhatsApp,
-     * sent from the store's own connected number.
+     * Forward an inbox message (with the customer's details) to one or more staff members
+     * and/or arbitrary external numbers, sent from the store's own connected number.
      *
      * Prefers the approved `staff_forward` template so it delivers any time; the template's
      * fixed text keeps the layout and {{4}} carries the message (its own line breaks collapse
-     * to spaces, per Meta). Falls back to free text — which only lands if the staff member
+     * to spaces, per Meta). Falls back to free text — which only lands if the recipient
      * messaged the store number in the last 24h — when the template isn't approved yet.
      */
     public function inboxForward(Request $request)
     {
         $request->validate([
-            'staff_id'     => 'required|integer',
-            'sender_name'  => 'nullable|string|max:200',
-            'sender_phone' => 'nullable|string|max:40',
-            'message'      => 'required|string|max:4000',
+            'staff_ids'       => 'nullable|array',
+            'staff_ids.*'     => 'integer',
+            'external_phones' => 'nullable|string|max:2000',
+            'sender_name'     => 'nullable|string|max:200',
+            'sender_phone'    => 'nullable|string|max:40',
+            'message'         => 'required|string|max:4000',
         ]);
 
         $storeId = Helpers::get_store_id();
@@ -365,12 +367,41 @@ class WhatsAppController extends Controller
             return response()->json(['success' => false, 'error' => 'Connect your own WhatsApp number to forward chats.'], 422);
         }
 
-        // Phone comes from the staff record, never the client — resigned staff (phone nulled) are excluded.
-        $staff = \App\Models\VendorEmployee::where('store_id', $storeId)
-            ->whereNotNull('phone')->where('phone', '!=', '')
-            ->find($request->staff_id);
-        if (!$staff) {
-            return response()->json(['success' => false, 'error' => 'That staff member has no phone number on file.'], 422);
+        // Phones come from the staff records, never the client — resigned staff (phone nulled) are excluded.
+        $staffIds = array_filter(array_map('intval', (array) $request->staff_ids));
+        $recipients = [];
+        if ($staffIds) {
+            $staff = \App\Models\VendorEmployee::where('store_id', $storeId)
+                ->whereNotNull('phone')->where('phone', '!=', '')
+                ->whereIn('id', $staffIds)
+                ->get(['id', 'f_name', 'l_name', 'phone']);
+            foreach ($staff as $e) {
+                $recipients[] = ['label' => trim($e->f_name . ' ' . $e->l_name) ?: 'Staff', 'phone' => $e->phone];
+            }
+        }
+
+        // External numbers: free-form list separated by comma, semicolon, space or new line.
+        foreach (preg_split('/[\s,;]+/', (string) $request->external_phones, -1, PREG_SPLIT_NO_EMPTY) as $raw) {
+            $digits = $wa->normalizePhone($raw);
+            if (strlen($digits) < 10) {
+                return response()->json(['success' => false, 'error' => "“{$raw}” is not a valid WhatsApp number."], 422);
+            }
+            $recipients[] = ['label' => '+' . $digits, 'phone' => $digits];
+        }
+
+        // De-duplicate so a number listed both as staff and externally is only messaged once.
+        $seen = [];
+        $recipients = array_values(array_filter($recipients, function ($r) use ($wa, &$seen) {
+            $key = $wa->normalizePhone($r['phone']);
+            if ($key === '' || isset($seen[$key])) {
+                return false;
+            }
+            $seen[$key] = true;
+            return true;
+        }));
+
+        if (!$recipients) {
+            return response()->json(['success' => false, 'error' => 'Choose at least one staff member or enter a number.'], 422);
         }
 
         $storeName   = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
@@ -391,29 +422,47 @@ class WhatsAppController extends Controller
             'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => $v], $params),
         ]];
 
-        // No template is not fatal here — the free-text fallback below still reaches a staff
-        // member who has messaged the store in the last 24h.
-        $res  = $tpl
-            ? $wa->sendTemplate($staff->phone, $tpl['name'], $tpl['language'], $components, 'forward to staff')
-            : ['success' => false, 'error' => null];
-        $sent = !empty($res['success']);
-
         // Free-text fallback mirrors the template and keeps the message's own line breaks.
-        if (!$sent) {
-            $text = "📩 New message forwarded from {$storeName}.\n\n"
-                . "From: {$senderName} ({$senderPhone})\n"
-                . "Message: {$message}\n\n"
-                . "Please follow up with the customer.";
-            $fallback = $wa->sendText($staff->phone, $text, false, 'forward to staff');
-            if (empty($fallback['success'])) {
-                return response()->json([
-                    'success' => false,
-                    'error'   => $res['error'] ?: ($fallback['error'] ?? 'Could not forward the message.'),
-                ]);
+        $text = "📩 New message forwarded from {$storeName}.\n\n"
+            . "From: {$senderName} ({$senderPhone})\n"
+            . "Message: {$message}\n\n"
+            . "Please follow up with the customer.";
+
+        $delivered = [];
+        $failed    = [];
+        $lastError = null;
+
+        foreach ($recipients as $r) {
+            // No template is not fatal here — the free-text fallback still reaches a recipient
+            // who has messaged the store in the last 24h.
+            $res = $tpl
+                ? $wa->sendTemplate($r['phone'], $tpl['name'], $tpl['language'], $components, 'forward to staff')
+                : ['success' => false, 'error' => null];
+
+            if (empty($res['success'])) {
+                $fallback = $wa->sendText($r['phone'], $text, false, 'forward to staff');
+                if (empty($fallback['success'])) {
+                    $failed[]  = $r['label'];
+                    $lastError = $res['error'] ?: ($fallback['error'] ?? null);
+                    continue;
+                }
             }
+            $delivered[] = $r['label'];
         }
 
-        return response()->json(['success' => true, 'staff' => $staff->name]);
+        if (!$delivered) {
+            return response()->json([
+                'success' => false,
+                'error'   => $lastError ?: 'Could not forward the message.',
+            ]);
+        }
+
+        return response()->json([
+            'success'   => true,
+            'delivered' => $delivered,
+            'failed'    => $failed,
+            'staff'     => implode(', ', $delivered),
+        ]);
     }
 
     /** Conversation list: one row per contact, newest activity first. */
@@ -427,7 +476,7 @@ class WhatsAppController extends Controller
             ->where('recipient', '!=', '')
             ->orderByDesc('sent_at')
             ->limit(2000)
-            ->get(['recipient', 'direction', 'body', 'type', 'sent_at']);
+            ->get(['recipient', 'direction', 'body', 'type', 'sent_at', 'needs_reply']);
 
         // Newest-first walk: the first row seen per contact IS the thread's latest message.
         $threads = [];
@@ -438,13 +487,21 @@ class WhatsAppController extends Controller
             }
             if (!isset($threads[$key])) {
                 $threads[$key] = [
-                    'key'       => $key,
-                    'phone'     => $m->recipient,
-                    'name'      => null,
-                    'last_body' => mb_substr((string) $m->body, 0, 80),
-                    'last_dir'  => $m->direction,
-                    'last_at'   => $m->sent_at,
+                    'key'         => $key,
+                    'phone'       => $m->recipient,
+                    'name'        => null,
+                    'last_body'   => mb_substr((string) $m->body, 0, 80),
+                    'last_dir'    => $m->direction,
+                    'last_at'     => $m->sent_at,
+                    'needs_reply' => false,
                 ];
+            }
+
+            // The bot answering a question it could not settle leaves the conversation owing the
+            // customer a human — and its own reply is the last message, so "last message was
+            // inbound" cannot see it. This flag is the only thing that can.
+            if (!empty($m->needs_reply)) {
+                $threads[$key]['needs_reply'] = true;
             }
         }
 
@@ -554,6 +611,19 @@ class WhatsAppController extends Controller
         }
 
         $res = $wa->sendText($request->phone, trim((string) $request->message), false, 'chat reply');
+
+        // A human has answered, so the thread no longer owes one.
+        if (!empty($res['success'])) {
+            try {
+                DB::table('whatsapp_messages')
+                    ->where('store_id', $storeId)
+                    ->where('needs_reply', 1)
+                    ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(recipient, ' ', ''), '-', ''), '+', ''), 10) = ?", [$request->phone])
+                    ->update(['needs_reply' => 0, 'updated_at' => now()]);
+            } catch (\Throwable $e) {
+                Log::warning('WA clear needs-reply failed: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => (bool) $res['success'],

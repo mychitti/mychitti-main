@@ -681,6 +681,14 @@ class OpdController extends Controller
             'treatment.*'     => 'string|max:150',
             'note_terms'      => 'nullable|array',
             'note_terms.*'    => 'string|max:190',
+            'bp_systolic'      => 'nullable|integer|min:0|max:300',
+            'bp_diastolic'     => 'nullable|integer|min:0|max:200',
+            'temperature'      => 'nullable|numeric|min:90|max:110',
+            'weight'           => 'nullable|numeric|min:0|max:500',
+            'height'           => 'nullable|numeric|min:0|max:300',
+            'spo2'             => 'nullable|integer|min:0|max:100',
+            'pulse_rate'       => 'nullable|integer|min:0|max:300',
+            'respiratory_rate' => 'nullable|integer|min:0|max:100',
         ]);
 
         // The show page saves chief complaint, consultation notes and diagnosis/treatment
@@ -729,6 +737,17 @@ class OpdController extends Controller
             $column = $field === 'complaint' ? 'chief_complaint' : $field;
             $visit->{$column} = $terms->isEmpty() ? null : $terms->implode(', ');
             $saved[$field]    = $terms->all();
+        }
+
+        // Vitals, edited in place on the Details tab. Sent only when that card is saved, and a
+        // box left empty means "not recorded" rather than "leave as it was" — so an emptied
+        // field clears the column instead of keeping a reading the nurse just deleted.
+        foreach (['bp_systolic', 'bp_diastolic', 'temperature', 'weight',
+                  'height', 'spo2', 'pulse_rate', 'respiratory_rate'] as $vital) {
+            if ($request->has($vital)) {
+                $value = $request->input($vital);
+                $visit->{$vital} = ($value === '' || $value === null) ? null : $value;
+            }
         }
 
         $visit->save();

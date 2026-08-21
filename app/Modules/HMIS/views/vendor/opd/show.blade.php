@@ -938,36 +938,36 @@
             </div>
         </div>
 
-        <div class="patient-vitals-row"> 
+        <div class="patient-vitals-row">
             {{-- BP --}}
             <div class="vital-item-card">
-                <div class="vital-val @if($visit->bp_systolic >= 140 || $visit->bp_diastolic >= 90) red-text @else green-text @endif">
+                <div class="vital-val @if($visit->bp_systolic >= 140 || $visit->bp_diastolic >= 90) red-text @else green-text @endif" id="vsBp">
                     {{ $visit->bp_systolic ?: '—' }}/{{ $visit->bp_diastolic ?: '—' }}
                 </div>
                 <div class="vital-lbl">BP mmHg</div>
             </div>
             {{-- Pulse --}}
             <div class="vital-item-card">
-                <div class="vital-val blue-text">{{ $visit->pulse_rate ?: '—' }}</div>
+                <div class="vital-val blue-text" id="vsPulse">{{ $visit->pulse_rate ?: '—' }}</div>
                 <div class="vital-lbl">Pulse/min</div>
             </div>
             {{-- Temperature --}}
             <div class="vital-item-card">
-                <div class="vital-val @if($visit->temperature >= 100) red-text @else green-text @endif">
+                <div class="vital-val @if($visit->temperature >= 100) red-text @else green-text @endif" id="vsTemp">
                     {{ $visit->temperature ?: '—' }}
                 </div>
                 <div class="vital-lbl">Temp °F</div>
             </div>
             {{-- SpO2 --}}
             <div class="vital-item-card">
-                <div class="vital-val @if($visit->spo2 && $visit->spo2 < 95) red-text @else green-text @endif">
+                <div class="vital-val @if($visit->spo2 && $visit->spo2 < 95) red-text @else green-text @endif" id="vsSpo2">
                     {{ $visit->spo2 ? $visit->spo2 . '%' : '—' }}
                 </div>
                 <div class="vital-lbl">SpO2 %</div>
             </div>
             {{-- Weight --}}
             <div class="vital-item-card">
-                <div class="vital-val">{{ $visit->weight ?: '—' }}</div>
+                <div class="vital-val" id="vsWeight">{{ $visit->weight ?: '—' }}</div>
                 <div class="vital-lbl">Wt kg</div>
             </div>
         </div>
@@ -1351,13 +1351,22 @@
 
                 {{-- Full Vitals Grid --}}
                 <div class="card shadow-none border mb-3">
-                    <div class="card-header py-2 bg-light"><h6 class="mb-0 font-weight-bold" style="font-size:13px">Patient Vitals Profile</h6></div>
-                    <div class="card-body p-0">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
+                        <h6 class="mb-0 font-weight-bold" style="font-size:13px">Patient Vitals Profile</h6>
+                        @if ($visit->is_completed)
+                            <span class="visit-locked" title="This visit is completed. The OP receipt has been issued, so the record is closed."><i class="tio-lock"></i> Completed</span>
+                        @elseif (hasPermission('opd_register', 'edit'))
+                            <button class="btn btn-xs btn-soft-secondary" onclick="toggleVitalsEdit()" title="Edit vitals">
+                                <i class="tio-edit" id="vitalsEditIcon"></i>
+                            </button>
+                        @endif
+                    </div>
+                    <div class="card-body p-0" id="vitalsView">
                         <table class="table table-striped table-sm mb-0 text-dark" style="font-size:13px">
                             <tbody>
                                 <tr>
                                     <td class="pl-3 py-2" style="font-weight:600">Blood Pressure</td>
-                                    <td>
+                                    <td id="vBpCell">
                                         @if($visit->bp_systolic && $visit->bp_diastolic)
                                             <strong>{{ $visit->bp_systolic }}/{{ $visit->bp_diastolic }}</strong> mmHg
                                             @if($visit->bp_systolic >= 140 || $visit->bp_diastolic >= 90)
@@ -1368,23 +1377,72 @@
                                         @else <span class="text-muted">—</span> @endif
                                     </td>
                                     <td class="py-2" style="font-weight:600">Pulse Rate</td>
-                                    <td>{{ $visit->pulse_rate ? $visit->pulse_rate . ' bpm' : '—' }}</td>
+                                    <td id="vPulseCell">{{ $visit->pulse_rate ? $visit->pulse_rate . ' bpm' : '—' }}</td>
                                 </tr>
                                 <tr>
                                     <td class="pl-3 py-2" style="font-weight:600">Temperature</td>
-                                    <td>{{ $visit->temperature ? $visit->temperature . ' °F' : '—' }}</td>
+                                    <td id="vTempCell">{{ $visit->temperature ? $visit->temperature . ' °F' : '—' }}</td>
                                     <td class="py-2" style="font-weight:600">Respiratory Rate</td>
-                                    <td>{{ $visit->respiratory_rate ? $visit->respiratory_rate . ' /min' : '—' }}</td>
+                                    <td id="vRrCell">{{ $visit->respiratory_rate ? $visit->respiratory_rate . ' /min' : '—' }}</td>
                                 </tr>
                                 <tr>
                                     <td class="pl-3 py-2" style="font-weight:600">SpO2</td>
-                                    <td>{{ $visit->spo2 ? $visit->spo2 . '%' : '—' }}</td>
+                                    <td id="vSpo2Cell">{{ $visit->spo2 ? $visit->spo2 . '%' : '—' }}</td>
                                     <td class="py-2" style="font-weight:600">Weight / Height</td>
-                                    <td>{{ $visit->weight ? $visit->weight . ' kg' : '—' }} / {{ $visit->height ? $visit->height . ' cm' : '—' }}</td>
+                                    <td id="vWtHtCell">{{ $visit->weight ? $visit->weight . ' kg' : '—' }} / {{ $visit->height ? $visit->height . ' cm' : '—' }}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
+                    @if (hasPermission('opd_register', 'edit'))
+                        {{-- The nurse-station reading is often corrected at the chair: a cuff read
+                             twice, a weight taken with the coat still on. This writes to the same
+                             visit columns the strip at the top of the page reads, so both move
+                             together instead of disagreeing until a reload. --}}
+                        <div class="card-body py-3" id="vitalsEdit" style="display:none;">
+                            <div class="form-row">
+                                <div class="col-md-3 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">BP Systolic <span class="text-muted">(mmHg)</span></label>
+                                    <input type="number" min="0" max="300" id="v_bp_systolic" class="form-control form-control-sm" value="{{ $visit->bp_systolic }}" placeholder="120">
+                                </div>
+                                <div class="col-md-3 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">BP Diastolic <span class="text-muted">(mmHg)</span></label>
+                                    <input type="number" min="0" max="200" id="v_bp_diastolic" class="form-control form-control-sm" value="{{ $visit->bp_diastolic }}" placeholder="80">
+                                </div>
+                                <div class="col-md-3 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Pulse Rate <span class="text-muted">(bpm)</span></label>
+                                    <input type="number" min="0" max="300" id="v_pulse_rate" class="form-control form-control-sm" value="{{ $visit->pulse_rate }}" placeholder="72">
+                                </div>
+                                <div class="col-md-3 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Temperature <span class="text-muted">(°F)</span></label>
+                                    <input type="number" step="0.1" min="90" max="110" id="v_temperature" class="form-control form-control-sm" value="{{ $visit->temperature }}" placeholder="98.6">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="col-md-3 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Respiratory Rate <span class="text-muted">(/min)</span></label>
+                                    <input type="number" min="0" max="100" id="v_respiratory_rate" class="form-control form-control-sm" value="{{ $visit->respiratory_rate }}" placeholder="16">
+                                </div>
+                                <div class="col-md-3 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">SpO2 <span class="text-muted">(%)</span></label>
+                                    <input type="number" min="0" max="100" id="v_spo2" class="form-control form-control-sm" value="{{ $visit->spo2 }}" placeholder="99">
+                                </div>
+                                <div class="col-md-3 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Weight <span class="text-muted">(kg)</span></label>
+                                    <input type="number" step="0.1" min="0" max="500" id="v_weight" class="form-control form-control-sm" value="{{ $visit->weight }}" placeholder="70">
+                                </div>
+                                <div class="col-md-3 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Height <span class="text-muted">(cm)</span></label>
+                                    <input type="number" step="0.1" min="0" max="300" id="v_height" class="form-control form-control-sm" value="{{ $visit->height }}" placeholder="170">
+                                </div>
+                            </div>
+                            <div class="mt-2 d-flex flex-wrap" style="gap:8px;">
+                                <button class="btn btn-sm btn-primary" onclick="saveVitals(this)">Save</button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleVitalsEdit()">Cancel</button>
+                            </div>
+                            <small class="text-muted d-block mt-1">Leave a box empty to record that vital as not taken.</small>
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -2717,6 +2775,109 @@
         box.innerHTML = terms.length
             ? terms.map(t => `<span class="cc-badge">${t}</span>`).join('')
             : '<span class="text-muted small">Not recorded yet.</span>';
+    }
+
+
+    // ── Vitals inline edit ──
+    const VITAL_FIELDS = ['bp_systolic', 'bp_diastolic', 'pulse_rate', 'temperature',
+                          'respiratory_rate', 'spo2', 'weight', 'height'];
+
+    function toggleVitalsEdit() {
+        const view = document.getElementById('vitalsView');
+        const edit = document.getElementById('vitalsEdit');
+        if (!edit) return;
+
+        const showing = edit.style.display === 'none';
+        view.style.display = showing ? 'none' : '';
+        edit.style.display = showing ? '' : 'none';
+        if (showing) {
+            const first = document.getElementById('v_bp_systolic');
+            if (first) first.focus();
+        }
+    }
+
+    // Empty box => null, i.e. "not taken", not "leave whatever was there". Sent for every field
+    // so a cleared reading actually clears rather than silently keeping the old number.
+    function readVitals() {
+        const out = {};
+        VITAL_FIELDS.forEach(function (field) {
+            const el = document.getElementById('v_' + field);
+            const raw = el ? el.value.trim() : '';
+            out[field] = raw === '' ? null : raw;
+        });
+        return out;
+    }
+
+    function saveVitals(btn) {
+        if (visitLocked) return;
+
+        const payload = readVitals();
+        btn.disabled = true;
+        setSaveState('saving');
+
+        fetch(opdQuickUpdateUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json().then(body => ({ status: r.status, body: body })))
+        .then(res => {
+            btn.disabled = false;
+
+            // 422 is either the closed-visit refusal (msg) or a value out of range (errors).
+            if (!res.body || !res.body.ok) {
+                const errors = res.body && res.body.errors;
+                const first  = errors ? errors[Object.keys(errors)[0]][0] : null;
+                setSaveState('error');
+                alert(first || (res.body && res.body.msg) || 'Could not save the vitals.');
+                return;
+            }
+
+            renderVitals(payload);
+            toggleVitalsEdit();
+            setSaveState('saved');
+        })
+        .catch(() => {
+            btn.disabled = false;
+            setSaveState('error');
+            alert('Could not save the vitals.');
+        });
+    }
+
+    function renderVitals(v) {
+        const dash = '—';
+        const cell = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+        const withUnit = (value, unit) => (value === null ? dash : value + unit);
+
+        const sys = v.bp_systolic, dia = v.bp_diastolic;
+        const bpHigh = Number(sys) >= 140 || Number(dia) >= 90;
+
+        cell('vBpCell', (sys && dia)
+            ? '<strong>' + sys + '/' + dia + '</strong> mmHg <span class="badge ' +
+              (bpHigh ? 'badge-soft-danger' : 'badge-soft-success') + ' ml-1">' +
+              (bpHigh ? 'Hypertensive Range' : 'Normal Range') + '</span>'
+            : '<span class="text-muted">' + dash + '</span>');
+        cell('vPulseCell', withUnit(v.pulse_rate, ' bpm'));
+        cell('vTempCell',  withUnit(v.temperature, ' °F'));
+        cell('vRrCell',    withUnit(v.respiratory_rate, ' /min'));
+        cell('vSpo2Cell',  withUnit(v.spo2, '%'));
+        cell('vWtHtCell',  withUnit(v.weight, ' kg') + ' / ' + withUnit(v.height, ' cm'));
+
+        // The strip under the patient header reads the same columns.
+        const strip = (id, text, tone) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = text;
+            if (tone) {
+                el.classList.remove('red-text', 'green-text');
+                el.classList.add(tone);
+            }
+        };
+        strip('vsBp', (sys || dash) + '/' + (dia || dash), bpHigh ? 'red-text' : 'green-text');
+        strip('vsPulse', v.pulse_rate || dash);
+        strip('vsTemp', v.temperature || dash, Number(v.temperature) >= 100 ? 'red-text' : 'green-text');
+        strip('vsSpo2', v.spo2 ? v.spo2 + '%' : dash, (v.spo2 && Number(v.spo2) < 95) ? 'red-text' : 'green-text');
+        strip('vsWeight', v.weight || dash);
     }
 
 

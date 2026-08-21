@@ -23,13 +23,17 @@ use Illuminate\Support\Str;
  * The AI collects details in conversation; when the customer confirms, it emits an action
  * marker instead of prose. This service supplies the prompt section that teaches the
  * protocol (doctors, the customer's upcoming appointments, marker formats) and executes
- * the parsed marker against the real appointment tables — booking and rescheduling exactly
- * like the vendor panel does (status flow, rescheduled_from link, token generation).
+ * the parsed marker against the real appointment tables — booking, rescheduling and
+ * cancelling exactly like the vendor panel does (status flow, rescheduled_from link, tokens).
+ *
+ * Every action a customer takes here alerts the clinic. A slot that empties itself at 1am is
+ * only useful to a store that finds out about it, and the panel has no other way to learn.
  */
 class WhatsAppAppointmentBot
 {
     const BOOK_MARKER       = 'BOOK_APPOINTMENT';
     const RESCHEDULE_MARKER = 'RESCHEDULE_APPOINTMENT';
+    const CANCEL_MARKER     = 'CANCEL_APPOINTMENT';
 
     /** Appointment tooling applies only to stores that actually run appointments. */
     protected static function applicable(int $storeId): bool
@@ -80,7 +84,7 @@ class WhatsAppAppointmentBot
             : "  * FOR THEMSELVES — do NOT ask for their phone number, it is the number they are messaging from. "
                 . "Ask for: their name, address, age, gender.\n";
 
-        return "\n\nAPPOINTMENT ACTIONS — you can book and reschedule appointments for this customer.\n"
+        return "\n\nAPPOINTMENT ACTIONS — you can book, reschedule and cancel appointments for this customer.\n"
             . 'Today is ' . now()->format('l, d M Y') . ".\n"
             . $onFile . "\n"
             . "Doctors:\n{$doctors}\n"
@@ -100,6 +104,11 @@ class WhatsAppAppointmentBot
             . "- When \"for\" is \"self\", leave name and phone as empty strings — the clinic already has them.\n"
             . "- To RESCHEDULE an upcoming appointment from the list above: confirm the new date and time, then reply with ONLY:\n"
             . '[[' . self::RESCHEDULE_MARKER . ': {"appointment_id": <ID from the list>, "date":"YYYY-MM-DD","time":"HH:MM"}]]' . "\n"
+            . "- To CANCEL an upcoming appointment from the list above: name the appointment you are about to cancel and ask them to confirm. Once they confirm, reply with ONLY:\n"
+            . '[[' . self::CANCEL_MARKER . ': {"appointment_id": <ID from the list>, "reason":"<short reason, or empty string>"}]]' . "\n"
+            . "- If they ask to cancel or move an appointment that is NOT in the list above, do not guess at one — say the team will check and get back to them, and append "
+            . \App\Jobs\SendAutoReply::ESCALATE_MARKER . " so a human is told.\n"
+            . "- Never tell the customer you cannot cancel or reschedule. You can do both, for any appointment in the list above.\n"
             . "- Time is 24-hour format. Dates must be today or later — interpret \"tomorrow\" etc. from today's date above.\n"
             . "- Only offer doctors from the list. Never emit a marker before the customer has confirmed the details.";
     }
@@ -111,7 +120,8 @@ class WhatsAppAppointmentBot
      */
     public static function tryHandle(string $reply, int $storeId, string $phoneKey, string $fromPhone): ?array
     {
-        if (!preg_match('/\[\[(' . self::BOOK_MARKER . '|' . self::RESCHEDULE_MARKER . '):\s*(\{.*?\})\s*\]\]/s', $reply, $m)) {
+        $markers = implode('|', [self::BOOK_MARKER, self::RESCHEDULE_MARKER, self::CANCEL_MARKER]);
+        if (!preg_match('/\[\[(' . $markers . '):\s*(\{.*?\})\s*\]\]/s', $reply, $m)) {
             return null;
         }
         if (!static::applicable($storeId)) {
@@ -121,9 +131,14 @@ class WhatsAppAppointmentBot
         $data = json_decode($m[2], true) ?: [];
 
         try {
-            return $m[1] === self::BOOK_MARKER
-                ? static::book($storeId, $phoneKey, $fromPhone, $data)
-                : static::reschedule($storeId, $phoneKey, $data);
+            switch ($m[1]) {
+                case self::BOOK_MARKER:
+                    return static::book($storeId, $phoneKey, $fromPhone, $data);
+                case self::CANCEL_MARKER:
+                    return static::cancel($storeId, $phoneKey, $data);
+                default:
+                    return static::reschedule($storeId, $phoneKey, $data);
+            }
         } catch (\Throwable $e) {
             Log::warning("WA appointment action failed (store {$storeId}): " . $e->getMessage());
             return [
@@ -298,6 +313,74 @@ class WhatsAppAppointmentBot
         return $user;
     }
 
+    /**
+     * Call off an upcoming appointment, exactly as the panel's own Cancel does: status
+     * 'cancelled' with a reason, and an activity-log line naming WhatsApp as the source.
+     *
+     * The token is deliberately left alone. Numbers are issued per doctor per day and the panel
+     * does not reclaim one on cancellation either; renumbering here would move every later
+     * patient's token after they had already been told theirs.
+     *
+     * Only appointments already offered to the customer can be cancelled — upcomingFor() is
+     * scoped to their own phone number, so an id invented by the model or typed by the customer
+     * cannot reach somebody else's booking.
+     */
+    protected static function cancel(int $storeId, string $phoneKey, array $data): array
+    {
+        $upcoming = static::upcomingFor($storeId, $phoneKey);
+        if ($upcoming->isEmpty()) {
+            return [
+                'message'  => "I couldn't find an upcoming appointment for your number. Our team will check and get back to you shortly.",
+                'escalate' => true,
+                'reason'   => 'Cancellation requested but no upcoming appointment found',
+            ];
+        }
+
+        $appointment = null;
+        if (!empty($data['appointment_id'])) {
+            $appointment = $upcoming->firstWhere('id', (int) $data['appointment_id']);
+        }
+
+        // No id, or one that is not theirs: fall back to the only appointment they have. With
+        // more than one on file, guessing which to cancel is worse than asking.
+        if (!$appointment) {
+            if ($upcoming->count() > 1) {
+                return [
+                    'message'  => 'You have more than one upcoming appointment — could you tell me which one to cancel (the date and time)?',
+                    'escalate' => false,
+                    'reason'   => '',
+                ];
+            }
+            $appointment = $upcoming->first();
+        }
+
+        $reason = trim((string) ($data['reason'] ?? ''));
+        $note   = 'Cancelled by the patient on WhatsApp' . ($reason ? ' — ' . mb_substr($reason, 0, 200) : '');
+
+        $appointment->status        = 'cancelled';
+        $appointment->cancel_reason = mb_substr($note, 0, 500);
+        $appointment->save();
+
+        $when = Carbon::parse($appointment->appointment_date)->format('d M Y')
+            . ' at ' . Carbon::parse($appointment->appointment_time ?: '00:00')->format('h:i A');
+        $dr = trim(($appointment->doctorProfile->employee->f_name ?? '') . ' ' . ($appointment->doctorProfile->employee->l_name ?? ''));
+
+        static::activityLog($storeId, $appointment->id, 'cancelled_via_whatsapp',
+            "Appointment #{$appointment->id} ({$when}) cancelled by the patient via WhatsApp"
+            . ($reason ? ". Reason: {$reason}" : ''));
+
+        static::notifyClinic($storeId, $appointment->id, 'Appointment cancelled on WhatsApp',
+            static::patientLabel($appointment) . ' cancelled their appointment on ' . $when
+            . ($dr ? ' with Dr. ' . $dr : '') . '.' . ($reason ? ' Reason given: ' . $reason : ''));
+
+        return [
+            'message' => 'Your appointment on ' . $when . ($dr ? ' with Dr. ' . $dr : '')
+                . ' has been cancelled. If you would like to book another time, just tell me when suits you.',
+            'escalate' => false,
+            'reason'   => '',
+        ];
+    }
+
     protected static function reschedule(int $storeId, string $phoneKey, array $data): array
     {
         $when = static::parseWhen($data['date'] ?? '', $data['time'] ?? '');
@@ -346,6 +429,11 @@ class WhatsAppAppointmentBot
             "Appointment #{$old->id} rescheduled to {$when->toDateString()} via WhatsApp. New appointment #{$new->id}");
 
         $dr = trim(($old->doctorProfile->employee->f_name ?? '') . ' ' . ($old->doctorProfile->employee->l_name ?? ''));
+
+        static::notifyClinic($storeId, $new->id, 'Appointment rescheduled on WhatsApp',
+            static::patientLabel($old) . ' moved their appointment from '
+            . Carbon::parse($old->appointment_date)->format('d M Y') . ' to '
+            . $when->format('d M Y') . ' at ' . $when->format('h:i A') . ($dr ? ' with Dr. ' . $dr : '') . '.');
         $token = $new->token->token_number ?? null;
 
         return [
@@ -485,7 +573,7 @@ class WhatsAppAppointmentBot
             ->whereIn('patient_id', $patientIds)
             ->where('status', 'scheduled')
             ->whereDate('appointment_date', '>=', now()->toDateString())
-            ->with(['doctorProfile.employee', 'token'])
+            ->with(['doctorProfile.employee', 'token', 'patient'])
             ->orderBy('appointment_date')->orderBy('appointment_time')
             ->limit(5)
             ->get();
@@ -540,6 +628,39 @@ class WhatsAppAppointmentBot
             'escalate' => true,
             'reason'   => 'Appointment action needs attention: ' . $why,
         ];
+    }
+
+    /** Who the appointment is for, as the clinic knows them. */
+    protected static function patientLabel($appointment): string
+    {
+        $name = trim((string) ($appointment->patient->name ?? ''));
+        $phone = trim((string) ($appointment->patient->phone ?? ''));
+
+        return ($name ?: 'A patient') . ($phone ? ' (' . $phone . ')' : '');
+    }
+
+    /**
+     * Tell the clinic what the customer just did to their own booking.
+     *
+     * The bot changes the day's list without anybody in the panel touching it, so this is the
+     * store's only notice that a slot has moved or emptied. It lands in the vendor's
+     * notification bell and links straight to the appointment. Never throws: the appointment is
+     * already cancelled or moved by this point, and failing to announce it must not undo that.
+     */
+    protected static function notifyClinic(int $storeId, int $appointmentId, string $title, string $message): void
+    {
+        try {
+            _inAppNotification(
+                $title,
+                $message,
+                null,
+                $storeId,
+                route('vendor.appointment.show', $appointmentId),
+                'vendor'
+            );
+        } catch (\Throwable $e) {
+            Log::warning("WA appointment notify failed (store {$storeId}): " . $e->getMessage());
+        }
     }
 
     protected static function activityLog(int $storeId, int $appointmentId, string $action, string $message): void

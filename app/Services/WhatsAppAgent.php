@@ -174,8 +174,11 @@ class WhatsAppAgent
                 $section .= $appointments . "\n";
             }
         } else {
+            // "The team will handle it" has to be more than words: without the marker nothing is
+            // flagged, nobody is notified, and the customer waits on a promise no one heard.
             $section .= "You cannot book, move or cancel appointments. If the customer asks for any of "
-                . "that, say the team will confirm it and stop there.\n";
+                . "that, tell them the team will take care of it and append "
+                . \App\Jobs\SendAutoReply::ESCALATE_MARKER . " so a human picks it up.\n";
         }
 
         $records = static::recordsFor($storeId, $phoneKey, $shares);
