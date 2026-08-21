@@ -50,7 +50,8 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label class="input-label">Doctor <span class="text-danger">*</span></label>
-                    <select name="doctor_profile_id" class="form-control js-select2 @error('doctor_profile_id') is-invalid @enderror" required>
+                    <select name="doctor_profile_id" id="doctorSelect"
+                            class="form-control js-select2 @error('doctor_profile_id') is-invalid @enderror" required>
                         <option value="">Select doctor...</option>
                         @foreach($doctors as $doc)
                             <option value="{{ $doc->id }}" {{ old('doctor_profile_id') == $doc->id ? 'selected' : '' }}>
@@ -90,12 +91,26 @@
             <div class="col-md-3">
                 <div class="form-group">
                     <label class="input-label">Visit Type <span class="text-danger">*</span></label>
-                    <select name="visit_type" class="form-control @error('visit_type') is-invalid @enderror" required>
+                    <select name="visit_type" id="visitTypeSelect"
+                            class="form-control @error('visit_type') is-invalid @enderror" required>
                         @foreach(\App\Models\OpdVisit::VISIT_TYPES as $key => $label)
                             <option value="{{ $key }}" {{ old('visit_type', 'new') === $key ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>
                     @error('visit_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="input-label">OP Type</label>
+                    <select name="op_type" id="opTypeSelect"
+                            class="form-control @error('op_type') is-invalid @enderror">
+                        <option value="">Not specified</option>
+                        @foreach($opTypes ?? [] as $type)
+                            <option value="{{ $type }}" {{ old('op_type') === $type ? 'selected' : '' }}>{{ $type }}</option>
+                        @endforeach
+                    </select>
+                    @error('op_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
         </div>
@@ -107,12 +122,26 @@
 @if($visit)
 <div class="form-group">
     <label class="input-label">Visit Type <span class="text-danger">*</span></label>
-    <select name="visit_type" class="form-control @error('visit_type') is-invalid @enderror" required>
+    <select name="visit_type" id="visitTypeSelectEdit"
+            class="form-control @error('visit_type') is-invalid @enderror" required>
         @foreach(\App\Models\OpdVisit::VISIT_TYPES as $key => $label)
             <option value="{{ $key }}" {{ old('visit_type', $visit->visit_type) === $key ? 'selected' : '' }}>{{ $label }}</option>
         @endforeach
     </select>
     @error('visit_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+</div>
+<div class="form-group">
+    <label class="input-label">OP Type</label>
+    <select name="op_type" id="opTypeSelectEdit"
+            class="form-control @error('op_type') is-invalid @enderror">
+        <option value="">Not specified</option>
+        {{-- The visit's own value is merged in: a type the hospital has since removed from the
+             list must still show on the visits that were recorded under it. --}}
+        @foreach(collect($opTypes ?? [])->merge(array_filter([$visit->op_type]))->unique() as $type)
+            <option value="{{ $type }}" {{ old('op_type', $visit->op_type) === $type ? 'selected' : '' }}>{{ $type }}</option>
+        @endforeach
+    </select>
+    @error('op_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
 </div>
 @endif
 
@@ -202,6 +231,15 @@ $(function () {
         placeholder: 'Select patient...',
         width: '100%',
     });
+
+    // Doctor, visit type and OP type get the same treatment as the patient picker — the doctor
+    // select already carried a js-select2 class, but nothing on this page ever initialised it.
+    // Only the visible registration/edit fields are built here; anything inside the hidden
+    // "Already Booked" pane is built when that pane is shown, because Select2 sizes itself
+    // against its container and computes a zero width while it is display:none.
+    $('#doctorSelect').select2({ placeholder: 'Select doctor...', width: '100%' });
+    $('#visitTypeSelect, #visitTypeSelectEdit').select2({ width: '100%', minimumResultsForSearch: Infinity });
+    $('#opTypeSelect, #opTypeSelectEdit').select2({ placeholder: 'Not specified', width: '100%' });
 
     // Intercept "Add New Patient" selection
     $('#patientSelect').on('select2:select', function (e) {

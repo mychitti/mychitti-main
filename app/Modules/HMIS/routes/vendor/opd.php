@@ -26,6 +26,15 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::post('complaint-groups',        [OpdController::class, 'complaintGroupStore'])->name('complaint-groups.store')->middleware('permission:opd_register,edit');
     Route::delete('complaint-groups/{id}', [OpdController::class, 'complaintGroupDestroy'])->name('complaint-groups.destroy')->middleware('permission:opd_register,edit');
 
+    // The same idea for consultation notes, which are prose rather than a term list: the blocks
+    // a doctor writes again and again, saved once and dropped in with one tap.
+    Route::post('note-templates',        [OpdController::class, 'noteTemplateStore'])->name('note-templates.store')->middleware('permission:opd_register,edit');
+    Route::delete('note-templates/{id}', [OpdController::class, 'noteTemplateDestroy'])->name('note-templates.destroy')->middleware('permission:opd_register,edit');
+
+    // OP types — how a visit is paid for (cash, insurer, government scheme). The list is managed
+    // on the Hospital Settings page; this is the endpoint its add/off/on buttons post to.
+    Route::post('op-types', [OpdController::class, 'opTypesUpdate'])->name('op-types.update')->middleware('permission:opd_register,edit');
+
     // The hospital's own view of the clinical dropdowns: what the platform offers for its
     // category, plus anything its doctors added, with a switch to stop offering a term.
     Route::get('terms/manage',        [OpdController::class, 'terms'])->name('terms')->middleware('permission:opd_register,edit');

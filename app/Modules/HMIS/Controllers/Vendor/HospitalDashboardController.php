@@ -184,10 +184,19 @@ class HospitalDashboardController extends Controller
 
         $states = \App\Models\State::orderBy('state_name')->get(['id', 'state_name']);
 
+        // How OPD visits may be paid for. The platform defaults are read, never copied — a row
+        // exists only where this hospital added a type or switched a default off.
+        $opTypeDefaults = \App\Models\OpdOpType::DEFAULTS;
+        $opTypesOwn     = \App\Models\OpdOpType::ownNames($store_id);
+        $opTypesHidden  = collect(\App\Models\OpdOpType::hiddenNames($store_id))
+            ->mapWithKeys(fn($n) => [mb_strtolower(trim($n)) => true])
+            ->all();
+
         return view('hmis::vendor.hospital.settings', compact(
             'prefix', 'padding', 'serial', 'previewMuid',
             'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages',
-            'departments', 'states'
+            'departments', 'states',
+            'opTypeDefaults', 'opTypesOwn', 'opTypesHidden'
         ));
     }
 

@@ -46,6 +46,28 @@ class OpdVisit extends Model
     }
 
     /**
+     * A finished consultation — the OP receipt has been generated and handed over.
+     *
+     * There is no "completed" value in the status column; the register has always derived the
+     * badge from the receipt, so the lock derives it the same way rather than inventing a second
+     * source of truth that could disagree with the badge the desk is looking at.
+     *
+     * Once this is true the visit is a document, not a draft: the patient is holding a receipt
+     * that was printed from this record, and a later edit would make the reprint disagree with
+     * their copy silently. Everything that writes to the visit checks this.
+     */
+    public function getIsCompletedAttribute(): bool
+    {
+        return !empty($this->consultation_receipt_id);
+    }
+
+    /** Whether the clinical record may still be written to. */
+    public function getIsEditableAttribute(): bool
+    {
+        return !$this->is_cancelled && !$this->is_completed;
+    }
+
+    /**
      * Visits that actually happened — everything counted, charted or exported.
      *
      * Rows created before the status column was written carry NULL rather than 'visited', so

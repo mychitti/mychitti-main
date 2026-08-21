@@ -158,6 +158,15 @@
         }
 
         /* Visit Type badge */
+        /* Sits under the visit-type badge: how the visit is paid for, quieter than the
+           clinical label above it because the desk reads it second. */
+        .opd-op-type {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
         .hmis-badge-visit-type {
             display: inline-flex;
             align-items: center;
@@ -292,6 +301,10 @@
                    title="Choose which diagnosis and treatment terms your doctors are offered">
                     <i class="tio-label"></i> Clinical Terms
                 </a>
+                <a href="{{ route('vendor.hospital.settings') }}#opTypes" class="btn btn-hmis-export"
+                   title="Choose how visits can be paid for — cash, insurance, government schemes">
+                    <i class="tio-card"></i> OP Types
+                </a>
                 @endif
                 @if (hasPermission('opd_register', 'add'))
                 <a href="{{ route('vendor.opd.create') }}" class="btn btn-hmis-primary">
@@ -373,6 +386,9 @@
                                         <span class="hmis-badge-visit-type">
                                             {{ \App\Models\OpdVisit::VISIT_TYPES[$visit->visit_type] ?? $visit->visit_type }}
                                         </span>
+                                        @if ($visit->op_type)
+                                            <div class="opd-op-type">{{ $visit->op_type }}</div>
+                                        @endif
                                     </td>
                                     <td>{{ \Illuminate\Support\Str::limit($visit->chief_complaint, 50) ?: '—' }}</td>
                                     <td>

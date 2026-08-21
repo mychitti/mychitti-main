@@ -1,6 +1,20 @@
 ﻿@extends('layouts.vendor.app')
 @section('title', 'Hospital Settings')
 
+@push('css_or_js')
+<style>
+    .opt-row {
+        display: flex; align-items: center; gap: 8px;
+        border: 1px solid #eef0f5; border-radius: 8px;
+        padding: 5px 10px; margin: 0 6px 6px 0;
+    }
+    .opt-row:hover { border-color: #bfdbfe; background: #f8fbff; }
+    .opt-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: #1f2937; }
+    .opt-name.off { color: #9aa5b1; text-decoration: line-through; font-weight: 500; }
+    .opt-empty { color: #94a3b8; font-size: 12px; padding: 10px 2px; }
+</style>
+@endpush
+
 @section('content')
 <div class="content container-fluid">
     <div class="page-header d-flex justify-content-between align-items-center">
@@ -124,6 +138,74 @@
             </div>
         </div>
     </form>
+
+    {{-- OP Types — how an OPD visit is paid for. Its own card with its own small forms, because
+         the settings form above posts as one block and a nested form is not valid HTML. --}}
+    <div class="card mb-3" id="opTypes">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="tio-card mr-1"></i> OP Types &mdash; Insurance, Government Schemes</h6>
+            <small class="text-muted">Offered on the OPD registration form</small>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-7">
+                    <p class="text-muted mb-2" style="font-size:12px;">
+                        Standard types come with the platform. Switch off any this hospital does not
+                        use &mdash; nothing is deleted, and visits already recorded under one keep it.
+                    </p>
+                    <div class="row no-gutters">
+                        @foreach ($opTypeDefaults as $opName)
+                            @php $opOff = isset($opTypesHidden[mb_strtolower(trim($opName))]); @endphp
+                            <div class="col-md-6">
+                                <div class="opt-row">
+                                    <span class="opt-name {{ $opOff ? 'off' : '' }}">{{ $opName }}</span>
+                                    <form method="post" action="{{ route('vendor.opd.op-types.update') }}" class="mb-0">
+                                        @csrf
+                                        <input type="hidden" name="name" value="{{ $opName }}">
+                                        <input type="hidden" name="action" value="{{ $opOff ? 'restore' : 'hide' }}">
+                                        <button type="submit" class="btn btn-xs {{ $opOff ? 'btn-outline-primary' : 'btn-outline-secondary' }}">
+                                            {{ $opOff ? 'On' : 'Off' }}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <form method="post" action="{{ route('vendor.opd.op-types.update') }}" class="mb-3">
+                        @csrf
+                        <input type="hidden" name="action" value="add">
+                        <label class="input-label">Add your own</label>
+                        <div class="input-group">
+                            <input type="text" name="name" class="form-control" maxlength="100" required
+                                   placeholder="e.g. Aarogya Raksha, Railway Scheme">
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn--primary">Add</button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <label class="input-label">This hospital's types ({{ count($opTypesOwn) }})</label>
+                    @forelse ($opTypesOwn as $opName)
+                        <div class="opt-row">
+                            <span class="opt-name">{{ $opName }}</span>
+                            <form method="post" action="{{ route('vendor.opd.op-types.update') }}" class="mb-0"
+                                  onsubmit="return confirm('Remove {{ addslashes($opName) }} from the list?');">
+                                @csrf
+                                <input type="hidden" name="name" value="{{ $opName }}">
+                                <input type="hidden" name="action" value="hide">
+                                <button type="submit" class="btn btn-xs btn-outline-danger"><i class="tio-delete"></i></button>
+                            </form>
+                        </div>
+                    @empty
+                        <div class="opt-empty">Nothing added yet. The standard types are already available.</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{-- Department letterheads. A lab, pharmacy or scan centre frequently sits at its own
          address under its own GSTIN and its own registrations, so each keeps a separate

@@ -550,6 +550,67 @@
     #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
         opacity: 1;
     }
+
+    /* Shown where an edit pencil would be once the visit is closed, so the desk can see the
+       control is gone on purpose rather than broken. */
+    .visit-locked {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        border-radius: 5px;
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 2px 7px;
+        cursor: default;
+    }
+
+    /* Consultation notes — teal, so what the doctor recorded as advice reads apart from the
+       amber complaints, blue diagnosis and violet treatment. */
+    .nt-badge {
+        display: inline-block;
+        background: #f0fdfa;
+        border: 1px solid #99f6e4;
+        color: #0f766e;
+        border-radius: 5px;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 2px 8px;
+        margin: 0 4px 4px 0;
+    }
+
+    #notesEdit .nt-select2 .select2-selection__choice {
+        background: #f0fdfa;
+        border: 1px solid #99f6e4;
+        color: #0f766e;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 1px 6px;
+        display: inline-flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        gap: 5px;
+    }
+
+    #notesEdit .nt-select2 .select2-selection__choice__remove {
+        position: static !important;
+        inset: auto !important;
+        float: none !important;
+        margin: 0 !important;
+        color: inherit;
+        font-size: 13px;
+        line-height: 1;
+        opacity: .55;
+    }
+
+    #notesEdit .nt-select2 .select2-selection__choice__remove:hover { opacity: 1; }
+
+    #notesEdit .select2-container--default .select2-selection--multiple {
+        border-color: #e7eaf3;
+        min-height: 34px;
+    }
     .cc-group {
         display: inline-flex;
         align-items: center;
@@ -972,6 +1033,7 @@
                         <tr><td class="lbl">Mobile</td><td class="val">{{ $visit->patient?->phone ?: '—' }}</td></tr>
                         <tr><td class="lbl">Referred By</td><td class="val" style="color:#2563eb">Dr. S. Rao (Ortho)</td></tr>
                         <tr><td class="lbl">Visit Type</td><td class="val" style="color:#16a34a">{{ \App\Models\OpdVisit::VISIT_TYPES[$visit->visit_type] ?? $visit->visit_type }}</td></tr>
+                        <tr><td class="lbl">OP Type</td><td class="val">{{ $visit->op_type ?: '—' }}</td></tr>
                         <tr><td class="lbl">Last Visit</td><td class="val">{{ $pastVisits->first()?->visit_date?->format('d M Y') ?: 'None' }}</td></tr>
                         <tr><td class="lbl">Total Visits</td><td class="val">{{ $pastVisits->count() + 1 }} visits</td></tr>
                         @if (!$visit->is_cancelled && hasPermission('opd_register', 'view'))
@@ -1074,7 +1136,9 @@
                         <div class="card shadow-none border">
                             <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                                 <h6 class="mb-0 font-weight-bold" style="font-size:13px">Chief Complaint</h6>
-                                @if (hasPermission('opd_register', 'edit'))
+                                @if ($visit->is_completed)
+                                    <span class="visit-locked" title="This visit is completed. The OP receipt has been issued, so the record is closed."><i class="tio-lock"></i> Completed</span>
+                                @elseif (hasPermission('opd_register', 'edit'))
                                     <button class="btn btn-xs btn-soft-secondary" onclick="toggleEdit('cc')">
                                         <i class="tio-edit" id="ccEditIcon"></i>
                                     </button>
@@ -1120,20 +1184,50 @@
                         <div class="card shadow-none border">
                             <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                                 <h6 class="mb-0 font-weight-bold" style="font-size:13px">Doctor's Consultation Notes</h6>
-                                @if (hasPermission('opd_register', 'edit'))
+                                @if ($visit->is_completed)
+                                    <span class="visit-locked" title="This visit is completed. The OP receipt has been issued, so the record is closed."><i class="tio-lock"></i> Completed</span>
+                                @elseif (hasPermission('opd_register', 'edit'))
                                     <button class="btn btn-xs btn-soft-secondary" onclick="toggleEdit('notes')">
                                         <i class="tio-edit" id="notesEditIcon"></i>
                                     </button>
                                 @endif
                             </div>
                             <div class="card-body py-3" id="notesView">
-                                <span id="notesText" style="font-size:13px; color:#334155; white-space:pre-wrap;">{{ $visit->notes ?: '—' }}</span>
+                                <div id="notesBadges">
+                                    @forelse(\App\Models\OpdVisit::splitTerms($visit->notes) as $phrase)
+                                        <span class="nt-badge">{{ $phrase }}</span>
+                                    @empty
+                                        <span class="text-muted small">Not recorded yet.</span>
+                                    @endforelse
+                                </div>
                             </div>
                             <div class="card-body py-3" id="notesEdit" style="display:none;">
-                                <textarea class="form-control form-control-sm" id="notesInput" rows="3" placeholder="Add consultation notes…">{{ $visit->notes }}</textarea>
-                                <div class="mt-2 d-flex gap-2">
-                                    <button class="btn btn-sm btn-primary" onclick="saveField('notes')">Save</button>
-                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleEdit('notes')">Cancel</button>
+                                {{-- Notes are chips, the same gesture as Chief Complaint: pick a
+                                     phrase this clinic already uses, or type a new one and press
+                                     Enter — quickUpdate absorbs it into the store's list so it is
+                                     offered from then on. --}}
+                                {{-- Block form, not @php(...): a short form here stops every later
+                                     @php ... @endphp in this file from compiling at all. --}}
+                                @php $notePhrases = \App\Models\OpdVisit::splitTerms($visit->notes); @endphp
+                                <div class="form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Notes</label>
+                                    <select id="ntSelect" multiple class="form-control form-control-sm">
+                                        @foreach (collect($noteTemplates ?? [])->pluck('name')->merge($notePhrases)->unique() as $phrase)
+                                            <option value="{{ $phrase }}" @if(in_array($phrase, $notePhrases)) selected @endif>{{ $phrase }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="cc-tools">
+                                    <button type="button" class="cc-tool" onclick="openNoteTemplates()">
+                                        <i class="tio-folder-outlined"></i> Manage<span class="cc-tool-count" data-nt-count>0</span>
+                                    </button>
+                                    <span class="cc-hint">Pick from the list, or type a new one and press Enter. Saves as you pick.</span>
+                                </div>
+                                {{-- No Save button: the note saves as it is typed, and Close flushes
+                                     anything still on the debounce timer. --}}
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleEdit('notes')">Close</button>
                                 </div>
                             </div>
                         </div>
@@ -1170,7 +1264,9 @@
                 <div class="card shadow-none border mb-3">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                         <h6 class="mb-0 font-weight-bold" style="font-size:13px">Diagnosis &amp; Treatment</h6>
-                        @if (hasPermission('opd_register', 'edit'))
+                        @if ($visit->is_completed)
+                            <span class="visit-locked" title="This visit is completed. The OP receipt has been issued, so the record is closed."><i class="tio-lock"></i> Completed</span>
+                        @elseif (hasPermission('opd_register', 'edit'))
                             <button class="btn btn-xs btn-soft-secondary" onclick="toggleDxEdit()">
                                 <i class="tio-edit" id="dxEditIcon"></i>
                             </button>
@@ -1323,7 +1419,9 @@
                                     </button>
                                 </form>
                             @endif
-                            @if (hasPermission('prescription', 'add'))
+                            {{-- Editing the prescription after the receipt is out would leave the
+                                 printed copy and the record disagreeing with nothing to show it. --}}
+                            @if (!$visit->is_completed && hasPermission('prescription', 'add'))
                                 <button onclick="togglePrescriptionEdit(true)" class="btn btn-sm btn-outline-secondary">
                                     <i class="tio-edit"></i> Edit Rx
                                 </button>
@@ -1406,7 +1504,7 @@
                 @endif
 
                 {{-- Prescription writing form (hidden if currentPrescription exists, shown if editing or none) --}}
-                @if (hasPermission('prescription', 'add'))
+                @if (!$visit->is_completed && hasPermission('prescription', 'add'))
                 <div id="rxWritingFormBlock" style="@if($currentPrescription) display:none; @endif">
                     <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Write Prescription</h4>
                     <form action="{{ route('vendor.prescription.store') }}" method="POST" id="customRxForm">
@@ -2069,8 +2167,29 @@
 </div>
 
 @push('script_2')
+{{-- Consultation note templates. Same dialog shape as the complaint groups, and it reuses that
+     partial's .cc-grp-* styling so the two read as one feature rather than two. --}}
+<div class="modal fade" id="ntModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" style="font-size:14px;font-weight:700;">Saved note phrases</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body py-3" id="ntModalList"></div>
+            <div class="modal-footer py-2">
+                <button type="button" class="cc-tool" onclick="saveNoteTemplate()">
+                    <i class="tio-bookmark-outlined"></i> Add phrase
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const opdQuickUpdateUrl    = "{{ route('vendor.opd.quick-update', $visit->id) }}";
+    const ntStoreUrl           = "{{ route('vendor.opd.note-templates.store') }}";
+    const ntDelUrlTpl          = "{{ route('vendor.opd.note-templates.destroy', '__ID__') }}";
     const docUploadUrl         = "{{ route('vendor.patient.upload-documents', $visit->patient_id) }}";
     const docDeleteUrlTpl      = "{{ route('vendor.patient.delete-document', ['id' => $visit->patient_id, 'docId' => '__DOC__']) }}";
     const DOC_TYPE_META = {
@@ -2254,15 +2373,287 @@
         }
     }
 
+    // ── Autosave ──
+    // The banner above has always read "Auto-saved", but nothing on this page ever saved on its
+    // own — every block needed its Save button pressed, and a doctor who typed a note and moved
+    // to the next tab lost it while being told it was safe. These handlers make the banner true.
+    //
+    // One in-flight request at a time per field, so a fast typist cannot have two PATCHes racing
+    // and land the older body last. Save buttons still work and still close the editor.
+    // Mirrors OpdVisit::getIsEditableAttribute(). The server is the authority — this only keeps a
+    // locked page from flashing a save error at someone who cannot act on it.
+    const visitLocked = @json(!$visit->is_editable);
+
+    const AUTOSAVE_DELAY = { text: 900, terms: 400 };
+    const autosaveTimers  = {};
+    const autosaveInFlight = {};
+    const autosavePending  = {};
+
+    function setSaveState(state, detail) {
+        const bar = document.querySelector('.autosave-bar .indicator');
+        if (!bar) return;
+        const label = bar.querySelector('span:last-child');
+        const dot   = bar.querySelector('.indicator-dot');
+        if (!label) return;
+
+        if (state === 'saving') {
+            label.textContent = 'Saving…';
+            if (dot) dot.style.background = '#f59e0b';
+        } else if (state === 'error') {
+            label.innerHTML = 'Not saved — <a href="javascript:;" onclick="flushAutosave(true)">retry</a>';
+            if (dot) dot.style.background = '#dc3545';
+        } else {
+            label.innerHTML = 'Auto-saved: <span id="saveTime"></span>';
+            if (dot) dot.style.background = '';
+            updateSaveTime();
+        }
+    }
+
+    /**
+     * Queue a save for one field. `payload` is built at flush time rather than now, so a burst
+     * of keystrokes sends the final value once instead of every intermediate one.
+     */
+    function queueAutosave(field, buildPayload, onSaved, delay) {
+        if (visitLocked) return;
+
+        autosavePending[field] = { buildPayload, onSaved };
+        clearTimeout(autosaveTimers[field]);
+        autosaveTimers[field] = setTimeout(() => runAutosave(field), delay ?? AUTOSAVE_DELAY.text);
+    }
+
+    function runAutosave(field, keepalive) {
+        const job = autosavePending[field];
+        if (!job) return;
+
+        // Something is already saving this field — let it finish and re-run with the latest.
+        if (autosaveInFlight[field] && !keepalive) {
+            autosaveTimers[field] = setTimeout(() => runAutosave(field), 250);
+            return;
+        }
+
+        delete autosavePending[field];
+        autosaveInFlight[field] = true;
+        setSaveState('saving');
+
+        fetch(opdQuickUpdateUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(job.buildPayload()),
+            keepalive: !!keepalive
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data || !data.ok) throw new Error('save rejected');
+            if (job.onSaved) job.onSaved();
+            setSaveState('saved');
+        })
+        .catch(() => {
+            // Put it back so a retry — or the next edit — picks it up rather than dropping it.
+            autosavePending[field] = autosavePending[field] || job;
+            setSaveState('error');
+        })
+        .finally(() => { autosaveInFlight[field] = false; });
+    }
+
+    /** Send everything still queued right now — used on retry and when the page is closing. */
+    function flushAutosave(immediate) {
+        Object.keys(autosavePending).forEach(field => {
+            clearTimeout(autosaveTimers[field]);
+            runAutosave(field, !immediate);
+        });
+    }
+
+    // A doctor who closes the tab mid-sentence still gets the sentence saved.
+    window.addEventListener('beforeunload', function () {
+        if (Object.keys(autosavePending).length) flushAutosave(false);
+    });
+
+    function autosaveNotes() {
+        queueAutosave('notes', () => ({ note_terms: selectedTerms('ntSelect') }),
+            () => renderTerms('notesBadges', selectedTerms('ntSelect'), 'nt-badge'), AUTOSAVE_DELAY.terms);
+    }
+
+    function autosaveComplaints() {
+        queueAutosave('cc', () => ({ complaint: selectedTerms('ccSelect') }),
+            () => renderComplaintBadges(selectedTerms('ccSelect')), AUTOSAVE_DELAY.terms);
+    }
+
+    function autosaveDxTx() {
+        queueAutosave('dxtx', () => ({
+            diagnosis: selectedTerms('dxSelect'),
+            treatment: selectedTerms('txSelect')
+        }), () => {
+            renderTerms('dxBadges', selectedTerms('dxSelect'), 'dx-badge');
+            renderTerms('txBadges', selectedTerms('txSelect'), 'tx-badge');
+        }, AUTOSAVE_DELAY.terms);
+    }
+
+    // ── Consultation note templates ──
+    // Prose counterpart to the complaint groups: the blocks a doctor writes again and again.
+    let ntTemplates = @json(collect($noteTemplates ?? [])->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values());
+
+    function ntRefreshCounts() {
+        document.querySelectorAll('[data-nt-count]').forEach(el => {
+            el.textContent = ntTemplates.length;
+            el.style.display = ntTemplates.length ? '' : 'none';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', ntRefreshCounts);
+
+    /**
+     * Rebuild the picker's options from the store list, keeping whatever is already picked —
+     * including a phrase typed on this visit that is not in the list yet.
+     */
+    function ntSyncOptions() {
+        const el = document.getElementById('ntSelect');
+        if (!el) return;
+
+        const chosen = Array.from(el.selectedOptions).map(o => o.value);
+        const seen   = new Set();
+        el.innerHTML = '';
+
+        ntTemplates.map(t => t.name).concat(chosen).forEach(phrase => {
+            const key = phrase.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            el.appendChild(new Option(phrase, phrase, false, chosen.includes(phrase)));
+        });
+
+        if (window.jQuery && ntSelect2Ready) jQuery(el).trigger('change.select2');
+    }
+
+    function openNoteTemplates() {
+        const list = document.getElementById('ntModalList');
+        if (!list) return;
+
+        if (!ntTemplates.length) {
+            list.innerHTML = '<div class="cc-grp-empty">No saved phrases yet. Type one into the notes box and press Enter — it is remembered automatically.</div>';
+        } else {
+            list.innerHTML = '';
+            ntTemplates.forEach(t => {
+                const row = document.createElement('div');
+                row.className = 'cc-grp-row';
+
+                const main = document.createElement('div');
+                main.className = 'cc-grp-main';
+                main.style.cursor = 'pointer';
+                main.onclick = () => ntApply(t.name);
+
+                const name = document.createElement('div');
+                name.className = 'cc-grp-name';
+                name.textContent = t.name;
+                main.appendChild(name);
+
+                const del = document.createElement('i');
+                del.className = 'tio-delete cc-grp-del';
+                del.title = 'Remove from the list';
+                del.onclick = (e) => { e.stopPropagation(); ntDelete(t.id); };
+
+                row.appendChild(main);
+                row.appendChild(del);
+                list.appendChild(row);
+            });
+        }
+
+        if (window.jQuery) jQuery('#ntModal').modal('show');
+    }
+
+    let ntSelect2Ready = false;
+
+    /** Built on first open — Select2 mis-sizes itself against a container that is still hidden. */
+    function initNtSelect2() {
+        if (ntSelect2Ready || typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+
+        jQuery('#ntSelect').select2({
+            tags: true,
+            width: '100%',
+            tokenSeparators: [','],
+            placeholder: 'Pick or type a note…',
+            containerCssClass: 'nt-select2'
+        }).on('change', autosaveNotes);
+
+        ntSelect2Ready = true;
+    }
+
+    /** Put a phrase on the picker, creating the option when the list has never seen it. */
+    function ntApply(phrase) {
+        const el = document.getElementById('ntSelect');
+        if (!el) return;
+
+        let opt = Array.from(el.options).find(o => o.value.toLowerCase() === String(phrase).toLowerCase());
+        if (!opt) {
+            opt = new Option(phrase, phrase, true, true);
+            el.appendChild(opt);
+        }
+        opt.selected = true;
+        if (window.jQuery) jQuery(el).trigger('change');
+
+        if (window.jQuery) jQuery('#ntModal').modal('hide');
+    }
+
+    /** Add a phrase to this clinic's list without having to record it on a visit first. */
+    function saveNoteTemplate() {
+        const phrase = (prompt('Add a note phrase to the list') || '').trim();
+        if (!phrase) return;
+
+        fetch(ntStoreUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ name: phrase })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok || !data.template) throw new Error(data.msg || 'save failed');
+            if (!ntTemplates.some(t => t.id === data.template.id)) {
+                ntTemplates.push(data.template);
+                ntTemplates.sort((a, b) => a.name.localeCompare(b.name));
+            }
+            ntRefreshCounts();
+            ntSyncOptions();
+            openNoteTemplates();
+        })
+        .catch(e => alert(e.message || 'Could not add the phrase.'));
+    }
+
+    function ntDelete(id) {
+        if (!confirm('Delete this template?')) return;
+
+        fetch(ntDelUrlTpl.replace('__ID__', id), {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(() => {
+            ntTemplates = ntTemplates.filter(t => t.id !== id);
+            ntRefreshCounts();
+            ntSyncOptions();
+            openNoteTemplates();
+        })
+        .catch(() => alert('Could not delete the template.'));
+    }
+
     // ── CC & Notes inline edit ──
     function toggleEdit(field) {
         const view = document.getElementById(field === 'cc' ? 'ccView' : 'notesView');
         const edit = document.getElementById(field === 'cc' ? 'ccEdit' : 'notesEdit');
         const showing = edit.style.display === 'none';
+
+        // Closing the editor sends whatever is still on the debounce timer straight away, so the
+        // summary underneath shows the final text at once rather than up to a second later. This
+        // is what stands in for the Save button the notes box no longer has.
+        if (!showing) {
+            const key = field === 'cc' ? 'cc' : 'notes';
+            if (autosavePending[key]) {
+                clearTimeout(autosaveTimers[key]);
+                runAutosave(key);
+            }
+        }
         view.style.display = showing ? 'none' : '';
         edit.style.display = showing ? '' : 'none';
         // Select2 needs a visible container to size itself, so build it on first open.
         if (field === 'cc' && showing) initCcSelect2();
+        if (field === 'notes' && showing) initNtSelect2();
     }
 
     let ccSelect2Ready = false;
@@ -2274,20 +2665,29 @@
             tokenSeparators: [','],
             placeholder: 'Select or type a complaint…',
             containerCssClass: 'cc-select2'
-        });
+        }).on('change', autosaveComplaints);
         ccSelect2Ready = true;
     }
 
     function saveField(field) {
-        // Complaints are a term list now, like diagnosis and treatment; notes stay free text.
+        if (visitLocked) return;
+
+        // Complaints and notes are both term lists now. Only complaints still has a Save button;
+        // notes saves as chips are picked and closes without one.
         const isCC  = field === 'cc';
-        const terms = isCC ? selectedTerms('ccSelect') : [];
-        const value = isCC ? '' : document.getElementById('notesInput').value;
+        const id    = isCC ? 'ccSelect' : 'ntSelect';
+        const terms = selectedTerms(id);
+
+        // Drop anything autosave still had queued for this field — pressing Save sends the same
+        // values now, and letting both fire would put two PATCHes in the air for one edit.
+        const key = isCC ? 'cc' : 'notes';
+        clearTimeout(autosaveTimers[key]);
+        delete autosavePending[key];
 
         fetch(opdQuickUpdateUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify(isCC ? { complaint: terms } : { notes: value })
+            body: JSON.stringify(isCC ? { complaint: terms } : { note_terms: terms })
         })
         .then(r => r.json())
         .then(data => {
@@ -2296,10 +2696,10 @@
             if (isCC) {
                 renderComplaintBadges(terms);
             } else {
-                document.getElementById('notesText').textContent = value || '—';
+                renderTerms('notesBadges', terms, 'nt-badge');
             }
             toggleEdit(field);
-            updateSaveTime();
+            setSaveState('saved');
         })
         .catch(() => alert('Save failed.'));
     }
@@ -2331,7 +2731,10 @@
             width: '100%',
             tokenSeparators: [','],
             placeholder: 'Select or type a diagnosis…'
-        }).on('change', renderTxSuggestions);
+        }).on('change', function () {
+            renderTxSuggestions();
+            autosaveDxTx();
+        });
         jQuery('#txSelect').select2({
             tags: true,
             width: '100%',
@@ -2341,6 +2744,7 @@
         }).on('change', function () {
             syncChipState('dxSelect');
             renderTxSuggestions();
+            autosaveDxTx();
         });
         dxSelect2Ready = true;
         syncChipState('dxSelect');
@@ -2468,8 +2872,14 @@
     }
 
     function saveDxTx(btn) {
+        if (visitLocked) return;
+
         const diagnosis = selectedTerms('dxSelect');
         const treatment = selectedTerms('txSelect');
+
+        // Same reason as saveField: Save supersedes whatever autosave had queued.
+        clearTimeout(autosaveTimers['dxtx']);
+        delete autosavePending['dxtx'];
 
         if (btn) btn.disabled = true;
 
@@ -2489,7 +2899,7 @@
                 rxDiagnosis.value = diagnosis.join(', ');
             }
             toggleDxEdit();
-            updateSaveTime();
+            setSaveState('saved');
         })
         .catch(() => alert('Save failed.'))
         .finally(() => { if (btn) btn.disabled = false; });

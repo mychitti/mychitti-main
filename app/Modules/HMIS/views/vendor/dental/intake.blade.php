@@ -90,6 +90,27 @@
                                 </div>
                             </div>
 
+                            {{-- Doctor. A one-doctor clinic is not asked — the visit is theirs by
+                                 definition, and the controller resolves it either way. The field
+                                 appears only where there is genuinely a choice to make. --}}
+                            @if (($doctors ?? collect())->count() > 1)
+                                <div class="form-group">
+                                    <label class="input-label">Doctor <span class="di-req">*</span></label>
+                                    <select name="doctor_profile_id" id="intakeDoctorSelect"
+                                            class="form-control @error('doctor_profile_id') is-invalid @enderror" required>
+                                        <option value="">Select doctor...</option>
+                                        @foreach ($doctors as $doc)
+                                            <option value="{{ $doc->id }}" {{ old('doctor_profile_id') == $doc->id ? 'selected' : '' }}>
+                                                Dr. {{ $doc->employee?->f_name }} {{ $doc->employee?->l_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('doctor_profile_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                                </div>
+                            @elseif (($doctors ?? collect())->count() === 1)
+                                <input type="hidden" name="doctor_profile_id" value="{{ $doctors->first()->id }}">
+                            @endif
+
                             <div class="form-group">
                                 <label class="input-label">Address <span class="di-req">*</span></label>
                                 <textarea name="address" class="form-control @error('address') is-invalid @enderror"
@@ -146,6 +167,13 @@
 
 @push('script_2')
     <script>
+        // Matches the doctor picker on the OPD register, which is the screen this one shortcuts.
+        $(function () {
+            if (typeof jQuery !== 'undefined' && jQuery.fn.select2 && $('#intakeDoctorSelect').length) {
+                $('#intakeDoctorSelect').select2({ placeholder: 'Select doctor...', width: '100%' });
+            }
+        });
+
         // Phone — checked as it is typed, and again on submit so a bad number can't get through by
         // pasting. Separators are allowed while typing and stripped before the check, since people
         // paste "+91 98765 43210" as readily as they key ten digits. The server applies the same

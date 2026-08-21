@@ -150,7 +150,12 @@ class DentalIntakeController extends Controller
         $complaintOptions = OpdClinicalTerm::listFor($storeId, OpdClinicalTerm::TYPE_COMPLAINT);
         $complaintGroups  = \App\Models\OpdComplaintGroup::listFor($storeId);
 
-        return view('hmis::vendor.dental.intake', compact('presetLabels', 'complaintOptions', 'complaintGroups'));
+        // opd_visits.doctor_profile_id is NOT NULL, and this screen used to post nothing for it —
+        // so every registration failed on the insert. A single-doctor clinic (the common dental
+        // case) is not asked at all; anywhere else the desk picks.
+        $doctors = \App\Models\DoctorProfile::where('store_id', $storeId)->with('employee')->get();
+
+        return view('hmis::vendor.dental.intake', compact('presetLabels', 'complaintOptions', 'complaintGroups', 'doctors'));
     }
 
     public function store(Request $request)
@@ -184,6 +189,29 @@ class DentalIntakeController extends Controller
             'problem.required' => 'Pick or type at least one problem.',
             'phone.regex' => 'Enter a valid 10-digit mobile number.',
         ]);
+
+        // Resolved here rather than taken from the request: the form omits the field entirely
+        // when the clinic has one doctor, and a null would hit a NOT NULL column and roll the
+        // whole registration back behind a "try again" that could never work.
+        $doctorProfileId = $request->doctor_profile_id ?: null;
+        if ($doctorProfileId) {
+            $doctorProfileId = \App\Models\DoctorProfile::where('store_id', $storeId)
+                ->where('id', $doctorProfileId)->value('id');
+        }
+
+        if (!$doctorProfileId) {
+            $doctors = \App\Models\DoctorProfile::where('store_id', $storeId)->pluck('id');
+
+            if ($doctors->count() === 1) {
+                $doctorProfileId = (int) $doctors->first();
+            } else {
+                Toastr::error($doctors->isEmpty()
+                    ? 'Add a doctor under Staff before registering a visit.'
+                    : 'Select the doctor for this visit.');
+
+                return back()->withInput();
+            }
+        }
 
         $rows   = self::rowsFrom($request);
         $userId = auth('vendor_employee')->id() ?? auth('vendor')->id();
@@ -227,7 +255,7 @@ class DentalIntakeController extends Controller
             $visit = OpdVisit::create([
                 'store_id'          => $storeId,
                 'patient_id'        => $patient->id,
-                'doctor_profile_id' => $request->doctor_profile_id ?: null,
+                'doctor_profile_id' => $doctorProfileId,
                 'visit_date'        => $visitDate,
                 'visit_time'        => now()->format('H:i'),
                 'token_number'      => $nextToken,
@@ -253,7 +281,9 @@ class DentalIntakeController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             \Illuminate\Support\Facades\Log::error('Dental intake failed: ' . $e->getMessage());
-            Toastr::error('Could not register the patient. Please try again.');
+            // "Try again" is only honest for something transient. A constraint violation never
+            // resolves on a retry, so say what actually broke.
+            Toastr::error('Could not register the patient: ' . \Illuminate\Support\Str::limit($e->getMessage(), 160));
 
             return back()->withInput();
         }

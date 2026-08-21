@@ -57,6 +57,12 @@ class OpdController extends Controller
             // What time the patient was actually seen. visit_date alone cannot order a walk-in
             // register beyond the token, and a hospital running two sittings a day needs to know
             // which one a visit belonged to.
+            // How the visit is being paid for — cash, insurer, government scheme. Separate from
+            // visit_type, which describes the clinical nature of the visit.
+            if (!Schema::hasColumn('opd_visits', 'op_type')) {
+                DB::statement("ALTER TABLE `opd_visits` ADD COLUMN `op_type` VARCHAR(100) NULL AFTER `visit_type`");
+            }
+
             if (!Schema::hasColumn('opd_visits', 'visit_time')) {
                 DB::statement("ALTER TABLE `opd_visits` ADD COLUMN `visit_time` TIME NULL AFTER `visit_date`");
             }
@@ -89,6 +95,7 @@ class OpdController extends Controller
         // sides have to exist before a consultation screen asks for them.
         \App\Models\OpdClinicalTerm::ensureSchema();
         \App\Models\OpdTermCatalogue::ensureTable();
+        \App\Models\OpdOpType::ensureSchema();
     }
 
     public function index(Request $request)
@@ -257,8 +264,9 @@ class OpdController extends Controller
 
         $complaintOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT);
         $complaintGroups  = \App\Models\OpdComplaintGroup::listFor($store_id);
+        $opTypes          = \App\Models\OpdOpType::listFor($store_id);
 
-        return view('hmis::vendor.opd.create', compact('patients', 'doctors', 'nextToken', 'prefillPatient', 'prefillBooking', 'complaintOptions', 'complaintGroups'));
+        return view('hmis::vendor.opd.create', compact('patients', 'doctors', 'nextToken', 'prefillPatient', 'prefillBooking', 'complaintOptions', 'complaintGroups', 'opTypes'));
     }
 
     public function store(Request $request)
@@ -304,6 +312,7 @@ class OpdController extends Controller
 
         $request->validate([
             'visit_time'       => 'nullable|date_format:H:i',
+            'op_type'          => 'nullable|string|max:100',
             'chief_complaint'   => 'nullable|array',
             'chief_complaint.*' => 'string|max:150',
             'bp_systolic'      => 'nullable|integer|min:0|max:300',
@@ -344,7 +353,7 @@ class OpdController extends Controller
             'visit_time'          => $request->visit_time ?: now()->format('H:i'),
             'token_number'        => $request->token_number ?? $nextToken,
             'chief_complaint'     => \App\Models\OpdClinicalTerm::absorb($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT, $request->chief_complaint),
-            'chief_complaint'     => $request->chief_complaint,
+            'op_type'             => $request->op_type ?: null,
             'bp_systolic'         => $request->bp_systolic,
             'bp_diastolic'        => $request->bp_diastolic,
             'temperature'         => $request->temperature,
@@ -486,6 +495,9 @@ class OpdController extends Controller
         // The sets this hospital keeps recording together, one tap each.
         $complaintGroups = \App\Models\OpdComplaintGroup::listFor($store_id);
 
+        // The same for consultation notes: the phrases this hospital's doctors reuse.
+        $noteTemplates = \App\Models\OpdNoteTemplate::listFor($store_id);
+
         // This hospital's own casemix — how often each term is used and which treatments actually
         // accompany which diagnosis here. Drives the ordering and the suggestion chips.
         $termInsights = \App\Services\OpdTermInsights::for($store_id);
@@ -503,7 +515,7 @@ class OpdController extends Controller
         return view('hmis::vendor.opd.show', compact(
             'visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions',
             'labTests', 'radiologyTests', 'labOrders', 'radiologyStudies',
-            'complaintOptions', 'complaintGroups',
+            'complaintOptions', 'complaintGroups', 'noteTemplates',
             'diagnosisOptions', 'treatmentOptions', 'upcomingVisits', 'termInsights'
         ));
     }
@@ -606,11 +618,57 @@ class OpdController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Add a consultation-note phrase to this store's picker. Typed phrases are absorbed on save
+     * by quickUpdate, so this exists for adding one deliberately without recording a visit.
+     */
+    public function noteTemplateStore(Request $request)
+    {
+        $request->validate(['name' => 'required|string|max:190']);
+
+        $phrase   = trim((string) $request->input('name'));
+        $store_id = Helpers::get_store_id();
+
+        if ($phrase === '') {
+            return response()->json(['ok' => false, 'msg' => 'Type the phrase first.'], 422);
+        }
+
+        \App\Models\OpdNoteTemplate::remember($store_id, [$phrase]);
+
+        $saved = \App\Models\OpdNoteTemplate::forStore($store_id)->where('name', $phrase)->first();
+
+        return response()->json([
+            'ok'       => true,
+            'template' => $saved ? ['id' => $saved->id, 'name' => $saved->name] : null,
+        ]);
+    }
+
+    public function noteTemplateDestroy(Request $request, $id)
+    {
+        \App\Models\OpdNoteTemplate::ensureSchema();
+
+        \App\Models\OpdNoteTemplate::forStore(Helpers::get_store_id())->where('id', $id)->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
     public function quickUpdate(Request $request, $id)
     {
         $this->ensureClinicalSchema();
         $store_id = Helpers::get_store_id();
         $visit    = OpdVisit::where('store_id', $store_id)->findOrFail($id);
+
+        // A completed or cancelled visit is a closed record. The screen hides its edit controls,
+        // but that is presentation only — a tab left open before the receipt was generated would
+        // still autosave into it, so the refusal has to live here.
+        if (!$visit->is_editable) {
+            return response()->json([
+                'ok'  => false,
+                'msg' => $visit->is_cancelled
+                    ? 'This visit was cancelled and can no longer be edited.'
+                    : 'This visit is completed. Reopen it before making changes.',
+            ], 422);
+        }
 
         $request->validate([
             'chief_complaint' => 'nullable|string|max:500',
@@ -621,6 +679,8 @@ class OpdController extends Controller
             'diagnosis.*'     => 'string|max:150',
             'treatment'       => 'nullable|array',
             'treatment.*'     => 'string|max:150',
+            'note_terms'      => 'nullable|array',
+            'note_terms.*'    => 'string|max:190',
         ]);
 
         // The show page saves chief complaint, consultation notes and diagnosis/treatment
@@ -631,6 +691,22 @@ class OpdController extends Controller
         }
         if ($request->has('notes')) {
             $visit->notes = $request->notes;
+        }
+
+        // Consultation notes are a chip list now, held in the same column and split back by
+        // OpdVisit::splitTerms() — so notes written as free text before this still read back as
+        // one entry rather than disappearing.
+        if ($request->has('note_terms')) {
+            $phrases = collect($request->input('note_terms', []))
+                ->map(fn($phrase) => trim((string) $phrase))
+                ->filter()
+                ->unique()
+                ->values();
+
+            // Anything typed by hand joins this store's list, so the picker learns it.
+            \App\Models\OpdNoteTemplate::remember($store_id, $phrases->all());
+
+            $visit->notes = $phrases->implode(', ');
         }
 
         $saved = [];
@@ -878,6 +954,27 @@ class OpdController extends Controller
         return view('hmis::vendor.opd.terms', compact('lists', 'category', 'categoryLabel'));
     }
 
+    public function opTypesUpdate(Request $request)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100',
+            'action' => 'required|in:add,hide,restore',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+        $name     = trim($request->name);
+
+        match ($request->action) {
+            'add'     => \App\Models\OpdOpType::add($store_id, $name),
+            'hide'    => \App\Models\OpdOpType::hide($store_id, $name),
+            'restore' => \App\Models\OpdOpType::restore($store_id, $name),
+        };
+
+        Toastr::success('OP types updated');
+
+        return back();
+    }
+
     /** Hide or restore one term for this store. */
     public function termsUpdate(Request $request)
     {
@@ -913,8 +1010,9 @@ class OpdController extends Controller
         $complaintOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT);
 
         $complaintGroups = \App\Models\OpdComplaintGroup::listFor($store_id);
+        $opTypes         = \App\Models\OpdOpType::listFor($store_id);
 
-        return view('hmis::vendor.opd.edit', compact('visit', 'patients', 'doctors', 'complaintOptions', 'complaintGroups'));
+        return view('hmis::vendor.opd.edit', compact('visit', 'patients', 'doctors', 'complaintOptions', 'complaintGroups', 'opTypes'));
     }
 
     public function update(Request $request, $id)
@@ -935,10 +1033,12 @@ class OpdController extends Controller
             'pulse_rate'       => 'nullable|integer|min:0|max:300',
             'respiratory_rate' => 'nullable|integer|min:0|max:100',
             'notes'            => 'nullable|string',
+            'op_type'          => 'nullable|string|max:100',
         ]);
 
         $visit->update([
             'visit_type'        => $request->visit_type,
+            'op_type'           => $request->op_type ?: null,
             'chief_complaint'   => \App\Models\OpdClinicalTerm::absorb($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT, $request->chief_complaint),
             'bp_systolic'       => $request->bp_systolic,
             'bp_diastolic'      => $request->bp_diastolic,

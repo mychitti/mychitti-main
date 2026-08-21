@@ -226,7 +226,24 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
             const el = document.getElementById(name) || document.querySelector('[name="' + name + '"]');
             if (el) el.required = (mode === 'walkin');
         });
+
+        if (mode === 'booked') initBookedSelect2();
     });
+});
+
+// Built on first show, not at load: the pane starts display:none and Select2 measures its
+// container, so building it early leaves a zero-width box that never recovers.
+let bookedSelect2Ready = false;
+function initBookedSelect2() {
+    if (bookedSelect2Ready || typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+    jQuery('#bookedDoctorSelect').select2({ placeholder: 'Select doctor...', width: '100%' });
+    bookedSelect2Ready = true;
+}
+
+// A page opened straight into booked mode has the pane visible already.
+document.addEventListener('DOMContentLoaded', function () {
+    const pane = document.getElementById('bookedSection');
+    if (pane && pane.style.display !== 'none') initBookedSelect2();
 });
 
 // ── Already Booked: AJAX lookup ──────────────────────────────────────────────
