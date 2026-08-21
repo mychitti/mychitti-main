@@ -10,6 +10,7 @@
     ])
 </div>
 
+@if(hmis_vitals_enabled())
 <div class="card mb-3">
     <div class="card-header py-2"><h6 class="mb-0">Vitals</h6></div>
     <div class="card-body">
@@ -63,6 +64,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="form-group">
     <label class="input-label">Notes</label>

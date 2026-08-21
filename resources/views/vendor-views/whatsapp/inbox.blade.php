@@ -211,10 +211,37 @@
         .wchat-wrap.chat-open .wchat-side { display:none; }
         .wchat-wrap.chat-open .wchat-main { display:flex; }
     }
-    .wfwd-staff-list { max-height:190px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:6px; padding:6px 10px; background:#fff; }
-    .wfwd-staff-item { display:flex; align-items:center; gap:8px; padding:5px 2px; font-size:13.5px; color:#111b21; cursor:pointer; margin:0; }
-    .wfwd-staff-item + .wfwd-staff-item { border-top:1px solid #f2f4f6; }
-    .wfwd-staff-item input { margin:0; }
+    /* The panel theme renders select2 rows at full paragraph size, which turns a handful of
+       staff into a modal-swallowing list. Scoped overrides keep the picker compact. */
+    #wfwdModal .select2-container { width:100% !important; }
+    #wfwdModal .select2-selection--multiple {
+        border:1px solid #e5e7eb !important; border-radius:6px; min-height:38px;
+        max-height:96px; overflow-y:auto; padding:2px 4px !important;
+    }
+    #wfwdModal .select2-container--focus .select2-selection--multiple,
+    #wfwdModal .select2-container--open .select2-selection--multiple { border-color:var(--wa-green) !important; }
+    #wfwdModal .select2-selection__rendered { padding:0 !important; }
+    /* The panel theme absolutely-positions the remove '×', which lands on top of the name once
+       the padding it relies on is overridden. Put it back in normal flow, ahead of the label. */
+    #wfwdModal .select2-selection__choice {
+        background:#e7f7ee !important; border:1px solid #c9ecd8 !important; color:#0f5132 !important;
+        font-size:12px; line-height:1.6; padding:1px 8px !important; margin:3px 4px 0 0 !important;
+        border-radius:4px; display:inline-flex; align-items:center;
+    }
+    #wfwdModal .select2-selection__choice__remove {
+        position:static !important; inset:auto !important; float:none;
+        color:#0f5132 !important; font-weight:600; font-size:13px; line-height:1;
+        margin:0 5px 0 0 !important; padding:0 !important; border:0 !important; background:none !important;
+    }
+    #wfwdModal .select2-search--inline .select2-search__field { margin-top:5px; font-size:13px; height:22px; }
+    #wfwdModal .select2-selection__placeholder { font-size:13.5px; color:#8696a0; line-height:32px; }
+    #wfwdModal .select2-results__options { max-height:180px !important; }
+    #wfwdModal .select2-results__option {
+        font-size:13.5px; padding:6px 10px !important; line-height:1.4; color:#111b21;
+    }
+    #wfwdModal .select2-results__option--highlighted { background:#f0fdf4 !important; color:#111b21 !important; }
+    #wfwdModal .select2-results__option[aria-selected=true] { background:#fff !important; color:#8696a0 !important; }
+    #wfwdModal .select2-dropdown { border-color:#e5e7eb; border-radius:6px; }
 </style>
 @endpush
 
@@ -337,9 +364,8 @@
                         <div class="modal-body">
                             <div class="form-group">
                                 <label class="input-label">Staff members <span class="text-muted" style="font-weight:400;">(pick one or more)</span></label>
-                                <div id="wfwdStaff" class="wfwd-staff-list">
-                                    <div class="text-muted" style="font-size:12.5px;">Loading staff…</div>
-                                </div>
+                                <select id="wfwdStaff" class="form-control" multiple data-placeholder="Select staff members…">
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label class="input-label">Other numbers <span class="text-muted" style="font-weight:400;">(optional)</span></label>
@@ -673,25 +699,35 @@
     }
 
     // ── Forward to staff ─────────────────────────────────────
+    // dropdownParent keeps the search box usable inside the modal, which traps focus otherwise.
+    function initStaffSelect(placeholder) {
+        var $sel = $('#wfwdStaff');
+        if ($sel.hasClass('select2-hidden-accessible')) $sel.select2('destroy');
+        $sel.select2({
+            placeholder: placeholder,
+            dropdownParent: $('#wfwdModal'),
+            width: '100%',
+            closeOnSelect: false
+        });
+    }
+
     function loadStaffOnce() {
         if (staffLoaded) return;
         staffLoaded = true;
+        initStaffSelect('Loading staff…');
         $.get(STAFF_URL, function (res) {
-            var html = '';
+            var opts = '';
             if (res && res.success) {
                 (res.staff || []).forEach(function (s) {
-                    html += '<label class="wfwd-staff-item">'
-                          + '<input type="checkbox" class="wfwd-staff-cb" value="' + s.id + '"> '
-                          + '<span>' + esc(s.name) + '</span></label>';
+                    opts += '<option value="' + s.id + '">' + esc(s.name) + '</option>';
                 });
             }
-            if (!html) {
-                html = '<div class="text-muted" style="font-size:12.5px;">No staff with a phone number on file</div>';
-            }
-            $('#wfwdStaff').html(html);
+            $('#wfwdStaff').html(opts).prop('disabled', !opts);
+            initStaffSelect(opts ? 'Select staff members…' : 'No staff with a phone number on file');
         }).fail(function () {
             staffLoaded = false;
-            $('#wfwdStaff').html('<div class="text-danger" style="font-size:12.5px;">Could not load staff</div>');
+            $('#wfwdStaff').html('').prop('disabled', true);
+            initStaffSelect('Could not load staff');
         });
     }
 
@@ -703,12 +739,12 @@
         fwdSenderPhone = '+' + String(activePhone || activeKey).replace(/^\+/, '');
         $('#wfwdText').val(body);
         $('#wfwdExternal').val('');
-        $('.wfwd-staff-cb').prop('checked', false);
+        $('#wfwdStaff').val(null).trigger('change');
         $('#wfwdModal').modal('show');
     }
 
     function sendForward() {
-        var staffIds = $('.wfwd-staff-cb:checked').map(function () { return this.value; }).get();
+        var staffIds = $('#wfwdStaff').val() || [];
         var external = ($('#wfwdExternal').val() || '').trim();
         var text     = ($('#wfwdText').val() || '').trim();
         if (!staffIds.length && !external) { toastr.error('Choose a staff member or enter a number to forward to.'); return; }

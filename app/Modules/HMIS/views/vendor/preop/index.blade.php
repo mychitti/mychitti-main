@@ -512,6 +512,7 @@
                                     @endforeach
                                 </div>
                                 <div>
+                                    @if(hmis_vitals_enabled())
                                     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:13px">
                                         <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Latest Vitals @if($latestVital)<span style="color:var(--muted)">· {{ optional($latestVital->recorded_at)->format('H:i') }}</span>@endif</div>
                                         @if($latestVital)
@@ -525,6 +526,7 @@
                                             <div style="font-size:11px;color:var(--muted)">No vitals recorded. Record them in the Nursing Station.</div>
                                         @endif
                                     </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>

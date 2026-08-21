@@ -74,6 +74,33 @@
                     </div>
                 </div>
 
+                {{-- Clinical Recording — what this hospital actually charts. A dental or
+                     physiotherapy practice never takes a BP, and an always-on vitals card is a
+                     row of dashes on every screen it appears on. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-heart-outlined mr-1"></i> Clinical Recording</h6>
+                    </div>
+                    <div class="card-body">
+                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
+                            <input type="checkbox" name="vitals_enabled" value="1" class="mr-2 mt-1"
+                                   {{ old('vitals_enabled', $vitals_enabled) ? 'checked' : '' }}>
+                            <span>
+                                <span style="font-weight:600;">Record patient vitals</span>
+                                <small class="text-muted d-block" style="font-size:12px;">
+                                    BP, pulse, temperature, SpO2, respiratory rate, weight and height.
+                                    Switch off and the vitals fields and cards are hidden across OPD,
+                                    the consultation page, patient records and the nursing station.
+                                    Readings already saved are kept.
+                                </small>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </div>
+
             </div>
 
             <div class="col-lg-8">

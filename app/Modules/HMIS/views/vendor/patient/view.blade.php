@@ -3,6 +3,7 @@
 @use('Illuminate\Support\Facades\Storage')
 
 @section('content')
+@php $showVitals = hmis_vitals_enabled(); @endphp
 <div class="content container-fluid">
     <div class="page-header">
         <div class="d-flex justify-content-between align-items-center">
@@ -294,7 +295,7 @@
                     <div class="table-responsive">
                         <table class="table table-sm table-hover mb-0">
                             <thead class="thead-light">
-                                <tr><th>Date</th><th>Token</th><th>Doctor</th><th>Type</th><th>Complaint</th><th>Vitals</th><th></th></tr>
+                                <tr><th>Date</th><th>Token</th><th>Doctor</th><th>Type</th><th>Complaint</th>@if($showVitals)<th>Vitals</th>@endif<th></th></tr>
                             </thead>
                             <tbody>
                                 @forelse($opdVisits as $visit)
@@ -308,18 +309,20 @@
                                         </span>
                                     </td>
                                     <td>{{ \Illuminate\Support\Str::limit($visit->chief_complaint ?? '—', 40) }}</td>
+                                    @if($showVitals)
                                     <td style="font-size:11px; white-space:nowrap;">
                                         @if($visit->bp_systolic) BP: {{ $visit->bp_systolic }}/{{ $visit->bp_diastolic }}<br>@endif
                                         @if($visit->temperature) T: {{ $visit->temperature }}°F<br>@endif
                                         @if($visit->spo2) SpO2: {{ $visit->spo2 }}%@endif
                                     </td>
+                                    @endif
                                     <td>
                                         <a href="{{ route('vendor.opd.show', $visit->id) }}"
                                            class="btn btn-xs btn-outline-secondary">View</a>
                                     </td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="7" class="text-center text-muted py-3">No OPD visits.</td></tr>
+                                <tr><td colspan="{{ $showVitals ? 7 : 6 }}" class="text-center text-muted py-3">No OPD visits.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>

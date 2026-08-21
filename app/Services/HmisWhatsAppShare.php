@@ -1049,14 +1049,21 @@ class HmisWhatsAppShare
                 mkdir($temp, 0775, true);
             }
 
+            // autoScriptToLang / autoLangToFont let mpdf notice a run of Telugu or Devanagari and
+            // switch to a bundled font that actually has those glyphs (Pothana2000, Lohit and the
+            // rest of vendor/mpdf/mpdf/ttfonts). Without them a translated prescription renders as
+            // a page of empty boxes, because the CSS font stack above resolves to DejaVu, which
+            // carries no Indic script at all.
             $mpdf = new \Mpdf\Mpdf([
-                'mode'          => 'utf-8',
-                'format'        => 'A4',
-                'margin_left'   => 10,
-                'margin_right'  => 10,
-                'margin_top'    => 10,
-                'margin_bottom' => 10,
-                'tempDir'       => $temp,
+                'mode'             => 'utf-8',
+                'format'           => 'A4',
+                'margin_left'      => 10,
+                'margin_right'     => 10,
+                'margin_top'       => 10,
+                'margin_bottom'    => 10,
+                'tempDir'          => $temp,
+                'autoScriptToLang' => true,
+                'autoLangToFont'   => true,
             ]);
             $mpdf->WriteHTML($html);
 

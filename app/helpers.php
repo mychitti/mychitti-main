@@ -8319,3 +8319,38 @@ if (!function_exists('mcv')) {
         return route($name, $params, false);
     }
 }
+
+if (!function_exists('hmis_vitals_enabled')) {
+    /**
+     * Whether this hospital records vitals at all.
+     *
+     * A dental chair, a physiotherapy clinic or a diagnostic centre never takes a BP, and an
+     * always-present vitals card is a column of dashes on every screen it appears on. Off hides
+     * it everywhere — entry, listings, the consultation page and the nursing station — rather
+     * than only skipping the form, so nothing shows a reading that is never taken.
+     *
+     * Defaults to on: every hospital already using vitals keeps them without touching settings.
+     */
+    function hmis_vitals_enabled($store_id = null): bool
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        if (!$store_id) {
+            return true;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        // Read straight through rather than asking the schema first: the column is added the
+        // first time a hospital saves its settings, and until then every store reads as on.
+        try {
+            $value = \App\Models\StoreConfig::where('store_id', $store_id)->value('hmis_vitals_enabled');
+        } catch (\Throwable $e) {
+            return $cache[$store_id] = true;
+        }
+
+        return $cache[$store_id] = ($value === null || (int) $value === 1);
+    }
+}

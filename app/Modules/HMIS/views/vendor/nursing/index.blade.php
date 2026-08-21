@@ -144,14 +144,15 @@ padding: 0px 0.875rem !important;
 <div class="nursex">
     @php
         // Tab visibility (view) per sub-feature
-        $vVitals   = hasPermission('nursing_vitals', 'view');
+        $usesVitals = hmis_vitals_enabled();
+        $vVitals   = $usesVitals && hasPermission('nursing_vitals', 'view');
         $vMar      = hasPermission('nursing_mar', 'view');
         $vFluid    = hasPermission('nursing_fluid', 'view');
         $vNote     = hasPermission('nursing_note', 'view');
         $vTask     = hasPermission('nursing_task', 'view');
         $vHandover = hasPermission('nursing_handover', 'view');
         // Action permissions
-        $canVitals   = hasPermission('nursing_vitals', 'add');
+        $canVitals   = $usesVitals && hasPermission('nursing_vitals', 'add');
         $canMar      = hasPermission('nursing_mar', 'add');
         $canMarGive  = hasPermission('nursing_mar', 'edit');
         $canFluid    = hasPermission('nursing_fluid', 'add');
@@ -253,6 +254,7 @@ padding: 0px 0.875rem !important;
                         </div>
                     </div>
                 </div>
+                @if($usesVitals)
                 <div class="vstrip">
                     <div class="vcell" onclick="nxVital('bp','BP (e.g. 138/88)','{{ $vbp }}')"><div class="vval {{ $vbpCls }}">{{ $vbp }}</div><div class="vlbl">BP mmHg</div></div>
                     <div class="vcell" onclick="nxVital('hr','Heart rate','{{ $vital->hr ?? '' }}')"><div class="vval">{{ $vital->hr ?? '—' }}</div><div class="vlbl">HR /min</div></div>
@@ -261,6 +263,7 @@ padding: 0px 0.875rem !important;
                     <div class="vcell" onclick="nxVital('rr','Respiratory rate','{{ $vital->rr ?? '' }}')"><div class="vval">{{ $vital->rr ?? '—' }}</div><div class="vlbl">RR /min</div></div>
                     <div class="vcell" onclick="nxVital('pain','Pain score 0-10','{{ $vital->pain ?? '' }}')"><div class="vval">{{ $vital ? $vital->pain.'/10' : '—' }}</div><div class="vlbl">Pain</div></div>
                 </div>
+                @endif
             </div>
 
             {{-- TAB 0: WARD OVERVIEW --}}

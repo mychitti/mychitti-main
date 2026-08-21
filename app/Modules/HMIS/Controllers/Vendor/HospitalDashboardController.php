@@ -157,6 +157,7 @@ class HospitalDashboardController extends Controller
         $serial   = (int) ($config?->patient_uid_serial ?? 1);
         $opd_consultation_count          = (int) ($config?->opd_consultation_count ?? 1);
         $opd_consultation_validity_days  = (int) ($config?->opd_consultation_validity_days ?? 7);
+        $vitals_enabled                  = hmis_vitals_enabled($store_id);
 
         $lastUid  = Patient::where('store_id', $store_id)->orderByDesc('id')->value('patient_uid');
         $autoNext = 1;
@@ -195,6 +196,7 @@ class HospitalDashboardController extends Controller
         return view('hmis::vendor.hospital.settings', compact(
             'prefix', 'padding', 'serial', 'previewMuid',
             'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages',
+            'vitals_enabled',
             'departments', 'states',
             'opTypeDefaults', 'opTypesOwn', 'opTypesHidden'
         ));
@@ -210,6 +212,7 @@ class HospitalDashboardController extends Controller
             'opd_consultation_validity_days' => 'required|integer|min:1|max:365',
             'rx_languages'                   => 'nullable|array',
             'rx_languages.*'                 => 'string|in:' . implode(',', array_keys(\App\Models\Prescription::LANGUAGES)),
+            'vitals_enabled'                 => 'nullable|boolean',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -226,6 +229,11 @@ class HospitalDashboardController extends Controller
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'rx_languages')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `rx_languages` TEXT NULL");
         }
+        // Whether this hospital takes vitals at all. Nullable with null read as on, so every
+        // existing hospital keeps the vitals cards without visiting this page.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_vitals_enabled')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_vitals_enabled` TINYINT(1) NULL DEFAULT 1");
+        }
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'opd_consultation_count')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}`
                 ADD COLUMN `opd_consultation_count` INT NULL,
@@ -240,6 +248,7 @@ class HospitalDashboardController extends Controller
                 'patient_uid_serial'             => (int) $request->serial,
                 'opd_consultation_count'         => (int) $request->opd_consultation_count,
                 'opd_consultation_validity_days' => (int) $request->opd_consultation_validity_days,
+                'hmis_vitals_enabled'            => $request->boolean('vitals_enabled') ? 1 : 0,
                 // English is always kept: it is the fallback the printed sheet falls back to for
                 // anything without a translation, so it can never be switched off.
                 'rx_languages'                   => json_encode(

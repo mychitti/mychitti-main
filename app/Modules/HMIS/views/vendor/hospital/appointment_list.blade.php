@@ -846,6 +846,7 @@
                                     @endif
                                 </div>
                                 <div class="col-6">
+                                    @if(hmis_vitals_enabled())
                                     @if($hOpdVisit->bp_systolic)
                                         <div><i class="tio-heart-outlined text-danger"></i> BP: {{ $hOpdVisit->bp_systolic }}/{{ $hOpdVisit->bp_diastolic }} mmHg</div>
                                     @endif
@@ -863,6 +864,7 @@
                                     @endif
                                     @if($hOpdVisit->height)
                                         <div><strong>Ht:</strong> {{ $hOpdVisit->height }} cm</div>
+                                    @endif
                                     @endif
                                 </div>
                             </div>

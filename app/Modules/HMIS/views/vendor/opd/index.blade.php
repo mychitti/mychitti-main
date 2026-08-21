@@ -284,6 +284,7 @@
 @endpush
 
 @section('content')
+    @php $showVitals = hmis_vitals_enabled(); @endphp
     <div class="content container-fluid">
         <div class="page-header d-flex justify-content-between align-items-center mb-4">
             <h1 class="page-header-title mb-0">
@@ -363,7 +364,7 @@
                                 <th>Doctor</th>
                                 <th>Visit Type</th>
                                 <th>Chief Complaint</th>
-                                <th>Vitals</th>
+                                @if($showVitals)<th>Vitals</th>@endif
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
@@ -391,6 +392,7 @@
                                         @endif
                                     </td>
                                     <td>{{ \Illuminate\Support\Str::limit($visit->chief_complaint, 50) ?: '—' }}</td>
+                                    @if($showVitals)
                                     <td>
                                         <div class="vitals-list">
                                             @if ($visit->bp_systolic && $visit->bp_diastolic)
@@ -419,6 +421,7 @@
                                             @endif
                                         </div>
                                     </td>
+                                    @endif
                                     <td>
                                         @if ($visit->is_cancelled)
                                             <span class="hmis-badge-status cancelled">Cancelled</span>
@@ -488,7 +491,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted py-4">No OPD visits recorded for this date.</td>
+                                    <td colspan="{{ $showVitals ? 8 : 7 }}" class="text-center text-muted py-4">No OPD visits recorded for this date.</td>
                                 </tr>
                             @endforelse
                         </tbody>

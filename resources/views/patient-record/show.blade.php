@@ -1,6 +1,17 @@
 @php
     $patient = $record->patient ?? null;
     $doctor  = \App\Services\HmisWhatsAppShare::doctorName($record->doctorProfile ?? null);
+
+    // The prescription copy the patient actually reads. Only a prescription carries a language --
+    // a visit slip or a lab report has no picker behind it -- so everything else stays English.
+    $rxLang = in_array($kind, ['prescription', 'medicines']) ? ($record->language ?? 'en') : 'en';
+    // Both reads are cache-only: this page is served to the patient and to the PDF renderer,
+    // neither of which should be waiting on a translation round-trip. The cache is filled when the
+    // prescription is finalized (PrescriptionTranslator::prime), and until then this reads English.
+    $P      = \App\Services\PrescriptionTranslator::cachedLabels($rxLang, 'patient');
+    $PT     = $record instanceof \App\Models\Prescription
+                ? \App\Services\PrescriptionTranslator::cached($record)
+                : [];
     $titles  = [
         'visit_registered' => 'Visit Registered',
         'treatment'    => 'Consultation Summary',
@@ -139,7 +150,9 @@
         @endif
 
         @php
-            $vitals = array_filter([
+            // Shared publicly, so the hospital's own switch is read off the record rather than
+            // the session — a hospital that does not chart vitals never leaks an empty block.
+            $vitals = !hmis_vitals_enabled($record->store_id ?? null) ? [] : array_filter([
                 'BP'          => $record->bp_systolic && $record->bp_diastolic ? $record->bp_systolic . '/' . $record->bp_diastolic . ' mmHg' : null,
                 'Pulse'       => $record->pulse_rate ? $record->pulse_rate . ' bpm' : null,
                 'Temperature' => $record->temperature ? $record->temperature . ' °F' : null,
@@ -173,21 +186,21 @@
     @if (in_array($kind, ['prescription', 'medicines']))
         @if (filled($record->diagnosis))
             <div class="card">
-                <h2>Diagnosis</h2>
-                <div>{{ $record->diagnosis }}</div>
+                <h2>{{ $P['diagnosis'] }}</h2>
+                <div>{{ $PT['diagnosis'] ?? $record->diagnosis }}</div>
             </div>
         @endif
 
         <div class="card">
-            <h2>Your medicines</h2>
+            <h2>{{ $P['your_medicines'] }}</h2>
             <div class="scroll">
                 <table>
                     <thead>
                         <tr>
-                            <th>Medicine</th>
-                            <th>Dose</th>
-                            <th>When</th>
-                            <th>How long</th>
+                            <th>{{ $P['medicine'] }}</th>
+                            <th>{{ $P['dose'] }}</th>
+                            <th>{{ $P['when'] }}</th>
+                            <th>{{ $P['how_long'] }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -196,15 +209,15 @@
                                 <td>
                                     <div class="med">{{ $item->medicine_name }}</div>
                                     @if (filled($item->instructions))
-                                        <div class="sub">{{ $item->instructions }}</div>
+                                        <div class="sub">{{ $PT['items'][(string) $item->id]['instructions'] ?? $item->instructions }}</div>
                                     @endif
                                 </td>
                                 <td>{{ $item->dosage ?: '—' }}</td>
-                                <td>{{ $item->frequency ?: '—' }}</td>
-                                <td>{{ $item->duration ?: '—' }}</td>
+                                <td>{{ ($PT['items'][(string) $item->id]['frequency'] ?? $item->frequency) ?: '—' }}</td>
+                                <td>{{ ($PT['items'][(string) $item->id]['duration'] ?? $item->duration) ?: '—' }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="sub">No medicines listed.</td></tr>
+                            <tr><td colspan="4" class="sub">{{ $P['none_listed'] }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -212,26 +225,28 @@
         </div>
 
         <div class="card">
-            <h2>Please remember</h2>
-            <div class="note">
-                Take every medicine exactly as written above, and finish the full course even if you feel better
-                sooner. Do not change the dose or stop early without asking your doctor. If anything feels wrong
-                after a dose, contact {{ $store->name ?? 'the hospital' }} straight away.
-            </div>
+            <h2>{{ $P['remember'] }}</h2>
+            {{-- {hospital} survives translation as a token; a model that drops it still leaves a
+                 sentence that reads correctly, just without the name. --}}
+            <div class="note">{{ str_replace('{hospital}', $store->name ?? 'the hospital', $P['remember_body']) }}</div>
         </div>
 
         @if (filled($record->notes))
             <div class="card">
-                <h2>Doctor's notes</h2>
-                <div class="note">{{ $record->notes }}</div>
+                <h2>{{ $P['doctor_notes'] }}</h2>
+                <div class="note">{{ $PT['notes'] ?? $record->notes }}</div>
             </div>
         @endif
 
         @if ($record->follow_up_date)
             <div class="card">
-                <h2>Next visit</h2>
+                <h2>{{ $P['next_visit'] }}</h2>
                 <div>{{ \Carbon\Carbon::parse($record->follow_up_date)->format('d M Y') }}</div>
             </div>
+        @endif
+
+        @if (!empty($PT))
+            <div class="mute" style="text-align:center;font-size:11px;margin-top:14px;">{{ $P['machine_note'] }}</div>
         @endif
     @endif
 

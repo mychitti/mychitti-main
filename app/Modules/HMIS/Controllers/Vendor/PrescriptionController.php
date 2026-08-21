@@ -320,6 +320,11 @@ class PrescriptionController extends Controller
 
         $storeId = (int) $rx->store_id;
 
+        // Translate before anything is sent. The link and the PDF below both render the patient
+        // copy, and both read the translation cache rather than filling it — doing it here means
+        // the hospital's own request pays for the round-trip, not the patient tapping the link.
+        \App\Services\PrescriptionTranslator::prime($rx);
+
         // The prescription goes out one way or the other, never both. A link and an attachment are
         // the same document — a hospital with both toggles on would pay for two messages to send
         // the patient one prescription twice. The PDF wins where it is asked for, because unlike
@@ -368,7 +373,21 @@ class PrescriptionController extends Controller
 
         $canEditRx = $this->canEdit($rx);
 
-        return view('hmis::vendor.prescription.show', compact('rx', 'canEditRx'));
+        // The doctor picked a language on the form; this is where it finally means something.
+        // Generated on first view rather than at save so a slow or unavailable AI service can
+        // never block finalizing a prescription -- the sheet just prints in English until it
+        // succeeds. Both calls fall back to the English original on any failure.
+        // ?original=1 prints the doctor's own words untouched, so the sheet can be checked against
+        // what was actually written before it goes to the patient.
+        $showOriginal = request()->boolean('original');
+        $rxLabels = $showOriginal
+            ? \App\Services\PrescriptionTranslator::LABELS
+            : \App\Services\PrescriptionTranslator::labels($rx->language);
+        $rxText = $showOriginal
+            ? null
+            : \App\Services\PrescriptionTranslator::content($rx, request()->boolean('retranslate'));
+
+        return view('hmis::vendor.prescription.show', compact('rx', 'canEditRx', 'rxLabels', 'rxText', 'showOriginal'));
     }
 
     public function edit($id)
@@ -768,6 +787,10 @@ class PrescriptionController extends Controller
             }
 
             DB::commit();
+
+            // Diagnosis, advice and the medicine lines may all have changed. Dropped rather than
+            // re-translated here: show() regenerates it on the next view, off the saved row.
+            \App\Services\PrescriptionTranslator::forget($rx->id);
 
             $action = $request->has('finalize') ? 'finalized' : 'updated';
             \App\Models\HospitalActivityLog::record(

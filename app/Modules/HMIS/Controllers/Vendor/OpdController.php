@@ -169,8 +169,15 @@ class OpdController extends Controller
             ->orderBy('token_number')
             ->get();
 
-        $headings = ['Token', 'Visit Date', 'Visit Time', 'Patient', 'MUID', 'Doctor', 'Chief Complaint', 'Diagnosis', 'Treatment', 'BP', 'Temperature', 'Weight', 'Status'];
-        $data = $visits->map(fn($v) => [
+        // A hospital that does not chart vitals gets three fewer columns rather than three empty ones.
+        $withVitals = hmis_vitals_enabled($store_id);
+
+        $headings = array_merge(
+            ['Token', 'Visit Date', 'Visit Time', 'Patient', 'MUID', 'Doctor', 'Chief Complaint', 'Diagnosis', 'Treatment'],
+            $withVitals ? ['BP', 'Temperature', 'Weight'] : [],
+            ['Status']
+        );
+        $data = $visits->map(fn($v) => array_merge([
             $v->token_number,
             $v->visit_date,
             $v->visit_time ? \Carbon\Carbon::parse($v->visit_time)->format('h:i A') : '',
@@ -180,11 +187,9 @@ class OpdController extends Controller
             $v->chief_complaint,
             $v->diagnosis,
             $v->treatment,
-            $v->bp,
-            $v->temperature,
-            $v->weight,
+        ], $withVitals ? [$v->bp, $v->temperature, $v->weight] : [], [
             ucfirst($v->status ?? ''),
-        ])->toArray();
+        ]))->toArray();
 
         return \Maatwebsite\Excel\Facades\Excel::download(
             new \App\Exports\AttendanceExport($data, $headings),

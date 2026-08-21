@@ -2,6 +2,17 @@
 @section('title', 'Prescription #' . $rx->id)
 
 @section('content')
+@php
+    // $rxLabels / $rxText come from PrescriptionController::show(). Both fall back to the English
+    // original, so a missing translation prints a normal sheet rather than an empty one.
+    $L        = $rxLabels ?? \App\Services\PrescriptionTranslator::LABELS;
+    $T        = $rxText ?? [];
+    $rxLang       = $rx->language ?: 'en';
+    $rxLangOn     = $rxLang !== 'en' && !empty($T);
+    $showOriginal = $showOriginal ?? false;
+    $tx       = fn($key, $fallback) => $T[$key] ?? $fallback;
+    $txItem   = fn($item, $field) => $T['items'][(string) $item->id][$field] ?? $item->{$field};
+@endphp
 <div class="content container-fluid">
 
     {{-- $canEditRx is passed from PrescriptionController::show() --}}
@@ -40,6 +51,29 @@
                 </button>
             </form>
             @endif
+            {{-- Language controls. Shown only where the doctor actually chose a language, and
+                 only to whoever may edit the prescription -- a receptionist reprinting a sheet has
+                 no business regenerating its wording. --}}
+            @if($rxLang !== 'en')
+                <span class="rx-lang-chip" title="This prescription prints in {{ \App\Services\PrescriptionTranslator::languageName($rxLang) }}">
+                    <i class="tio-globe"></i> {{ \App\Services\PrescriptionTranslator::languageName($rxLang) }}
+                </span>
+                @if($showOriginal)
+                    <a href="{{ route('vendor.prescription.show', $rx->id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="tio-translate"></i> Back to {{ \App\Services\PrescriptionTranslator::languageName($rxLang) }}
+                    </a>
+                @else
+                    <a href="{{ route('vendor.prescription.show', ['id' => $rx->id, 'original' => 1]) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="tio-translate"></i> View original
+                    </a>
+                    @if($canEditRx && hasPermission('prescription', 'edit'))
+                    <a href="{{ route('vendor.prescription.show', ['id' => $rx->id, 'retranslate' => 1]) }}" class="btn btn-sm btn-outline-secondary"
+                       title="Translate this prescription again from the English original">
+                        <i class="tio-refresh"></i> Retranslate
+                    </a>
+                    @endif
+                @endif
+            @endif
             <button onclick="window.print()" class="btn btn--primary btn-sm">
                 <i class="tio-print"></i> Print
             </button>
@@ -67,7 +101,7 @@
                 <p class="rx-dr-spec">{{ $rx->doctorProfile?->specialization }}</p>
                 <p class="rx-dr-qual">{{ $rx->doctorProfile?->qualification }}</p>
                 @if($rx->doctorProfile?->registration_number)
-                <p class="rx-dr-reg">Reg. No: {{ $rx->doctorProfile->registration_number }}</p>
+                <p class="rx-dr-reg">{{ $L['reg_no'] }}: {{ $rx->doctorProfile->registration_number }}</p>
                 @endif
             </div>
         </div>
@@ -76,23 +110,23 @@
         {{-- Patient + Date --}}
         <div class="rx-patient-row">
             <div class="rx-patient-info">
-                <span class="rx-label">Patient:</span>
+                <span class="rx-label">{{ $L['patient'] }}:</span>
                 <strong>{{ $rx->patient?->name }}</strong>
                 <span class="rx-muted">({{ $rx->patient?->patient_uid }})</span>
                 @if($rx->patient?->gender)
                 &bull; {{ ucfirst($rx->patient->gender) }}
                 @endif
                 @if($rx->patient?->dob)
-                &bull; Age: {{ \Carbon\Carbon::parse($rx->patient->dob)->age }} yrs
+                &bull; {{ $L['age'] }}: {{ \Carbon\Carbon::parse($rx->patient->dob)->age }} {{ $L['years'] }}
                 @endif
                 @if($rx->patient?->blood_group)
                 &bull; <span style="color:#dc2626;font-weight:600;">{{ $rx->patient->blood_group }}</span>
                 @endif
             </div>
             <div class="rx-date-box">
-                <span class="rx-label">Date:</span> {{ $rx->created_at->format('d M Y') }}
+                <span class="rx-label">{{ $L['date'] }}:</span> {{ $rx->created_at->format('d M Y') }}
                 @if($rx->appointment)
-                <br><span class="rx-label">Appt #:</span> {{ $rx->appointment_id }}
+                <br><span class="rx-label">{{ $L['appointment'] }}:</span> {{ $rx->appointment_id }}
                 @endif
             </div>
         </div>
@@ -100,8 +134,8 @@
         {{-- Diagnosis --}}
         @if($rx->diagnosis)
         <div class="rx-section mt-3">
-            <p class="rx-section-label">Diagnosis</p>
-            <p class="rx-section-body">{{ $rx->diagnosis }}</p>
+            <p class="rx-section-label">{{ $L['diagnosis'] }}</p>
+            <p class="rx-section-body">{{ $tx('diagnosis', $rx->diagnosis) }}</p>
         </div>
         @endif
 
@@ -114,12 +148,12 @@
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Medicine</th>
-                    <th>Dosage</th>
-                    <th>Frequency</th>
-                    <th>Duration</th>
-                    <th>Qty</th>
-                    <th>Instructions</th>
+                    <th>{{ $L['medicine'] }}</th>
+                    <th>{{ $L['dosage'] }}</th>
+                    <th>{{ $L['frequency'] }}</th>
+                    <th>{{ $L['duration'] }}</th>
+                    <th>{{ $L['quantity'] }}</th>
+                    <th>{{ $L['instructions'] }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -128,30 +162,30 @@
                     <td>{{ $i + 1 }}</td>
                     <td><strong>{{ $item->medicine_name }}</strong></td>
                     <td>{{ $item->dosage ?: '—' }}</td>
-                    <td>{{ $item->frequency ?: '—' }}</td>
-                    <td>{{ $item->duration ?: '—' }}</td>
+                    <td>{{ $txItem($item, 'frequency') ?: '—' }}</td>
+                    <td>{{ $txItem($item, 'duration') ?: '—' }}</td>
                     <td>{{ $item->quantity ?: '—' }}</td>
-                    <td>{{ $item->instructions ?: '—' }}</td>
+                    <td>{{ $txItem($item, 'instructions') ?: '—' }}</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
         @else
-        <p class="rx-muted mt-2">No medicines prescribed.</p>
+        <p class="rx-muted mt-2">{{ $L['no_medicines'] }}</p>
         @endif
 
         {{-- Notes --}}
         @if($rx->notes)
         <div class="rx-section mt-4">
-            <p class="rx-section-label">Advice / Notes</p>
-            <p class="rx-section-body">{{ $rx->notes }}</p>
+            <p class="rx-section-label">{{ $L['advice'] }}</p>
+            <p class="rx-section-body">{{ $tx('notes', $rx->notes) }}</p>
         </div>
         @endif
 
         {{-- Follow-up --}}
         @if($rx->follow_up_date)
         <div class="rx-followup mt-3">
-            <strong>Follow-up:</strong> {{ $rx->follow_up_date->format('d M Y') }}
+            <strong>{{ $L['follow_up'] }}:</strong> {{ $rx->follow_up_date->format('d M Y') }}
         </div>
         @endif
 
@@ -159,9 +193,9 @@
         <div class="rx-signature-row">
             <div>
                 @if($rx->is_finalized)
-                <span class="badge badge-soft-success">Finalized</span>
+                <span class="badge badge-soft-success">{{ $L['finalized'] }}</span>
                 @else
-                <span class="badge badge-soft-warning no-print">Draft</span>
+                <span class="badge badge-soft-warning no-print">{{ $L['draft'] }}</span>
                 @endif
             </div>
             <div class="rx-sig-box">
@@ -171,7 +205,12 @@
             </div>
         </div>
 
-        <p class="rx-footer-note">This prescription is computer generated.</p>
+        <p class="rx-footer-note">
+            {{ $L['computer_note'] }}
+            @if($rxLangOn)
+                <br><span class="rx-mt-note">{{ $L['machine_note'] }}</span>
+            @endif
+        </p>
     </div>{{-- end rx-print-wrap --}}
 </div>
 @endsection
@@ -211,6 +250,11 @@
 .rx-sig-line { border-top: 1.5px solid #374151; width: 180px; margin-bottom: 4px; }
 .rx-sig-box p { font-size: 12px; margin: 0; }
 .rx-footer-note { font-size: 10px; color: #9ca3af; text-align: center; margin-top: 20px; }
+.rx-mt-note { font-size: 9.5px; color: #b0b7c3; font-style: italic; }
+.rx-lang-chip {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600;
+    color: #0f5132; background: #e7f7ee; border: 1px solid #c9ecd8; border-radius: 4px; padding: 3px 9px;
+}
 
 /* ── Print styles ─────────────────────────────────────── */
 @media print {

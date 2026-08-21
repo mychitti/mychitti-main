@@ -6,6 +6,7 @@
 @endpush
 
 @section('content')
+@php $showVitals = hmis_vitals_enabled(); @endphp
 <div class="content container-fluid">
 
     <div class="page-header d-flex justify-content-between align-items-center">
@@ -98,7 +99,7 @@
                             <th>Patient</th>
                             <th>Visit Type</th>
                             <th>Chief Complaint</th>
-                            <th>Vitals</th>
+                            @if($showVitals)<th>Vitals</th>@endif
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
@@ -128,6 +129,7 @@
                                     </span>
                                 </td>
                                 <td>{{ \Illuminate\Support\Str::limit($visit->chief_complaint, 50) ?: '—' }}</td>
+                                @if($showVitals)
                                 <td style="font-size:12px; white-space:nowrap;">
                                     @if($visit->bp_systolic && $visit->bp_diastolic)
                                         <span title="Blood Pressure"><i class="tio-heart-outlined text-danger"></i>
@@ -149,6 +151,7 @@
                                         <span class="text-muted">—</span>
                                     @endif
                                 </td>
+                                @endif
                                 <td>
                                     <span class="badge badge-soft-success">{{ ucfirst($visit->status ?? 'visited') }}</span>
                                 </td>
@@ -161,7 +164,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-5">
+                                <td colspan="{{ $showVitals ? 8 : 7 }}" class="text-center text-muted py-5">
                                     <i class="tio-document-text" style="font-size:40px; opacity:.3; display:block; margin-bottom:8px;"></i>
                                     No OPD visits found for this period.
                                 </td>

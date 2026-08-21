@@ -115,6 +115,7 @@ class StoreConfig extends Model
         'patient_uid_serial',
         'opd_consultation_count',
         'opd_consultation_validity_days',
+        'hmis_vitals_enabled',
         'admission_no_prefix',
         'admission_no_padding',
         'admission_no_serial',

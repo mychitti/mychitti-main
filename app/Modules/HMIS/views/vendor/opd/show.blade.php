@@ -839,6 +839,7 @@
 @endpush
 
 @section('content')
+@php $showVitals = hmis_vitals_enabled(); @endphp
 <div class="content container-fluid">
 
     {{-- 1. BRANDING TOP BAR --}}
@@ -938,6 +939,7 @@
             </div>
         </div>
 
+        @if($showVitals)
         <div class="patient-vitals-row">
             {{-- BP --}}
             <div class="vital-item-card">
@@ -971,6 +973,7 @@
                 <div class="vital-lbl">Wt kg</div>
             </div>
         </div>
+        @endif
     </div>
 
     {{-- 4. HORIZONTAL TABBAR --}}
@@ -1350,6 +1353,7 @@
                 </div>
 
                 {{-- Full Vitals Grid --}}
+                @if($showVitals)
                 <div class="card shadow-none border mb-3">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                         <h6 class="mb-0 font-weight-bold" style="font-size:13px">Patient Vitals Profile</h6>
@@ -1444,6 +1448,7 @@
                         </div>
                     @endif
                 </div>
+                @endif
             </div>
 
             {{-- TAB: PRESCRIPTION --}}
