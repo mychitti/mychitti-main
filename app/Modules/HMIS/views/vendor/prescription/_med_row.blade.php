@@ -34,7 +34,6 @@
     /* table-layout:fixed scales the px column widths down proportionally once the viewport is
        narrower than their sum, which crushed the selects and ran the Medicine heading into
        Dose. The min-width pins the columns so .table-responsive scrolls sideways instead. */
-    .table-responsive { -webkit-overflow-scrolling:touch; }
     .rx-table thead th {
         font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:#8d97a5;
         background:#fafbfc; border-bottom:1px solid #e9edf2; border-top:0;
@@ -71,13 +70,42 @@
     .rx-lang { margin-left:auto; min-width:200px; max-width:250px; }
     .rx-lang label { font-size:11px; font-weight:600; color:#8d97a5; margin-bottom:3px; display:block; }
     .rx-lang select { height:34px; font-size:12.5px; border-radius:7px; border-color:#e3e7ef; }
+
+    /* Below phone width ten columns are not worth side-scrolling through, so every row becomes
+       its own card and each field carries the heading the hidden thead used to give it. */
+    @media (max-width: 767.98px) {
+        .rx-table { min-width:0; table-layout:auto; display:block; }
+        .rx-table thead { display:none; }
+        .rx-table tbody, .rx-table tbody tr, .rx-table td { display:block; width:auto; }
+        .rx-table tbody tr {
+            position:relative; background:#fff; margin-bottom:10px;
+            border:1px solid #e9edf2; border-radius:9px; padding:8px 10px 10px;
+        }
+        .rx-table tbody tr:hover td, .rx-table tbody tr:first-child td { background:transparent; }
+        .rx-table td { border-top:0; padding:5px 0; }
+        .rx-table td::before {
+            content:attr(data-label); display:block; margin-bottom:3px;
+            font-size:10px; font-weight:700; text-transform:uppercase;
+            letter-spacing:.04em; color:#8d97a5;
+        }
+        .rx-table .rx-n {
+            padding:0 0 6px; margin-bottom:4px; text-align:left;
+            font-size:12px; color:#8d97a5; border-bottom:1px solid #f2f4f8;
+        }
+        .rx-table .rx-n::before { content:"Medicine " counter(rxrow); }
+        .rx-table .rx-del-cell { position:absolute; top:6px; right:10px; padding:0; }
+        .rx-table .rx-del-cell::before { content:none; }
+        .rx-table .rx-del { line-height:1; }
+        .rx-table .form-control { height:36px; font-size:13px; }
+        .rx-table .rx-dose { text-align:left; }
+    }
 </style>
 @endpush
 @endonce
 
 <tr class="med-row">
     <td class="rx-n text-muted"></td>
-    <td>
+    <td data-label="Type">
         <select name="medicines[{{ $i }}][type]" class="form-control form-control-sm">
             <option value=""></option>
             @foreach($typeOptions as $opt)
@@ -85,7 +113,7 @@
             @endforeach
         </select>
     </td>
-    <td>
+    <td data-label="Medicine">
         <input type="hidden" name="medicines[{{ $i }}][inventory_item_id]" class="med-inv-id"
             value="{{ old("medicines.{$i}.inventory_item_id", $item?->inventory_item_id ?? '') }}">
         <input type="text" name="medicines[{{ $i }}][medicine_name]"
@@ -96,7 +124,7 @@
              to open the item. Display only — nothing is posted from here. --}}
         <div class="rx-composition" {{ $composition ? '' : 'hidden' }}>{{ $composition }}</div>
     </td>
-    <td>
+    <td data-label="Dose">
         {{-- A plain dropdown: morning–afternoon–night is how every prescription here is written,
              and the ten patterns below cover it. A value already on the record that is not one of
              them (an old free-text dosage, a tapering course) is added to its own list so editing
@@ -111,7 +139,7 @@
             @endif
         </select>
     </td>
-    <td>
+    <td data-label="When">
         <select name="medicines[{{ $i }}][instructions]" class="form-control form-control-sm">
             <option value="">—</option>
             @foreach(['Before Food','After Food','With Food','Empty Stomach','At Bedtime','With Water'] as $opt)
@@ -119,7 +147,7 @@
             @endforeach
         </select>
     </td>
-    <td>
+    <td data-label="Frequency">
         <select name="medicines[{{ $i }}][frequency]" class="form-control form-control-sm">
             <option value="">—</option>
             @foreach($freqOptions as $f)
@@ -127,24 +155,24 @@
             @endforeach
         </select>
     </td>
-    <td>
+    <td data-label="Duration">
         <input type="text" name="medicines[{{ $i }}][duration]"
             class="form-control form-control-sm" placeholder="5 days"
             value="{{ old("medicines.{$i}.duration", $item?->duration ?? '') }}">
     </td>
-    <td>
+    <td data-label="Qty">
         {{-- Kept even though the reference layout has no column for it: the pharmacy dispenses
              against this figure and deducts stock by it. --}}
         <input type="number" min="1" name="medicines[{{ $i }}][quantity]"
             class="form-control form-control-sm" placeholder="Qty"
             value="{{ old("medicines.{$i}.quantity", $item?->quantity ?? '') }}">
     </td>
-    <td>
+    <td data-label="Notes">
         <input type="text" name="medicines[{{ $i }}][notes]"
             class="form-control form-control-sm" placeholder="Notes / instructions"
             value="{{ old("medicines.{$i}.notes", $item?->notes ?? '') }}">
     </td>
-    <td class="text-center">
+    <td class="text-center rx-del-cell">
         <a class="rx-del" title="Remove" onclick="removeMedRow(this)"><i class="tio-delete-outlined"></i></a>
     </td>
 </tr>
