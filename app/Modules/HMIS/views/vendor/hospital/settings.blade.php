@@ -10,10 +10,10 @@
         </h1>
     </div>
 
-    <div class="row justify-content-center">
-        <div class="col-lg-6">
-            <form action="{{ route('vendor.hospital.settings.save') }}" method="POST">
-                @csrf
+    <form action="{{ route('vendor.hospital.settings.save') }}" method="POST">
+        @csrf
+        <div class="row">
+            <div class="col-lg-4">
 
                 {{-- MUID Format --}}
                 <div class="card mb-3">
@@ -60,6 +60,9 @@
                     </div>
                 </div>
 
+            </div>
+
+            <div class="col-lg-8">
                 {{-- OP Consultation Validity --}}
                 <div class="card mb-3">
                     <div class="card-header py-2">
@@ -118,9 +121,9 @@
                     </div>
                 </div>
 
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 
     {{-- Department letterheads. A lab, pharmacy or scan centre frequently sits at its own
          address under its own GSTIN and its own registrations, so each keeps a separate
@@ -129,8 +132,8 @@
         <div class="card-header py-2">
             <h6 class="mb-0"><i class="tio-city mr-1"></i> Department Details &mdash; Address, GSTIN &amp; Licences</h6>
         </div>
-        <div class="card-body pt-2">
-            <ul class="nav nav-tabs mb-3" role="tablist">
+        <div class="card-body p-0">
+            <ul class="nav nav-tabs nav--tabs border-0 px-3 pt-3" role="tablist">
                 @foreach ($departments as $key => $dept)
                     <li class="nav-item">
                         <a class="nav-link {{ $loop->first ? 'active' : '' }}" data-toggle="tab"
@@ -144,7 +147,7 @@
                 @endforeach
             </ul>
 
-            <div class="tab-content">
+            <div class="tab-content p-3">
                 @foreach ($departments as $key => $dept)
                     <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="dept-{{ $key }}" role="tabpanel">
                         <form action="{{ route('vendor.hospital.department.save', $key) }}" method="POST">
@@ -187,8 +190,15 @@
                                 </div>
                                 <div class="col-md-2 form-group">
                                     <label class="input-label">State</label>
-                                    <input type="text" name="state" class="form-control"
-                                           value="{{ old('state', $dept['profile']->state) }}" maxlength="100">
+                                    <select name="state" class="form-control">
+                                        <option value="">Select</option>
+                                        @foreach ($states as $state)
+                                            <option value="{{ $state->id }}"
+                                                {{ (string) old('state', $dept['profile']->state) === (string) $state->id ? 'selected' : '' }}>
+                                                {{ $state->state_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
                                 <div class="col-md-2 form-group">
                                     <label class="input-label">PIN Code</label>

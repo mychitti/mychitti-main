@@ -74,9 +74,16 @@ class HospitalDepartmentProfile extends Model
         return HospitalLicense::listFor($this->store_id, $this->department);
     }
 
+    // `state` holds a states-table id, the same way patients.state does, so the printed line
+    // has to resolve the name rather than echo the number.
+    public function stateName(): string
+    {
+        return $this->state ? (State::find($this->state)->state_name ?? '') : '';
+    }
+
     public function fullAddress(): string
     {
-        $tail = collect([$this->city, $this->state, $this->pincode])->filter()->implode(', ');
+        $tail = collect([$this->city, $this->stateName(), $this->pincode])->filter()->implode(', ');
 
         return collect([$this->address, $tail])->filter()->implode(', ');
     }

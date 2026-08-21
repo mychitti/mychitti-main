@@ -182,10 +182,12 @@ class HospitalDashboardController extends Controller
             ];
         }
 
+        $states = \App\Models\State::orderBy('state_name')->get(['id', 'state_name']);
+
         return view('hmis::vendor.hospital.settings', compact(
             'prefix', 'padding', 'serial', 'previewMuid',
             'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages',
-            'departments'
+            'departments', 'states'
         ));
     }
 
@@ -257,7 +259,7 @@ class HospitalDashboardController extends Controller
             'display_name'               => 'nullable|string|max:190',
             'address'                    => 'nullable|string|max:500',
             'city'                       => 'nullable|string|max:100',
-            'state'                      => 'nullable|string|max:100',
+            'state'                      => 'nullable|exists:states,id',
             'pincode'                    => 'nullable|string|max:20',
             'phone'                      => 'nullable|string|max:40',
             'email'                      => 'nullable|email|max:190',

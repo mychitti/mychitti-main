@@ -1057,12 +1057,32 @@ class LabController extends Controller
         try {
             $data = _createBillPdf($manual, 'vendor');
             $manual->update(['pdf' => $data['pdf']]);
+            Toastr::success('Lab invoice ' . $invoiceId . ' finalized.');
         } catch (\Throwable $e) {
-            // PDF is non-fatal — invoice is already saved.
+            // PDF is non-fatal — the invoice is already saved, so the staff member still gets
+            // taken to it; the viewer says the PDF is missing rather than silently showing nothing.
+            report($e);
+            Toastr::warning('Lab invoice ' . $invoiceId . ' was saved, but its PDF could not be generated: ' . $e->getMessage());
         }
 
-        Toastr::success('Lab invoice ' . $invoiceId . ' finalized.');
-        return back();
+        return redirect()->route('vendor.lab.invoices.view', $manual->id);
+    }
+
+    // The finalized bill itself. Scoped to the lab's own billing permission so a technician who
+    // can raise an invoice can also open it, without needing the store-wide billing feature.
+    public function invoice($id)
+    {
+        $this->boot();
+        $storeId = $this->storeId();
+        $invoice = is_numeric($id)
+            ? ManualInvoice::where('vendor_id', $storeId)->find($id)
+            : ManualInvoice::where('vendor_id', $storeId)->where('invoice_id', $id)->latest('id')->first();
+
+        if (!$invoice) {
+            abort(404, 'Invoice not found.');
+        }
+
+        return view('vendor-views.billing.view_invoice', compact('invoice'));
     }
 
     // ── Test Catalog (management) ─────────────────────────────────────────

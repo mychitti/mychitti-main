@@ -69,7 +69,7 @@
                 <div class="lcard">
                     <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltamber)">🧾</div> Recent Lab Invoices</h3></div>
                     @forelse ($recent as $inv)
-                        <div class="alert-row"><div style="flex:1"><div class="alert-title">{{ $inv->patient->name ?? '—' }} — {{ $inv->order->order_no ?? $inv->invoice_no }}</div><div class="alert-sub">{{ $inv->insurance_provider ?: 'Self Pay' }} · {{ $inv->created_at?->format('h:i A') }}</div></div><span class="num" style="color:var(--greenA);font-weight:700">{{ $fmt($inv->payable) }}</span></div>
+                        <div class="alert-row"><div style="flex:1"><div class="alert-title">{{ $inv->patient->name ?? '—' }} — {{ $inv->order->order_no ?? $inv->invoice_no }}</div><div class="alert-sub">{{ $inv->insurance_provider ?: 'Self Pay' }} · {{ $inv->created_at?->format('h:i A') }}</div></div><div style="text-align:right"><span class="num" style="color:var(--greenA);font-weight:700">{{ $fmt($inv->payable) }}</span>@if ($inv->invoice_no)<div><a href="{{ route('vendor.lab.invoices.view', $inv->invoice_no) }}" target="_blank" class="btn btn-outline btn-xs" style="margin-top:4px">View</a></div>@endif</div></div>
                     @empty
                         <div class="empty" style="padding:20px">No invoices yet.</div>
                     @endforelse

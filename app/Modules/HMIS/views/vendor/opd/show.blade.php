@@ -516,6 +516,40 @@
         font-weight: 600;
         padding: 1px 6px;
     }
+
+    /* ── The × on a selected chip ──
+       Select2 4.0.5 renders the remove control as the first child of the chip, and the admin
+       theme absolutely positions it into right-hand padding it reserves on the chip. The
+       padding shorthands above reset that padding, which left the × sitting on top of the
+       label with nowhere to go — so complaints, diagnosis and treatment all looked like they
+       could be added but never removed.
+       Putting it back into normal flow and ordering it last is immune to whichever left/right
+       offsets the theme and select2custom.css disagree on, and `color: inherit` keeps each ×
+       the colour of the chip it belongs to (amber / blue / violet). */
+    #ccEdit .cc-select2 .select2-selection__choice,
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        display: inline-flex;
+        flex-direction: row-reverse;
+        align-items: center;
+        gap: 5px;
+    }
+
+    #ccEdit .cc-select2 .select2-selection__choice__remove,
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        position: static !important;
+        inset: auto !important;
+        float: none !important;
+        margin: 0 !important;
+        color: inherit;
+        font-size: 13px;
+        line-height: 1;
+        opacity: .55;
+    }
+
+    #ccEdit .cc-select2 .select2-selection__choice__remove:hover,
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+        opacity: 1;
+    }
     .cc-group {
         display: inline-flex;
         align-items: center;

@@ -33,6 +33,7 @@ Route::group(['prefix' => 'radiology', 'as' => 'radiology.'], function () {
 
     Route::get('billing',                    [RadiologyController::class, 'billing'])->name('billing')->middleware('permission:radiology_billing,view');
     Route::post('studies/{id}/invoice',      [RadiologyController::class, 'generateInvoice'])->name('studies.invoice')->middleware('permission:radiology_billing,add');
+    Route::get('invoices/{id}',              [RadiologyController::class, 'invoice'])->name('invoices.view')->middleware('permission:radiology_billing,view');
 
     // Scan Catalog (scans + prices)
     Route::get('catalog',              [RadiologyController::class, 'catalog'])->name('catalog')->middleware('permission:radiology_catalog,view');

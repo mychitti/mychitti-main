@@ -231,7 +231,11 @@ class OpdController extends Controller
                             ['name' => $patientName, 'phone' => $patientPhone, 'store_id' => $store_id, 'user_id' => $sr->user_id]
                         );
                     } elseif ($patientPhone) {
-                        $hmisPatient = \App\Models\Patient::where('store_id', $store_id)->where('phone', $patientPhone)->first();
+                        // Only reachable when the booking is for someone else — the family case,
+                        // where one number covers several patients. Matching the number alone
+                        // picked whichever relative was registered first, so the visit landed on
+                        // the wrong person's record. locatePatient() matches name before number.
+                        $hmisPatient = \App\Services\LeadAppointmentService::locatePatient($store_id, $sr);
                     }
 
                     $prefillBooking = [

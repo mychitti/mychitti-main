@@ -46,6 +46,7 @@ Route::group(['prefix' => 'lab', 'as' => 'lab.'], function () {
     // Billing
     Route::get('billing',              [LabController::class, 'billing'])->name('billing')->middleware('permission:lab_billing,view');
     Route::post('orders/{id}/invoice', [LabController::class, 'generateInvoice'])->name('orders.invoice')->middleware('permission:lab_billing,add');
+    Route::get('invoices/{id}',        [LabController::class, 'invoice'])->name('invoices.view')->middleware('permission:lab_billing,view');
 
     // Test Catalog (management)
     Route::get('catalog',              [LabController::class, 'catalog'])->name('catalog')->middleware('permission:lab_catalog,view');
