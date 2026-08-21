@@ -6,6 +6,30 @@
 
 @push('css_or_js')
     <style>
+        /* Phone already in use. Amber, not red — a shared number is normal in a family clinic,
+           so this is a question to answer rather than an error to clear. */
+        .di-matches {
+            border: 1px solid #fde68a;
+            background: #fffbeb;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+        }
+        .di-matches-head { font-size: 12.5px; font-weight: 700; color: #92400e; margin-bottom: 8px; }
+        .di-matches-foot { font-size: 11.5px; color: #a16207; margin-top: 6px; }
+        .di-match {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            border: 1px solid #fde68a; background: #fff; border-radius: 8px;
+            padding: 6px 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
+        }
+        .di-match:hover { border-color: #f59e0b; }
+        .di-match.picked { border-color: #16a34a; background: #f0fdf4; }
+        .di-match-name { font-size: 13px; font-weight: 700; color: #1f2937; }
+        .di-match-meta { font-size: 11.5px; color: #7b8794; flex: 1; min-width: 0; }
+        .di-match-pick { font-size: 11px; font-weight: 700; color: #b45309; white-space: nowrap; }
+        .di-match.picked .di-match-pick { color: #15803d; }
+        .di-match.picked .di-match-pick::before { content: '¹3 '; }
+
         .di-card { background:#fff; border:1px solid #edf0f5; border-radius:10px; box-shadow:0 1px 2px rgba(16,24,40,.04); margin-bottom:12px; }
         .di-card .hd { padding:9px 14px; border-bottom:1px solid #edf0f5; font-weight:700; font-size:13px; }
         .di-card .bd { padding:14px; }
@@ -38,7 +62,7 @@
     <div class="content container-fluid">
         <div class="page-header di-page-header">
             <h1 class="page-header-title"><i class="tio-user-add"></i> New Patient</h1>
-            <p class="page-header-text mb-0">Registers the patient and opens today's visit in one step.</p>
+            <p class="page-header-text mb-0">Registers the patient, and opens today's visit too when a doctor is picked.</p>
         </div>
 
         <form action="{{ route('vendor.dental-intake.store') }}" method="POST">
@@ -72,6 +96,17 @@
                                     <small class="text-danger d-none" id="di-phone-err" style="font-size:11px;"></small>
                                     @error('phone')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                 </div>
+                                {{-- Whose phone it is. Optional and free text on purpose — "Self",
+                                     "S/O Ramesh" and "neighbour" are all real answers, and a fixed
+                                     list would force a wrong one. --}}
+                                <div class="form-group col-md-3">
+                                    <label class="input-label">Relation <span class="text-muted" style="font-weight:400;">— optional</span></label>
+                                    <input type="text" name="phone_relation" id="di-relation"
+                                        class="form-control @error('phone_relation') is-invalid @enderror"
+                                        value="{{ old('phone_relation') }}" maxlength="100"
+                                        autocomplete="off" placeholder="Whose phone is this? e.g. Self, Son">
+                                    @error('phone_relation')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                                </div>
                                 <div class="form-group col-md-2">
                                     <label class="input-label">Age <span class="di-req">*</span></label>
                                     <input type="number" name="age" class="form-control @error('age') is-invalid @enderror"
@@ -90,14 +125,34 @@
                                 </div>
                             </div>
 
-                            {{-- Doctor. A one-doctor clinic is not asked — the visit is theirs by
-                                 definition, and the controller resolves it either way. The field
-                                 appears only where there is genuinely a choice to make. --}}
+                            {{-- Shown only when the typed number already belongs to someone here.
+                                 Picking one continues as that patient instead of creating a second
+                                 record for them; ignoring it registers a new person on the same
+                                 number, which is the family case. --}}
+                            <input type="hidden" name="patient_id" id="di-patient-id" value="{{ old('patient_id') }}">
+                            <div id="di-phone-matches" class="di-matches d-none"></div>
+
+                            {{-- Whether to open a consultation at all. Off, this screen just adds
+                                 the person to the books; on, it opens today's visit too and needs a
+                                 doctor to open it under. The paired hidden input keeps the value in
+                                 the request when the box is unticked, so old() survives a failed
+                                 submit instead of springing back to ticked. --}}
+                            @php $wantVisit = old('register_visit', '1') === '1'; @endphp
+                            <div class="form-group">
+                                <input type="hidden" name="register_visit" value="0">
+                                <label class="d-flex align-items-center mb-0" style="cursor:pointer;">
+                                    <input type="checkbox" name="register_visit" id="registerVisit" value="1"
+                                           class="mr-2" {{ $wantVisit ? 'checked' : '' }}>
+                                    <span class="input-label mb-0">Register today's visit as well</span>
+                                </label>
+                                <small class="text-muted">Leave this off to add the patient without opening a consultation.</small>
+                            </div>
+
                             @if (($doctors ?? collect())->count() > 1)
-                                <div class="form-group">
+                                <div class="form-group" id="intakeDoctorWrap" @if(!$wantVisit) style="display:none;" @endif>
                                     <label class="input-label">Doctor <span class="di-req">*</span></label>
                                     <select name="doctor_profile_id" id="intakeDoctorSelect"
-                                            class="form-control @error('doctor_profile_id') is-invalid @enderror" required>
+                                            class="form-control @error('doctor_profile_id') is-invalid @enderror">
                                         <option value="">Select doctor...</option>
                                         @foreach ($doctors as $doc)
                                             <option value="{{ $doc->id }}" {{ old('doctor_profile_id') == $doc->id ? 'selected' : '' }}>
@@ -108,6 +163,7 @@
                                     @error('doctor_profile_id')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                 </div>
                             @elseif (($doctors ?? collect())->count() === 1)
+                                {{-- One doctor: nothing to choose, so the visit is theirs. --}}
                                 <input type="hidden" name="doctor_profile_id" value="{{ $doctors->first()->id }}">
                             @endif
 
@@ -167,10 +223,112 @@
 
 @push('script_2')
     <script>
+        // ── Who else uses this number ────────────────────────────────────────────────
+        // One number covers a whole family, so a match is not an error — it is a question. The
+        // desk either continues as that patient (no duplicate) or registers a relative on the
+        // same number (the family case), and the Relation box says which of them the phone is.
+        (function () {
+            const lookupUrl = "{{ route('vendor.dental-intake.lookup-phone') }}";
+            const phoneBox  = document.getElementById('di-phone');
+            const panel     = document.getElementById('di-phone-matches');
+            const idBox     = document.getElementById('di-patient-id');
+            const nameBox   = document.querySelector('[name="name"]');
+            if (!phoneBox || !panel) return;
+
+            let timer = null;
+
+            function clearChoice() {
+                if (idBox) idBox.value = '';
+                panel.querySelectorAll('.di-match.picked').forEach(el => el.classList.remove('picked'));
+            }
+
+            function render(matches) {
+                if (!matches.length) {
+                    panel.classList.add('d-none');
+                    panel.innerHTML = '';
+                    return;
+                }
+
+                let html = '<div class="di-matches-head">This number is already registered to '
+                    + matches.length + (matches.length === 1 ? ' patient' : ' patients')
+                    + ' — the same person, or a relative sharing the phone?</div>';
+
+                matches.forEach(m => {
+                    const bits = [m.uid, m.age ? m.age + ' yrs' : '', m.gender, m.relation]
+                        .filter(Boolean).join(' · ');
+                    html += '<button type="button" class="di-match" data-id="' + m.id + '"'
+                        + ' data-name="' + escapeAttr(m.name) + '">'
+                        + '<span class="di-match-name">' + escapeHtml(m.name) + '</span>'
+                        + '<span class="di-match-meta">' + escapeHtml(bits) + '</span>'
+                        + '<span class="di-match-pick">Continue as this patient</span>'
+                        + '</button>';
+                });
+
+                html += '<div class="di-matches-foot">Or just carry on below to register someone '
+                    + 'new on this number.</div>';
+
+                panel.innerHTML = html;
+                panel.classList.remove('d-none');
+
+                panel.querySelectorAll('.di-match').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        const picked = this.classList.contains('picked');
+                        clearChoice();
+                        if (picked) return;          // clicking the chosen one again releases it
+                        this.classList.add('picked');
+                        if (idBox) idBox.value = this.dataset.id;
+                        if (nameBox && !nameBox.value.trim()) nameBox.value = this.dataset.name;
+                    });
+                });
+            }
+
+            function escapeHtml(v) { const d = document.createElement('div'); d.textContent = v == null ? '' : v; return d.innerHTML; }
+            function escapeAttr(v) { return escapeHtml(v).replace(/"/g, '&quot;'); }
+
+            phoneBox.addEventListener('input', function () {
+                clearChoice();
+                const digits = (this.value || '').replace(/\D/g, '');
+                clearTimeout(timer);
+
+                if (digits.length < 10) { render([]); return; }
+
+                timer = setTimeout(function () {
+                    fetch(lookupUrl + '?phone=' + encodeURIComponent(digits), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(r => r.json())
+                    .then(d => render(d.matches || []))
+                    .catch(() => render([]));
+                }, 300);
+            });
+
+            // A number already in the box on load (validation bounce) gets the same treatment.
+            if ((phoneBox.value || '').replace(/\D/g, '').length >= 10) {
+                phoneBox.dispatchEvent(new Event('input'));
+            }
+        })();
+
         // Matches the doctor picker on the OPD register, which is the screen this one shortcuts.
         $(function () {
             if (typeof jQuery !== 'undefined' && jQuery.fn.select2 && $('#intakeDoctorSelect').length) {
                 $('#intakeDoctorSelect').select2({ placeholder: 'Select doctor...', width: '100%' });
+            }
+
+            // The doctor is only asked for when a visit is actually being opened. Built above
+            // while still visible, so Select2 has a real width to measure before it is hidden.
+            const visitBox = document.getElementById('registerVisit');
+            const docWrap  = document.getElementById('intakeDoctorWrap');
+
+            function syncDoctorField() {
+                if (!visitBox || !docWrap) return;
+                docWrap.style.display = visitBox.checked ? '' : 'none';
+                const sel = document.getElementById('intakeDoctorSelect');
+                if (sel) sel.required = visitBox.checked;
+            }
+
+            if (visitBox) {
+                visitBox.addEventListener('change', syncDoctorField);
+                syncDoctorField();
             }
         });
 

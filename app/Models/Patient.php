@@ -23,6 +23,8 @@ class Patient extends Model
         'gender',
         'blood_group',
         'phone',
+        // Whose phone that number is — one number often covers a whole family.
+        'phone_relation',
         'email',
         'address',
         'city',

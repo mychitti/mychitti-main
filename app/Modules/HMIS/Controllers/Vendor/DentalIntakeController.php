@@ -68,6 +68,13 @@ class DentalIntakeController extends Controller
             if (!Schema::hasColumn('patients', 'custom_info')) {
                 DB::statement("ALTER TABLE `patients` ADD COLUMN `custom_info` TEXT NULL");
             }
+            // Whose phone the number on file actually is. One number routinely covers a whole
+            // family, and the desk needs to know which of them it reaches — for picking the right
+            // record, and before a report or prescription is sent to it. Free text on purpose:
+            // "Self", "S/O Ramesh" and "neighbour" are all answers a desk gives.
+            if (!Schema::hasColumn('patients', 'phone_relation')) {
+                DB::statement("ALTER TABLE `patients` ADD COLUMN `phone_relation` VARCHAR(100) NULL AFTER `phone`");
+            }
         }
 
         if (Schema::hasTable('opd_visits') && !Schema::hasColumn('opd_visits', 'custom_info')) {
@@ -158,6 +165,43 @@ class DentalIntakeController extends Controller
         return view('hmis::vendor.dental.intake', compact('presetLabels', 'complaintOptions', 'complaintGroups', 'doctors'));
     }
 
+    /**
+     * Who already uses this number here. One number covers a whole family, so the desk is shown
+     * the matches and decides: the same person coming back, or a relative who shares the phone.
+     * Without this the second registration silently became a second record — three of the five
+     * shared numbers in production are the same name twice.
+     */
+    public function lookupPhone(Request $request)
+    {
+        self::ensureSchema();
+        $storeId = Helpers::get_store_id();
+        $phone   = preg_replace('/[\s\-()]/', '', (string) $request->query('phone'));
+
+        if (strlen($phone) < 10) {
+            return response()->json(['matches' => []]);
+        }
+
+        // Matched on the last ten digits: the same person is stored as 9876543210 one day and
+        // +919876543210 the next, and a desk should not be shown two different answers for that.
+        $tail = substr($phone, -10);
+
+        $matches = Patient::where('store_id', $storeId)
+            ->where('phone', 'like', '%' . $tail)
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'name', 'patient_uid', 'age', 'gender', 'phone_relation'])
+            ->map(fn($p) => [
+                'id'       => $p->id,
+                'name'     => $p->name,
+                'uid'      => $p->patient_uid,
+                'age'      => $p->age,
+                'gender'   => $p->gender,
+                'relation' => $p->phone_relation,
+            ]);
+
+        return response()->json(['matches' => $matches]);
+    }
+
     public function store(Request $request)
     {
         self::ensureSchema();
@@ -183,6 +227,7 @@ class DentalIntakeController extends Controller
             'age'     => 'required|integer|min:0|max:150',
             'gender'  => 'required|in:male,female,other',
             'address'   => 'required|string|max:500',
+            'phone_relation' => 'nullable|string|max:100',
             'problem'   => 'required|array|min:1',
             'problem.*' => 'string|max:150',
         ], [
@@ -199,14 +244,26 @@ class DentalIntakeController extends Controller
                 ->where('id', $doctorProfileId)->value('id');
         }
 
-        if (!$doctorProfileId) {
-            $doctors = \App\Models\DoctorProfile::where('store_id', $storeId)->pluck('id');
+        // The desk says whether this is a registration, or a registration plus a consultation.
+        // A bill is the one thing that cannot be raised without a visit, so it forces the issue
+        // rather than quietly opening one behind the ticked box.
+        $visitWanted = $request->boolean('register_visit');
 
-            if ($doctors->count() === 1) {
-                $doctorProfileId = (int) $doctors->first();
+        if (!$visitWanted && $request->input('action') === 'bill') {
+            Toastr::error('Tick "Register today\'s visit as well" first — a bill is raised against a visit.');
+
+            return back()->withInput();
+        }
+
+        if ($visitWanted && !$doctorProfileId) {
+            // One doctor means there is nothing to choose — the visit is theirs by definition.
+            $only = \App\Models\DoctorProfile::where('store_id', $storeId)->pluck('id');
+
+            if ($only->count() === 1) {
+                $doctorProfileId = (int) $only->first();
             } else {
-                Toastr::error($doctors->isEmpty()
-                    ? 'Add a doctor under Staff before registering a visit.'
+                Toastr::error($only->isEmpty()
+                    ? 'Add a doctor under Staff before opening a visit.'
                     : 'Select the doctor for this visit.');
 
                 return back()->withInput();
@@ -240,12 +297,25 @@ class DentalIntakeController extends Controller
             $patient->age     = $request->age;
             $patient->gender  = $request->gender;
             $patient->address = $request->address;
+            // Only overwrite when something was typed — an existing patient's recorded relation
+            // must survive a re-registration that left the box empty.
+            if ($request->filled('phone_relation')) {
+                $patient->phone_relation = trim((string) $request->phone_relation);
+            }
 
             // Patient-level defaults grow with each visit: a phone captured today stays the
             // default tomorrow, and a corrected one replaces it. Nothing is dropped by omission,
             // so leaving a chip off this visit does not erase what the record already held.
             $patient->custom_info = json_encode(array_merge(self::decode($patient->custom_info), $rows));
             $patient->save();
+
+            if (!$visitWanted) {
+                DB::commit();
+
+                Toastr::success('Patient registered.');
+
+                return redirect()->route('vendor.patient.show', $patient->id);
+            }
 
             $visitDate = now()->toDateString();
             $nextToken = (OpdVisit::where('store_id', $storeId)

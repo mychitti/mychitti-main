@@ -1,4 +1,6 @@
-{{-- Owner-only: staff (vendor_employee) logins do not see the WhatsApp menu.
+{{-- Visibility follows the `whatsapp.access` permission: the owner always passes, staff pass
+     when their role has been granted it. This used to be a bare auth('vendor') check, which hid
+     the menu from staff while leaving every URL underneath reachable — hiding, not access control.
      Toggleable via Menu Preference (slug: whatsapp); on by default.
 
      PILOT_STORE_IDS is empty, so every store sees this. Put store ids back in that constant to
@@ -8,8 +10,11 @@
     // one visibility row this module needs. Without it the block below is invisible to every store
     // that saved its menus before WhatsApp existed. Insert-only, so a deliberate hide survives.
     \App\Services\WhatsAppService::ensureMenuVisible(\App\CentralLogics\Helpers::get_store_id());
+    // Seeds the single feature row the routes below are gated on, so an existing store gets the
+    // permission in its role grid without anyone running anything.
+    \App\Services\WhatsAppService::ensurePermissions();
 @endphp
-@if(selected_menu('whatsapp') && auth('vendor')->check() && \App\Services\WhatsAppBilling::pilotVisible(\App\CentralLogics\Helpers::get_store_id()))
+@if(selected_menu('whatsapp') && hasPermission('whatsapp', 'access') && \App\Services\WhatsAppBilling::pilotVisible(\App\CentralLogics\Helpers::get_store_id()))
 <li class="navbar-vertical-aside-has-menu {{ Request::is('*whatsapp*') ? 'active' : '' }}">
     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;" title="{{ translate('WhatsApp') }}">
         <i class="tio-chat nav-link-icon" style="font-size:20px;"></i>

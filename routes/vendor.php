@@ -65,102 +65,102 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('request-subscription-plan', 'DashboardController@request_subscription_plan')->name('request-subscription-plan');
 
         // WhatsApp Embedded Signup (vendor connects their own number — DoubleTick-style).
-        Route::get('whatsapp/dashboard', 'WhatsAppController@dashboard')->name('whatsapp.dashboard');
-        Route::post('whatsapp/customers/import', 'WhatsAppController@importCustomers')->name('whatsapp.customers.import');
-        Route::get('whatsapp/customers/template', 'WhatsAppController@customerTemplate')->name('whatsapp.customers.template');
-        Route::get('whatsapp/connect', 'WhatsAppController@connect')->name('whatsapp.connect');
-        Route::post('whatsapp/connect/finish', 'WhatsAppController@finish')->name('whatsapp.connect.finish');
+        Route::get('whatsapp/dashboard', 'WhatsAppController@dashboard')->name('whatsapp.dashboard')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/customers/import', 'WhatsAppController@importCustomers')->name('whatsapp.customers.import')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/customers/template', 'WhatsAppController@customerTemplate')->name('whatsapp.customers.template')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/connect', 'WhatsAppController@connect')->name('whatsapp.connect')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/connect/finish', 'WhatsAppController@finish')->name('whatsapp.connect.finish')->middleware('permission:whatsapp,access');
         // One-time onboarding fee, collected before Embedded Signup links the number.
-        Route::post('whatsapp/connect/setup-fee', 'WhatsAppController@connectSetupFee')->name('whatsapp.connect.setup-fee');
-        Route::post('whatsapp/disconnect', 'WhatsAppController@disconnect')->name('whatsapp.disconnect');
-        Route::get('whatsapp/numbers', 'WhatsAppController@numbers')->name('whatsapp.numbers');
-        Route::post('whatsapp/numbers/label', 'WhatsAppController@numberLabel')->name('whatsapp.numbers.label');
-        Route::post('whatsapp/numbers/default', 'WhatsAppController@numberDefault')->name('whatsapp.numbers.default');
-        Route::post('whatsapp/numbers/bind', 'WhatsAppController@numberBind')->name('whatsapp.numbers.bind');
+        Route::post('whatsapp/connect/setup-fee', 'WhatsAppController@connectSetupFee')->name('whatsapp.connect.setup-fee')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/disconnect', 'WhatsAppController@disconnect')->name('whatsapp.disconnect')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/numbers', 'WhatsAppController@numbers')->name('whatsapp.numbers')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/numbers/label', 'WhatsAppController@numberLabel')->name('whatsapp.numbers.label')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/numbers/default', 'WhatsAppController@numberDefault')->name('whatsapp.numbers.default')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/numbers/bind', 'WhatsAppController@numberBind')->name('whatsapp.numbers.bind')->middleware('permission:whatsapp,access');
         // Unhappy feedback, and what the patient said was wrong.
-        Route::get('whatsapp/complaints', 'WhatsAppController@complaints')->name('whatsapp.complaints');
-        Route::post('whatsapp/complaints/{id}/resolve', 'WhatsAppController@complaintResolve')->name('whatsapp.complaints.resolve');
+        Route::get('whatsapp/complaints', 'WhatsAppController@complaints')->name('whatsapp.complaints')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/complaints/{id}/resolve', 'WhatsAppController@complaintResolve')->name('whatsapp.complaints.resolve')->middleware('permission:whatsapp,access');
 
         // A note typed by hand to one customer — shared by every module's customer screen.
-        Route::get('whatsapp/note/quote', 'WhatsAppController@noteQuote')->name('whatsapp.note.quote');
-        Route::post('whatsapp/note/send', 'WhatsAppController@noteSend')->name('whatsapp.note.send');
-        Route::get('whatsapp/inbox', 'WhatsAppController@inbox')->name('whatsapp.inbox');
-        Route::get('whatsapp/inbox/threads', 'WhatsAppController@inboxThreads')->name('whatsapp.inbox.threads');
-        Route::get('whatsapp/inbox/thread', 'WhatsAppController@inboxThread')->name('whatsapp.inbox.thread');
-        Route::post('whatsapp/inbox/send', 'WhatsAppController@inboxSend')->name('whatsapp.inbox.send');
-        Route::get('whatsapp/inbox/staff', 'WhatsAppController@inboxStaff')->name('whatsapp.inbox.staff');
-        Route::post('whatsapp/inbox/forward', 'WhatsAppController@inboxForward')->name('whatsapp.inbox.forward');
+        Route::get('whatsapp/note/quote', 'WhatsAppController@noteQuote')->name('whatsapp.note.quote')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/note/send', 'WhatsAppController@noteSend')->name('whatsapp.note.send')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/inbox', 'WhatsAppController@inbox')->name('whatsapp.inbox')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/inbox/threads', 'WhatsAppController@inboxThreads')->name('whatsapp.inbox.threads')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/inbox/thread', 'WhatsAppController@inboxThread')->name('whatsapp.inbox.thread')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/inbox/send', 'WhatsAppController@inboxSend')->name('whatsapp.inbox.send')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/inbox/staff', 'WhatsAppController@inboxStaff')->name('whatsapp.inbox.staff')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/inbox/forward', 'WhatsAppController@inboxForward')->name('whatsapp.inbox.forward')->middleware('permission:whatsapp,access');
         // Every attempt to message a customer and what came of it — including the skips, which
         // used to leave no trace a vendor could read.
-        Route::get('whatsapp/message-log', 'MessageLogController@index')->name('whatsapp.message-log');
-        Route::get('whatsapp/templates', 'WhatsAppController@templates')->name('whatsapp.templates');
-        Route::post('whatsapp/templates/create', 'WhatsAppController@templateCreate')->name('whatsapp.templates.create');
-        Route::post('whatsapp/templates/use-preset', 'WhatsAppController@templateFromPreset')->name('whatsapp.templates.use-preset');
-        Route::post('whatsapp/templates/reminder-schedule', 'WhatsAppController@reminderSchedule')->name('whatsapp.templates.reminder-schedule');
+        Route::get('whatsapp/message-log', 'MessageLogController@index')->name('whatsapp.message-log')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/templates', 'WhatsAppController@templates')->name('whatsapp.templates')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/templates/create', 'WhatsAppController@templateCreate')->name('whatsapp.templates.create')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/templates/use-preset', 'WhatsAppController@templateFromPreset')->name('whatsapp.templates.use-preset')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/templates/reminder-schedule', 'WhatsAppController@reminderSchedule')->name('whatsapp.templates.reminder-schedule')->middleware('permission:whatsapp,access');
         // Auto-reply knowledge documents (used by WhatsApp auto-reply).
-        Route::get('whatsapp/knowledge', 'KnowledgeController@index')->name('whatsapp.knowledge');
-        Route::post('whatsapp/knowledge/store', 'KnowledgeController@store')->name('whatsapp.knowledge.store');
-        Route::post('whatsapp/knowledge/update', 'KnowledgeController@update')->name('whatsapp.knowledge.update');
-        Route::post('whatsapp/knowledge/toggle', 'KnowledgeController@toggle')->name('whatsapp.knowledge.toggle');
-        Route::post('whatsapp/knowledge/delete', 'KnowledgeController@delete')->name('whatsapp.knowledge.delete');
+        Route::get('whatsapp/knowledge', 'KnowledgeController@index')->name('whatsapp.knowledge')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/knowledge/store', 'KnowledgeController@store')->name('whatsapp.knowledge.store')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/knowledge/update', 'KnowledgeController@update')->name('whatsapp.knowledge.update')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/knowledge/toggle', 'KnowledgeController@toggle')->name('whatsapp.knowledge.toggle')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/knowledge/delete', 'KnowledgeController@delete')->name('whatsapp.knowledge.delete')->middleware('permission:whatsapp,access');
         // Per-action notification preferences — one page per direction, tabbed by channel.
         Route::post('notification-settings/toggle', 'NotificationSettingController@toggle')->name('notification-settings.toggle');
         Route::post('notification-settings/timing', 'NotificationSettingController@timing')->name('notification-settings.timing');
         Route::post('notification-settings/service-recall', 'NotificationSettingController@serviceRecall')->name('notification-settings.service-recall');
         Route::get('notification-settings/{direction?}', 'NotificationSettingController@index')->name('notification-settings');
-        Route::post('whatsapp/templates/update', 'WhatsAppController@templateUpdate')->name('whatsapp.templates.update');
+        Route::post('whatsapp/templates/update', 'WhatsAppController@templateUpdate')->name('whatsapp.templates.update')->middleware('permission:whatsapp,access');
         // Trash hides a template but leaves it at Meta; only delete removes it there.
-        Route::post('whatsapp/templates/trash', 'WhatsAppController@templateTrash')->name('whatsapp.templates.trash');
-        Route::post('whatsapp/templates/restore', 'WhatsAppController@templateRestore')->name('whatsapp.templates.restore');
-        Route::post('whatsapp/templates/delete', 'WhatsAppController@templateDelete')->name('whatsapp.templates.delete');
-        Route::post('whatsapp/test-message', 'WhatsAppController@sendTestMessage')->name('whatsapp.test-message')->middleware('throttle:5,1');
-        Route::get('whatsapp/bulk/recipients', 'WhatsAppController@bulkRecipients')->name('whatsapp.bulk.recipients');
-        Route::post('whatsapp/bulk/send', 'WhatsAppController@bulkSend')->name('whatsapp.bulk.send');
+        Route::post('whatsapp/templates/trash', 'WhatsAppController@templateTrash')->name('whatsapp.templates.trash')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/templates/restore', 'WhatsAppController@templateRestore')->name('whatsapp.templates.restore')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/templates/delete', 'WhatsAppController@templateDelete')->name('whatsapp.templates.delete')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/test-message', 'WhatsAppController@sendTestMessage')->name('whatsapp.test-message')->middleware('throttle:5,1')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/bulk/recipients', 'WhatsAppController@bulkRecipients')->name('whatsapp.bulk.recipients')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/bulk/send', 'WhatsAppController@bulkSend')->name('whatsapp.bulk.send')->middleware('permission:whatsapp,access');
         // A send runs on the queue, so the composer follows it rather than driving it — and can
         // pick the thread back up on a page it reopens hours later.
-        Route::get('whatsapp/bulk/progress/{runId}', 'WhatsAppController@bulkProgress')->name('whatsapp.bulk.progress');
-        Route::post('whatsapp/bulk/stop/{runId}', 'WhatsAppController@bulkStop')->name('whatsapp.bulk.stop');
+        Route::get('whatsapp/bulk/progress/{runId}', 'WhatsAppController@bulkProgress')->name('whatsapp.bulk.progress')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/bulk/stop/{runId}', 'WhatsAppController@bulkStop')->name('whatsapp.bulk.stop')->middleware('permission:whatsapp,access');
         // Sent-message record: which numbers each batch went to, and what they were sent.
         // Bulk Message — composer, customer book and send history on one page. The history GET
         // stays as a redirect into its tab so old links keep working.
-        Route::get('whatsapp/bulk', 'WhatsAppController@bulk')->name('whatsapp.bulk');
-        Route::get('whatsapp/bulk/history', 'WhatsAppController@bulkHistory')->name('whatsapp.bulk.history');
-        Route::get('whatsapp/bulk/history/{runId}', 'WhatsAppController@bulkHistoryRun')->name('whatsapp.bulk.history.run');
-        Route::get('whatsapp/bulk/history/{runId}/export', 'WhatsAppController@bulkHistoryExport')->name('whatsapp.bulk.history.export');
-        Route::post('whatsapp/features/subscribe', 'WhatsAppController@featureSubscribe')->name('whatsapp.features.subscribe');
-        Route::post('whatsapp/features/toggle', 'WhatsAppController@featureToggle')->name('whatsapp.features.toggle');
+        Route::get('whatsapp/bulk', 'WhatsAppController@bulk')->name('whatsapp.bulk')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/bulk/history', 'WhatsAppController@bulkHistory')->name('whatsapp.bulk.history')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/bulk/history/{runId}', 'WhatsAppController@bulkHistoryRun')->name('whatsapp.bulk.history.run')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/bulk/history/{runId}/export', 'WhatsAppController@bulkHistoryExport')->name('whatsapp.bulk.history.export')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/features/subscribe', 'WhatsAppController@featureSubscribe')->name('whatsapp.features.subscribe')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/features/toggle', 'WhatsAppController@featureToggle')->name('whatsapp.features.toggle')->middleware('permission:whatsapp,access');
         // WhatsApp Business Platform billing — the monthly plan, template slots, AI tokens.
-        Route::get('whatsapp/billing', 'WhatsAppController@billing')->name('whatsapp.billing');
-        Route::post('whatsapp/billing/subscribe', 'WhatsAppController@billingSubscribe')->name('whatsapp.billing.subscribe');
-        Route::post('whatsapp/billing/authorize-mandate', 'WhatsAppController@billingAuthorizeMandate')->name('whatsapp.billing.authorize-mandate');
-        Route::post('whatsapp/billing/cancel', 'WhatsAppController@billingCancel')->name('whatsapp.billing.cancel');
-        Route::post('whatsapp/billing/account-manager', 'WhatsAppController@billingAccountManager')->name('whatsapp.billing.account-manager');
-        Route::post('whatsapp/billing/template-slot', 'WhatsAppController@buyTemplateSlot')->name('whatsapp.billing.template-slot');
-        Route::post('whatsapp/billing/tokens', 'WhatsAppController@buyTokens')->name('whatsapp.billing.tokens');
-        Route::post('whatsapp/bulk/header-media', 'WhatsAppController@bulkHeaderMedia')->name('whatsapp.bulk.header-media');
+        Route::get('whatsapp/billing', 'WhatsAppController@billing')->name('whatsapp.billing')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/billing/subscribe', 'WhatsAppController@billingSubscribe')->name('whatsapp.billing.subscribe')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/billing/authorize-mandate', 'WhatsAppController@billingAuthorizeMandate')->name('whatsapp.billing.authorize-mandate')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/billing/cancel', 'WhatsAppController@billingCancel')->name('whatsapp.billing.cancel')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/billing/account-manager', 'WhatsAppController@billingAccountManager')->name('whatsapp.billing.account-manager')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/billing/template-slot', 'WhatsAppController@buyTemplateSlot')->name('whatsapp.billing.template-slot')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/billing/tokens', 'WhatsAppController@buyTokens')->name('whatsapp.billing.tokens')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/bulk/header-media', 'WhatsAppController@bulkHeaderMedia')->name('whatsapp.bulk.header-media')->middleware('permission:whatsapp,access');
         // Which of the store's own templates each automation sends.
-        Route::get('whatsapp/template-roles', 'WhatsAppController@templateRoles')->name('whatsapp.template-roles');
-        Route::post('whatsapp/template-roles', 'WhatsAppController@templateRoleSave')->name('whatsapp.template-roles.save');
+        Route::get('whatsapp/template-roles', 'WhatsAppController@templateRoles')->name('whatsapp.template-roles')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/template-roles', 'WhatsAppController@templateRoleSave')->name('whatsapp.template-roles.save')->middleware('permission:whatsapp,access');
         // Automation — automatic message templates, the AI Agent's permissions and its knowledge
         // base on one page. The three GETs below are kept as redirects into its tabs so existing
         // links and bookmarks still land somewhere sensible.
-        Route::get('whatsapp/automation', 'WhatsAppController@automation')->name('whatsapp.automation');
+        Route::get('whatsapp/automation', 'WhatsAppController@automation')->name('whatsapp.automation')->middleware('permission:whatsapp,access');
         // What the AI Agent may do for customers, and what it may share with them.
-        Route::get('whatsapp/bot', 'WhatsAppController@bot')->name('whatsapp.bot');
-        Route::post('whatsapp/bot/shares', 'WhatsAppController@botShares')->name('whatsapp.bot.shares');
+        Route::get('whatsapp/bot', 'WhatsAppController@bot')->name('whatsapp.bot')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/bot/shares', 'WhatsAppController@botShares')->name('whatsapp.bot.shares')->middleware('permission:whatsapp,access');
         // Campaign series — a run of templates where each step's audience depends on how the
         // customer answered the last one. /create must stay above /{id} or it reads as an id.
-        Route::get('whatsapp/campaigns', 'WhatsAppCampaignController@index')->name('whatsapp.campaigns');
-        Route::get('whatsapp/campaigns/create', 'WhatsAppCampaignController@create')->name('whatsapp.campaigns.create');
-        Route::post('whatsapp/campaigns/store', 'WhatsAppCampaignController@store')->name('whatsapp.campaigns.store');
-        Route::get('whatsapp/campaigns/{id}', 'WhatsAppCampaignController@show')->name('whatsapp.campaigns.show');
-        Route::get('whatsapp/campaigns/{id}/recipients', 'WhatsAppCampaignController@recipients')->name('whatsapp.campaigns.recipients');
-        Route::get('whatsapp/campaigns/{id}/export', 'WhatsAppCampaignController@export')->name('whatsapp.campaigns.export');
-        Route::post('whatsapp/campaigns/{id}/start', 'WhatsAppCampaignController@start')->name('whatsapp.campaigns.start');
-        Route::post('whatsapp/campaigns/{id}/pause', 'WhatsAppCampaignController@pause')->name('whatsapp.campaigns.pause');
-        Route::post('whatsapp/campaigns/{id}/cancel', 'WhatsAppCampaignController@cancel')->name('whatsapp.campaigns.cancel');
-        Route::post('whatsapp/campaigns/{id}/run-now', 'WhatsAppCampaignController@runNow')->name('whatsapp.campaigns.run-now');
-        Route::post('whatsapp/campaigns/{id}/delete', 'WhatsAppCampaignController@destroy')->name('whatsapp.campaigns.delete');
+        Route::get('whatsapp/campaigns', 'WhatsAppCampaignController@index')->name('whatsapp.campaigns')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/campaigns/create', 'WhatsAppCampaignController@create')->name('whatsapp.campaigns.create')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/campaigns/store', 'WhatsAppCampaignController@store')->name('whatsapp.campaigns.store')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/campaigns/{id}', 'WhatsAppCampaignController@show')->name('whatsapp.campaigns.show')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/campaigns/{id}/recipients', 'WhatsAppCampaignController@recipients')->name('whatsapp.campaigns.recipients')->middleware('permission:whatsapp,access');
+        Route::get('whatsapp/campaigns/{id}/export', 'WhatsAppCampaignController@export')->name('whatsapp.campaigns.export')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/campaigns/{id}/start', 'WhatsAppCampaignController@start')->name('whatsapp.campaigns.start')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/campaigns/{id}/pause', 'WhatsAppCampaignController@pause')->name('whatsapp.campaigns.pause')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/campaigns/{id}/cancel', 'WhatsAppCampaignController@cancel')->name('whatsapp.campaigns.cancel')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/campaigns/{id}/run-now', 'WhatsAppCampaignController@runNow')->name('whatsapp.campaigns.run-now')->middleware('permission:whatsapp,access');
+        Route::post('whatsapp/campaigns/{id}/delete', 'WhatsAppCampaignController@destroy')->name('whatsapp.campaigns.delete')->middleware('permission:whatsapp,access');
 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');

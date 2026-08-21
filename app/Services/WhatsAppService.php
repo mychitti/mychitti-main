@@ -66,6 +66,63 @@ class WhatsAppService
     const BULK_SHOW_UNAPPROVED = false;
 
     /**
+     * The one permission row that gates this module for staff.
+     *
+     * WhatsApp shipped with no route guard at all — the sidebar checked `auth('vendor')`, so the
+     * menu was hidden from staff while every URL underneath stayed reachable by anyone who knew
+     * one. This is the single feature that turns hiding into access control.
+     *
+     * `master_module` is left NULL deliberately: that is the branch of hasPermission() where the
+     * vendor owner always passes and staff are checked against their role — exactly the behaviour
+     * wanted here, with no subscription tier involved.
+     *
+     * Insert-only, so a role grid an admin has already configured is never rewritten.
+     */
+    public static function ensurePermissions(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('features')
+                || !\Illuminate\Support\Facades\Schema::hasTable('feature_permissions')) {
+                return;
+            }
+
+            $featureId = DB::table('features')->where('name', 'whatsapp')->value('id');
+
+            if (!$featureId) {
+                $featureId = DB::table('features')->insertGetId([
+                    'name'          => 'whatsapp',
+                    'display_name'  => 'WhatsApp',
+                    'master_module' => null,
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ]);
+            }
+
+            $exists = DB::table('feature_permissions')
+                ->where('feature_id', $featureId)->where('action', 'access')->exists();
+
+            if (!$exists) {
+                DB::table('feature_permissions')->insert([
+                    'feature_id'   => $featureId,
+                    'action'       => 'access',
+                    'display_name' => 'Access WhatsApp',
+                    'free'         => 0,
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Best effort, same as the menu seeding below — a panel must not 500 over this.
+        }
+    }
+
+    /**
      * Make the WhatsApp sidebar item reachable for every store, and keep it that way.
      *
      * selected_menu() has two modes. A store that has never opened Menu Preference falls back to
