@@ -141,8 +141,24 @@
     /* A photo or voice note is fetched off Meta's media API when it arrives and kept as our own
        file, so it shows here as itself. The name-the-attachment card below is the fallback for
        anything that download did not manage to bring back. */
-    .wbubble .wfile-img { display:block; margin-bottom:4px; }
+    .wbubble .wfile-img { display:block; margin-bottom:4px; position:relative; width:max-content; max-width:100%; }
     .wbubble .wfile-img img { max-width:230px; max-height:260px; border-radius:9px; display:block; cursor:zoom-in; }
+    /* Save-to-disk sits on the photo the way WhatsApp's own does, rather than taking a line of
+       its own under every picture. Kept permanently visible where there is no hover to reveal it. */
+    .wbubble .wfile-dl {
+        position:absolute; top:6px; right:6px; width:28px; height:28px; border-radius:50%;
+        background:rgba(17,27,33,.62); color:#fff; text-decoration:none; font-size:14px;
+        display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .15s;
+    }
+    .wbubble .wfile-img:hover .wfile-dl { opacity:1; }
+    .wbubble .wfile-dl:hover { background:rgba(17,27,33,.88); color:#fff; }
+    @media (hover: none) { .wbubble .wfile-dl { opacity:1; } }
+    /* Video and voice notes carry their own player chrome, so the link goes underneath. */
+    .wbubble a.wfile-dl-link {
+        display:inline-flex; align-items:center; gap:5px; font-size:11.5px;
+        color:#54656f; text-decoration:none; margin-bottom:4px;
+    }
+    .wbubble a.wfile-dl-link:hover { color:#111b21; text-decoration:underline; }
     .wbubble video.wfile-vid { max-width:230px; max-height:260px; border-radius:9px; display:block; margin-bottom:4px; }
     .wbubble audio.wfile-aud { max-width:240px; height:38px; display:block; margin-bottom:4px; }
     .wbubble a.wfile-doc {
@@ -362,6 +378,7 @@
     var SEND_URL    = '{{ route('vendor.whatsapp.inbox.send') }}';
     var STAFF_URL   = '{{ route('vendor.whatsapp.inbox.staff') }}';
     var FORWARD_URL = '{{ route('vendor.whatsapp.inbox.forward') }}';
+    var DOWNLOAD_URL = '{{ route('vendor.whatsapp.inbox.media-download', '__ID__') }}';
     var CSRF        = '{{ csrf_token() }}';
 
     var threads = [];
@@ -457,20 +474,30 @@
             var media = MEDIA[type];
             var caption = placeholder ? '' : '<div style="margin-top:5px;">' + esc(body) + '</div>';
             var url = m.media_url ? esc(m.media_url) : '';
+            // Streamed by the server rather than linked at directly: the stored file is named
+            // after 32 random bytes, and an outbound message may point at another host entirely.
+            var dl = DOWNLOAD_URL.replace('__ID__', encodeURIComponent(m.id));
+            var dlLink = '<a class="wfile-dl-link" href="' + dl + '"><i class="tio-download-to"></i> Download</a>';
 
             if (url && (type === 'image' || type === 'sticker')) {
-                return { cls: '', tag: '', html: '<a class="wfile-img" href="' + url + '" target="_blank" rel="noopener">'
-                    + '<img src="' + url + '" alt="' + esc(media.label) + '" loading="lazy"></a>' + caption };
+                return { cls: '', tag: '', html: '<div class="wfile-img">'
+                    + '<a href="' + url + '" target="_blank" rel="noopener">'
+                    + '<img src="' + url + '" alt="' + esc(media.label) + '" loading="lazy"></a>'
+                    + '<a class="wfile-dl" href="' + dl + '" title="Download"><i class="tio-download-to"></i></a>'
+                    + '</div>' + caption };
             }
             if (url && type === 'video') {
-                return { cls: '', tag: '', html: '<video class="wfile-vid" src="' + url + '" controls preload="metadata"></video>' + caption };
+                return { cls: '', tag: '', html: '<video class="wfile-vid" src="' + url + '" controls preload="metadata"></video>'
+                    + dlLink + caption };
             }
             if (url && (type === 'audio' || type === 'voice')) {
-                return { cls: '', tag: '', html: '<audio class="wfile-aud" src="' + url + '" controls preload="none"></audio>' + caption };
+                return { cls: '', tag: '', html: '<audio class="wfile-aud" src="' + url + '" controls preload="none"></audio>'
+                    + dlLink + caption };
             }
             if (url) {
                 return { cls: '', tag: '', html: '<a class="wfile-doc" href="' + url + '" target="_blank" rel="noopener">'
-                    + '<i class="' + media.icon + '"></i><span>' + esc(placeholder ? media.label : body) + '</span></a>' };
+                    + '<i class="' + media.icon + '"></i><span>' + esc(placeholder ? media.label : body) + '</span></a>'
+                    + dlLink };
             }
 
             return {

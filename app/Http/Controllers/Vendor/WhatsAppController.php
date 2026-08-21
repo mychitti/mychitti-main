@@ -500,6 +500,45 @@ class WhatsAppController extends Controller
         ]);
     }
 
+    /**
+     * Hand the attachment on a chat message back as a download.
+     *
+     * The stored file is named after 32 random bytes, so linking straight at it saves the customer
+     * a filename nobody can read. Streaming it here also side-steps the `download` attribute being
+     * ignored on a cross-origin href, which is what an outbound message carrying an external link
+     * would otherwise hit.
+     */
+    public function inboxMediaDownload(Request $request, $id)
+    {
+        $storeId = Helpers::get_store_id();
+
+        $message = DB::table('whatsapp_messages')
+            ->where('store_id', $storeId)
+            ->where('id', $id)
+            ->first(['id', 'type', 'media_url', 'sent_at']);
+
+        if (!$message || !$message->media_url) {
+            abort(404, 'Attachment not found.');
+        }
+
+        // An outbound send stored a full link to something already public elsewhere; there is no
+        // local copy to stream, so the browser is sent to it.
+        if (str_starts_with($message->media_url, 'http')) {
+            return redirect()->away($message->media_url);
+        }
+
+        $path = ltrim($message->media_url, '/');
+        if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            abort(404, 'Attachment is no longer stored.');
+        }
+
+        $stamp = $message->sent_at ? Carbon::parse($message->sent_at)->format('Y-m-d-Hi') : now()->format('Y-m-d-Hi');
+        $ext   = pathinfo($path, PATHINFO_EXTENSION);
+        $name  = 'whatsapp-' . ($message->type ?: 'file') . '-' . $stamp . ($ext ? '.' . $ext : '');
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->download($path, $name);
+    }
+
     /** Send a manual reply (free text) from the vendor's own number. */
     public function inboxSend(Request $request)
     {

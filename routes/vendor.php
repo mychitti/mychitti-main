@@ -90,6 +90,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/inbox/send', 'WhatsAppController@inboxSend')->name('whatsapp.inbox.send');
         Route::get('whatsapp/inbox/staff', 'WhatsAppController@inboxStaff')->name('whatsapp.inbox.staff');
         Route::post('whatsapp/inbox/forward', 'WhatsAppController@inboxForward')->name('whatsapp.inbox.forward');
+        Route::get('whatsapp/inbox/media/{id}/download', 'WhatsAppController@inboxMediaDownload')->name('whatsapp.inbox.media-download');
         // Every attempt to message a customer and what came of it — including the skips, which
         // used to leave no trace a vendor could read.
         Route::get('whatsapp/message-log', 'MessageLogController@index')->name('whatsapp.message-log');
