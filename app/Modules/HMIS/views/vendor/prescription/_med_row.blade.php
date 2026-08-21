@@ -30,7 +30,11 @@
 @once
 @push('css_or_js')
 <style>
-    .rx-table { font-size:13px; margin-bottom:0; table-layout:fixed; }
+    .rx-table { font-size:13px; margin-bottom:0; table-layout:fixed; min-width:1080px; }
+    /* table-layout:fixed scales the px column widths down proportionally once the viewport is
+       narrower than their sum, which crushed the selects and ran the Medicine heading into
+       Dose. The min-width pins the columns so .table-responsive scrolls sideways instead. */
+    .table-responsive { -webkit-overflow-scrolling:touch; }
     .rx-table thead th {
         font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:#8d97a5;
         background:#fafbfc; border-bottom:1px solid #e9edf2; border-top:0;

@@ -158,7 +158,7 @@
                 + '<div class="rx-tpl-name">' + esc(t.name) + '</div>'
                 + '<div class="rx-tpl-sub">' + bits.join(' &middot; ') + '</div>'
                 + '</div>'
-                + (t.is_mine || t.is_shared
+                + (t.can_delete
                     ? '<a class="rx-tpl-del" title="Delete" onclick="event.stopPropagation(); rxTemplateDelete(' + t.id + ')"><i class="tio-delete-outlined"></i></a>'
                     : '')
                 + '</div>';

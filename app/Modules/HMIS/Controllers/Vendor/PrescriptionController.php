@@ -848,7 +848,8 @@ class PrescriptionController extends Controller
                 'diagnosis'  => $t->diagnosis,
                 'item_count' => count($t->items ?: []),
                 'is_shared'  => (bool) $t->is_shared,
-                'is_mine'    => $doctorId && (int) $t->doctor_profile_id === (int) $doctorId,
+                'is_mine'    => (int) $t->doctor_profile_id === (int) $doctorId,
+                'can_delete' => auth('vendor')->check() || (int) $t->doctor_profile_id === (int) $doctorId,
                 'owner'      => $t->doctorProfile
                     ? 'Dr. ' . trim(($t->doctorProfile->employee->f_name ?? '') . ' ' . ($t->doctorProfile->employee->l_name ?? ''))
                     : '',
@@ -911,7 +912,8 @@ class PrescriptionController extends Controller
         // Saving under a name that already exists overwrites it -- a doctor refining "Back Pain"
         // expects one template, not a second one wearing the same label.
         $template = PrescriptionTemplate::where('store_id', $storeId)
-            ->where('doctor_profile_id', $doctorId)
+            ->when($doctorId, fn($q) => $q->where('doctor_profile_id', $doctorId))
+            ->when(!$doctorId, fn($q) => $q->whereNull('doctor_profile_id'))
             ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
             ->first();
 
@@ -953,7 +955,10 @@ class PrescriptionController extends Controller
         }
 
         // The owner deletes their own; the store owner can clear out anything on the hospital.
-        if (!auth('vendor')->check() && (!$doctorId || (int) $template->doctor_profile_id !== (int) $doctorId)) {
+        // Both ids cast to 0 when null, so a template saved by someone without a doctor profile
+        // stays deletable by that same kind of user.
+        $mayDelete = auth('vendor')->check() || (int) $template->doctor_profile_id === (int) $doctorId;
+        if (!$mayDelete) {
             return response()->json(['status' => false, 'message' => 'This template belongs to another doctor.'], 403);
         }
 

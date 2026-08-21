@@ -71,6 +71,11 @@ class PrescriptionTemplate extends Model
                 $q->where('is_shared', 1);
                 if ($doctorProfileId) {
                     $q->orWhere('doctor_profile_id', $doctorProfileId);
+                } else {
+                    // Saved by someone with no doctor profile of their own — the store owner, a
+                    // receptionist writing on a doctor's behalf. Without this they could save an
+                    // unshared template and never see it again.
+                    $q->orWhereNull('doctor_profile_id');
                 }
             })
             ->orderBy('name')
