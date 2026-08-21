@@ -182,13 +182,22 @@ class InvoiceShare
         $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
         $balance   = InvoicePayments::balanceOf($invoice, $type);
 
+        // Never the invoice/ link itself: that path is auth-gated, and Meta — fetching with no
+        // session — is handed the login page, which arrives in the chat as an HTML file wearing a
+        // .pdf name. See WaDocument.
+        $link = WaDocument::stage(WaDocument::pathFor(self::PDF_DIR, $pdfUrl));
+        if (!$link) {
+            $error = 'the bill PDF could not be prepared for sending.';
+            return ['status' => 'failed', 'message' => 'Bill not sent on WhatsApp — ' . $error, 'error' => $error];
+        }
+
         $components = [
             [
                 'type' => 'header',
                 'parameters' => [[
                     'type' => 'document',
                     'document' => [
-                        'link'     => $pdfUrl,
+                        'link'     => $link,
                         'filename' => (preg_replace('/[^A-Za-z0-9\-_]/', '', (string) $invoice->invoice_id) ?: 'Invoice') . '.pdf',
                     ],
                 ]],

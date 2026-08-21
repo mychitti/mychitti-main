@@ -386,13 +386,14 @@ Route::get('storage/{path}', function ($path) {
 
     // Always public paths regardless of extension — no auth required on any server.
     //
-    // hmis-shared/ holds the files WhatsApp is sent as a template attachment, and whatsapp/header/
-    // holds the image, video or PDF that rides at the top of a media-header template. Meta fetches
-    // both from its own servers with no session and no cookies, so an auth check here does not
-    // secure them — it simply means the customer receives nothing, while the send still reports
+    // hmis-shared/ and wa-shared/ hold the files WhatsApp is sent as a template attachment — a
+    // prescription, a bill, a payment receipt — and whatsapp/header/ holds the image, video or PDF
+    // that rides at the top of a media-header template. Meta fetches every one of them from its
+    // own servers with no session and no cookies, so an auth check here does not secure them — it
+    // simply means the customer receives the login page instead, while the send still reports
     // success because Graph accepted the message before trying to collect the file.
     // Their protection is the name: a random, unlisted filename.
-    $alwaysPublic = ['vendor_login/', 'hmis-shared/', 'whatsapp/header/'];
+    $alwaysPublic = ['vendor_login/', 'hmis-shared/', 'whatsapp/header/', 'wa-shared/'];
     foreach ($alwaysPublic as $prefix) {
         if (str_starts_with($path, $prefix)) {
             if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {

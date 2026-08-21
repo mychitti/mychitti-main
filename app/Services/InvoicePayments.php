@@ -542,6 +542,13 @@ class InvoicePayments
                 return $skip('Receipt not sent — the receipt PDF could not be generated.');
             }
 
+            // Never the receipt/ link itself — that path is auth-gated and Meta fetches with no
+            // session, so it would collect the login page and send that as the receipt. See WaDocument.
+            $link = WaDocument::stage(WaDocument::pathFor(self::PDF_DIR, $pdfUrl));
+            if (!$link) {
+                return $skip('Receipt not sent — the receipt PDF could not be prepared for sending.');
+            }
+
             $balance = round((float) $payment->balance_after, 2);
             $storeName = DB::table('stores')->where('id', $storeId)->value('name') ?: 'our store';
 
@@ -551,7 +558,7 @@ class InvoicePayments
                     'parameters' => [[
                         'type' => 'document',
                         'document' => [
-                            'link'     => $pdfUrl,
+                            'link'     => $link,
                             'filename' => preg_replace('/[^A-Za-z0-9\-_]/', '', $payment->receipt_no) . '.pdf',
                         ],
                     ]],

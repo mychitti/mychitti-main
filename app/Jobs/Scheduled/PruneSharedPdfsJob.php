@@ -3,6 +3,7 @@
 namespace App\Jobs\Scheduled;
 
 use App\Services\HmisWhatsAppShare;
+use App\Services\WaDocument;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,23 +34,27 @@ class PruneSharedPdfsJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $disk = Storage::disk('public');
-            if (!$disk->exists(HmisWhatsAppShare::PDF_DIR)) {
-                return;
-            }
-
-            $cutoff  = now()->subHours(self::KEEP_HOURS)->getTimestamp();
+            $disk   = Storage::disk('public');
+            $cutoff = now()->subHours(self::KEEP_HOURS)->getTimestamp();
             $removed = 0;
 
-            foreach ($disk->files(HmisWhatsAppShare::PDF_DIR) as $file) {
-                try {
-                    if ($disk->lastModified($file) < $cutoff) {
-                        $disk->delete($file);
-                        $removed++;
+            // Two directories, same bargain: a medical record staged by HmisWhatsAppShare and a
+            // bill or receipt staged by WaDocument are both public for as long as they sit there.
+            foreach ([HmisWhatsAppShare::PDF_DIR, WaDocument::DIR] as $dir) {
+                if (!$disk->exists($dir)) {
+                    continue;
+                }
+
+                foreach ($disk->files($dir) as $file) {
+                    try {
+                        if ($disk->lastModified($file) < $cutoff) {
+                            $disk->delete($file);
+                            $removed++;
+                        }
+                    } catch (\Throwable $e) {
+                        // One unreadable file on the Spaces mount must not stop the sweep.
+                        Log::warning('Shared PDF prune skipped ' . $file . ': ' . $e->getMessage());
                     }
-                } catch (\Throwable $e) {
-                    // One unreadable file on the Spaces mount must not stop the sweep.
-                    Log::warning('Shared PDF prune skipped ' . $file . ': ' . $e->getMessage());
                 }
             }
 
