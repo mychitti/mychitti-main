@@ -14,6 +14,7 @@ use App\Models\ManualInvoice;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
+use App\Models\PrescriptionTemplate;
 use App\Models\ServiceRequest;
 use App\Services\HmisWhatsAppShare;
 use App\Services\InvoiceShare;
@@ -789,5 +790,175 @@ class PrescriptionController extends Controller
             Toastr::error('Failed: ' . $e->getMessage());
             return back()->withInput();
         }
+    }
+
+    // -- Prescription templates --------------------------------------------
+    //
+    // A doctor writes the same regimen for the same complaint all day. A template is a filled
+    // prescription kept by name -- diagnosis, advice, follow-up interval and the medicine lines --
+    // that can be dropped back into the form and then edited per patient.
+
+    /**
+     * The follow-up date is stored as an interval, not a date.
+     *
+     * A template saved in March carrying "14 March" is useless in April; what the doctor actually
+     * means is "see them again in a week", so the gap is what survives.
+     */
+    private function followUpDays(?string $followUpDate): ?int
+    {
+        if (!$followUpDate) {
+            return null;
+        }
+
+        try {
+            $days = today()->diffInDays(\Carbon\Carbon::parse($followUpDate), false);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return $days > 0 ? $days : null;
+    }
+
+    private function templateDoctorId(Request $request): ?int
+    {
+        if ($request->filled('doctor_profile_id')) {
+            return (int) $request->doctor_profile_id;
+        }
+
+        // Fall back to the profile of whoever is logged in, so a doctor saving from the standalone
+        // form still gets their own template rather than an ownerless one.
+        $empId = auth('vendor_employee')->id();
+
+        return $empId
+            ? DoctorProfile::where('store_id', $this->storeId())->where('emp_id', $empId)->value('id')
+            : null;
+    }
+
+    public function templates(Request $request)
+    {
+        $storeId   = $this->storeId();
+        $doctorId  = $this->templateDoctorId($request);
+        $templates = PrescriptionTemplate::visibleTo($storeId, $doctorId)->load('doctorProfile.employee');
+
+        return response()->json([
+            'status'    => true,
+            'templates' => $templates->map(fn($t) => [
+                'id'         => $t->id,
+                'name'       => $t->name,
+                'diagnosis'  => $t->diagnosis,
+                'item_count' => count($t->items ?: []),
+                'is_shared'  => (bool) $t->is_shared,
+                'is_mine'    => $doctorId && (int) $t->doctor_profile_id === (int) $doctorId,
+                'owner'      => $t->doctorProfile
+                    ? 'Dr. ' . trim(($t->doctorProfile->employee->f_name ?? '') . ' ' . ($t->doctorProfile->employee->l_name ?? ''))
+                    : '',
+                'updated_at' => $t->updated_at?->format('d M Y'),
+            ])->values(),
+        ]);
+    }
+
+    public function templateShow(Request $request, $id)
+    {
+        $storeId  = $this->storeId();
+        $doctorId = $this->templateDoctorId($request);
+
+        $template = PrescriptionTemplate::visibleTo($storeId, $doctorId)->firstWhere('id', (int) $id);
+        if (!$template) {
+            return response()->json(['status' => false, 'message' => 'Template not found.'], 404);
+        }
+
+        return response()->json([
+            'status'   => true,
+            'template' => [
+                'id'             => $template->id,
+                'name'           => $template->name,
+                'diagnosis'      => $template->diagnosis,
+                'notes'          => $template->notes,
+                'follow_up_days' => $template->follow_up_days,
+                'follow_up_date' => $template->follow_up_days
+                    ? today()->addDays($template->follow_up_days)->toDateString()
+                    : null,
+                'items'          => $template->itemsForForm(),
+            ],
+        ]);
+    }
+
+    public function saveTemplate(Request $request)
+    {
+        $request->validate([
+            'name'                      => 'required|string|max:190',
+            'diagnosis'                 => 'nullable|string|max:1000',
+            'notes'                     => 'nullable|string|max:2000',
+            'follow_up_date'            => 'nullable|date',
+            'medicines'                 => 'nullable|array',
+            'medicines.*.medicine_name' => 'nullable|string|max:255',
+        ]);
+
+        $items = PrescriptionTemplate::normaliseItems($request->input('medicines', []));
+        if (!$items) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Add at least one medicine before saving a template.',
+            ], 422);
+        }
+
+        $storeId  = $this->storeId();
+        $doctorId = $this->templateDoctorId($request);
+        $name     = trim($request->name);
+
+        PrescriptionTemplate::ensureTable();
+
+        // Saving under a name that already exists overwrites it -- a doctor refining "Back Pain"
+        // expects one template, not a second one wearing the same label.
+        $template = PrescriptionTemplate::where('store_id', $storeId)
+            ->where('doctor_profile_id', $doctorId)
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+
+        $data = [
+            'store_id'          => $storeId,
+            'doctor_profile_id' => $doctorId,
+            'name'              => $name,
+            'diagnosis'         => $request->diagnosis,
+            'notes'             => $request->notes,
+            'follow_up_days'    => $this->followUpDays($request->follow_up_date),
+            'items'             => $items,
+            'is_shared'         => $request->boolean('is_shared'),
+            'created_by'        => $this->currentUserId(),
+            'created_by_type'   => $this->currentUserType(),
+        ];
+
+        if ($template) {
+            $template->update($data);
+        } else {
+            $template = PrescriptionTemplate::create($data);
+        }
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Template "' . $template->name . '" saved with ' . count($items) . ' medicine(s).',
+            'id'      => $template->id,
+        ]);
+    }
+
+    public function deleteTemplate(Request $request, $id)
+    {
+        $storeId  = $this->storeId();
+        $doctorId = $this->templateDoctorId($request);
+
+        PrescriptionTemplate::ensureTable();
+        $template = PrescriptionTemplate::where('store_id', $storeId)->find($id);
+        if (!$template) {
+            return response()->json(['status' => false, 'message' => 'Template not found.'], 404);
+        }
+
+        // The owner deletes their own; the store owner can clear out anything on the hospital.
+        if (!auth('vendor')->check() && (!$doctorId || (int) $template->doctor_profile_id !== (int) $doctorId)) {
+            return response()->json(['status' => false, 'message' => 'This template belongs to another doctor.'], 403);
+        }
+
+        $template->delete();
+
+        return response()->json(['status' => true, 'message' => 'Template deleted.']);
     }
 }

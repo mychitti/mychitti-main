@@ -1507,6 +1507,14 @@
                 @if (!$visit->is_completed && hasPermission('prescription', 'add'))
                 <div id="rxWritingFormBlock" style="@if($currentPrescription) display:none; @endif">
                     <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Write Prescription</h4>
+
+                    {{-- Outside the form on purpose: the modals below carry their own inputs and
+                         have no business being posted with the prescription. --}}
+                    @include('hmis::vendor.prescription._rx_templates', [
+                        'formId'   => 'customRxForm',
+                        'addRowFn' => 'addCustomMedRow',
+                    ])
+
                     <form action="{{ route('vendor.prescription.store') }}" method="POST" id="customRxForm">
                         @csrf
                         <input type="hidden" name="patient_id" value="{{ $visit->patient_id }}">
@@ -3153,6 +3161,10 @@
         }
         btn.closest('.med-row').remove();
     }
+
+    // The row partial wires its delete icon to removeMedRow; this screen named its own copy
+    // removeCustomMedRow, so without the alias the icon threw and the row never went away.
+    window.removeMedRow = removeCustomMedRow;
 
     // Pharmacy Search
     let _pharmTimer = null;

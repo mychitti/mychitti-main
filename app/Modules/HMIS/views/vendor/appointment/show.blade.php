@@ -309,6 +309,11 @@
                         </div>
                     @endif
 
+                    @include('hmis::vendor.prescription._rx_templates', [
+                        'formId'   => 'inlineRxForm',
+                        'addRowFn' => 'apptAddMedRow',
+                    ])
+
                     <form action="{{ $existingRx ? route('vendor.prescription.update', $existingRx->id) : route('vendor.prescription.store') }}"
                           method="POST" id="inlineRxForm">
                         @csrf

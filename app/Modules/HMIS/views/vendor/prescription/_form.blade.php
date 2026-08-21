@@ -6,6 +6,11 @@
               $formAction (string), $formMethod ('POST')
 --}}
 
+@include('hmis::vendor.prescription._rx_templates', [
+    'formId'   => 'rxForm',
+    'addRowFn' => 'addMedRow',
+])
+
 <form action="{{ $formAction }}" method="POST" id="rxForm">
     @csrf
     @if(isset($rx))
