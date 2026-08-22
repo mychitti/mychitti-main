@@ -35,6 +35,15 @@ class WhatsAppAppointmentBot
     const RESCHEDULE_MARKER = 'RESCHEDULE_APPOINTMENT';
     const CANCEL_MARKER     = 'CANCEL_APPOINTMENT';
 
+    /**
+     * How far into the past a requested time may sit and still be read as "now".
+     *
+     * Covers the gap between the model choosing a clock time and the queued job acting on it —
+     * the customer confirming, the webhook, the job. Wide enough to absorb that, far too narrow
+     * to swallow a genuinely stale request for a slot earlier in the day.
+     */
+    const PAST_GRACE_MINUTES = 10;
+
     /** Appointment tooling applies only to stores that actually run appointments. */
     protected static function applicable(int $storeId): bool
     {
@@ -85,7 +94,8 @@ class WhatsAppAppointmentBot
                 . "Ask for: their name, address, age, gender.\n";
 
         return "\n\nAPPOINTMENT ACTIONS — you can book, reschedule and cancel appointments for this customer.\n"
-            . 'Today is ' . now()->format('l, d M Y') . ".\n"
+            . 'Right now it is ' . now()->format('l, d M Y') . ' at ' . now()->format('H:i')
+            . " (24-hour clock, India time).\n"
             . $onFile . "\n"
             . "Doctors:\n{$doctors}\n"
             . "Customer's upcoming appointments:\n" . ($upcoming ?: '- none') . "\n\n"
@@ -109,7 +119,11 @@ class WhatsAppAppointmentBot
             . "- If they ask to cancel or move an appointment that is NOT in the list above, do not guess at one — say the team will check and get back to them, and append "
             . \App\Jobs\SendAutoReply::ESCALATE_MARKER . " so a human is told.\n"
             . "- Never tell the customer you cannot cancel or reschedule. You can do both, for any appointment in the list above.\n"
-            . "- Time is 24-hour format. Dates must be today or later — interpret \"tomorrow\" etc. from today's date above.\n"
+            . "- Time is 24-hour format. Dates must be today or later — interpret \"tomorrow\" etc. from the current date above.\n"
+            . "- \"now\", \"right now\", \"immediately\", \"as soon as possible\", \"today itself\" and the like mean TODAY at the "
+            . "current time above. Use that time. Never invent a later slot the customer did not ask for, and never offer a "
+            . "time that has already passed today.\n"
+            . "- Never state a date or time the customer did not give you. If they were vague about when, ask — do not fill it in.\n"
             . "- Only offer doctors from the list. Never emit a marker before the customer has confirmed the details.";
     }
 
@@ -604,6 +618,16 @@ class WhatsAppAppointmentBot
         } catch (\Throwable $e) {
             return null;
         }
+
+        // A walk-in booked for "now" is already a minute or two old by the time it reaches here:
+        // the model picks the clock time, the customer confirms, the queued job runs. Rejecting
+        // that as unclear tells the customer their own request made no sense and escalates a
+        // booking that was perfectly valid, so a request that has only just slipped past is
+        // treated as what it plainly meant — right now.
+        if ($when->isPast() && $when->isToday() && $when->diffInMinutes(now()) <= self::PAST_GRACE_MINUTES) {
+            return now();
+        }
+
         return $when->isPast() ? null : $when;
     }
 
