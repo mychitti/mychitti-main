@@ -11,7 +11,7 @@ Route::get('mc-module/{module}', [ModuleInfoController::class, 'module_info'])->
 
 Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
 
-    // mc vendorhub routes  
+    // mc vendorhub routes
     Route::group(['prefix' => '', 'as' => 'mc-vendor.'], function () {
         // The new theme is live at '/'. To roll back, point '/' at MCVendorController@index
         // again — index() and the old homepage view are both left intact behind /old-home.
@@ -162,7 +162,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/campaigns/{id}/cancel', 'WhatsAppCampaignController@cancel')->name('whatsapp.campaigns.cancel');
         Route::post('whatsapp/campaigns/{id}/run-now', 'WhatsAppCampaignController@runNow')->name('whatsapp.campaigns.run-now');
         Route::post('whatsapp/campaigns/{id}/delete', 'WhatsAppCampaignController@destroy')->name('whatsapp.campaigns.delete');
-
+ 
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');
         Route::get('/clock-in', 'VendorEmployeeController@clock_in')->name('clockin');
@@ -177,7 +177,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('lang/{locale}', 'LanguageController@lang')->name('lang');
         Route::get('/master-dashboard', 'DashboardController@master_dashboard')->name('master-dashboard');
         Route::get('/dashboard', 'DashboardController@dashboard')->name('dashboard');
-        // Route::get('/', 'DashboardController@dashboard')->name('dashboard'); 
+        // Route::get('/', 'DashboardController@dashboard')->name('dashboard');
         Route::post('/welcome-guide-seen', 'DashboardController@welcome_guide_seen')->name('welcome-guide-seen');
         Route::get('/get-store-data', 'DashboardController@store_data')->name('get-store-data');
         Route::post('/store-token', 'DashboardController@updateDeviceToken')->name('store.token');
@@ -307,7 +307,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('import', 'BillingController@importPurchaseInvoices')->name('import')->middleware('permission:purchase_bill,import');
             });
 
-            //SERVICE BILLS 
+            //SERVICE BILLS
             Route::post('service-update-invoice', 'BillingController@service_update_invoice')->name('service-update-invoice')->middleware('permission:service_bill,edt');
             Route::post('save-invoice', 'ServiceController@save_invoice')->name('save-invoice')->middleware('permission:service_bill,add');
             Route::get('edit-service-invoice/{id}', 'BillingController@edit_service_invoice')->name('edit.service.invoice')->middleware('permission:service_bill,edit'); // only for manual invoices
@@ -317,7 +317,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('invoice-list', 'DashboardController@order_invoices')->name('order.invoices');
 
 
-        // addons 
+        // addons
         Route::group(['prefix' => 'attendance', 'as' => 'attendance.', 'middleware' => ['planwise:hr_manage']], function () {
             Route::get('report', 'AttendanceController@report')->name('report');
             Route::get('export', 'AttendanceController@export')->name('export')->middleware('permission:attendance_report,export,attendance_manage,export');
@@ -556,7 +556,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             // REQUEST FORM
             Route::group(['prefix' => 'request-form', 'as' => 'request-form.'], function () {
 
-                // MASTER LEDGER REQUEST FORM 
+                // MASTER LEDGER REQUEST FORM
                 Route::group(['prefix' => 'master-ledger', 'as' => 'master-ledger.'], function () {
                     Route::post('store', 'AccountRequestFormController@master_ledger_rf_store')->name('store')->middleware('permission:apporval_form_master_ledger,add');
                     Route::post('update', 'AccountRequestFormController@master_ledger_rf_update')->name('update')->middleware('permission:apporval_form_master_ledger,edit');
@@ -577,7 +577,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('incoming-request-forward', 'AccountRequestFormController@incoming_request_forward')->name('incoming-requests-forward');
             });
 
-            // MASTER LEDGER 
+            // MASTER LEDGER
             Route::group(['prefix' => 'master-ledger', 'as' => 'master-ledger.'], function () {
                 Route::post('get-entry-details', 'MasterLedgerController@get_entry_details')->name('get-entry-details');
                 Route::post('entry', 'MasterLedgerController@entry')->name('entry');
@@ -585,7 +585,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('import', 'MasterLedgerController@import')->name('import');
             });
 
-            // JOURNAL ENTRY 
+            // JOURNAL ENTRY
             Route::group(['prefix' => 'petty-cashbook', 'as' => 'petty-cashbook.'], function () {
                 Route::get('/', 'AccountController@petty_cashbook')->name('index');
             });
@@ -977,7 +977,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('update/{id}', 'CustomRoleController@update')->name('update')->middleware('permission:staff_role,edit');
             Route::delete('delete/{id}', 'CustomRoleController@distroy')->name('delete')->middleware('permission:staff_role,delete');
             //            Route::post('search', 'CustomRoleController@search')->name('search');
-        }); 
+        });
 
         // Local Offers Engine (Phase 3 §3.5)
         Route::group(['prefix' => 'offer', 'as' => 'offer.'], function () {
@@ -992,7 +992,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::group(['prefix' => 'lead-signals', 'as' => 'lead-signals.'], function () {
             Route::get('/', 'LeadSignalController@index')->name('index');
             Route::post('ai-follow-up', 'LeadSignalController@ai_follow_up')->name('ai-follow-up');
-        });  
+        });
 
         // Vendor AI generators — Sam (ops) + Zayan (marketing) (Phase 4 §4.1)
         Route::group(['prefix' => 'ai-tools', 'as' => 'ai-tools.'], function () {
@@ -1002,7 +1002,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         });
 
         // Business Insights — trends & reputation (Phase 4 §4.3)
-        Route::get('insights', 'InsightsController@index')->name('insights'); 
+        Route::get('insights', 'InsightsController@index')->name('insights');
 
         Route::group(['prefix' => 'delivery-man', 'as' => 'delivery-man.', 'middleware' => ['module:deliveryman']], function () {
             Route::get('add', 'DeliveryManController@index')->name('add');
@@ -1158,7 +1158,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
                 Route::post('remove', 'SettingsController@domain_remove')->name('remove');
             });
             Route::group(['prefix' => 'general', 'as' => 'general.'], function () {
-                Route::get('profile', 'SettingsController@profile_settings')->name('profile'); 
+                Route::get('profile', 'SettingsController@profile_settings')->name('profile');
                 Route::get('store', 'SettingsController@store_settings')->name('store');
                 Route::get('holidays', 'SettingsController@holiday_settings')->name('holidays');
                 Route::get('holiday/add', 'SettingsController@holiday_add')->name('holiday.add');
@@ -1200,7 +1200,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('list', 'ConversationController@list')->name('list');
             Route::post('store/{user_id}/{user_type}', 'ConversationController@store')->name('store');
             Route::get('view/{conversation_id}/{user_id}', 'ConversationController@view')->name('view');
-        }); 
+        });
 
         Route::group(['prefix' => 'report', 'as' => 'report.', 'middleware' => ['module:report']], function () {
             Route::post('set-date', 'ReportController@set_date')->name('set-date');
@@ -1218,15 +1218,15 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('clear', 'AIChatController@clearMemory')->name('clear');
         Route::post('tts', 'AIChatController@tts')->name('tts');
     });
- 
+
     // hmis ==============================
     if (file_exists(app_path('Modules/HMIS/routes/vendor.php'))) {
-        require app_path('Modules/HMIS/routes/vendor.php'); 
-    } 
- 
-    // laundry ============================== 
+        require app_path('Modules/HMIS/routes/vendor.php');
+    }
+
+    // laundry ==============================
     require app_path('Modules/Laundry/routes/vendor.php');
- 
+
     // pos ==============================
     require app_path('Modules/POS/routes/vendor.php');
 
@@ -1238,6 +1238,6 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         require app_path('Modules/School/routes/vendor.php');
     }
 });
-// DON'T UPLOAD WITHOUT ALL HMIS , LAUNDRY , POS MODULES 
+// DON'T UPLOAD WITHOUT ALL HMIS , LAUNDRY , POS MODULES
 
 // WebSocketsRouter::webSocket('/service-requests', ServiceReqSocketHandler::class);
