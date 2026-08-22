@@ -44,6 +44,22 @@ class WhatsAppAppointmentBot
      */
     const PAST_GRACE_MINUTES = 10;
 
+    /**
+     * What a caller is filed as before they tell us their name.
+     *
+     * Only ever a stand-in. Anything still wearing it is treated as nameless, so the real name
+     * replaces it the moment one is given rather than sitting behind it forever.
+     */
+    const PLACEHOLDER_NAME = 'WhatsApp Customer';
+
+    /** Is this a stand-in rather than something the patient actually told us? */
+    protected static function isPlaceholderName(?string $name): bool
+    {
+        $name = mb_strtolower(trim((string) $name));
+
+        return $name === '' || $name === mb_strtolower(self::PLACEHOLDER_NAME) || $name === 'patient';
+    }
+
     /** Appointment tooling applies only to stores that actually run appointments. */
     protected static function applicable(int $storeId): bool
     {
@@ -117,7 +133,9 @@ class WhatsAppAppointmentBot
             . '[[' . self::BOOK_MARKER . ': {"for":"self|other","name":"<patient full name>","phone":"<patient phone>",'
             . '"address":"<patient address>","age":"<age in years>","gender":"male|female|other",'
             . '"doctor":"<doctor name>","date":"YYYY-MM-DD","time":"HH:MM","reason":"<short reason>"}]]' . "\n"
-            . "- When \"for\" is \"self\", leave name and phone as empty strings — the clinic already has them.\n"
+            . "- When \"for\" is \"self\", leave phone as an empty string — it is the number they are messaging from. "
+            . "ALWAYS send name: put the name they gave you, or the name on file above if there is one. An empty name "
+            . "files a brand-new patient as \"WhatsApp Customer\", which is not their name.\n"
             . "- To RESCHEDULE an upcoming appointment from the list above: confirm the new date and time, then reply with ONLY:\n"
             . '[[' . self::RESCHEDULE_MARKER . ': {"appointment_id": <ID from the list>, "date":"YYYY-MM-DD","time":"HH:MM"}]]' . "\n"
             . "- To CANCEL an upcoming appointment from the list above: name the appointment you are about to cancel and ask them to confirm. Once they confirm, reply with ONLY:\n"
@@ -283,6 +301,17 @@ class WhatsAppAppointmentBot
             Log::warning("WA booking provisioned no appointment (lead {$sr->id}): " . $e->getMessage());
         }
 
+        // The patient row is built from the account, so one created before this number had a name
+        // is filed under the placeholder — and resolvePatient() reuses it rather than renaming it.
+        // The clinic asked for a name and was given one; put it on the record they actually read.
+        if ($appointment && !$forOther && $patientName !== '') {
+            $patient = $appointment->patient;
+            if ($patient && static::isPlaceholderName($patient->name)) {
+                $patient->name = mb_substr($patientName, 0, 190);
+                $patient->save();
+            }
+        }
+
         $drName = trim(($doctor->employee->f_name ?? '') . ' ' . ($doctor->employee->l_name ?? ''));
 
         $who = $forOther ? ' for ' . $patientName : '';
@@ -318,13 +347,23 @@ class WhatsAppAppointmentBot
         $user = User::whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phoneKey])
             ->orderBy('id')
             ->first();
+
         if ($user) {
+            // A number that booked before we knew who it was is still carrying the placeholder.
+            // Now that they have given a name, take it — otherwise the very first booking decides
+            // what this person is called forever, and they stay "WhatsApp Customer" on every
+            // screen the clinic looks at.
+            if (trim($name) !== '' && static::isPlaceholderName($user->f_name)) {
+                $user->f_name = mb_substr(trim($name), 0, 100);
+                $user->save();
+            }
+
             return $user;
         }
 
         $name = trim($name) ?: (DB::table('store_customers')->where('store_id', $storeId)
             ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phoneKey])
-            ->value('f_name') ?: 'WhatsApp Customer');
+            ->value('f_name') ?: self::PLACEHOLDER_NAME);
 
         $user = User::create([
             'f_name'   => $name,
@@ -509,7 +548,7 @@ class WhatsAppAppointmentBot
 
             // A placeholder is not a name — asking "and your name?" is better than greeting
             // somebody as "WhatsApp Customer".
-            if (mb_strtolower($name) === 'whatsapp customer') {
+            if (static::isPlaceholderName($name)) {
                 $name = '';
             }
 
