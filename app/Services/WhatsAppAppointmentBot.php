@@ -72,9 +72,15 @@ class WhatsAppAppointmentBot
         $upcoming = static::upcomingFor($storeId, $phoneKey)
             ->map(function ($a) {
                 $dr = trim(($a->doctorProfile->employee->f_name ?? '') . ' ' . ($a->doctorProfile->employee->l_name ?? ''));
-                return "- ID {$a->id}: " . Carbon::parse($a->appointment_date)->format('d M Y')
+                // The patient's name matters here: this list can hold appointments booked for
+                // other people, and "cancel my daughter's" is unanswerable without it.
+                $for = trim((string) ($a->patient->name ?? ''));
+
+                return "- ID {$a->id}: " . ($for ? "for {$for}, " : '')
+                    . Carbon::parse($a->appointment_date)->format('d M Y')
                     . ' at ' . Carbon::parse($a->appointment_time ?: '00:00')->format('h:i A')
-                    . ($dr ? " with Dr. {$dr}" : '');
+                    . ($dr ? " with Dr. {$dr}" : '')
+                    . ($a->token?->token_number ? ", token {$a->token->token_number}" : '');
             })->implode("\n");
 
         // What is already on file for this number. Asking a returning customer for their own name
@@ -124,6 +130,11 @@ class WhatsAppAppointmentBot
             . "current time above. Use that time. Never invent a later slot the customer did not ask for, and never offer a "
             . "time that has already passed today.\n"
             . "- Never state a date or time the customer did not give you. If they were vague about when, ask — do not fill it in.\n"
+            . "- Changing the time or date of an appointment is a RESCHEDULE, never a new booking. Never answer "
+            . "\"change the time\", \"make it earlier\", \"can we move it\" by booking again — that leaves the customer "
+            . "with two appointments and two token numbers. Use the reschedule marker on the appointment they already have.\n"
+            . "- If they want to change an appointment and the list above is empty, do NOT book a replacement. Say the team "
+            . "will sort it out and append " . \App\Jobs\SendAutoReply::ESCALATE_MARKER . ".\n"
             . "- Only offer doctors from the list. Never emit a marker before the customer has confirmed the details.";
     }
 
@@ -375,6 +386,9 @@ class WhatsAppAppointmentBot
         $appointment->cancel_reason = mb_substr($note, 0, 500);
         $appointment->save();
 
+        // The queue must not keep calling a token nobody is coming for.
+        static::releaseToken((int) $appointment->id);
+
         $when = Carbon::parse($appointment->appointment_date)->format('d M Y')
             . ' at ' . Carbon::parse($appointment->appointment_time ?: '00:00')->format('h:i A');
         $dr = trim(($appointment->doctorProfile->employee->f_name ?? '') . ' ' . ($appointment->doctorProfile->employee->l_name ?? ''));
@@ -411,49 +425,60 @@ class WhatsAppAppointmentBot
             ];
         }
 
-        $old = null;
+        $appointment = null;
         if (!empty($data['appointment_id'])) {
-            $old = $upcoming->firstWhere('id', (int) $data['appointment_id']);
+            $appointment = $upcoming->firstWhere('id', (int) $data['appointment_id']);
         }
-        $old = $old ?: $upcoming->first();
+        $appointment = $appointment ?: $upcoming->first();
 
-        $new = null;
-        DB::transaction(function () use (&$new, $old, $when) {
-            $old->status        = 'cancelled';
-            $old->cancel_reason = 'Rescheduled via WhatsApp';
-            $old->save();
+        // Where it was, kept for the log and the clinic's alert before the row is overwritten.
+        $fromDate = Carbon::parse($appointment->appointment_date)->format('d M Y');
+        $fromTime = Carbon::parse($appointment->appointment_time ?: '00:00')->format('h:i A');
 
-            $new = Appointment::create([
-                'store_id'          => $old->store_id,
-                'patient_id'        => $old->patient_id,
-                'doctor_profile_id' => $old->doctor_profile_id,
-                'slot_id'           => null,
-                'appointment_date'  => $when->toDateString(),
-                'appointment_time'  => $when->format('H:i'),
-                'booking_type'      => $old->booking_type,
-                'status'            => 'scheduled',
-                'reason'            => $old->reason,
-                'rescheduled_from'  => $old->id,
-                'booked_by'         => null,
-            ]);
-            static::generateToken($old->doctor_profile_id, $when->toDateString(), $new->id);
+        // Moved in place. Cancelling and re-creating left the patient holding two appointments —
+        // the old one still on the clinic's list, the new one with a different id and a different
+        // token — when all they asked for was a different time. One appointment, one id, one
+        // token: the clinic sees the same row change, not a cancellation and a fresh booking.
+        DB::transaction(function () use ($appointment, $when) {
+            $appointment->appointment_date = $when->toDateString();
+            $appointment->appointment_time = $when->format('H:i');
+            // The old slot belonged to the old time and no longer describes this appointment.
+            $appointment->slot_id = null;
+            $appointment->save();
+
+            static::retimeToken($appointment, $when->toDateString());
+
+            // The lead behind the booking still advertises the time it was requested for, and the
+            // vendor's Appointments screen reads it. Left alone, the two disagree forever.
+            if ($appointment->service_request_id) {
+                ServiceRequest::where('id', $appointment->service_request_id)->update([
+                    'preferred_date' => $when->toDateString(),
+                    'preferred_time' => $when->format('H:i'),
+                    'updated_at'     => now(),
+                ]);
+            }
         });
 
-        static::activityLog($storeId, $new->id, 'rescheduled_via_whatsapp',
-            "Appointment #{$old->id} rescheduled to {$when->toDateString()} via WhatsApp. New appointment #{$new->id}");
+        static::activityLog($storeId, $appointment->id, 'rescheduled_via_whatsapp',
+            "Appointment #{$appointment->id} moved from {$fromDate} {$fromTime} to "
+            . $when->format('d M Y') . ' ' . $when->format('h:i A') . ' via WhatsApp');
 
-        $dr = trim(($old->doctorProfile->employee->f_name ?? '') . ' ' . ($old->doctorProfile->employee->l_name ?? ''));
+        $dr = trim(($appointment->doctorProfile->employee->f_name ?? '') . ' '
+            . ($appointment->doctorProfile->employee->l_name ?? ''));
 
-        static::notifyClinic($storeId, $new->id, 'Appointment rescheduled on WhatsApp',
-            static::patientLabel($old) . ' moved their appointment from '
-            . Carbon::parse($old->appointment_date)->format('d M Y') . ' to '
+        static::notifyClinic($storeId, $appointment->id, 'Appointment rescheduled on WhatsApp',
+            static::patientLabel($appointment) . ' moved their appointment from '
+            . $fromDate . ' at ' . $fromTime . ' to '
             . $when->format('d M Y') . ' at ' . $when->format('h:i A') . ($dr ? ' with Dr. ' . $dr : '') . '.');
-        $token = $new->token->token_number ?? null;
+
+        // Re-read: retimeToken() may have issued a new one for a new day, and the relation on the
+        // model in memory still holds whatever was loaded before the move.
+        $token = AppointmentToken::where('appointment_id', $appointment->id)->value('token_number');
 
         return [
             'message' => '✅ Done! Your appointment has been moved to ' . $when->format('d M Y') . ' at ' . $when->format('h:i A')
                 . ($dr ? " with Dr. {$dr}" : '')
-                . ($token ? ". Your new token number is {$token}" : '')
+                . ($token ? ". Your token number is {$token}" : '')
                 . ". We'll remind you before the visit.",
             'escalate' => false,
             'reason'   => '',
@@ -573,18 +598,43 @@ class WhatsAppAppointmentBot
         return in_array($g, ['other', 'others'], true) ? 'other' : null;
     }
 
+    /**
+     * The appointments this number is allowed to move or cancel.
+     *
+     * Two ways in, and both are needed. Matching the patient's phone covers people who booked for
+     * themselves. It does NOT cover a booking made for somebody else: that patient is created with
+     * their OWN number (LeadAppointmentService::resolvePatient reads patient_phone), so a parent
+     * who books for a child would never see it again — the list came back empty, the model was
+     * told it had nothing to reschedule, and it booked a second appointment instead of moving the
+     * first. The service request records who actually did the booking, so that is the second way.
+     */
     protected static function upcomingFor(int $storeId, string $phoneKey)
     {
         $patientIds = Patient::where('store_id', $storeId)
             ->whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phoneKey])
             ->pluck('id');
 
-        if ($patientIds->isEmpty()) {
+        // Every account on this number: resolveUser() matches the same way when booking.
+        $userIds = User::whereRaw("RIGHT(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), 10) = ?", [$phoneKey])
+            ->pluck('id');
+
+        $requestIds = $userIds->isEmpty() ? collect() : ServiceRequest::whereIn('user_id', $userIds)
+            ->where('service_type', 'doctor_appointment')
+            ->pluck('id');
+
+        if ($patientIds->isEmpty() && $requestIds->isEmpty()) {
             return collect();
         }
 
         return Appointment::where('store_id', $storeId)
-            ->whereIn('patient_id', $patientIds)
+            ->where(function ($q) use ($patientIds, $requestIds) {
+                if ($patientIds->isNotEmpty()) {
+                    $q->whereIn('patient_id', $patientIds);
+                }
+                if ($requestIds->isNotEmpty()) {
+                    $q->orWhereIn('service_request_id', $requestIds);
+                }
+            })
             ->where('status', 'scheduled')
             ->whereDate('appointment_date', '>=', now()->toDateString())
             ->with(['doctorProfile.employee', 'token', 'patient'])
@@ -629,6 +679,34 @@ class WhatsAppAppointmentBot
         }
 
         return $when->isPast() ? null : $when;
+    }
+
+    /**
+     * Keep an appointment's token pointing at the right day after it moves.
+     *
+     * Same day: nothing to do. The number is the patient's place in that day's queue and they
+     * have already been told it — reissuing would push them to the back of a queue they were
+     * already in, over a change of time they asked for.
+     *
+     * A different day is a different queue, so the old day's token is released and a new one
+     * issued on the new day.
+     */
+    protected static function retimeToken(Appointment $appointment, string $date): void
+    {
+        $token = AppointmentToken::where('appointment_id', $appointment->id)->first();
+
+        if ($token && (string) $token->token_date === $date) {
+            return;
+        }
+
+        $token?->delete();
+        static::generateToken($appointment->doctor_profile_id, $date, $appointment->id);
+    }
+
+    /** Give a token back to the day's queue, so a cancelled slot is not called out. */
+    protected static function releaseToken(int $appointmentId): void
+    {
+        AppointmentToken::where('appointment_id', $appointmentId)->delete();
     }
 
     protected static function generateToken(int $doctorProfileId, string $date, int $appointmentId): void
