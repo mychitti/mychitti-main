@@ -120,20 +120,35 @@
                 In-house work is recorded against the technician who does it. Work sent out can be
                 addressed to a lab from your supplier list and told about the job on WhatsApp.
             </p>
-        </div>
+        </div>   
     </div>
 
+@php $lwTechnicians = $labTechnicians ?? collect(); @endphp
 {{-- In-house: the bench, and the person at it. --}}
 <div class="form-row" data-lw-block="internal" style="display:{{ $lwMode === 'internal' ? '' : 'none' }};">
     <div class="form-group col-md-4">
         <label class="input-label" style="font-size:12px;">Technician <span class="text-danger">*</span></label>
-        <input type="text" name="technician_name" class="form-control form-control-sm" maxlength="150"
-               placeholder="Who is making this" value="{{ $lwOld('technician_name', $work?->technician_name) }}">
+        <select name="technician_staff_id" class="form-control form-control-sm" onchange="lwStaffPicked(this)">
+            <option value="">— Select staff —</option>
+            @foreach($lwTechnicians as $lwTech)
+                <option value="{{ $lwTech->id }}"
+                        data-name="{{ $lwTech->name }}"
+                        data-phone="{{ $lwTech->phone }}"
+                        @if($lwOld('technician_name', $work?->technician_name) === $lwTech->name) selected @endif>
+                    {{ $lwTech->name }}
+                </option>
+            @endforeach
+        </select>
+        {{-- The actual field the controller reads — filled from the selected option's name so the
+             existing store / update logic does not need to change. --}}
+        <input type="hidden" name="technician_name"
+               value="{{ $lwOld('technician_name', $work?->technician_name) }}">
     </div>
     <div class="form-group col-md-3">
         <label class="input-label" style="font-size:12px;">Technician phone</label>
         <input type="text" name="technician_phone" class="form-control form-control-sm" maxlength="40"
-               value="{{ $lwOld('technician_phone', $work?->technician_phone) }}">
+               value="{{ $lwOld('technician_phone', $work?->technician_phone) }}" readonly
+               style="background:#f1f5f9;">
     </div>
 </div>
 

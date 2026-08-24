@@ -593,9 +593,9 @@ class OpdController extends Controller
             'complaintOptions', 'complaintGroups', 'noteTemplates',
             'diagnosisOptions', 'treatmentOptions', 'upcomingVisits', 'termInsights', 'treatmentPrices',
             'treatmentAppointments', 'securityEnabled', 'securityLog',
-            'labWorkEnabled', 'labWorkProfile', 'labWorks', 'labVendors', 'labWorkHandovers'
+            'labWorkEnabled', 'labWorkProfile', 'labWorks', 'labVendors', 'labWorkHandovers', 'labTechnicians'
         ));
-    }
+    }  
 
     /**
      * Everything the hospital has logged that touches one patient's records.

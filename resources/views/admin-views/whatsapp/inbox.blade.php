@@ -211,6 +211,19 @@
         if (isNaN(d)) return '';
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
+    // For the thread list: today → time only, yesterday → "Yesterday 06:37 PM", older → "Aug 20, 10:46 AM"
+    function fmtThreadTime(iso) { 
+        if (!iso) return '';
+        var d = new Date((iso + '').replace(' ', 'T'));
+        if (isNaN(d)) return '';
+        var time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        var today = new Date(); today.setHours(0,0,0,0);
+        var that = new Date(d);  that.setHours(0,0,0,0);
+        var diff = Math.round((today - that) / 86400000);
+        if (diff === 0) return time;
+        if (diff === 1) return 'Yesterday ' + time;
+        return d.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ', ' + time;
+    }
     function fmtDay(iso) {
         var d = new Date((iso + '').replace(' ', 'T'));
         if (isNaN(d)) return '';
@@ -244,7 +257,7 @@
                 +   '<div class="wchat-thread-name">' + esc(label) + kind + wait + '</div>'
                 +   '<div class="wchat-thread-last">' + (t.last_dir === 'out' ? '<span style="color:#53bdeb;">You: </span>' : '') + esc(t.last_body || '') + '</div>'
                 + '</div>'
-                + '<div class="wchat-thread-time">' + fmtTime(t.last_at) + '</div>'
+                + '<div class="wchat-thread-time">' + fmtThreadTime(t.last_at) + '</div>'
                 + '</div>';
         });
         $('#wchatThreads').html(html || '<div class="text-center text-muted py-4" style="font-size:13px;">No chats yet.</div>');

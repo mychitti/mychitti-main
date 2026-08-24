@@ -15,7 +15,7 @@
 
         .cursor-pointer {
             cursor: pointer;
-        }
+        } 
 
         .menu_card.active {
             background: color-mix(in srgb, var(--primary) 10%, white);
@@ -98,7 +98,7 @@
                                                                         Appointment Manage
                                                                     @elseif($value->slug == 'client_manage')
                                                                         {{-- Patients are this store's clients; the list is left holding suppliers. --}}
-                                                                        Suppliers
+                                                                        Lab & Suppliers
                                                                          @else
                                                                     {{ $value->name }}
                                                                     @endif

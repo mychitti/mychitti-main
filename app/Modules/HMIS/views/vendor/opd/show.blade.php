@@ -3661,6 +3661,23 @@
         scope.querySelectorAll('[data-lw-block]').forEach(block => {
             block.style.display = block.dataset.lwBlock === select.value ? '' : 'none';
         });
+    } 
+ 
+    // When a staff member is picked from the in-house technician dropdown, copy their name into
+    // the hidden technician_name field (which the controller already reads) and fill in their phone.
+    function lwStaffPicked(select) {
+        const scope = select.closest('.lw-fields');
+        if (!scope) return;
+
+        const opt   = select.options[select.selectedIndex];
+        const name  = opt && opt.value ? (opt.dataset.name || '') : '';
+        const phone = opt && opt.value ? (opt.dataset.phone || '') : '';
+
+        const nameInput  = scope.querySelector('input[name="technician_name"]');
+        const phoneInput = scope.querySelector('input[name="technician_phone"]');
+
+        if (nameInput)  nameInput.value  = name;
+        if (phoneInput) phoneInput.value = phone;
     }
 
     // Show the chosen lab's name, number and address. Read-only on purpose: they belong to the

@@ -15,7 +15,7 @@
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Dashboard</span>
                         </a>
                     </li>
-                @endif
+                @endif 
 
 
                 @if (!auth('vendor')->check() && vendorPlanHasModule('hospital_manage'))
@@ -934,17 +934,17 @@
                 {{-- =============================== SUPPLIERS =========================== --}}
                 {{-- A hospital's clients ARE its patients — the same person, one record, kept in
                      step by PatientCustomerLink. So this menu is not a second people list here;
-                     what is left of it is the supplier side (pharmacy and consumables purchasing),
-                     which patients never cover. --}}
+                     what is left of it is labs (for lab work) and the supplier side (pharmacy and
+                     consumables purchasing), which patients never cover. --}}
                 @if (
                     (auth('vendor')->check() && selected_menu('client_manage') && hasMasterModulePermission('client_manage')) ||
                         (auth('vendor_employee')->check() && hasMasterModulePermission('client_manage')))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('client*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
-                            title="Suppliers">
+                            title="Lab & Suppliers">
                             <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/Clients_management_color.png') }}"
                                 alt="" class="nav-link-icon">
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Suppliers
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Lab & Suppliers
                             </span>
                         </a>
 
@@ -954,9 +954,9 @@
                                 <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('customer/add') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.customer.add', ['user_type' => 'vendor']) }}"
-                                        title="Add New Supplier">
+                                        title="Add New Lab / Supplier">
                                         <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class=" text-truncate">Add New Supplier</span>
+                                        <span class=" text-truncate">Add New Lab / Supplier</span>
                                     </a>
                                 </li>
                             @endif
@@ -964,9 +964,9 @@
                                 <li
                                     class="navbar-vertical-aside-has-menu {{ Request::is('client/list') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('vendor.customer.list', ['type' => 'vendor']) }}"
-                                        title="Suppliers List">
+                                        title="Lab & Suppliers List">
                                         <span class="tio-circle nav-indicator-icon"></span>
-                                        <span class=" text-truncate">Suppliers List</span>
+                                        <span class=" text-truncate">Lab & Suppliers List</span>
                                     </a>
                                 </li>
                             @endif

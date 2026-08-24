@@ -17,7 +17,7 @@
         @media (max-width: 500px) {
             .button_cont {
                 flex-wrap: wrap;
-            }
+            } 
         }
     </style>
 @endpush
@@ -30,7 +30,7 @@
             <h1 class="page-header-title">
 
                 <span>
-                    {{ $isHospital ? 'Patients & Suppliers' : translate('messages.client_list') }} <span class="badge badge-soft-dark ml-2"
+                    {{ $isHospital ? 'Patients, Lab & Suppliers' : translate('messages.client_list') }} <span class="badge badge-soft-dark ml-2"
                         id="itemCount">{{ $customers->total() }}</span>
                 </span>
             </h1>
