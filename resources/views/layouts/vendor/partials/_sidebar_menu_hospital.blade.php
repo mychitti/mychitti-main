@@ -179,6 +179,61 @@
                         </li>
                     @endif
 
+                    {{-- Catalogs — every priced list the hospital maintains, in one place. Each
+                         entry is gated on its own feature, and the group itself only appears when
+                         at least one of them is visible: a hospital without a lab should not be
+                         shown an empty Catalogs menu. --}}
+                    @php
+                        // Route::has() as well as the permission: a module that is not installed
+                        // registers no routes, and route() on a missing name throws.
+                        $canTreatmentCatalog = selected_menu('opd_register') && Route::has('vendor.opd.treatment-catalog')
+                            && hasPermission('opd_register', 'view');
+                        $canLabCatalog       = selected_menu('lab') && Route::has('vendor.lab.catalog')
+                            && hasPermission('lab_catalog', 'view');
+                        $canRadiologyCatalog = selected_menu('radiology') && Route::has('vendor.radiology.catalog')
+                            && hasPermission('radiology_catalog', 'view');
+                    @endphp
+                    @if ($canTreatmentCatalog || $canLabCatalog || $canRadiologyCatalog)
+                        <li class="navbar-vertical-aside-has-menu {{ Request::is('opd/treatment-catalog*') || Request::is('lab/catalog*') || Request::is('radiology/catalog*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:;"
+                                title="Catalogs">
+                                <i class="tio-library nav-link-icon" style="font-size:18px;"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                    Catalogs</span>
+                            </a>
+
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub">
+                                @if ($canTreatmentCatalog)
+                                    <li class="navbar-vertical-aside-has-menu {{ Request::is('opd/treatment-catalog*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.opd.treatment-catalog') }}"
+                                            title="What each treatment costs">
+                                            <span class="tio-money nav-icon"></span>
+                                            <span class="text-truncate">Treatment Catalog</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if ($canLabCatalog)
+                                    <li class="navbar-vertical-aside-has-menu {{ Request::is('lab/catalog*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.lab.catalog') }}"
+                                            title="Lab tests, their parameters and prices">
+                                            <span class="tio-test-tube nav-icon"></span>
+                                            <span class="text-truncate">Test Catalog</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if ($canRadiologyCatalog)
+                                    <li class="navbar-vertical-aside-has-menu {{ Request::is('radiology/catalog*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('vendor.radiology.catalog') }}"
+                                            title="Radiology studies and their prices">
+                                            <span class="tio-scanner nav-icon"></span>
+                                            <span class="text-truncate">Radiology Catalog</span>
+                                        </a>
+                                    </li>
+                                @endif
+                            </ul>
+                        </li>
+                    @endif
+
                     @if (selected_menu('inpatient') && hasAnyPermission([
                             'ipd_admission.list',
                             'ipd_admission.add',

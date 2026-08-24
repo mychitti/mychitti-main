@@ -68,8 +68,38 @@
                                     @elseif (hasPermission('lab_report', 'view'))
                                         <a href="{{ route('vendor.lab.orders.report', $o->id) }}" target="_blank" class="btn btn-outline btn-xs">Report</a>
                                     @endif
+
+                                    {{-- Only on orders that leave the building. An in-house order
+                                         never has a stranger at the counter, and offering a
+                                         chain-of-custody button on one is an invitation to record
+                                         handovers that are really just staff walking down a
+                                         corridor. --}}
+                                    @if ($o->is_outsourced && hasPermission('lab_worklist', 'edit'))
+                                        <a href="javascript:void(0)" class="btn btn-outline btn-xs"
+                                           onclick="hoOpen({{ $o->id }}, 'out', 'lab_order')" title="Samples going to the lab">↑ Out</a>
+                                        <a href="javascript:void(0)" class="btn btn-outline btn-xs"
+                                           onclick="hoOpen({{ $o->id }}, 'in', 'lab_order')" title="Report or samples coming back">↓ In</a>
+                                    @endif
                                 </div>
                             </div>
+
+                            {{-- An arrival nobody has vouched for. Shown on the worklist row itself
+                                 rather than only inside the order, because the whole point is that
+                                 a technician about to key results off a delivered report sees that
+                                 the report's origin was never confirmed BEFORE they type it in. --}}
+                            @if (($wlUnconfirmed[$o->id] ?? null))
+                                {{-- Deliberately NOT .tbl-row: wlFilter() forces every .tbl-row it
+                                     finds back to display:grid, which would flatten this banner
+                                     into seven invisible columns the first time anyone typed in
+                                     the search box. --}}
+                                <div class="wl-warn" style="background:#FEF2F2;border-left:3px solid #DC2626;padding:6px 10px;font-size:11px;color:#991B1B">
+                                    ⚠ A delivery on this order is <strong>not yet confirmed</strong> with
+                                    {{ $wlUnconfirmed[$o->id]->lab_name ?: 'the lab' }} —
+                                    handed over by {{ $wlUnconfirmed[$o->id]->person_name }} on
+                                    {{ optional($wlUnconfirmed[$o->id]->happened_at)->format('d M, h:i A') }}.
+                                    Confirm it before treating the report as genuine.
+                                </div>
+                            @endif
                         @empty
                             <div class="empty">No lab orders in the last 2 days. @if (hasPermission('lab_order', 'view'))<a href="{{ route('vendor.lab.order') }}">Order a test →</a>@endif</div>
                         @endforelse
@@ -120,6 +150,10 @@
         </div>
     </div>
 </div></div>
+
+@if (hasPermission('lab_worklist', 'edit'))
+    @include('hmis::vendor.handover._modal', ['hoSubjectType' => 'lab_order'])
+@endif
 @endsection
 
 @push('script_2')

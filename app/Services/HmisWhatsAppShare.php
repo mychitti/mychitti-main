@@ -63,6 +63,10 @@ class HmisWhatsAppShare
         'lab_report_ready',
         'radiology_report_ready',
         'patient_document',
+        'lab_work_status',
+        'lab_work_vendor_job',
+        'lab_work_handover',
+        'lab_work_handover_otp',
     ];
 
     /** Kept as a key-only map so callers that only ask "is this a hospital preset?" still work. */
@@ -77,6 +81,10 @@ class HmisWhatsAppShare
         'lab_report_ready'       => null,
         'radiology_report_ready' => null,
         'patient_document'       => null,
+        'lab_work_status'         => null,
+        'lab_work_vendor_job'     => null,
+        'lab_work_handover'       => null,
+        'lab_work_handover_otp'   => null,
     ];
 
     /**
@@ -170,6 +178,42 @@ class HmisWhatsAppShare
             'label'    => 'Document',
             'template' => 'patient_document',
             'context'  => 'document',
+        ],
+        // Work out at an external lab — a crown, a lens, a brace. Manual only, and absent from
+        // AUTO_PREFS on purpose: there is no rule that knows when a lab has actually finished
+        // something. A person at the clinic learns it and says so, which is the moment this sends.
+        'lab_work' => [
+            'label'    => 'Lab work update',
+            'template' => 'lab_work_status',
+            'context'  => 'lab work update',
+        ],
+        // The two below go OUTWARD — to the lab, not the patient. Every other kind in this list
+        // reaches the person the record is about; these reach the firm making the thing, and they
+        // carry the patient's name and specification because a lab that is not told who the crown
+        // is for cannot label the box. Kept as their own kinds rather than folded into 'lab_work'
+        // so the message log reads honestly about who was messaged, and so a clinic can bind them
+        // to their own wording without changing what patients get told.
+        'lab_work_vendor' => [
+            'label'    => 'Lab job sent to lab',
+            'template' => 'lab_work_vendor_job',
+            'context'  => 'lab job',
+        ],
+        'lab_work_handover' => [
+            'label'    => 'Lab work handover',
+            'template' => 'lab_work_handover',
+            'context'  => 'lab work handover',
+        ],
+        // The code that proves the person at the counter is really from this lab.
+        //
+        // It goes to the lab's OWN number — the one already on the supplier record — and never to
+        // the phone of whoever is standing there. That inversion is the entire security value: a
+        // stranger with a fake ID card has their own phone in their pocket and would pass a code
+        // sent to it without blinking, but they cannot pick up a handset in an office they do not
+        // work at. The runner has to ring their employer to be let through.
+        'lab_work_handover_otp' => [
+            'label'    => 'Handover verification code',
+            'template' => 'lab_work_handover_otp',
+            'context'  => 'handover code',
         ],
     ];
 
@@ -753,6 +797,241 @@ class HmisWhatsAppShare
         ], false);
     }
 
+    /**
+     * "Your crown is ready" — the stage a piece of lab work has reached.
+     *
+     * The one hospital message with no link on it. Everything the patient needs is the four words
+     * in the body; a link to a page that says the same thing again is friction in front of the
+     * only action that matters, which is coming in. Sent with the stage already worded by the
+     * clinic's own speciality profile, so nothing here has to know what a pontic is.
+     */
+    public static function labWorkStatus(\App\Models\OpdLabWork $work, ?string $phone = null): array
+    {
+        $work->loadMissing('patient');
+        $patient = $work->patient;
+        if (!$patient) {
+            return self::fail('This lab work has no patient on it.');
+        }
+
+        return self::dispatch('lab_work', (int) $work->store_id, $patient, $phone, (int) $work->id, [
+            self::name($patient),
+            self::storeName((int) $work->store_id),
+            self::oneLine($work->title()),
+            self::oneLine($work->statusLabel()),
+        ], false);
+    }
+
+    /**
+     * Tell the lab there is a job for them — what to make, for whom, and by when.
+     *
+     * Sent to the LAB's number, not the patient's, which is why it does not go through dispatch():
+     * that one falls back to the patient's phone, and a lab job that quietly reached the patient
+     * instead of the lab would be both useless and a disclosure. The recipient here is explicit or
+     * there is no send at all.
+     */
+    public static function labWorkVendorJob(\App\Models\OpdLabWork $work, ?string $phone = null): array
+    {
+        $work->loadMissing('patient');
+        $patient = $work->patient;
+        if (!$patient) {
+            return self::fail('This lab work has no patient on it.');
+        }
+
+        $to = trim((string) ($phone ?: $work->contactPhone()));
+        if ($to === '') {
+            return self::fail($work->is_internal
+                ? 'No phone number is saved for this technician.'
+                : 'No phone number is saved for this lab.');
+        }
+
+        $expected = $work->expected_on ? self::date($work->expected_on) : 'Not specified';
+
+        return self::dispatchOutward('lab_work_vendor', (int) $work->store_id, $to, (int) $work->id, [
+            self::oneLine($work->labDisplayName()),
+            self::storeName((int) $work->store_id),
+            self::oneLine($work->title()),
+            self::patientLine($patient),
+            self::oneLine($work->specLine()),
+            $expected,
+        ], $patient, $work->labDisplayName());
+    }
+
+    /**
+     * Confirm a handover to the lab — who gave the work over, and who carried it away or brought
+     * it back. Both halves in one line, because a confirmation naming only one end of the exchange
+     * settles nothing when a job goes missing between the two.
+     *
+     * $movement is the sentence itself, built by the caller, since only the caller knows whether
+     * this is the work going out or coming back.
+     */
+    public static function labWorkHandover(\App\Models\OpdLabWork $work, string $movement, ?string $phone = null): array
+    {
+        $work->loadMissing('patient');
+        $patient = $work->patient;
+
+        $to = trim((string) ($phone ?: $work->contactPhone()));
+        if ($to === '') {
+            return self::fail($work->is_internal
+                ? 'No phone number is saved for this technician.'
+                : 'No phone number is saved for this lab.');
+        }
+
+        return self::dispatchOutward('lab_work_handover', (int) $work->store_id, $to, (int) $work->id, [
+            self::oneLine($work->labDisplayName()),
+            self::storeName((int) $work->store_id),
+            self::oneLine($work->title()),
+            self::oneLine($movement),
+        ], $patient, $work->labDisplayName());
+    }
+
+    /**
+     * The code that lets someone claiming to be from a lab actually prove it.
+     *
+     * Sent to the number on the lab's own record — passed in by the caller, which reads it from
+     * the supplier row rather than from anything typed at the counter. A code sent to a number the
+     * person in front of you supplied verifies that they own a phone, which was never in doubt.
+     *
+     * The message names who is standing there and what they are asking for, so the lab can refuse
+     * it outright: "we did not send Suresh, and that report went out last week" is the answer this
+     * whole mechanism exists to make possible.
+     */
+    public static function handoverOtp(\App\Models\HmisHandover $handover, string $code, string $what): array
+    {
+        $to = trim((string) $handover->lab_phone);
+        if ($to === '') {
+            return self::fail('No phone number is saved for this lab, so there is nobody to verify with.');
+        }
+
+        $asking = $handover->is_inbound
+            ? 'is delivering it to us'
+            : 'is collecting it from us';
+
+        return self::dispatchOutward('lab_work_handover_otp', (int) $handover->store_id, $to, (int) $handover->id, [
+            self::oneLine(trim((string) $handover->lab_name) ?: 'there'),
+            self::storeName((int) $handover->store_id),
+            self::oneLine(trim((string) $handover->person_name) . ' ' . $asking),
+            self::oneLine($what),
+            $code,
+        ], null, $handover->lab_name);
+    }
+
+    /**
+     * The written record of an exchange, on the lab's own phone, seconds after it happened.
+     *
+     * Sent both ways on purpose. Outbound it is the receipt for work leaving the building, which
+     * is what a clinic wants when a lab later says nothing ever arrived. Inbound it is the thing a
+     * forger cannot survive: a delivery they made under a false name lands, unprompted, on the
+     * real lab's phone, and the real lab reads a message about a report they never dispatched.
+     *
+     * That is a control the counter cannot provide, because it works even when everyone present
+     * was fooled.
+     */
+    public static function handoverConfirm(\App\Models\HmisHandover $handover, string $what): array
+    {
+        $to = trim((string) $handover->lab_phone);
+        if ($to === '') {
+            return self::fail('No phone number is saved for this lab.');
+        }
+
+        return self::dispatchOutward('lab_work_handover', (int) $handover->store_id, $to, (int) $handover->id, [
+            self::oneLine(trim((string) $handover->lab_name) ?: 'there'),
+            self::storeName((int) $handover->store_id),
+            self::oneLine($what),
+            self::oneLine($handover->movementSentence()),
+        ], null, $handover->lab_name);
+    }
+
+    /** "Ramesh Kumar, 42/M" — enough for a lab to label a box, and no more than that. */
+    protected static function patientLine(Patient $patient): string
+    {
+        $bits = [trim((string) $patient->name) ?: 'Patient'];
+
+        $age = $patient->age ?: ($patient->dob ? self::ageFrom($patient->dob) : null);
+        $sex = strtoupper(mb_substr(trim((string) $patient->gender), 0, 1));
+
+        $detail = trim(implode('/', array_filter([$age ? $age . 'y' : null, $sex ?: null])));
+        if ($detail !== '') {
+            $bits[] = $detail;
+        }
+
+        return implode(', ', $bits);
+    }
+
+    protected static function ageFrom($dob): ?int
+    {
+        try {
+            return Carbon::parse($dob)->age;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Send one of the outward kinds to a number that is NOT the patient's.
+     *
+     * Deliberately a sibling of dispatch() rather than a flag on it. dispatch() exists to reach a
+     * patient and defaults to their number when none is given; every guard, every log line and the
+     * share link all read that way. A lab is a different recipient with a different failure mode —
+     * there is no link to hand out, no patient to fall back to, and the log has to record the lab
+     * as who was messaged — and threading that through as a parameter would leave one function
+     * doing two jobs badly. $patient is passed only so the log says which record it concerned.
+     */
+    protected static function dispatchOutward(string $kind, int $storeId, string $to, ?int $recordId, array $params, ?Patient $patient = null, ?string $recipientName = null): array
+    {
+        try {
+            $meta = self::KINDS[$kind] ?? null;
+            if (!$meta) {
+                return self::fail('Unknown record type.');
+            }
+
+            $wa = WhatsAppService::make($storeId);
+            if ($wa->source() !== 'vendor') {
+                self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, $to, $recordId,
+                    'Your own WhatsApp number is not connected.', $recipientName);
+                return self::fail('Connect your own WhatsApp number under WhatsApp → Connection before sending to a lab.');
+            }
+            if (!WhatsAppBilling::isActive($storeId)) {
+                self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, $to, $recordId,
+                    'Your WhatsApp subscription is not active.', $recipientName);
+                return self::fail('Your WhatsApp subscription isn’t active. Activate it under WhatsApp → Plan & Billing.');
+            }
+
+            $components = [[
+                'type'       => 'body',
+                'parameters' => array_map(
+                    fn($value) => ['type' => 'text', 'text' => self::sanitize((string) $value)],
+                    array_values($params)
+                ),
+            ]];
+
+            $tpl = WhatsAppService::roleTemplate($storeId, $kind, $meta['template']);
+            $res = $wa->sendTemplate($to, $tpl['name'], $tpl['language'], $components, $meta['context']);
+
+            if (!$res['success']) {
+                $error = (string) ($res['error'] ?? 'WhatsApp refused the message.');
+                if (stripos($error, 'template') !== false) {
+                    $error .= ' Create the "' . $tpl['name'] . '" template under WhatsApp → Message Templates '
+                        . '(it is in the suggested list) and wait for Meta to approve it, or point this '
+                        . 'message at one of your own under WhatsApp → Automation.';
+                }
+                self::logAttempt(MessageLog::FAILED, $kind, $storeId, $patient, $to, $recordId, $error, $recipientName);
+                return self::fail($error);
+            }
+
+            self::logAttempt(MessageLog::SENT, $kind, $storeId, $patient, $to, $recordId, null, $recipientName);
+
+            return [
+                'success' => true,
+                'message' => $meta['label'] . ' sent on WhatsApp to ' . self::maskPhone($to) . '.',
+                'url'     => null,
+                'wamid'   => $res['id'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('HMIS lab WhatsApp send failed: ' . $e->getMessage());
+            return self::fail('Could not send on WhatsApp: ' . $e->getMessage());
+        }
+    }
+
     /** Lab report — results behind the link, never in the message body. */
     public static function labReport(LabOrder $order, ?string $phone = null): array
     {
@@ -1215,13 +1494,18 @@ class HmisWhatsAppShare
      * Separate from log() above, which writes the hospital's clinical activity trail: that answers
      * "what was done to this patient", this answers "did the message reach them, and if not why".
      */
-    protected static function logAttempt(string $status, string $kind, int $storeId, ?Patient $patient, ?string $to, ?int $recordId, ?string $reason = null): void
+    /**
+     * $recipientName overrides the patient's name for the outward kinds, where the message went to
+     * a lab. Without it the log would name the patient beside the lab's number, which reads as a
+     * record having been sent to the wrong person.
+     */
+    protected static function logAttempt(string $status, string $kind, int $storeId, ?Patient $patient, ?string $to, ?int $recordId, ?string $reason = null, ?string $recipientName = null): void
     {
         MessageLog::record($storeId, $status, [
             'key'         => self::AUTO_PREFS[$kind] ?? null,
             'label'       => self::KINDS[$kind]['label'] ?? $kind,
             'template'    => self::KINDS[$kind]['template'] ?? null,
-            'recipient'   => $patient?->name,
+            'recipient'   => $recipientName ?: $patient?->name,
             'to'          => $to,
             'record_type' => $kind,
             'record_id'   => $recordId,

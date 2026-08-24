@@ -302,6 +302,10 @@
                    title="Choose which diagnosis and treatment terms your doctors are offered">
                     <i class="tio-label"></i> Clinical Terms
                 </a>
+                <a href="{{ route('vendor.opd.treatment-catalog') }}" class="btn btn-hmis-export"
+                   title="What each treatment costs — used to fill the amount during a consultation">
+                    <i class="tio-money"></i> Treatment Catalog
+                </a>
                 <a href="{{ route('vendor.hospital.settings') }}#opTypes" class="btn btn-hmis-export"
                    title="Choose how visits can be paid for — cash, insurance, government schemes">
                     <i class="tio-card"></i> OP Types

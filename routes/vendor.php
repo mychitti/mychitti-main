@@ -162,7 +162,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('whatsapp/campaigns/{id}/cancel', 'WhatsAppCampaignController@cancel')->name('whatsapp.campaigns.cancel');
         Route::post('whatsapp/campaigns/{id}/run-now', 'WhatsAppCampaignController@runNow')->name('whatsapp.campaigns.run-now');
         Route::post('whatsapp/campaigns/{id}/delete', 'WhatsAppCampaignController@destroy')->name('whatsapp.campaigns.delete');
- 
+
         Route::get('terms-and-conditions', 'DashboardController@view_terms_and_conditions')->name('terms-and-conditions.view');
         Route::get('notifications', 'DashboardController@notifications')->name('notifications')->middleware('module:notifications');
         Route::get('/clock-in', 'VendorEmployeeController@clock_in')->name('clockin');
@@ -174,6 +174,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('/approve-leave/{id}', 'VendorEmployeeController@leave_approve')->name('approve-leave');
         Route::get('/reject-leave/{id}', 'VendorEmployeeController@leave_reject')->name('reject-leave');
 
+        
         Route::get('lang/{locale}', 'LanguageController@lang')->name('lang');
         Route::get('/master-dashboard', 'DashboardController@master_dashboard')->name('master-dashboard');
         Route::get('/dashboard', 'DashboardController@dashboard')->name('dashboard');

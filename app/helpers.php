@@ -8354,3 +8354,76 @@ if (!function_exists('hmis_vitals_enabled')) {
         return $cache[$store_id] = ($value === null || (int) $value === 1);
     }
 }
+
+if (!function_exists('hmis_security_tab_enabled')) {
+    /**
+     * Whether this hospital shows the Security & Compliance tab on the consultation screen.
+     *
+     * The tab is the patient's access trail — who opened this chart and who edited it. Keeping
+     * that trail costs a row per doctor per session, so it is only written for hospitals that
+     * asked to see it: switching this on is what starts the logging, not just what reveals it.
+     *
+     * Defaults to off. A clinic that never opens the tab should not be accumulating access rows
+     * it will never read.
+     */
+    function hmis_security_tab_enabled($store_id = null): bool
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        if (!$store_id) {
+            return false;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        // Read straight through rather than asking the schema first: the column is added the
+        // first time a hospital saves its settings, and until then every store reads as off.
+        try {
+            $value = \App\Models\StoreConfig::where('store_id', $store_id)->value('hmis_security_tab_enabled');
+        } catch (\Throwable $e) {
+            return $cache[$store_id] = false;
+        }
+
+        return $cache[$store_id] = ((int) $value === 1);
+    }
+}
+
+if (!function_exists('hmis_lab_work_enabled')) {
+    /**
+     * Whether this hospital tracks work it sends out to an external lab.
+     *
+     * Tri-state on purpose. Unset means "whatever suits this speciality" — a dental, orthopaedic,
+     * eye or ENT practice gets the tab without anyone finding the switch, because sending work out
+     * to a lab is what those practices do. Everyone else gets it only by asking. Once a hospital
+     * saves its settings the stored 0/1 wins outright, so a clinic that switched it off does not
+     * have it reappear because its category was later added to the assumed list.
+     */
+    function hmis_lab_work_enabled($store_id = null): bool
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        if (!$store_id) {
+            return false;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        try {
+            $value = \App\Models\StoreConfig::where('store_id', $store_id)->value('hmis_lab_work_enabled');
+        } catch (\Throwable $e) {
+            $value = null;
+        }
+
+        if ($value !== null) {
+            return $cache[$store_id] = ((int) $value === 1);
+        }
+
+        return $cache[$store_id] = \App\Models\OpdLabWork::isAutoCategory(
+            \App\Models\OpdLabWork::categoryFor((int) $store_id)
+        );
+    }
+}

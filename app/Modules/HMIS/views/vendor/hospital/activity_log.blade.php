@@ -31,6 +31,13 @@
         ];
         $countKeys = ['' => 'all', 'appointments' => 'appointments', 'prescriptions' => 'prescriptions',
                       'patients' => 'patients', 'opd' => 'opd', 'ipd' => 'ipd', 'doctors_slots' => 'doctors_slots'];
+
+        // Only for hospitals that send work out to a lab. A tab that reads 0 for every hospital
+        // that has never ordered a crown is worse than no tab.
+        if (hmis_lab_work_enabled()) {
+            $tabs['lab_work']     = ['label' => 'Lab Work', 'icon' => 'tio-lab'];
+            $countKeys['lab_work'] = 'lab_work';
+        }
     @endphp
 
     {{-- Category tabs --}}
@@ -121,6 +128,7 @@
                                 'ipd_admission' => ['color' => 'danger',    'icon' => 'tio-home',      'label' => 'IPD Admission'],
                                 'doctor'        => ['color' => 'dark',      'icon' => 'tio-user-add',  'label' => 'Doctor'],
                                 'slot'          => ['color' => 'secondary', 'icon' => 'tio-time',      'label' => 'Slot'],
+                                'opd_lab_work'  => ['color' => 'warning',   'icon' => 'tio-lab',       'label' => 'Lab Work'],
                             ];
                             $actionMeta = [
                                 'created'        => ['color' => 'success',   'label' => 'Created'],
@@ -134,6 +142,11 @@
                                 'cancelled'      => ['color' => 'danger',    'label' => 'Cancelled'],
                                 'deleted'        => ['color' => 'danger',    'label' => 'Deleted'],
                                 'toggled'        => ['color' => 'secondary', 'label' => 'Toggled'],
+                                // Lab work leaves the building, so its trail has two more actions
+                                // than anything else here: one for telling the lab there is a job,
+                                // one for confirming who actually carried it.
+                                'lab_notified'       => ['color' => 'info',    'label' => 'Sent to Lab'],
+                                'handover_confirmed' => ['color' => 'success', 'label' => 'Handover'],
                             ];
                             $causerMeta = [
                                 'vendor'          => ['color' => 'primary',   'label' => 'Vendor'],

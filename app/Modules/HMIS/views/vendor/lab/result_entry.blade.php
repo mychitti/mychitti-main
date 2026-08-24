@@ -12,6 +12,22 @@
                 $locked = in_array($order->status, ['verified', 'sent']);
                 $age = $order->patient?->dob ? \Carbon\Carbon::parse($order->patient->dob)->age . 'Y' : '—';
             @endphp
+            {{-- Above the form, not beside it. Once these numbers are typed they are
+                 indistinguishable from any other result in the patient's chart, so the one useful
+                 place to say "nobody has confirmed where this report came from" is in front of the
+                 person about to type them. --}}
+            @if (!empty($reUnconfirmed))
+                <div style="background:#FEF2F2;border:1px solid #FECACA;border-left:4px solid #DC2626;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#991B1B">
+                    <strong>⚠ This order's delivery has not been confirmed with the lab.</strong><br>
+                    {{ $reUnconfirmed->person_name }}
+                    @if (filled($reUnconfirmed->lab_name)) of {{ $reUnconfirmed->lab_name }} @endif
+                    delivered it on {{ optional($reUnconfirmed->happened_at)->format('d M Y · h:i A') }},
+                    and nobody at {{ $reUnconfirmed->lab_name ?: 'the lab' }} has vouched for them.
+                    Confirm the handover before entering these results
+                    (<a href="{{ route('vendor.handover.slip', $reUnconfirmed->id) }}" target="_blank" style="color:#991B1B;font-weight:700">view the handover</a>).
+                </div>
+            @endif
+
             <div class="layout-2col">
                 <div>
                     <form method="post" action="{{ route('vendor.lab.orders.results', $order->id) }}">

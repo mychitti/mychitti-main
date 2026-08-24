@@ -269,6 +269,97 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             transform: scale(1.05);
         }
 
+        /* The Help button floats free so the vendor can park it wherever it does not cover the
+           screen they work on. Default is the old top-right spot; a saved position replaces it
+           on load. Below the Bootstrap modal layer (1050) and its backdrop (1040) on purpose —
+           it must not hover over an open dialog. */
+        .help-fab {
+            position: fixed;
+            /* Clear of the theme's fixed navbar (3.75rem) rather than sitting on top of it. */
+            top: calc(3.75rem + 12px);
+            right: 12px;
+            z-index: 1000;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            font-size: 11.5px;
+            font-weight: 600;
+            line-height: 1.7;
+            border-radius: 4px;
+            white-space: nowrap;
+            cursor: grab;
+            /* Stops the browser panning/scrolling the page out from under a drag on touch. */
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .help-fab .tio-headphones {
+            font-size: 12px;
+        }
+
+        /* Banner pushes the navbar down 44px; the button has to follow or it lands on it. */
+        body.has-store-alert .help-fab {
+            top: calc(3.75rem + 44px + 12px);
+        }
+
+        /* The six-dot grip is what tells a vendor this thing moves. Nothing else on the page
+           says so, and a cursor change only shows up once you are already hovering it. */
+        .help-fab-grip {
+            width: 7px;
+            height: 13px;
+            flex: none;
+            opacity: .65;
+            background-image: radial-gradient(currentColor 1px, transparent 1.2px);
+            background-size: 3.5px 4.5px;
+            background-position: 0 1px;
+            transition: opacity .15s;
+        }
+
+        .help-fab:hover .help-fab-grip {
+            opacity: 1;
+        }
+
+        /* Shown once per vendor, until they drag it or a few seconds pass. */
+        .help-fab-hint {
+            position: absolute;
+            top: calc(100% + 7px);
+            right: 0;
+            display: none;
+            padding: 4px 8px;
+            border-radius: 5px;
+            background: #111b21;
+            color: #fff;
+            font-size: 10.5px;
+            font-weight: 600;
+            line-height: 1.5;
+            white-space: nowrap;
+            pointer-events: none;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .22);
+        }
+
+        .help-fab-hint::after {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            right: 12px;
+            border: 4px solid transparent;
+            border-bottom-color: #111b21;
+        }
+
+        .help-fab.show-hint .help-fab-hint {
+            display: block;
+        }
+
+        /* No scale-on-hover mid-drag: the button would creep away from the pointer. */
+        .help-fab.is-dragging,
+        .help-fab.is-dragging:hover {
+            cursor: grabbing;
+            transform: none;
+            transition: none;
+        }
+
         @keyframes gradientMove {
             0% {
                 background-position: 0% 50%;
@@ -466,8 +557,11 @@ $countryCode = strtolower($country ? $country->value : 'auto');
 
         {{-- <a type="button" class="animated-btn" type="button" data-toggle="modal" data-target="#helpModal"
             style="float: right; margin: 3px 12px; padding: 0px 15px;"> Help</a> --}}
-        <a type="button" class="animated-btn" type="button" id="ai-chat-fab"
-            style="float: right;      z-index: 43;  right: 0; margin: 3px 12px; padding: 0px 15px;"><i class="tio-headphones"></i> Help</a>
+        {{-- Draggable: position is set in JS from the vendor's saved spot, so no inline placement
+             here. See the help-fab drag script near the AI chat wiring. --}}
+        <a type="button" class="animated-btn help-fab" type="button" id="ai-chat-fab"
+            title="Help — drag the dots to move me"><span class="help-fab-grip" aria-hidden="true"></span><i
+                class="tio-headphones"></i>Help<span class="help-fab-hint">Drag me anywhere</span></a>
 
         @yield('content')
 
@@ -2010,6 +2104,144 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             });
         })
     </script>
+    {{-- Help button: drag to reposition, remembered per vendor.
+         The button sits over every screen in the panel, and where it is comfortable depends on
+         what the vendor is looking at — it covered the patient banner on the consultation page.
+         So they move it, and it stays moved. --}}
+    <script>
+        function initHelpFabDrag() {
+            var fab = document.getElementById('ai-chat-fab');
+            if (!fab || !window.localStorage) return;
+
+            // Per vendor: two accounts sharing a browser must not inherit each other's spot.
+            var KEY = 'mc_help_fab_pos_{{ \App\CentralLogics\Helpers::get_store_id() ?? 0 }}';
+            var HINT_KEY = KEY + '_hinted';
+            // Below this, a wobble while clicking is a click, not a drag.
+            var THRESHOLD = 4;
+            var MARGIN = 4;
+
+            var dragging = false, moved = false;
+            var startX = 0, startY = 0, originLeft = 0, originTop = 0;
+
+            function clamp(left, top) {
+                var maxLeft = Math.max(MARGIN, window.innerWidth - fab.offsetWidth - MARGIN);
+                var maxTop = Math.max(MARGIN, window.innerHeight - fab.offsetHeight - MARGIN);
+                return {
+                    left: Math.min(Math.max(left, MARGIN), maxLeft),
+                    top: Math.min(Math.max(top, MARGIN), maxTop)
+                };
+            }
+
+            function place(left, top) {
+                var at = clamp(left, top);
+                // Switching to left/top means the CSS right anchor has to let go, or the button
+                // would be pinned by both edges and stretch instead of move.
+                fab.style.left = at.left + 'px';
+                fab.style.top = at.top + 'px';
+                fab.style.right = 'auto';
+                fab.style.bottom = 'auto';
+                return at;
+            }
+
+            function restore() {
+                var raw;
+                try { raw = JSON.parse(localStorage.getItem(KEY)); } catch (e) { return false; }
+                if (!raw || typeof raw.left !== 'number' || typeof raw.top !== 'number') return false;
+                // Clamped on the way in as well: a spot saved on a wide monitor would otherwise
+                // strand the button off-screen on a laptop.
+                place(raw.left, raw.top);
+                return true;
+            }
+
+            function hideHint() {
+                fab.classList.remove('show-hint');
+                try { localStorage.setItem(HINT_KEY, '1'); } catch (e) {}
+            }
+
+            // Said once, to a vendor who has never moved it. A grip they have not noticed is the
+            // same as no grip, but a tip that keeps reappearing is just noise.
+            function maybeHint() {
+                var seen = true;
+                try { seen = localStorage.getItem(HINT_KEY) === '1'; } catch (e) {}
+                if (seen) return;
+                fab.classList.add('show-hint');
+                setTimeout(hideHint, 6000);
+            }
+
+            function save(at) {
+                try { localStorage.setItem(KEY, JSON.stringify(at)); } catch (e) {}
+            }
+
+            function onDown(e) {
+                if (e.button != null && e.button !== 0) return;
+                var box = fab.getBoundingClientRect();
+                dragging = true;
+                moved = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                originLeft = box.left;
+                originTop = box.top;
+                // Keeps the pointer bound to the button even when it outruns the cursor.
+                if (fab.setPointerCapture && e.pointerId != null) {
+                    try { fab.setPointerCapture(e.pointerId); } catch (err) {}
+                }
+            }
+
+            function onMove(e) {
+                if (!dragging) return;
+                var dx = e.clientX - startX;
+                var dy = e.clientY - startY;
+                if (!moved && Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return;
+                if (!moved) {
+                    moved = true;
+                    fab.classList.add('is-dragging');
+                    hideHint();
+                }
+                e.preventDefault();
+                place(originLeft + dx, originTop + dy);
+            }
+
+            function onUp(e) {
+                if (!dragging) return;
+                dragging = false;
+                if (fab.releasePointerCapture && e.pointerId != null) {
+                    try { fab.releasePointerCapture(e.pointerId); } catch (err) {}
+                }
+                if (!moved) return;
+                fab.classList.remove('is-dragging');
+                var box = fab.getBoundingClientRect();
+                save(place(box.left, box.top));
+            }
+
+            fab.addEventListener('pointerdown', onDown);
+            fab.addEventListener('pointermove', onMove);
+            fab.addEventListener('pointerup', onUp);
+            fab.addEventListener('pointercancel', onUp);
+            // Letting go after a drag still fires a click. Swallowed in the capture phase on the
+            // document, which runs before the jQuery handler that opens the chat panel — a vendor
+            // repositioning the button must not be dumped into a chat window.
+            document.addEventListener('click', function (e) {
+                if (!moved) return;
+                if (!e.target.closest || !e.target.closest('#ai-chat-fab')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                moved = false;
+            }, true);
+            fab.addEventListener('dragstart', function (e) { e.preventDefault(); });
+
+            // A saved spot can fall outside a smaller window; pull it back into view.
+            window.addEventListener('resize', function () {
+                if (fab.style.left === '' || fab.style.left === 'auto') return;
+                var box = fab.getBoundingClientRect();
+                save(place(box.left, box.top));
+            });
+
+            // Only nudge someone who has never moved it — a saved position proves they know.
+            if (!restore()) {
+                maybeHint();
+            }
+        }
+    </script>
     <script>
         $(function() {
             var $panel = $('#ai-chat-panel');
@@ -2038,6 +2270,7 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             }
 
             $fab.on('click', openChat);
+            initHelpFabDrag();
             $('#ai-chat-close, #ai-chat-overlay').on('click', closeChat);
             $('#ai-ask-human-btn').on('click', closeChat);
             $(document).on('keydown', function(e) {

@@ -116,6 +116,8 @@ class StoreConfig extends Model
         'opd_consultation_count',
         'opd_consultation_validity_days',
         'hmis_vitals_enabled',
+        'hmis_security_tab_enabled',
+        'hmis_lab_work_enabled',
         'admission_no_prefix',
         'admission_no_padding',
         'admission_no_serial',

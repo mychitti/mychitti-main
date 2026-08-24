@@ -179,6 +179,10 @@ class WhatsAppService
         'lab_report_ready',
         'radiology_report_ready',
         'patient_document',
+        'lab_work_status',
+        'lab_work_vendor_job',
+        'lab_work_handover',
+        'lab_work_handover_otp',
     ];
 
     /**
@@ -336,6 +340,41 @@ class WhatsAppService
             'default' => 'radiology_report_ready',
             'params'  => ['Patient name', 'Hospital name', 'Scan name', 'Record link'],
             'blurb'   => 'Sent once a radiology study is verified — findings are behind the link.',
+        ],
+        'lab_work' => [
+            'label'   => 'Lab work update',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'lab_work_status',
+            'params'  => ['Patient name', 'Hospital name', 'What the work is', 'Stage it has reached'],
+            'blurb'   => 'Tells a patient their crown, denture, lens or appliance has moved on — sent by hand when staff update the stage.',
+        ],
+        // Outward to the lab, not the patient. Both carry the clinic's own name as {{2}} because
+        // the recipient is a business the clinic deals with, and a lab handling work for six
+        // practices needs to know which one is writing before anything else in the message.
+        'lab_work_vendor' => [
+            'label'   => 'Lab job sent to lab',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'lab_work_vendor_job',
+            'params'  => ['Lab name', 'Hospital name', 'What the work is', 'Patient', 'Specification', 'Expected by'],
+            'blurb'   => 'Tells an external lab there is a job for them, with the patient and the specification to make it to.',
+        ],
+        'lab_work_handover' => [
+            'label'   => 'Lab work handover',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'lab_work_handover',
+            'params'  => ['Lab name', 'Hospital name', 'What the work is', 'Who handed it over and who took it'],
+            'blurb'   => 'Confirms to the lab who gave the work over and who carried it away or brought it back.',
+        ],
+        'lab_work_handover_otp' => [
+            'label'   => 'Handover verification code',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'lab_work_handover_otp',
+            'params'  => ['Lab name', 'Hospital name', 'Who is at our counter', 'What the work is', 'Code'],
+            'blurb'   => 'Sends a one-time code to the lab so their own office can vouch for the person standing at your counter. Goes to the number on the lab record, never to the visitor.',
         ],
         'document' => [
             'label'   => 'Patient document',
@@ -1254,6 +1293,23 @@ class WhatsAppService
         if (!$this->hasWaba()) {
             return ['success' => false, 'error' => 'WhatsApp Business Account ID is required to manage templates.', 'id' => null];
         }
+
+        // An AUTHENTICATION template does not carry its own wording: Meta writes the body, and the
+        // only thing the template supplies is the code. buildComponents() always puts `text` on
+        // BODY, which Meta answers with "component of type BODY has unexpected field(s) (text)" —
+        // an error that says nothing about the actual problem, which is the category. Caught here
+        // so the person reading the toast is told what to change.
+        if (strtoupper($category) === 'AUTHENTICATION') {
+            return [
+                'success' => false,
+                'id'      => null,
+                'error'   => 'WhatsApp will not accept a body you have written on an AUTHENTICATION template — '
+                    . 'Meta supplies the wording for those and the template carries only the code. '
+                    . 'Either submit this as a UTILITY template with wording of your own, or build it '
+                    . 'as a standard verification template and accept Meta\'s fixed text.',
+            ];
+        }
+
         $components = $this->buildComponents($bodyText, $example, $buttons, $header, $footer);
 
         $payload = [
@@ -1428,6 +1484,9 @@ class WhatsAppService
             static::ensurePaymentReceiptPreset();
             static::ensureInvoicePreset();
             static::ensureRadiologyPreset();
+            static::ensureLabWorkPreset();
+            static::ensureLabVendorPresets();
+            static::repairLabHandoverBody();
             return;
         }
         DB::statement("CREATE TABLE `wa_template_presets` (
@@ -1494,6 +1553,51 @@ class WhatsAppService
         static::ensurePaymentReceiptPreset();
         static::ensureInvoicePreset();
         static::ensureRadiologyPreset();
+        static::ensureLabWorkPreset();
+        static::ensureLabVendorPresets();
+        static::repairLabHandoverBody();
+    }
+
+    /**
+     * The handover preset shipped with {{3}} and {{4}} separated by a bare newline, which Meta
+     * refuses to create — parameters must have real text between them, and whitespace is not it.
+     *
+     * A repair rather than a re-seed: ensureLabVendorPresets() only inserts where the name is
+     * absent, so a store that already took the broken row would keep failing to submit it forever.
+     * Matched on the broken shape so a vendor who has since reworded their own copy is left alone.
+     */
+    public static function repairLabHandoverBody(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('business_settings')->where('key', 'wa_preset_lab_handover_body_v3')->exists()) {
+            return;
+        }
+
+        $row = DB::table('wa_template_presets')->where('name', 'lab_work_handover')->first();
+        if ($row && strpos((string) $row->body, "{{3}}\n{{4}}") !== false) {
+            DB::table('wa_template_presets')->where('id', $row->id)->update([
+                'body'       => "Hi {{1}}, confirming a handover with {{2}}.\n\nWork: {{3}}\nHandover: {{4}}\n\nPlease keep this message for your records.",
+                'updated_at' => now(),
+            ]);
+        }
+
+        // The verification-code preset shipped as AUTHENTICATION, which Meta will not create with
+        // a body of its own. Moved to UTILITY so the wording survives — see the note on the insert
+        // in ensureLabVendorPresets() for what that trades away.
+        DB::table('wa_template_presets')
+            ->where('name', 'lab_work_handover_otp')
+            ->where('category', 'AUTHENTICATION')
+            ->update(['category' => 'UTILITY', 'updated_at' => now()]);
+
+        DB::table('business_settings')->updateOrInsert(
+            ['key' => 'wa_preset_lab_handover_body_v3'],
+            ['value' => '1', 'updated_at' => now(), 'created_at' => now()]
+        );
     }
 
     /**
@@ -2028,6 +2132,138 @@ class WhatsAppService
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
+    }
+
+    /**
+     * Preset behind the "your crown is ready" message a clinic sends while work is out at a lab.
+     *
+     * The only hospital template with no link in it, and deliberately so. There is nothing for the
+     * patient to read — the message exists to get them to come in, and a link would just be one
+     * more thing between them and doing that. {{4}} carries the stage in the clinic's own words
+     * ("Jaw / trial ready", "Ready at lab"), so one template serves a dental lab, an optical
+     * counter and an orthotics workshop without any of them reading the others' vocabulary.
+     */
+    public static function ensureLabWorkPreset(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (DB::table('wa_template_presets')->where('name', 'lab_work_status')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Lab Work Update (Hospital)',
+            'name'          => 'lab_work_status',
+            'category'      => 'UTILITY',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => null,
+            'body'          => "Hi {{1}}, an update from {{2}} on your {{3}} — {{4}}. Please visit us at your convenience, or reply to this message to fix a time.",
+            'footer'        => 'Please bring this message with you',
+            'example'       => 'Ramesh | Krishna Dental | Crown — 16, 17 | Work ready at lab',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
+     * The two suggested presets that go OUT to a lab rather than in to a patient.
+     *
+     * Both are UTILITY: they are sent to a business the clinic already deals with, about work that
+     * business is doing, which is exactly what Meta means by a transactional message. The job
+     * template names the patient because a lab cannot label a box without it — that is the whole
+     * point of the message — but it carries nothing clinical beyond the specification, and the
+     * handover one carries no patient detail at all, only who passed what to whom.
+     *
+     * Seeded once each, keyed by name so a clinic that has already built its own is left alone.
+     */
+    public static function ensureLabVendorPresets(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        $now = now();
+
+        if (!DB::table('wa_template_presets')->where('name', 'lab_work_vendor_job')->exists()) {
+            DB::table('wa_template_presets')->insert([
+                'title'         => 'Lab Job to Lab (Hospital)',
+                'name'          => 'lab_work_vendor_job',
+                'category'      => 'UTILITY',
+                'language'      => 'en_US',
+                'header'        => null,
+                'header_format' => null,
+                'body'          => "Hi {{1}}, {{2}} has a new job for you.\n\nWork: {{3}}\nPatient: {{4}}\nSpecification: {{5}}\nExpected by: {{6}}\n\nPlease reply to confirm you have received this.",
+                'footer'        => null,
+                'example'       => 'Sri Ceramics | Krishna Dental | Crown — 16, 17 | Ramesh Kumar, 42y/M | Shade: A2, Material: Zirconia, No. of units: 2 | 30 Aug 2026',
+                'btn_text'      => null,
+                'btn_url'       => null,
+                'active'        => 1,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ]);
+        }
+
+        if (!DB::table('wa_template_presets')->where('name', 'lab_work_handover')->exists()) {
+            DB::table('wa_template_presets')->insert([
+                'title'         => 'Lab Work Handover (Hospital)',
+                'name'          => 'lab_work_handover',
+                'category'      => 'UTILITY',
+                'language'      => 'en_US',
+                'header'        => null,
+                'header_format' => null,
+                // "Handover: " between {{3}} and {{4}} is load-bearing, not decoration. Meta
+                // rejects a body whose parameters are separated by nothing but whitespace, and a
+                // newline counts as whitespace — {{3}}\n{{4}} reads to the reviewer as two
+                // parameters butted together.
+                'body'          => "Hi {{1}}, confirming a handover with {{2}}.\n\nWork: {{3}}\nHandover: {{4}}\n\nPlease keep this message for your records.",
+                'footer'        => null,
+                'example'       => 'Sri Ceramics | Krishna Dental | Crown — 16, 17 | Handed over by Dr Meera and collected by Suresh on 24 Aug 2026',
+                'btn_text'      => null,
+                'btn_url'       => null,
+                'active'        => 1,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ]);
+        }
+
+        // UTILITY, though it carries a code. AUTHENTICATION is the category Meta reserves for
+        // one-time codes, but an authentication template has no wording of its own — Meta writes
+        // the body and the template supplies only the digits. That would throw away the entire
+        // point of this message, which is naming the visitor and the work so the lab can refuse
+        // it outright: "we did not send Suresh, and that went out last week" is the answer the
+        // whole mechanism exists to make possible, and a bare code cannot ask the question.
+        //
+        // Worth knowing what is being traded: Meta's policy reserves one-time passwords for
+        // authentication templates, so this leans on the code being a handover challenge to a
+        // business contact rather than a login credential to an account holder.
+        if (!DB::table('wa_template_presets')->where('name', 'lab_work_handover_otp')->exists()) {
+            DB::table('wa_template_presets')->insert([
+                'title'         => 'Handover Verification Code (Hospital)',
+                'name'          => 'lab_work_handover_otp',
+                'category'      => 'UTILITY',
+                'language'      => 'en_US',
+                'header'        => null,
+                'header_format' => null,
+                'body'          => "Hi {{1}}, {{2}} needs to verify a handover.\n\n{{3}}\nWork: {{4}}\n\nVerification code: {{5}}\n\nShare this code only if this person is yours. If you did not send anyone, do not share it and call us straight away.",
+                'footer'        => null,
+                'example'       => 'Sri Ceramics | Krishna Dental | Suresh is collecting it from us | Crown — 16, 17 | 481923',
+                'btn_text'      => null,
+                'btn_url'       => null,
+                'active'        => 1,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ]);
+        }
     }
 
     /**

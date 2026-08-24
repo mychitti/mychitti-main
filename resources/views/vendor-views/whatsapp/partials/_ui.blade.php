@@ -73,6 +73,16 @@
 
     /* ── Tables ─────────────────────────────────────────────── */
     .wa-table { font-size:13px; margin-bottom:0; }
+
+    /* The panel-wide stylesheet makes EVERY thead inside a .table-responsive sticky:
+           .table-responsive thead { position:sticky; top:0; z-index:9 }
+       with no background behind it. On these short lists that buys nothing — they are never tall
+       enough to scroll a header out of view — and it costs the header itself: with nothing opaque
+       behind it, the first row shows straight through the labels and the two read as one line.
+       Same specificity as the global rule (0,1,1), and this stack renders after style.css, so
+       simply putting it back in flow here wins without touching a file every other screen shares. */
+    .wa-table thead { position:static; }
+
     .wa-table thead th {
         font-size:11px; text-transform:uppercase; letter-spacing:.3px; color:var(--wa-mute);
         font-weight:600; border-top:0; border-bottom:1px solid var(--wa-line); padding:10px 12px; white-space:nowrap;

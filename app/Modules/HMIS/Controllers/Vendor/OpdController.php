@@ -9,7 +9,7 @@ use App\Models\DoctorProfile;
 use App\Models\DoctorSlot;
 use App\Models\OpdVisit;
 use App\Models\Patient;
-use App\Models\Prescription;
+use App\Models\Prescription; 
 use App\Models\ServiceRequest;
 use App\Models\User;
 use Brian2694\Toastr\Facades\Toastr;
@@ -48,7 +48,7 @@ class OpdController extends Controller
     private function ensureClinicalSchema(): void
     {
         if (Schema::hasTable('opd_visits')) {
-            foreach (['diagnosis', 'treatment'] as $column) {
+            foreach (['diagnosis', 'treatment', 'willing_treatment', 'treatment_plan'] as $column) {
                 if (!Schema::hasColumn('opd_visits', $column)) {
                     DB::statement("ALTER TABLE `opd_visits` ADD COLUMN `{$column}` TEXT NULL AFTER `chief_complaint`");
                 }
@@ -394,7 +394,7 @@ class OpdController extends Controller
         }
 
         \App\Models\HospitalActivityLog::record(
-            $store_id, 'opd_visit', null, 'created',
+            $store_id, 'opd_visit', (int) $visit->id, 'created',
             "OPD visit recorded for patient #{$patientId} with doctor #{$doctorProfileId} on {$visitDate} (token #{$nextToken})",
             ['patient_id' => $patientId, 'doctor_profile_id' => $doctorProfileId, 'visit_date' => $visitDate]
         );
@@ -496,6 +496,9 @@ class OpdController extends Controller
         $complaintOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT);
         $diagnosisOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS);
         $treatmentOptions = \App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_TREATMENT);
+        // What this hospital last charged for each advised treatment, so the amount box opens
+        // with a figure rather than empty.
+        $treatmentPrices  = \App\Models\OpdTreatmentPrice::mapFor($store_id, $visit->treatment_list);
 
         // The sets this hospital keeps recording together, one tap each.
         $complaintGroups = \App\Models\OpdComplaintGroup::listFor($store_id);
@@ -517,27 +520,157 @@ class OpdController extends Controller
             ->orderBy('appointment_time')
             ->get();
 
+        // The follow-ups the treatment plan is booked into, so a sitting on the plan and the
+        // appointment it was booked as read as one thing on both the chip and the Next Visit tab.
+        $treatmentAppointments = $this->treatmentAppointments($store_id, $visit->treatment_plan_map);
+
+        // Lab work for this patient, in-house or out at a lab — every job, not only this visit's,
+        // because a crown ordered three weeks ago is exactly what the doctor needs in front of
+        // them today.
+        $labWorkEnabled = hmis_lab_work_enabled($store_id);
+        $labWorkProfile = \App\Models\OpdLabWork::profileFor($store_id);
+        $labWorks         = collect();
+        $labVendors       = collect();
+        $labWorkHandovers = collect();
+
+        if ($labWorkEnabled) {
+            \App\Models\OpdLabWork::ensureSchema();
+            $labWorks = \App\Models\OpdLabWork::where('store_id', $store_id)
+                ->where('patient_id', $visit->patient_id)
+                ->orderByRaw("FIELD(status, 'cancelled', 'fitted') ASC")
+                ->orderByDesc('created_at')
+                ->get();
+
+            // The labs this clinic already deals with, out of the same address book it invoices
+            // them from — picking one fills the name, number and address in rather than leaving
+            // staff to retype a number that has to be right for the job to reach anybody.
+            $labVendors = \App\Models\StoreCustomer::where('store_id', $store_id)
+                ->where('user_type', 'vendor')
+                ->orderBy('f_name')
+                ->get(['id', 'f_name', 'phone', 'address']);
+
+            // Who can be put against an in-house job. Active staff only — a bench job cannot be
+            // opened against somebody who has left, and the leavers are exactly the names that
+            // would otherwise pile up at the bottom of the list forever.
+            $labTechnicians = \App\Models\VendorEmployee::where('store_id', $store_id)
+                ->where('status', 1)
+                ->orderBy('f_name')
+                ->get(['id', 'f_name', 'l_name', 'phone']);
+
+            // Who physically carried each job in or out, keyed by job so the card can show its own
+            // chain without a query per row. Drafts are excluded by the happened_at filter: a
+            // verification somebody started and abandoned is not an exchange that took place, and
+            // showing it as one would put a name against a handover that never happened.
+            \App\Models\HmisHandover::ensureSchema();
+            $labWorkHandovers = \App\Models\HmisHandover::where('store_id', $store_id)
+                ->where('subject_type', 'opd_lab_work')
+                ->whereIn('subject_id', $labWorks->pluck('id'))
+                ->whereNotNull('happened_at')
+                ->orderByDesc('happened_at')
+                ->get()
+                ->groupBy('subject_id');
+        }
+
+        // The access trail behind the Security tab. Only hospitals that switched the tab on keep
+        // one, so this both writes the "opened" row and reads the history back — a store with the
+        // setting off does neither and pays nothing for a tab it never shows.
+        $securityEnabled = hmis_security_tab_enabled($store_id);
+        $securityLog     = collect();
+
+        if ($securityEnabled) {
+            \App\Models\HospitalActivityLog::recordOnce(
+                $store_id, 'opd_visit', (int) $visit->id, 'viewed',
+                "Consultation record opened for patient #{$visit->patient_id} (token #{$visit->token_number})",
+                ['patient_id' => $visit->patient_id]
+            );
+
+            $securityLog = $this->patientAccessTrail($store_id, (int) $visit->patient_id);
+        }
+
         return view('hmis::vendor.opd.show', compact(
             'visit', 'pastVisits', 'currentPrescription', 'pastPrescriptions',
             'labTests', 'radiologyTests', 'labOrders', 'radiologyStudies',
             'complaintOptions', 'complaintGroups', 'noteTemplates',
-            'diagnosisOptions', 'treatmentOptions', 'upcomingVisits', 'termInsights'
+            'diagnosisOptions', 'treatmentOptions', 'upcomingVisits', 'termInsights', 'treatmentPrices',
+            'treatmentAppointments', 'securityEnabled', 'securityLog',
+            'labWorkEnabled', 'labWorkProfile', 'labWorks', 'labVendors', 'labWorkHandovers'
         ));
     }
 
     /**
-     * Schedule the patient's next visit straight from the consultation screen, so the doctor
-     * never has to leave the encounter to book a follow-up.
+     * Everything the hospital has logged that touches one patient's records.
+     *
+     * The activity log is keyed by subject type and id, not by patient, so the patient's own
+     * records are resolved first and the log matched against those id sets. Matching on the ids
+     * rather than reading `properties` keeps this exact — `properties` is only written by some
+     * callers, and searching inside it would miss the rest and match the wrong rows besides.
+     */
+    private function patientAccessTrail(int $storeId, int $patientId, int $limit = 100)
+    {
+        $subjects = [
+            'patient'       => [$patientId],
+            'opd_visit'     => OpdVisit::where('store_id', $storeId)
+                                    ->where('patient_id', $patientId)->pluck('id')->all(),
+            'appointment'   => \App\Models\Appointment::where('store_id', $storeId)
+                                    ->where('patient_id', $patientId)->pluck('id')->all(),
+            'prescription'  => Prescription::where('store_id', $storeId)
+                                    ->where('patient_id', $patientId)->pluck('id')->all(),
+            'ipd_admission' => Schema::hasTable('ipd_admissions')
+                                ? \App\Models\IpdAdmission::where('store_id', $storeId)
+                                    ->where('patient_id', $patientId)->pluck('id')->all()
+                                : [],
+            'opd_lab_work'  => Schema::hasTable('opd_lab_works')
+                                ? \App\Models\OpdLabWork::where('store_id', $storeId)
+                                    ->where('patient_id', $patientId)->pluck('id')->all()
+                                : [],
+        ];
+
+        try {
+            return \App\Models\HospitalActivityLog::where('store_id', $storeId)
+                ->where(function ($q) use ($subjects) {
+                    foreach ($subjects as $type => $ids) {
+                        if ($ids) {
+                            $q->orWhere(fn($w) => $w->where('subject_type', $type)->whereIn('subject_id', $ids));
+                        }
+                    }
+                })
+                ->orderByDesc('created_at')
+                ->limit($limit)
+                ->get();
+        } catch (\Throwable $e) {
+            // The tab is a read-only extra. It must never be the reason a consultation won't open.
+            return collect();
+        }
+    }
+
+    /**
+     * Schedule the patient's next visit — or several of them — straight from the consultation
+     * screen, so the doctor never has to leave the encounter to book a follow-up.
+     *
+     * A course of treatment is rarely one follow-up: a dressing on Friday, the second sitting a
+     * fortnight later, a review after that. The form therefore posts a list, and each row may
+     * name the advised treatments it is for. Those treatments are marked upcoming against that
+     * date and remember the appointment they were booked into, which is what makes the plan and
+     * the appointment book the same fact rather than two dates that can drift apart.
      */
     public function nextVisit(Request $request, $id)
     {
         if (!auth('vendor')->check() && !hasPermission('opd_register', 'edit')) abort(403);
 
+        // The screen posts visits[]; a single-row payload is still accepted so an older tab left
+        // open, or a link built by hand, books one follow-up rather than failing validation.
+        if (!$request->has('visits') && $request->filled('appointment_date')) {
+            $request->merge(['visits' => [$request->only(['appointment_date', 'appointment_time', 'slot_id', 'reason'])]]);
+        }
+
         $request->validate([
-            'appointment_date' => 'required|date|after_or_equal:today',
-            'appointment_time' => 'required',
-            'slot_id'          => 'nullable|integer|exists:doctor_slots,id',
-            'reason'           => 'nullable|string|max:500',
+            'visits'                      => 'required|array|min:1|max:12',
+            'visits.*.appointment_date'   => 'required|date|after_or_equal:today',
+            'visits.*.appointment_time'   => 'required|date_format:H:i,H:i:s',
+            'visits.*.slot_id'            => 'nullable|integer|exists:doctor_slots,id',
+            'visits.*.reason'             => 'nullable|string|max:500',
+            'visits.*.treatments'         => 'nullable|array',
+            'visits.*.treatments.*'       => 'string|max:150',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -548,29 +681,98 @@ class OpdController extends Controller
             return back();
         }
 
-        try {
-            $next = \App\Services\NextVisitService::schedule(
-                (int) $store_id,
-                (int) $visit->patient_id,
-                (int) $visit->doctor_profile_id,
-                $request->appointment_date,
-                $request->appointment_time,
-                $request->slot_id ? (int) $request->slot_id : null,
-                $request->reason,
-                ['from_opd_visit_id' => (int) $visit->id]
-            );
-        } catch (\RuntimeException $e) {
-            Toastr::error($e->getMessage());
-            return back();
-        } catch (\Throwable $e) {
-            Toastr::error('Could not schedule next visit: ' . $e->getMessage());
-            return back();
+        $advised = $visit->treatment_list;
+        // A closed visit is a document — the receipt was printed from its plan. The booking is a
+        // new record of its own and still goes through, but nothing is written back onto the
+        // treatment plan, so the patient's copy keeps saying what it said.
+        $canLink = $visit->is_editable;
+        $plan    = collect($visit->treatment_plan_map);
+
+        $booked = [];
+        $failed = [];
+        $linked = 0;
+
+        foreach ($request->input('visits', []) as $row) {
+            $terms = collect($row['treatments'] ?? [])
+                ->map(fn($term) => trim((string) $term))
+                ->filter()
+                ->unique()
+                ->intersect($advised)
+                ->values();
+
+            // "Come Friday for the scaling" reads better on the desk's list than "Follow-up
+            // visit", and it is what the doctor already typed by picking the treatments.
+            $reason = trim((string) ($row['reason'] ?? '')) ?: ($terms->isNotEmpty() ? $terms->implode(', ') : null);
+
+            try {
+                $next = \App\Services\NextVisitService::schedule(
+                    (int) $store_id,
+                    (int) $visit->patient_id,
+                    (int) $visit->doctor_profile_id,
+                    $row['appointment_date'],
+                    $row['appointment_time'],
+                    !empty($row['slot_id']) ? (int) $row['slot_id'] : null,
+                    $reason,
+                    ['from_opd_visit_id' => (int) $visit->id, 'treatments' => $terms->all()]
+                );
+            } catch (\Throwable $e) {
+                $failed[] = \Carbon\Carbon::parse($row['appointment_date'])->format('d M') . ' — ' . $e->getMessage();
+                continue;
+            }
+
+            $booked[] = $next;
+
+            if (!$canLink) {
+                continue;
+            }
+
+            foreach ($terms as $term) {
+                $current = (array) ($plan[$term] ?? []);
+                // Already done is not rescheduled by booking the sitting that follows it.
+                if (($current['status'] ?? 'pending') === 'completed') {
+                    continue;
+                }
+
+                $plan[$term] = $current + [
+                    'amount'   => null,
+                    'discount' => null,
+                    'paid'     => false,
+                ];
+                $plan[$term] = array_merge($plan[$term], [
+                    'status'         => 'upcoming',
+                    'date'           => $row['appointment_date'],
+                    'time'           => substr((string) $row['appointment_time'], 0, 5),
+                    'appointment_id' => (int) $next->id,
+                ]);
+                $linked++;
+            }
         }
 
-        Toastr::success(
-            'Next visit scheduled for ' . \Carbon\Carbon::parse($next->appointment_date)->format('d M Y')
-                . '. The patient will get a WhatsApp reminder before it.'
-        );
+        if ($canLink && $linked) {
+            $plan = $plan->only($advised);
+            $visit->treatment_plan = $plan->isEmpty() ? null : json_encode($plan->all());
+            $visit->save();
+        }
+
+        if ($booked) {
+            $when = collect($booked)
+                ->map(fn($appointment) => \Carbon\Carbon::parse($appointment->appointment_date)->format('d M Y'))
+                ->implode(', ');
+
+            Toastr::success(
+                (count($booked) === 1 ? 'Next visit scheduled for ' : count($booked) . ' next visits scheduled — ') . $when
+                    . ($linked ? ', with ' . $linked . ' treatment' . ($linked === 1 ? '' : 's') . ' booked in' : '')
+                    . '. The patient will get a WhatsApp reminder before ' . (count($booked) === 1 ? 'it' : 'each') . '.'
+            );
+        }
+
+        foreach ($failed as $message) {
+            Toastr::error($message);
+        }
+
+        if (!$booked) {
+            return back();
+        }
 
         return Redirect::route('vendor.opd.show', $visit->id);
     }
@@ -684,6 +886,16 @@ class OpdController extends Controller
             'diagnosis.*'     => 'string|max:150',
             'treatment'       => 'nullable|array',
             'treatment.*'     => 'string|max:150',
+            'willing_treatment'   => 'nullable|array',
+            'willing_treatment.*' => 'string|max:150',
+            'treatment_plan'             => 'nullable|array',
+            'treatment_plan.*.status'    => 'required|in:pending,upcoming,completed',
+            'treatment_plan.*.date'      => 'nullable|date',
+            'treatment_plan.*.time'      => 'nullable|date_format:H:i',
+            'treatment_plan.*.amount'    => 'nullable|numeric|min:0|max:99999999',
+            'treatment_plan.*.discount'  => 'nullable|numeric|min:0|max:99999999',
+            'treatment_plan.*.paid'      => 'nullable|boolean',
+            'treatment_plan.*.book'      => 'nullable|boolean',
             'note_terms'      => 'nullable|array',
             'note_terms.*'    => 'string|max:190',
             'bp_systolic'      => 'nullable|integer|min:0|max:300',
@@ -727,7 +939,8 @@ class OpdController extends Controller
         // comma-separated list rather than a sentence, so old free text still reads back as one entry.
         foreach (['complaint' => \App\Models\OpdClinicalTerm::TYPE_COMPLAINT,
                   'diagnosis' => \App\Models\OpdClinicalTerm::TYPE_DIAGNOSIS,
-                  'treatment' => \App\Models\OpdClinicalTerm::TYPE_TREATMENT] as $field => $type) {
+                  'treatment' => \App\Models\OpdClinicalTerm::TYPE_TREATMENT,
+                  'willing_treatment' => \App\Models\OpdClinicalTerm::TYPE_TREATMENT] as $field => $type) {
             if (!$request->has($field)) {
                 continue;
             }
@@ -742,6 +955,13 @@ class OpdController extends Controller
             $column = $field === 'complaint' ? 'chief_complaint' : $field;
             $visit->{$column} = $terms->isEmpty() ? null : $terms->implode(', ');
             $saved[$field]    = $terms->all();
+
+            // Editing the advised list can drop a term that carried a schedule and a price.
+            if ($field === 'treatment') {
+                $plan = collect($visit->treatment_plan_map)->only($terms->all());
+                $visit->treatment_plan   = $plan->isEmpty() ? null : json_encode($plan->all());
+                $saved['treatment_plan'] = $plan->all();
+            }
         }
 
         // Vitals, edited in place on the Details tab. Sent only when that card is saved, and a
@@ -755,6 +975,59 @@ class OpdController extends Controller
             }
         }
 
+        // One chip is scheduled at a time from the Diagnosis & Treatment card, so the incoming
+        // rows are merged onto what is already planned rather than replacing it. Terms no longer
+        // advised are dropped: a plan for a treatment that is no longer offered is noise.
+        if ($request->has('treatment_plan')) {
+            $advised = $visit->treatment_list;
+            $plan    = collect($visit->treatment_plan_map);
+            $notes   = [];
+
+            foreach ($request->input('treatment_plan', []) as $term => $row) {
+                // A term the visit no longer advises is dropped by the trim below anyway, so it
+                // is skipped here — booking a follow-up for it would leave an appointment behind
+                // that nothing on the plan points at.
+                if (!in_array($term, $advised, true)) {
+                    continue;
+                }
+
+                $amount   = isset($row['amount'])   && $row['amount']   !== '' ? (float) $row['amount']   : null;
+                $discount = isset($row['discount']) && $row['discount'] !== '' ? (float) $row['discount'] : null;
+
+                // The appointment a sitting is booked into is never taken from the request — it
+                // is what the visit already knows, moved on by the booking sync below. Otherwise
+                // a stale tab could re-point a treatment at somebody else's appointment.
+                $existing      = (array) ($plan[$term] ?? []);
+                $appointmentId = $this->syncTreatmentBooking($visit, $term, $row, $existing, $plan, $notes);
+
+                $plan[$term] = [
+                    'status'         => $row['status'],
+                    'date'           => ($row['date'] ?? '') ?: null,
+                    'time'           => ($row['time'] ?? '') ?: null,
+                    'amount'         => $amount,
+                    'discount'       => $discount,
+                    'paid'           => (bool) ($row['paid'] ?? false),
+                    'appointment_id' => $appointmentId,
+                ];
+
+                // Whatever this hospital charged for the treatment becomes what it is offered
+                // next time — there is no price list to read one from.
+                \App\Models\OpdTreatmentPrice::remember($store_id, $term, $amount, $discount);
+            }
+
+            $plan = $plan->only($advised);
+            $visit->treatment_plan = $plan->isEmpty() ? null : json_encode($plan->all());
+            $saved['treatment_plan']   = $plan->all();
+            $saved['treatment_prices'] = \App\Models\OpdTreatmentPrice::mapFor($store_id, $advised);
+            $saved['treatment_appointments'] = $this->treatmentAppointments($store_id, $plan->all());
+
+            // Anything the booking could not do — no time given, slot full — is reported without
+            // failing the save: the price and status the doctor just set still belong on the record.
+            if ($notes) {
+                $saved['notice'] = implode(' ', $notes);
+            }
+        }
+
         $visit->save();
 
         // The casemix just changed. Dropped rather than recomputed — the next page load rebuilds
@@ -764,7 +1037,239 @@ class OpdController extends Controller
             \App\Services\OpdTermInsights::forget($store_id);
         }
 
+        // Same trail the Security tab reads, and only for hospitals that asked for one. This is
+        // an autosave — it fires on every debounce — so it is deliberately coalesced: one "edited"
+        // row per person per window, not one per keystroke.
+        if (hmis_security_tab_enabled($store_id)) {
+            \App\Models\HospitalActivityLog::recordOnce(
+                $store_id, 'opd_visit', (int) $visit->id, 'edited',
+                "Consultation record edited for patient #{$visit->patient_id} (token #{$visit->token_number})",
+                ['patient_id' => $visit->patient_id]
+            );
+        }
+
         return response()->json(['ok' => true] + $saved);
+    }
+
+    /**
+     * Keep one treatment's sitting and its follow-up appointment saying the same thing.
+     *
+     * The date on a treatment is only a note until someone books it; once booked it is an
+     * appointment the desk works from, so moving the treatment has to move the appointment
+     * rather than leaving the two to disagree. Nothing here is allowed to fail the save — the
+     * status and the price the doctor just set belong on the record either way, so a booking
+     * that cannot be made comes back as a note instead of an error.
+     *
+     * @param  \Illuminate\Support\Collection  $plan   the plan as it stands before this row
+     * @param  array  $notes  anything the doctor needs telling, appended to
+     * @return int|null  the appointment this treatment is now booked into
+     */
+    private function syncTreatmentBooking(OpdVisit $visit, string $term, array $row, array $existing, $plan, array &$notes): ?int
+    {
+        $appointmentId = ((int) ($existing['appointment_id'] ?? 0)) ?: null;
+        $appointment   = $appointmentId
+            ? \App\Models\Appointment::where('store_id', $visit->store_id)->find($appointmentId)
+            : null;
+
+        // Cancelled or missed at the desk: that booking is no longer this treatment's booking.
+        if ($appointment && in_array($appointment->status, ['cancelled', 'no_show'])) {
+            $appointment   = null;
+            $appointmentId = null;
+        }
+
+        // The row wasn't sent by something that manages bookings — leave the link as it is.
+        if (!array_key_exists('book', $row)) {
+            return $appointmentId;
+        }
+
+        // The other sittings riding on the same follow-up. One appointment usually covers several
+        // ("come Friday, we'll do the scaling and the filling"), which decides both what unticking
+        // is allowed to cancel and whether moving this one may move the appointment itself.
+        $shared = $appointment
+            ? collect($plan)->filter(
+                fn($other, $otherTerm) => $otherTerm !== $term
+                    && (int) ($other['appointment_id'] ?? 0) === (int) $appointment->id
+            )
+            : collect();
+
+        if (!$row['book']) {
+            // Unticked. Called off only when this was the last treatment riding on it.
+            if ($appointment && $shared->isEmpty() && $appointment->status === 'scheduled') {
+                $appointment->status        = 'cancelled';
+                $appointment->cancel_reason = 'Treatment no longer booked';
+                $appointment->save();
+                $notes[] = 'The follow-up booked for "' . $term . '" was cancelled.';
+            }
+
+            return null;
+        }
+
+        $date = $row['date'] ?? null;
+        $time = !empty($row['time']) ? substr((string) $row['time'], 0, 5) : null;
+
+        if (($row['status'] ?? 'pending') === 'completed') {
+            return $appointmentId;
+        }
+
+        if (!$visit->doctor_profile_id) {
+            $notes[] = 'This visit has no doctor assigned, so "' . $term . '" could not be booked.';
+            return $appointmentId;
+        }
+
+        if (!$date || !$time) {
+            $notes[] = 'Set a date and time to book "' . $term . '" as a next visit.';
+            return $appointmentId;
+        }
+
+        // Yesterday is not bookable; later today is — a sitting after lunch is an ordinary thing
+        // to write down at the chair in the morning.
+        if (\Carbon\Carbon::parse($date)->startOfDay()->lt(\Carbon\Carbon::today())) {
+            $notes[] = '"' . $term . '" is dated in the past, so no follow-up was booked for it.';
+            return $appointmentId;
+        }
+
+        try {
+            if ($appointment) {
+                $sameDay  = \Carbon\Carbon::parse($appointment->appointment_date)->format('Y-m-d') === $date;
+                $sameTime = substr((string) $appointment->appointment_time, 0, 5) === $time;
+
+                if ($sameDay && $sameTime) {
+                    return (int) $appointment->id;
+                }
+
+                // Moving a sitting that shares its follow-up with others moves only itself: the
+                // rest of that appointment is still expected on the day it was booked for, and
+                // dragging them along because one filling was put off would be news to them.
+                if ($shared->isEmpty()) {
+                    $moved = \App\Services\NextVisitService::reschedule(
+                        $appointment, $date, $time, $appointment->slot_id ? (int) $appointment->slot_id : null,
+                        ['from_opd_visit_id' => (int) $visit->id, 'treatments' => [$term]]
+                    );
+
+                    return (int) $moved->id;
+                }
+            }
+
+            $next = \App\Services\NextVisitService::schedule(
+                (int) $visit->store_id,
+                (int) $visit->patient_id,
+                (int) $visit->doctor_profile_id,
+                $date,
+                $time,
+                null,
+                $term,
+                ['from_opd_visit_id' => (int) $visit->id, 'treatments' => [$term]]
+            );
+
+            return (int) $next->id;
+        } catch (\Throwable $e) {
+            $notes[] = 'Could not book "' . $term . '": ' . $e->getMessage();
+            return $appointmentId;
+        }
+    }
+
+    /** The follow-ups a treatment plan points at, as the consultation screen needs to show them. */
+    private function treatmentAppointments(int $storeId, array $plan): array
+    {
+        $ids = collect($plan)->pluck('appointment_id')->filter()->map(fn($id) => (int) $id)->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return \App\Models\Appointment::where('store_id', $storeId)
+            ->whereIn('id', $ids)
+            ->with('token')
+            ->get()
+            ->mapWithKeys(fn($appointment) => [$appointment->id => [
+                'id'     => (int) $appointment->id,
+                'date'   => \Carbon\Carbon::parse($appointment->appointment_date)->format('Y-m-d'),
+                'time'   => substr((string) $appointment->appointment_time, 0, 5),
+                'token'  => $appointment->token?->token_number,
+                'status' => $appointment->status,
+                'url'    => route('vendor.appointment.show', $appointment->id),
+            ]])
+            ->all();
+    }
+
+    /**
+     * What this hospital charges for each treatment. Rows arrive two ways: typed here, or
+     * created the first time someone puts a price against that treatment on a visit. Either way
+     * the consultation screen reads the price from here.
+     */
+    public function treatmentCatalog(Request $request)
+    {
+        \App\Models\OpdTreatmentPrice::ensureSchema();
+
+        $store_id = Helpers::get_store_id();
+
+        $treatments = \App\Models\OpdTreatmentPrice::forStore($store_id)
+            ->when($request->search, fn($q) => $q->where('term', 'like', "%{$request->search}%"))
+            ->orderBy('term')
+            ->get();
+
+        // The same list the consultation's Advised Treatment box offers, so the two can never
+        // drift apart. What is already priced is left out — those rows are edited in the table.
+        // Unfiltered on purpose: with a search active $treatments holds only the matches, and a
+        // term priced outside the filter would be offered again and then rejected as a duplicate.
+        $priced = \App\Models\OpdTreatmentPrice::forStore($store_id)->pluck('term_key')->all();
+        $treatmentOptions = collect(\App\Models\OpdClinicalTerm::listFor($store_id, \App\Models\OpdClinicalTerm::TYPE_TREATMENT))
+            ->reject(fn($term) => in_array(\App\Models\OpdTreatmentPrice::key($term), $priced, true))
+            ->values();
+
+        return view('hmis::vendor.opd.treatment_catalog', compact('treatments', 'treatmentOptions'));
+    }
+
+    public function treatmentCatalogSave(Request $request, $id = null)
+    {
+        $request->validate([
+            'term'     => 'required|string|max:190',
+            'amount'   => 'required|numeric|min:0|max:99999999',
+            'discount' => 'nullable|numeric|min:0|max:99999999',
+        ]);
+
+        \App\Models\OpdTreatmentPrice::ensureSchema();
+
+        $store_id = Helpers::get_store_id();
+        $term     = trim($request->term);
+        $key      = \App\Models\OpdTreatmentPrice::key($term);
+
+        // The key is unique per store, so renaming a row onto a name that already exists would
+        // otherwise fail on the index rather than telling anyone why.
+        $clash = \App\Models\OpdTreatmentPrice::forStore($store_id)->where('term_key', $key)
+            ->when($id, fn($q) => $q->where('id', '!=', $id))->exists();
+
+        if ($clash) {
+            Toastr::error($term . ' is already in the catalog.');
+            return back();
+        }
+
+        $row = $id
+            ? \App\Models\OpdTreatmentPrice::forStore($store_id)->findOrFail($id)
+            : new \App\Models\OpdTreatmentPrice(['store_id' => $store_id]);
+
+        $row->fill([
+            'store_id'  => $store_id,
+            'term_key'  => $key,
+            'term'      => $term,
+            'amount'    => $request->amount,
+            'discount'  => $request->discount === null || $request->discount === '' ? null : $request->discount,
+            'is_active' => $request->has('is_active') ? 1 : 0,
+        ])->save();
+
+        // A priced treatment should also be offerable in the consultation dropdown.
+        \App\Models\OpdClinicalTerm::remember($store_id, \App\Models\OpdClinicalTerm::TYPE_TREATMENT, [$term]);
+
+        Toastr::success($id ? 'Treatment price updated.' : 'Treatment added to the catalog.');
+        return redirect()->route('vendor.opd.treatment-catalog');
+    }
+
+    public function treatmentCatalogDelete($id)
+    {
+        \App\Models\OpdTreatmentPrice::forStore(Helpers::get_store_id())->where('id', $id)->delete();
+
+        Toastr::success('Removed from the catalog.');
+        return back();
     }
 
     /**

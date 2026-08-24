@@ -167,6 +167,21 @@ class LabController extends Controller
             if (!Schema::hasColumn('lab_orders', 'updated_at'))        DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `updated_at` TIMESTAMP NULL");
         }
 
+        // Referral labs. The table was written on the assumption that every order runs on the
+        // bench here, which is why these arrive as a patch rather than in the CREATE above — and
+        // why they default to not-outsourced: every order that predates them was run in-house.
+        //
+        // The phone matters more than it looks. It is the number a handover verification code is
+        // sent to, so it is the number that decides whether a stranger at the counter can be
+        // caught, and it is read from here on the server rather than from anything typed at the
+        // time of the handover.
+        if (Schema::hasTable('lab_orders')) {
+            if (!Schema::hasColumn('lab_orders', 'external_lab_id'))    DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `external_lab_id` BIGINT UNSIGNED NULL");
+            if (!Schema::hasColumn('lab_orders', 'external_lab_name'))  DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `external_lab_name` VARCHAR(190) NULL");
+            if (!Schema::hasColumn('lab_orders', 'external_lab_phone')) DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `external_lab_phone` VARCHAR(40) NULL");
+            if (!Schema::hasColumn('lab_orders', 'is_outsourced'))      DB::statement("ALTER TABLE `lab_orders` ADD COLUMN `is_outsourced` TINYINT(1) NOT NULL DEFAULT 0");
+        }
+
         if (!Schema::hasTable('lab_order_items')) {
             DB::statement("CREATE TABLE `lab_order_items` (
                 `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -507,7 +522,24 @@ class LabController extends Controller
             ->when($request->department, fn($q) => $q->where('department', $request->department))
             ->latest()->get();
 
-        return $this->view('worklist', compact('orders'));
+        // Deliveries taken on trust and never confirmed with the lab, keyed by order.
+        //
+        // Surfaced on the worklist rather than buried in the order because of who reads it: the
+        // person about to key results off a delivered report is the last point at which an
+        // unverified origin can still be caught, and they are looking at this list, not at an
+        // audit screen. Newest per order wins — that is the delivery the report in hand came from.
+        \App\Models\HmisHandover::ensureSchema();
+        $wlUnconfirmed = \App\Models\HmisHandover::where('store_id', $storeId)
+            ->where('subject_type', 'lab_order')
+            ->whereIn('subject_id', $orders->pluck('id'))
+            ->where('direction', 'in')
+            ->where('verify_state', 'provisional')
+            ->whereNotNull('happened_at')
+            ->orderByDesc('happened_at')
+            ->get()
+            ->keyBy('subject_id');
+
+        return $this->view('worklist', compact('orders', 'wlUnconfirmed'));
     }
 
     public function startTest($id)
@@ -551,7 +583,26 @@ class LabController extends Controller
             $order->load(['items.results', 'results']);
         }
 
-        return $this->view('result_entry', compact('order', 'pickable'));
+        // The unconfirmed delivery this order's paperwork came in on, if there is one.
+        //
+        // Result entry is the last moment a forged report can still be stopped, because after this
+        // its numbers are indistinguishable from any other result in the patient's chart. So the
+        // warning belongs on the screen where somebody is about to type them in, not only in an
+        // audit trail nobody opens.
+        $reUnconfirmed = null;
+        if ($order) {
+            \App\Models\HmisHandover::ensureSchema();
+            $reUnconfirmed = \App\Models\HmisHandover::where('store_id', $storeId)
+                ->where('subject_type', 'lab_order')
+                ->where('subject_id', $order->id)
+                ->where('direction', 'in')
+                ->where('verify_state', 'provisional')
+                ->whereNotNull('happened_at')
+                ->latest('happened_at')
+                ->first();
+        }
+
+        return $this->view('result_entry', compact('order', 'pickable', 'reUnconfirmed'));
     }
 
     // Create empty result rows (one per test parameter) the first time an order is opened for entry.
@@ -750,7 +801,15 @@ class LabController extends Controller
             ->unique(fn ($s) => mb_strtolower($s))
             ->values();
 
-        return $this->view('order', compact('patients', 'doctors', 'tests', 'sampleTypes'));
+        // Referral labs, out of the same supplier book the clinic invoices them from — the same
+        // list OpdLabWork reads. One address book, so the phone number a handover code is sent to
+        // is the number that gets corrected when the lab changes it.
+        $referralLabs = \App\Models\StoreCustomer::where('store_id', $storeId)
+            ->where('user_type', 'vendor')
+            ->orderBy('f_name')
+            ->get(['id', 'f_name', 'phone', 'address']);
+
+        return $this->view('order', compact('patients', 'doctors', 'tests', 'sampleTypes', 'referralLabs'));
     }
 
     public function storeOrder(Request $request)
@@ -761,6 +820,9 @@ class LabController extends Controller
             'tests'         => 'required|array|min:1',
             'sample_types'  => 'nullable|array',
             'sample_types.*' => 'nullable|string|max:80',
+            'external_lab_id'    => 'nullable|integer',
+            'external_lab_name'  => 'nullable|string|max:190',
+            'external_lab_phone' => 'nullable|string|max:40',
         ]);
         $storeId = $this->storeId();
         [$actorId, $actorType] = $this->actor();
@@ -785,6 +847,14 @@ class LabController extends Controller
             'total_amount'      => $selected->sum('price'),
             'created_by'        => $actorId,
             'created_by_type'   => $actorType,
+            // A referral lab is only recorded where one was actually named. The flag is derived
+            // rather than trusted from the form, so an order cannot be marked outsourced with
+            // nowhere to send it — which would put a handover button on a row with no number
+            // behind it to verify against.
+            'external_lab_id'    => $request->external_lab_id ?: null,
+            'external_lab_name'  => $request->external_lab_name ?: null,
+            'external_lab_phone' => $request->external_lab_phone ?: null,
+            'is_outsourced'      => filled($request->external_lab_name) || filled($request->external_lab_id) ? 1 : 0,
         ]);
         $order->order_no = 'LAB-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
         $order->save();

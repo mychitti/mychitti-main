@@ -101,6 +101,81 @@
                     </div>
                 </div>
 
+                {{-- Lab Work — on by default for the specialities that actually send work out,
+                     available to everyone else on request. The measurement boxes behind the tab
+                     come from the hospital category chosen above, so the card names which set
+                     this hospital will get rather than making them save to find out. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-lab mr-1"></i> Lab Work</h6>
+                    </div>
+                    <div class="card-body">
+                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
+                            <input type="checkbox" name="lab_work_enabled" value="1" class="mr-2 mt-1"
+                                   {{ old('lab_work_enabled', $lab_work_enabled) ? 'checked' : '' }}>
+                            <span>
+                                <span style="font-weight:600;">Track lab work, in-house or sent out</span>
+                                <small class="text-muted d-block" style="font-size:12px;">
+                                    Adds a Lab Work tab to the consultation screen for crowns, dentures,
+                                    lenses, ear moulds and appliances — measurements, whether your own
+                                    technician is making it or an outside lab, who handed it over and who
+                                    collected it, what stage it has reached, and a WhatsApp update to the
+                                    patient when it is ready.
+                                </small>
+                                <small class="d-block mt-2" style="font-size:11.5px;">
+                                    <span class="text-muted">Measurements and stage names used:</span>
+                                    <span class="text-dark" style="font-weight:600;">{{ $lab_work_profile['label'] }}</span>
+                                    <span class="text-muted">
+                                        ({{ implode(', ', array_map(fn($f) => $f['label'], $lab_work_profile['fields'])) }})
+                                    </span>
+                                </small>
+                                @if($lab_work_auto)
+                                    <small class="d-block text-muted mt-1" style="font-size:11.5px;">
+                                        On by default for your hospital category. Untick to hide it.
+                                    </small>
+                                @else
+                                    <small class="d-block text-muted mt-1" style="font-size:11.5px;">
+                                        Set the hospital category on your store profile to get the
+                                        measurement set for your speciality instead of the general one.
+                                    </small>
+                                @endif
+                            </span>
+                        </label>
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </div>
+
+                {{-- Records Access & Audit — off unless a hospital asks for it. Switching it on
+                     is what starts writing the trail, not just what reveals the tab, so a clinic
+                     that will never read it never accumulates the rows. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-lock-outlined mr-1"></i> Records Access &amp; Audit</h6>
+                    </div>
+                    <div class="card-body">
+                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
+                            <input type="checkbox" name="security_tab_enabled" value="1" class="mr-2 mt-1"
+                                   {{ old('security_tab_enabled', $security_tab_enabled) ? 'checked' : '' }}>
+                            <span>
+                                <span style="font-weight:600;">Show Security &amp; Compliance tab</span>
+                                <small class="text-muted d-block" style="font-size:12px;">
+                                    Adds a Security tab to the consultation screen listing who opened and
+                                    who edited this patient's records — registrations, consultations,
+                                    prescriptions, appointments and admissions.
+                                    Switching this on is what starts recording chart access, so the trail
+                                    begins from today and earlier visits show only what was already logged.
+                                    Off, nothing is recorded and the tab is hidden.
+                                </small>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </div>
+
             </div>
 
             <div class="col-lg-8">

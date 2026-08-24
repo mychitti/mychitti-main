@@ -158,6 +158,12 @@ class HospitalDashboardController extends Controller
         $opd_consultation_count          = (int) ($config?->opd_consultation_count ?? 1);
         $opd_consultation_validity_days  = (int) ($config?->opd_consultation_validity_days ?? 7);
         $vitals_enabled                  = hmis_vitals_enabled($store_id);
+        $security_tab_enabled            = hmis_security_tab_enabled($store_id);
+        $lab_work_enabled                = hmis_lab_work_enabled($store_id);
+        $lab_work_profile                = \App\Models\OpdLabWork::profileFor($store_id);
+        $lab_work_auto                   = \App\Models\OpdLabWork::isAutoCategory(
+            \App\Models\OpdLabWork::categoryFor($store_id)
+        );
 
         $lastUid  = Patient::where('store_id', $store_id)->orderByDesc('id')->value('patient_uid');
         $autoNext = 1;
@@ -196,7 +202,8 @@ class HospitalDashboardController extends Controller
         return view('hmis::vendor.hospital.settings', compact(
             'prefix', 'padding', 'serial', 'previewMuid',
             'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages',
-            'vitals_enabled',
+            'vitals_enabled', 'security_tab_enabled',
+            'lab_work_enabled', 'lab_work_profile', 'lab_work_auto',
             'departments', 'states',
             'opTypeDefaults', 'opTypesOwn', 'opTypesHidden'
         ));
@@ -213,6 +220,8 @@ class HospitalDashboardController extends Controller
             'rx_languages'                   => 'nullable|array',
             'rx_languages.*'                 => 'string|in:' . implode(',', array_keys(\App\Models\Prescription::LANGUAGES)),
             'vitals_enabled'                 => 'nullable|boolean',
+            'security_tab_enabled'           => 'nullable|boolean',
+            'lab_work_enabled'               => 'nullable|boolean',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -234,6 +243,18 @@ class HospitalDashboardController extends Controller
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_vitals_enabled')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_vitals_enabled` TINYINT(1) NULL DEFAULT 1");
         }
+        // Whether the consultation screen carries a Security & Compliance tab, and with it the
+        // access trail that feeds it. Defaults to 0: the trail is only worth keeping for a
+        // hospital that asked for it, so an untouched store logs nothing.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_security_tab_enabled')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_security_tab_enabled` TINYINT(1) NULL DEFAULT 0");
+        }
+        // Whether this hospital tracks work it sends out to a lab. Nullable with null meaning
+        // "whatever suits this speciality", so a dental or optical practice gets the tab without
+        // finding the switch; saving here writes an explicit 0/1 that then wins outright.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_lab_work_enabled')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_lab_work_enabled` TINYINT(1) NULL DEFAULT NULL");
+        }
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'opd_consultation_count')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}`
                 ADD COLUMN `opd_consultation_count` INT NULL,
@@ -249,6 +270,8 @@ class HospitalDashboardController extends Controller
                 'opd_consultation_count'         => (int) $request->opd_consultation_count,
                 'opd_consultation_validity_days' => (int) $request->opd_consultation_validity_days,
                 'hmis_vitals_enabled'            => $request->boolean('vitals_enabled') ? 1 : 0,
+                'hmis_security_tab_enabled'      => $request->boolean('security_tab_enabled') ? 1 : 0,
+                'hmis_lab_work_enabled'          => $request->boolean('lab_work_enabled') ? 1 : 0,
                 // English is always kept: it is the fallback the printed sheet falls back to for
                 // anything without a translation, so it can never be switched off.
                 'rx_languages'                   => json_encode(

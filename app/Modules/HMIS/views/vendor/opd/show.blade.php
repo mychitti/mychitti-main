@@ -5,9 +5,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
     /* ── Layout Integrations ── */
-    main.main {
-        background-color: #f8fafc; 
-        font-family: 'Inter', sans-serif; 
+    main.main { 
+        background-color: #f8fafc;
+        font-family: 'Inter', sans-serif;
     }
     .content.container-fluid {
         padding: 0 !important;
@@ -20,7 +20,7 @@
     .consult-top-bar {
         background-color: #0D47A1; /* Royal Blue */
         color: #ffffff;
-        padding: 8px 20px; 
+        padding: 8px 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -238,6 +238,53 @@
         border-radius: 4px;
         font-weight: 700;
     }
+    /* The few facts from the sidebar's Patient Info card that are worth carrying on every tab.
+       The card itself belongs to the Consultation tab; this line follows the doctor around. */
+    .patient-key-facts {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 5px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #334155;
+    }
+    .patient-key-facts .kf + .kf {
+        border-left: 1px solid #e2e8f0;
+        padding-left: 8px;
+    }
+    .kf-lbl {
+        color: #94a3b8;
+        margin-right: 3px;
+    }
+    /* The receipt and the bill are reachable from every tab now that the card they used to sit
+       in is only on the first one. */
+    .kf-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 1px 7px;
+        line-height: 1.6;
+        font-weight: 700;
+        color: #475569;
+    }
+    .kf-action:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        text-decoration: none;
+    }
+    .kf-action-primary {
+        border-color: #0D47A1;
+        background: #0D47A1;
+        color: #ffffff;
+    }
+    .kf-action-primary:hover {
+        background: #0b3a85;
+        color: #ffffff;
+    }
     .patient-vitals-row {
         display: flex;
         gap: 8px;
@@ -305,6 +352,26 @@
         color: #0D47A1;
         border-bottom-color: #0D47A1;
     }
+    .consult-tabs-aside {
+        margin-left: auto;
+        display: flex;
+        gap: 4px;
+    }
+    .consult-tabs-aside .consult-tab-btn {
+        color: #a4adba;
+        font-weight: 600;
+    }
+    /* Quiet, not hidden: hover and the active state come back to full strength. */
+    .consult-tabs-aside .consult-tab-btn:hover { color: #0f172a; }
+    .consult-tabs-aside .consult-tab-btn.active { color: #0D47A1; font-weight: 700; }
+    .consult-tabs-aside .new-indicator {
+        background-color: #cbd5e1;
+        color: #475569;
+    }
+    .consult-tabs-aside .consult-tab-btn.active .new-indicator {
+        background-color: #ef4444;
+        color: #ffffff;
+    }
     .consult-tab-btn .new-indicator {
         background-color: #ef4444;
         color: #ffffff;
@@ -326,9 +393,10 @@
     /* ── Consultation Workspace Grid ── */
     .consult-workspace {
         display: grid;
-        grid-template-columns: 260px 1fr;
+        grid-template-columns: 260px minmax(0, 1fr);
         gap: 15px;
         padding: 15px;
+        max-width: 100%;
         box-sizing: border-box;
     }
     .sidebar-column {
@@ -341,9 +409,11 @@
         border: 1px solid #e2e8f0;
         border-radius: 8px;
         min-height: 520px;
+        min-width: 0;
         box-shadow: 0 1px 3px rgba(0,0,0,0.03);
         padding: 15px;
     }
+    .content-column .tab-pane { min-width: 0; }
     .sidebar-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -435,6 +505,360 @@
         border: 1px solid #ddd6fe;
         color: #6d28d9;
     }
+    .tx-col-lbl {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+    .tx-chip { cursor: pointer; }
+    .tx-counts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin-top: 5px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #94a3b8;
+    }
+    .tx-counts span { display: inline-flex; align-items: center; gap: 4px; }
+    .tx-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: 1px solid;
+        display: inline-block;
+    }
+    /* Done, booked, not booked yet — and red for work the closed OP never got to.
+       Saturated on purpose: the first pass used near-white tints and a pale yellow chip was
+       indistinguishable from a pale orange one at arm's length. The dot carries the same
+       information as the fill, so the state survives a bad monitor or colour blindness. */
+    .tx-chip::before, .tx-pill::before {
+        content: '';
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-right: 5px;
+        vertical-align: middle;
+        background: currentColor;
+    }
+    .tx-state-completed {
+        background: #d1fae5;
+        border-color: #34d399;
+        color: #065f46;
+    }
+    .tx-state-upcoming {
+        background: #ffedd5;
+        border-color: #fb923c;
+        color: #9a3412;
+    }
+    .tx-state-pending {
+        background: #fef9c3;
+        border-color: #facc15;
+        color: #854d0e;
+    }
+    .tx-state-missed {
+        background: #fee2e2;
+        border-color: #f87171;
+        color: #991b1b;
+    }
+    /* Net, due and how much of the plan has been collected: one statement under the table it
+       totals, rather than a figure repeated beside every chip. */
+    .tx-money-lbl {
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+    .tx-money-due {
+        font-size: 15px;
+        font-weight: 800;
+        color: #b91c1c;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+    }
+    .tx-bar {
+        height: 5px;
+        border-radius: 4px;
+        background: #e5eaf1;
+        overflow: hidden;
+        margin: 7px 0 0;
+    }
+    .tx-bar-fill {
+        height: 100%;
+        background: #10b981;
+        border-radius: 4px;
+        transition: width .25s;
+    }
+    /* The chips say what was advised and where each one stands. The schedule, the two figures
+       and the payment state are five columns per treatment - a table, not a chip or a tooltip. */
+    .tx-table-wrap { margin-top: 16px; }
+    .tx-table-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 6px;
+    }
+    .tx-table-head .tx-counts { margin-top: 0; }
+    table.tx-table {
+        width: 100%;
+        font-size: 12px;
+        margin-bottom: 0;
+        border-collapse: collapse;
+    }
+    table.tx-table th {
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        color: #94a3b8;
+        white-space: nowrap;
+        padding: 6px 8px;
+        border-bottom: 1px solid #e8edf4;
+    }
+    table.tx-table td {
+        padding: 7px 8px;
+        vertical-align: middle;
+        border-top: 1px solid #f1f5f9;
+        color: #475569;
+    }
+    table.tx-table tbody tr:hover { background: #f8fafc; }
+    table.tx-table tfoot td {
+        border-top: 1px solid #e2e8f0;
+        padding: 8px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    table.tx-table .tx-paid-figure { color: #047857; }
+    .tx-table-term { font-weight: 700; color: #0f172a; }
+    .tx-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .tx-nil { color: #cbd5e1; }
+    .tx-foot-lbl {
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+    .tx-pill {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 20px;
+        border: 1px solid;
+        font-size: 10px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .tx-paid-yes { color: #047857; font-weight: 700; }
+    .tx-paid-no  { color: #94a3b8; font-weight: 600; }
+    .tx-row-edit {
+        border: 0;
+        background: transparent;
+        color: #94a3b8;
+        padding: 2px 6px;
+        border-radius: 5px;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .tx-row-edit:hover { background: #eef2f7; color: #0D47A1; }
+    /* A sitting that is a real booking, not just a date written on the plan. Links to the
+       appointment so the desk's copy of it is one click from the chair. */
+    .tx-booked {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        margin-left: 6px;
+        padding: 1px 6px;
+        border-radius: 20px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 9.5px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .tx-booked:hover { background: #dbeafe; color: #1e3a8a; text-decoration: none; }
+    .tx-booked.is-stale { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+    .tx-plan-book {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 0 0 8px;
+        padding: 7px 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        background: #f8fafc;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #334155;
+        cursor: pointer;
+    }
+    .tx-plan-book input { width: 14px; height: 14px; margin-top: 1px; }
+    .tx-plan-book .tx-plan-book-note {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        color: #94a3b8;
+        margin-top: 1px;
+    }
+    .tx-plan-menu .tx-plan-booked {
+        display: block;
+        margin-bottom: 8px;
+        padding: 7px 8px;
+        border: 1px solid #bfdbfe;
+        border-radius: 7px;
+        background: #eff6ff;
+        font-size: 11px;
+        font-weight: 700;
+        color: #1d4ed8;
+    }
+    /* ── Next Visit: one block per follow-up being booked ── */
+    .nv-row {
+        position: relative;
+        border: 1px solid #e8edf4;
+        border-radius: 10px;
+        padding: 12px 14px 2px;
+        margin-bottom: 10px;
+        background: #fbfdff;
+    }
+    .nv-row-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+    .nv-row-no {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        color: #94a3b8;
+    }
+    .nv-row-drop {
+        border: 0;
+        background: transparent;
+        color: #cbd5e1;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 5px;
+    }
+    .nv-row-drop:hover { background: #fef2f2; color: #dc2626; }
+    .nv-tx-box { margin-bottom: 12px; }
+    .nv-tx-pick {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin: 0 5px 5px 0;
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid #dbe3ec;
+        background: #ffffff;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+    }
+    .nv-tx-pick input { width: 13px; height: 13px; }
+    .nv-tx-pick.is-on { border-color: #0D47A1; background: #eef4ff; color: #0D47A1; }
+    .nv-tx-pick.is-booked { border-style: dashed; }
+    .nv-for-chip {
+        display: inline-block;
+        margin: 0 3px 2px 0;
+        padding: 1px 7px;
+        border-radius: 4px;
+        background: #eef4ff;
+        color: #0D47A1;
+        font-size: 10.5px;
+        font-weight: 700;
+    }
+    .tx-due-strip {
+        margin-top: 10px;
+        padding: 9px 11px;
+        background: #f8fafc;
+        border: 1px solid #e8edf4;
+        border-radius: 9px;
+    }
+    .tx-due-line {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .tx-plan-paid {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #334155;
+    }
+    .tx-plan-paid input { width: 14px; height: 14px; }
+    .tx-plan-menu { min-width: 250px; padding: 10px; }
+    .tx-plan-menu .tx-plan-title {
+        font-size: 12px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 8px;
+    }
+    .tx-plan-menu label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+        color: #94a3b8;
+        margin-bottom: 2px;
+        display: block;
+    }
+    .tx-plan-menu .form-control { font-size: 12px; height: 30px; }
+    .tx-plan-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .tx-plan-row > div { flex: 1; }
+    .tx-status-menu {
+        position: absolute;
+        z-index: 1080;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(15,23,42,.14);
+        padding: 4px;
+        min-width: 172px;
+    }
+    .tx-status-menu button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        background: transparent;
+        border: 0;
+        padding: 7px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #334155;
+        border-radius: 6px;
+        text-align: left;
+        cursor: pointer;
+    }
+    .tx-status-menu button:hover { background: #f1f5f9; }
+    .tx-status-menu button.is-current { color: #0D47A1; }
+    .wt-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        margin: 0 4px 4px 0;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #047857;
+    }
     /* Tappable suggestion chips. Deliberately quieter than the saved badges above — these are
        offers, and they must not read as something already recorded on the visit. */
     .term-chip {
@@ -475,6 +899,13 @@
     #dxEdit .select2-container--default .select2-selection--multiple {
         border-color: #e7eaf3;
         min-height: 34px;
+        height: auto;
+    }
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding-bottom: 2px;
     }
     #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice {
         background: #eff6ff;
@@ -488,6 +919,11 @@
         background: #f5f3ff;
         border-color: #ddd6fe;
         color: #6d28d9;
+    }
+    #dxEdit .wt-select2 .select2-selection__choice {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #047857;
     }
 
     /* ── Complaints ──
@@ -507,6 +943,13 @@
     #ccEdit .select2-container--default .select2-selection--multiple {
         border-color: #e7eaf3;
         min-height: 34px;
+        height: auto;
+    }
+    #ccEdit .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding-bottom: 2px;
     }
     #ccEdit .cc-select2 .select2-selection__choice {
         background: #fffbeb;
@@ -610,6 +1053,13 @@
     #notesEdit .select2-container--default .select2-selection--multiple {
         border-color: #e7eaf3;
         min-height: 34px;
+        height: auto;
+    }
+    #notesEdit .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding-bottom: 2px;
     }
     .cc-group {
         display: inline-flex;
@@ -785,6 +1235,18 @@
         font-weight: 700;
     }
 
+    /* ── OP + Prescription workspace ── */
+    .opd-collapse-head { cursor:pointer; }
+    .dbl-editable { cursor:pointer; }
+    .rx-actions .rx-lang { order:-1; margin-left:0; margin-right:auto; }
+    .rx-sync-hint { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#0ea5e9; }
+    .rx-sync-hint.rx-sync-off { color:#94a3b8; }
+    .rx-med-list { border:1px solid #e2e8f0; border-radius:8px; overflow-x:auto; }
+    .rx-med-list thead th { font-size:11px; text-transform:uppercase; letter-spacing:.3px; color:#64748b; border-top:0; }
+    .rx-followup { padding:8px 12px; border-top:1px solid #e2e8f0; font-size:12px; color:#334155; background:#f8fafc; }
+    .rx-advice { padding:8px 12px; border-top:1px solid #e2e8f0; font-size:12px; color:#334155; }
+    .rx-advice-lbl { font-weight:700; text-transform:uppercase; font-size:10px; letter-spacing:.3px; color:#64748b; margin-right:6px; }
+
     /* ── Prescription form styles ── */
     .med-row {
         background: #f8fafc;
@@ -914,7 +1376,7 @@
                     <span class="badge-meta">{{ $visit->patient?->patient_uid }}</span>
                     <span class="badge-meta">{{ ucfirst($visit->patient?->gender) }} - {{ \Carbon\Carbon::parse($visit->patient?->dob)->age }} yrs</span>
                     <span class="badge-meta">Blood Group: {{ $visit->patient?->blood_group ?: '—' }}</span>
-                    
+
                     @if($visit->patient?->allergies)
                         <span class="badge-allergy-alert">
                             <i class="tio-warning"></i> Allergies
@@ -934,6 +1396,28 @@
                                 <span class="badge-condition">{{ $cond }}</span>
                             @endif
                         @endforeach
+                    @endif
+                </div>
+                {{-- Everything a doctor asks for without meaning to leave the tab they are on:
+                     the number to ring, what kind of visit this is, and how long they have been
+                     coming. The sidebar card repeats it in full, on the Consultation tab only. --}}
+                <div class="patient-key-facts">
+                    <span class="kf"><span class="kf-lbl">Mobile</span>{{ $visit->patient?->phone ?: '—' }}</span>
+                    <span class="kf"><span class="kf-lbl">Visit</span>{{ \App\Models\OpdVisit::VISIT_TYPES[$visit->visit_type] ?? $visit->visit_type }}</span>
+                    <span class="kf"><span class="kf-lbl">OP</span>{{ $visit->op_type ?: '—' }}</span>
+                    <span class="kf"><span class="kf-lbl">Last visit</span>{{ $pastVisits->first()?->visit_date?->format('d M Y') ?: 'None' }}</span>
+                    <span class="kf"><span class="kf-lbl">Total</span>{{ $pastVisits->count() + 1 }} visits</span>
+
+                    @if (!$visit->is_cancelled && hasPermission('opd_register', 'view'))
+                        <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}" target="_blank" class="kf-action">
+                            <i class="tio-receipt"></i> OP Receipt
+                        </a>
+                    @endif
+
+                    @if (!$visit->is_cancelled && hasPermission('opd_register', 'generate_bill'))
+                        <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}" class="kf-action kf-action-primary">
+                            <i class="tio-receipt-outlined"></i> Generate Bill
+                        </a>
                     @endif
                 </div>
             </div>
@@ -976,13 +1460,18 @@
         @endif
     </div>
 
+    @if (filled($visit->patient?->phone))
+        {{-- Posted only when the doctor confirms after a status change. The template is the
+             module's approved `treatment` one — a treatment summary, not a per-chip message. --}}
+        <form id="txWaForm" method="post" action="{{ route('vendor.hmis-whatsapp.treatment', $visit->id) }}" class="d-none">
+            @csrf
+        </form>
+    @endif
+
     {{-- 4. HORIZONTAL TABBAR --}}
     <div class="consult-tabs-row">
         <button class="consult-tab-btn active" onclick="switchTab(this, 'tabDetails')">
-            <i class="tio-folder-bookmarked"></i> Details
-        </button>
-        <button class="consult-tab-btn" onclick="switchTab(this, 'tabPrescription')">
-            <i class="tio-file-text-outlined"></i> Prescription
+            <i class="tio-folder-bookmarked"></i> Consultation
         </button>
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabPastRx')">
             <i class="tio-history"></i> Past Rx
@@ -996,34 +1485,55 @@
                 <span class="count-badge ml-1">{{ $visit->patient->documents->count() }}</span>
             @endif
         </button>
-        <button class="consult-tab-btn" onclick="switchTab(this, 'tabSaraAI')" id="btnSaraTab">
-            <i class="tio-star"></i> Sara AI <span class="new-indicator ml-1">New</span>
-        </button>
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabNextVisit')">
             <i class="tio-calendar-note"></i> Next Visit
             @if($upcomingVisits->count())
                 <span class="count-badge ml-1">{{ $upcomingVisits->count() }}</span>
             @endif
         </button>
-        <button class="consult-tab-btn" onclick="switchTab(this, 'tabTimeline')">
-            <i class="tio-calendar-note"></i> Timeline
+        @if($labWorkEnabled ?? false)
+        <button class="consult-tab-btn" onclick="switchTab(this, 'tabLabWork')">
+            <i class="tio-lab"></i> Lab Work
+            @if($labWorks->where('is_open', true)->count())
+                <span class="count-badge ml-1">{{ $labWorks->where('is_open', true)->count() }}</span>
+            @endif
         </button>
+        @endif
+
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabMode')">
             <i class="tio-settings-outlined"></i> Mode
         </button>
+        @if($securityEnabled ?? false)
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabSecurity')">
             <i class="tio-lock-outlined"></i> Security
+            @if($securityLog->count())
+                <span class="count-badge ml-1">{{ $securityLog->count() }}</span>
+            @endif
         </button>
+        @endif
+
+        {{-- Reference tabs, not part of the consultation itself: pushed right and
+             toned down so the run of tabs on the left reads as the actual workflow. --}}
+        <div class="consult-tabs-aside">
+            <button class="consult-tab-btn" onclick="switchTab(this, 'tabSaraAI')" id="btnSaraTab">
+                <i class="tio-star"></i> Sara AI <span class="new-indicator ml-1">New</span>
+            </button>
+            <button class="consult-tab-btn" onclick="switchTab(this, 'tabTimeline')">
+                <i class="tio-calendar-note"></i> Timeline
+            </button>
+        </div>
     </div>
 
     {{-- 5. TWO-COLUMN CONSULTATION WORKSPACE --}}
     <div class="consult-workspace">
-        
+
         {{-- LEFT SIDEBAR --}}
         <div class="sidebar-column">
-            
-            {{-- Patient Info Card --}}
-            <div class="sidebar-card">
+
+            {{-- Patient Info Card — Consultation tab only: on Past Rx, Tests or Reports the
+                 doctor is reading rather than admitting, and the line under the patient's name
+                 carries the facts that still matter there. Shown and hidden by switchTab(). --}}
+            <div class="sidebar-card tab-only-details" id="cardPatientInfo">
                 <div class="sidebar-card-header">
                     <h5>Patient Info</h5>
                     <button class="btn btn-xs btn-outline-secondary py-0 px-1" style="font-size:10px" data-toggle="collapse" data-target="#collapseSidebarInfo">Show/Hide</button>
@@ -1039,27 +1549,7 @@
                         <tr><td class="lbl">OP Type</td><td class="val">{{ $visit->op_type ?: '—' }}</td></tr>
                         <tr><td class="lbl">Last Visit</td><td class="val">{{ $pastVisits->first()?->visit_date?->format('d M Y') ?: 'None' }}</td></tr>
                         <tr><td class="lbl">Total Visits</td><td class="val">{{ $pastVisits->count() + 1 }} visits</td></tr>
-                        @if (!$visit->is_cancelled && hasPermission('opd_register', 'view'))
-                            <tr>
-                                <td class="lbl">OP Receipt</td>
-                                <td class="val">
-                                    <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}" target="_blank" class="btn btn-sm btn-info " >
-                                        <i class="tio-receipt"></i> OP Receipt
-                                    </a>
-                                </td>
-                            </tr>
-                        @endif
-                        @if (!$visit->is_cancelled && hasPermission('opd_register', 'generate_bill'))
-                            <tr>
-                                <td class="lbl">Bill</td>
-                                <td class="val">
-                                    <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}" class="btn btn-sm btn--primary">
-                                        <i class="tio-receipt-outlined"></i> Generate Bill
-                                    </a>
-                                </td>
-                            </tr>
-                        @endif
-                    </table> 
+                    </table>
                 </div>
             </div>
 
@@ -1129,7 +1619,7 @@
 
         {{-- MAIN TAB CONTENT COLUMN --}}
         <div class="content-column">
-            
+
             {{-- TAB: DETAILS --}}
             <div class="tab-pane active" id="tabDetails">
                 <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Visit Details</h4>
@@ -1147,7 +1637,7 @@
                                     </button>
                                 @endif
                             </div>
-                            <div class="card-body py-3" id="ccView">
+                            <div class="card-body py-3 dbl-editable" id="ccView" ondblclick="editOnDblClick('cc')" title="Double-click to edit">
                                 <div id="ccBadges">
                                     @forelse($visit->complaint_list as $term)
                                         <span class="cc-badge">{{ $term }}</span>
@@ -1195,7 +1685,7 @@
                                     </button>
                                 @endif
                             </div>
-                            <div class="card-body py-3" id="notesView">
+                            <div class="card-body py-3 dbl-editable" id="notesView" ondblclick="editOnDblClick('notes')" title="Double-click to edit">
                                 <div id="notesBadges">
                                     @forelse(\App\Models\OpdVisit::splitTerms($visit->notes) as $phrase)
                                         <span class="nt-badge">{{ $phrase }}</span>
@@ -1258,6 +1748,84 @@
                         })->values();
                     };
 
+                    $wtCurrent = $visit->willing_treatment_list;
+                    $txPlan   = $visit->treatment_plan_map;
+                    $txStateLabels = [
+                        'pending'   => 'Pending',
+                        'upcoming'  => 'Upcoming',
+                        'completed' => 'Completed',
+                        'missed'    => 'Not done',
+                    ];
+                    $rxCurrency = \App\CentralLogics\Helpers::currency_symbol() ?: '₹';
+
+                    $txWhen = function ($row) {
+                        $parts = [];
+                        $date = $row['date'] ?? '';
+                        $time = substr((string) ($row['time'] ?? ''), 0, 5);
+
+                        if ($date) {
+                            $parts[] = \Carbon\Carbon::hasFormat($date, 'Y-m-d')
+                                ? \Carbon\Carbon::createFromFormat('Y-m-d', $date)->format('j M Y')
+                                : $date;
+                        }
+                        if ($time) {
+                            $parts[] = \Carbon\Carbon::hasFormat($time, 'H:i')
+                                ? \Carbon\Carbon::createFromFormat('H:i', $time)->format('g:i A')
+                                : $time;
+                        }
+                        return implode(' · ', $parts);
+                    };
+
+                    // One pass over the advised list feeds all three readings of it: the chips,
+                    // the state counts that stand in for a colour key, and the detail table.
+                    $txRows = [];
+                    $txStateCounts = [];
+                    $txSum = ['gross' => 0.0, 'discount' => 0.0, 'paid' => 0.0];
+
+                    foreach ($txCurrent as $term) {
+                        $row   = $txPlan[$term] ?? [];
+                        $state = $row['status'] ?? 'pending';
+                        $state = ($visit->is_completed && $state !== 'completed') ? 'missed' : $state;
+
+                        $amount = (float) ($row['amount'] ?? 0);
+                        $less   = (float) ($row['discount'] ?? 0);
+                        $net    = max($amount - $less, 0);
+                        $isPaid = !empty($row['paid']);
+                        $when   = $txWhen($row);
+                        // Booked as a real follow-up, or just a date pencilled onto the plan.
+                        $appt   = $treatmentAppointments[(int) ($row['appointment_id'] ?? 0)] ?? null;
+
+                        $txStateCounts[$state] = ($txStateCounts[$state] ?? 0) + 1;
+                        $txSum['gross']    += $amount;
+                        $txSum['discount'] += $less;
+                        if ($isPaid) {
+                            $txSum['paid'] += $net;
+                        }
+
+                        $txRows[] = [
+                            'term'     => $term,
+                            'state'    => $state,
+                            'when'     => $when,
+                            'amount'   => $amount,
+                            'discount' => $less,
+                            'net'      => $net,
+                            'paid'     => $isPaid,
+                            'appt'     => $appt,
+                            'tip'      => implode(' · ', array_filter([
+                                $txStateLabels[$state],
+                                $when ?: null,
+                                $net ? $rxCurrency . number_format($net, 2) : null,
+                                $isPaid ? 'paid' : null,
+                                $appt ? 'booked' : null,
+                            ])),
+                        ];
+                    }
+
+                    $txSum['net'] = max($txSum['gross'] - $txSum['discount'], 0);
+                    $txSum['due'] = max($txSum['net'] - $txSum['paid'], 0);
+                    $txPaidPct = $txSum['net'] > 0 ? min(100, round($txSum['paid'] / $txSum['net'] * 100)) : 0;
+                    $txEditable = $visit->is_editable && hasPermission('opd_register', 'edit');
+
                     $dxChoices = $rankTerms(collect($diagnosisOptions ?? [])->merge($dxCurrent), $termInsights['diagnosisByKey'] ?? []);
                     $txChoices = $rankTerms(collect($treatmentOptions ?? [])->merge($txCurrent), $termInsights['treatmentByKey'] ?? []);
 
@@ -1277,8 +1845,8 @@
                     </div>
                     <div class="card-body py-3" id="dxView">
                         <div class="row">
-                            <div class="col-md-6">
-                                <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">Diagnosis</div>
+                            <div class="col-md-4">
+                                <div class="tx-col-lbl">Diagnosis</div>
                                 <div id="dxBadges">
                                     @forelse($dxCurrent as $term)
                                         <span class="dx-badge">{{ $term }}</span>
@@ -1287,14 +1855,139 @@
                                     @endforelse
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">Treatment</div>
+
+                            {{-- Same three columns in the same order as the editor below, so
+                                 opening the pencil rearranges nothing. Chips only: each carries
+                                 its status as colour, and everything else about the treatment —
+                                 when, how much, paid or not — is in the table under the row,
+                                 which a column three inches wide could never hold. --}}
+                            <div class="col-md-4">
+                                <div class="tx-col-lbl">Advised Treatment</div>
                                 <div id="txBadges">
-                                    @forelse($txCurrent as $term)
-                                        <span class="tx-badge">{{ $term }}</span>
+                                    @forelse($txRows as $r)
+                                        <span class="tx-badge tx-chip tx-state-{{ $r['state'] }}" data-term="{{ $r['term'] }}"
+                                              onclick="openTxPlanMenu(this)" title="{{ $r['tip'] }} — click to change">
+                                            {{ $r['term'] }}
+                                        </span>
                                     @empty
                                         <span class="text-muted small">Not recorded yet.</span>
                                     @endforelse
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="tx-col-lbl">Willing Treatment</div>
+                                <div id="wtBadges">
+                                    @forelse($wtCurrent as $term)
+                                        <span class="wt-badge">{{ $term }}</span>
+                                    @empty
+                                        <span class="text-muted small">Not recorded yet.</span>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- The detail behind the chips. One row per advised treatment: the
+                             schedule, what it comes to and whether it has been paid — the things
+                             a tooltip cannot say and nobody hovers for on a tablet. --}}
+                        <div class="tx-table-wrap" id="txTableWrap" @if(!count($txRows)) style="display:none" @endif>
+                            <div class="tx-table-head">
+                                <div class="tx-col-lbl mb-0">Treatment Plan</div>
+                                {{-- How many sit in each state, which doubles as the colour key
+                                     for the chips above: a standing legend explains colours
+                                     nobody is looking at, while "1 completed · 2 pending" is the
+                                     thing a doctor wants to know. --}}
+                                <div class="tx-counts" id="txCounts">
+                                    @foreach(['completed', 'upcoming', 'pending', 'missed'] as $state)
+                                        @if(!empty($txStateCounts[$state]))
+                                            <span><i class="tx-dot tx-state-{{ $state }}"></i>{{ $txStateCounts[$state] }} {{ strtolower($txStateLabels[$state]) }}</span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="tx-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Treatment</th>
+                                            <th>Status</th>
+                                            <th>Scheduled</th>
+                                            <th class="tx-num">Amount</th>
+                                            <th class="tx-num">Discount</th>
+                                            <th class="tx-num">Net</th>
+                                            <th class="text-center">Payment</th>
+                                            @if($txEditable)
+                                                <th></th>
+                                            @endif
+                                        </tr>
+                                    </thead>
+                                    <tbody id="txTableBody">
+                                        @foreach($txRows as $r)
+                                            <tr>
+                                                <td class="tx-table-term">{{ $r['term'] }}</td>
+                                                <td><span class="tx-pill tx-state-{{ $r['state'] }}">{{ $txStateLabels[$r['state']] }}</span></td>
+                                                <td>
+                                                    @if($r['when'])
+                                                        {{ $r['when'] }}
+                                                    @else
+                                                        <span class="tx-nil">Not scheduled</span>
+                                                    @endif
+                                                    @if($r['appt'])
+                                                        {{-- Booked, so this date is on the desk's day list too. Red once the
+                                                             booking has been called off, which is news the plan must not hide. --}}
+                                                        <a href="{{ $r['appt']['url'] }}" target="_blank"
+                                                           class="tx-booked @if(in_array($r['appt']['status'], ['cancelled', 'no_show'])) is-stale @endif"
+                                                           title="{{ in_array($r['appt']['status'], ['cancelled', 'no_show']) ? 'That follow-up was ' . str_replace('_', ' ', $r['appt']['status']) . ' — open it' : 'Booked as a next visit — open the appointment' }}">
+                                                            <i class="tio-calendar-note"></i>{{ $r['appt']['token'] ? '#' . $r['appt']['token'] : 'Booked' }}
+                                                        </a>
+                                                    @endif
+                                                </td>
+                                                <td class="tx-num @if(!$r['amount']) tx-nil @endif">{{ $r['amount'] ? $rxCurrency . number_format($r['amount'], 2) : '—' }}</td>
+                                                <td class="tx-num @if(!$r['discount']) tx-nil @endif">{{ $r['discount'] ? $rxCurrency . number_format($r['discount'], 2) : '—' }}</td>
+                                                <td class="tx-num @if(!$r['net']) tx-nil @endif">{{ $r['net'] ? $rxCurrency . number_format($r['net'], 2) : '—' }}</td>
+                                                <td class="text-center">
+                                                    @if($r['paid'])
+                                                        <span class="tx-paid-yes">Paid</span>
+                                                    @elseif($r['net'])
+                                                        <span class="tx-paid-no">Due</span>
+                                                    @else
+                                                        <span class="tx-nil">—</span>
+                                                    @endif
+                                                </td>
+                                                @if($txEditable)
+                                                    <td class="text-right">
+                                                        <button type="button" class="tx-row-edit" data-tx-open data-term="{{ $r['term'] }}"
+                                                                onclick="openTxPlanMenu(this)" title="Edit schedule &amp; price">
+                                                            <i class="tio-edit"></i>
+                                                        </button>
+                                                    </td>
+                                                @endif
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="tx-foot-lbl">Total</td>
+                                            <td class="tx-num" id="txTotalGross">{{ $rxCurrency }}{{ number_format($txSum['gross'], 2) }}</td>
+                                            <td class="tx-num" id="txTotalDisc">{{ $rxCurrency }}{{ number_format($txSum['discount'], 2) }}</td>
+                                            <td class="tx-num" id="txTotalNet">{{ $rxCurrency }}{{ number_format($txSum['net'], 2) }}</td>
+                                            <td class="text-center tx-paid-figure" id="txTotalPaid">{{ $rxCurrency }}{{ number_format($txSum['paid'], 2) }}</td>
+                                            @if($txEditable)
+                                                <td></td>
+                                            @endif
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <div id="txTotals" class="tx-due-strip @if(!$txSum['gross']) d-none @endif">
+                                <div class="tx-due-line">
+                                    <span class="tx-money-lbl">Balance due</span>
+                                    <span class="tx-money-due" id="txTotalDue">{{ $rxCurrency }}{{ number_format($txSum['due'], 2) }}</span>
+                                </div>
+                                <div class="tx-bar" title="Collected against this plan">
+                                    <div class="tx-bar-fill" id="txPaidBar" style="width: {{ $txPaidPct }}%"></div>
                                 </div>
                             </div>
                         </div>
@@ -1316,7 +2009,7 @@
                                 </div>
                             @endif
                             <div class="row">
-                                <div class="col-md-6 form-group mb-2">
+                                <div class="col-md-4 form-group mb-2">
                                     <label class="input-label" style="font-size:12px">Diagnosis</label>
                                     <select id="dxSelect" class="form-control form-control-sm" multiple>
                                         @foreach($dxChoices as $term)
@@ -1325,14 +2018,26 @@
                                     </select>
                                     <small class="text-muted">Most-used first. Pick from the list, or type a new one and press Enter.</small>
                                 </div>
-                                <div class="col-md-6 form-group mb-2">
-                                    <label class="input-label" style="font-size:12px">Treatment</label>
+                                <div class="col-md-4 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Advised Treatment</label>
                                     <select id="txSelect" class="form-control form-control-sm" multiple>
                                         @foreach($txChoices as $term)
                                             <option value="{{ $term }}" @if(in_array($term, $txCurrent)) selected @endif>{{ $term }}</option>
                                         @endforeach
                                     </select>
-                                    <small class="text-muted">Most-used first. Pick from the list, or type a new one and press Enter.</small>
+                                    <small class="text-muted">
+                                        What you recommended.
+                                        <a href="{{ route('vendor.opd.treatment-catalog') }}" target="_blank" class="ml-1">Prices</a>
+                                    </small>
+                                </div>
+                                <div class="col-md-4 form-group mb-2">
+                                    <label class="input-label" style="font-size:12px">Willing Treatment</label>
+                                    <select id="wtSelect" class="form-control form-control-sm" multiple>
+                                        @foreach($txCurrent as $term)
+                                            <option value="{{ $term }}" @if(in_array($term, $wtCurrent)) selected @endif>{{ $term }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Ticked off the advised list. Leave empty if they agreed to all of it.</small>
                                 </div>
                             </div>
                             {{-- Populated from the diagnoses currently selected. Suggestions only —
@@ -1355,8 +2060,11 @@
                 {{-- Full Vitals Grid --}}
                 @if($showVitals)
                 <div class="card shadow-none border mb-3">
-                    <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
-                        <h6 class="mb-0 font-weight-bold" style="font-size:13px">Patient Vitals Profile</h6>
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light opd-collapse-head" onclick="toggleVitalsProfile(event)">
+                        <h6 class="mb-0 font-weight-bold" style="font-size:13px">
+                            <i class="tio-chevron-right" id="vitalsChevron"></i> Patient Vitals Profile
+                            <span class="text-muted" style="font-weight:500">&mdash; incl. RR &amp; height</span>
+                        </h6>
                         @if ($visit->is_completed)
                             <span class="visit-locked" title="This visit is completed. The OP receipt has been issued, so the record is closed."><i class="tio-lock"></i> Completed</span>
                         @elseif (hasPermission('opd_register', 'edit'))
@@ -1365,6 +2073,7 @@
                             </button>
                         @endif
                     </div>
+                    <div id="vitalsProfileBody" style="display:none;">
                     <div class="card-body p-0" id="vitalsView">
                         <table class="table table-striped table-sm mb-0 text-dark" style="font-size:13px">
                             <tbody>
@@ -1447,12 +2156,12 @@
                             <small class="text-muted d-block mt-1">Leave a box empty to record that vital as not taken.</small>
                         </div>
                     @endif
+                    </div>{{-- /vitalsProfileBody --}}
                 </div>
                 @endif
-            </div>
 
-            {{-- TAB: PRESCRIPTION --}}
-            <div class="tab-pane" id="tabPrescription">
+            <hr class="my-4">
+            <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Prescription</h4>
                 @if($currentPrescription)
                     {{-- View existing prescription --}}
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1506,7 +2215,48 @@
                         </div>
                     </div>
 
-                    <div class="rx-view-wrap" id="rxPrintSection">
+                    {{-- The medicines on their own. The letterhead copy below is what prints;
+                         it repeats this table, so it stays folded until someone wants to see it. --}}
+                    <div class="rx-med-list mb-2">
+                        <table class="table table-sm mb-0" style="font-size:13px; min-width:520px">
+                            <thead>
+                                <tr class="bg-light">
+                                    <th style="width:34px">#</th>
+                                    <th>Medicine</th>
+                                    <th>Dosage</th>
+                                    <th>Frequency</th>
+                                    <th>Duration</th>
+                                    <th class="text-right">Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($currentPrescription->items as $idx => $item)
+                                    <tr>
+                                        <td class="text-muted">{{ $idx+1 }}</td>
+                                        <td><strong>{{ $item->medicine_name }}</strong></td>
+                                        <td>{{ $item->dosage ?: '—' }}</td>
+                                        <td>{{ $item->frequency ?: '—' }}</td>
+                                        <td>{{ $item->duration ?: '—' }}</td>
+                                        <td class="text-right">{{ $item->quantity ?: '—' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="6" class="text-center text-muted py-3">No medicines prescribed</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                        @if($currentPrescription->follow_up_date)
+                            <div class="rx-followup"><i class="tio-calendar-note"></i> Follow-up on <strong>{{ $currentPrescription->follow_up_date->format('d M Y') }}</strong></div>
+                        @endif
+                        @if($currentPrescription->notes)
+                            <div class="rx-advice"><span class="rx-advice-lbl">Advice</span> {{ $currentPrescription->notes }}</div>
+                        @endif
+                    </div>
+
+                    <button type="button" class="btn btn-xs btn-soft-secondary mb-3" onclick="toggleRxPreview()">
+                        <i class="tio-visible-outlined"></i> <span id="rxPreviewLabel">Show printable letterhead</span>
+                    </button>
+
+                    <div class="rx-view-wrap" id="rxPrintSection" style="display:none;">
                         <div class="rx-view-header">
                             <div>
                                 <h4 style="margin:0; font-weight:800; color:#0D47A1;">{{ $currentPrescription->store?->name }}</h4>
@@ -1523,7 +2273,7 @@
                         </div>
 
                         <div style="font-size:28px; color:#0D47A1; font-weight:700; margin-bottom:10px; font-family:'Times New Roman'">℞</div>
-                        
+
                         <table class="table table-bordered table-sm" style="font-size:12px;">
                             <thead>
                                 <tr class="bg-light">
@@ -1590,18 +2340,31 @@
                         @endif
 
                         <div class="row">
-                            <div class="col-md-7">
+                            {{-- Diagnosis and advice are recorded once, in the consultation
+                                 cards above. These mirror them until the doctor types something
+                                 different here, at which point the mirror releases. --}}
+                            <div class="col-md-5">
                                 <div class="form-group">
-                                    <label class="input-label">Diagnosis <span class="text-danger">*</span></label>
-                                    <textarea name="diagnosis" class="form-control form-control-sm" rows="2" placeholder="Primary diagnosis..." required>{{ $currentPrescription->diagnosis ?? ($visit->diagnosis ?: $visit->chief_complaint) }}</textarea>
+                                    <label class="input-label d-flex justify-content-between align-items-center mb-1">
+                                        <span>Diagnosis <span class="text-danger">*</span></span>
+                                        <span class="rx-sync-hint" id="rxDxHint">Synced from Diagnosis &amp; Treatment</span>
+                                    </label>
+                                    <textarea name="diagnosis" id="rxDiagnosis" data-synced="1" oninput="markRxFieldEdited(this, 'rxDxHint')" class="form-control form-control-sm" rows="3" placeholder="Primary diagnosis..." required>{{ $currentPrescription->diagnosis ?? ($visit->diagnosis ?: $visit->chief_complaint) }}</textarea>
                                 </div>
+                            </div>
+                            <div class="col-md-5">
                                 <div class="form-group">
-                                    <label class="input-label">Doctor's Advice / Notes</label>
-                                    <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Rest, diet, precautions, advice...">{{ $currentPrescription->notes ?? $visit->notes }}</textarea>
+                                    <label class="input-label d-flex justify-content-between align-items-center mb-1">
+                                        <span>Doctor's Advice / Notes</span>
+                                        <span class="rx-sync-hint" id="rxNotesHint">Synced from Consultation Notes</span>
+                                    </label>
+                                    <textarea name="notes" id="rxNotes" data-synced="1" oninput="markRxFieldEdited(this, 'rxNotesHint')" class="form-control form-control-sm" rows="3" placeholder="Rest, diet, precautions, advice...">{{ $currentPrescription->notes ?? $visit->notes }}</textarea>
                                 </div>
+                            </div>
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label class="input-label">Follow-Up Date</label>
-                                    <input type="date" name="follow_up_date" class="form-control form-control-sm" style="max-width:200px;" value="{{ $currentPrescription && $currentPrescription->follow_up_date ? $currentPrescription->follow_up_date->format('Y-m-d') : '' }}">
+                                    <input type="date" name="follow_up_date" class="form-control form-control-sm" value="{{ $currentPrescription && $currentPrescription->follow_up_date ? $currentPrescription->follow_up_date->format('Y-m-d') : '' }}">
                                 </div>
                             </div>
 
@@ -1659,15 +2422,16 @@
                         </div>
 
                         <div class="rx-actions">
+                               @if($currentPrescription)
+                                <button type="button" class="btn btn-sm btn-light" onclick="togglePrescriptionEdit(false)">Cancel</button>
+                            @endif
                             <button type="submit" class="btn btn-sm btn-primary" name="action" value="draft">
                                 <i class="tio-save"></i> Save Draft
                             </button>
                             <button type="submit" class="btn btn-sm btn-success" name="finalize" value="1">
                                 <i class="tio-checkmark-circle"></i> Finalize &amp; Save
                             </button>
-                            @if($currentPrescription)
-                                <button type="button" class="btn btn-sm btn-light" onclick="togglePrescriptionEdit(false)">Cancel</button>
-                            @endif
+
                             @include('hmis::vendor.prescription._rx_language', ['selected' => $currentPrescription->language ?? null])
                         </div>
                     </form>
@@ -1894,7 +2658,7 @@
             {{-- TAB: SARA AI --}}
             <div class="tab-pane" id="tabSaraAI">
                 <div class="sara-ai-container">
-                    
+
                     {{-- Blue Header Banner --}}
                     <div class="sara-ai-header">
                         <div>
@@ -1919,7 +2683,7 @@
 
                     {{-- Progress widgets grid --}}
                     <div class="risk-snapshot-grid">
-                        
+
                         {{-- 1. Cardiovascular Risk --}}
                         @php
                             $cvScore = 15;
@@ -2108,12 +2872,35 @@
             </div>
 
             {{-- TAB: NEXT VISIT --}}
+            @php
+                // The sittings still to come, offered as tick boxes against each follow-up being
+                // booked. Completed work is left out — there is nothing left to book for it.
+                $nvPlan  = $visit->treatment_plan_map;
+                $nvTerms = collect($visit->treatment_list)
+                    ->map(function ($term) use ($nvPlan, $treatmentAppointments) {
+                        $row  = $nvPlan[$term] ?? [];
+                        $appt = $treatmentAppointments[(int) ($row['appointment_id'] ?? 0)] ?? null;
+
+                        return [
+                            'term'   => $term,
+                            'status' => $row['status'] ?? 'pending',
+                            'booked' => $appt && !in_array($appt['status'], ['cancelled', 'no_show']),
+                        ];
+                    })
+                    ->reject(fn($item) => $item['status'] === 'completed')
+                    ->values();
+
+                // Which advised treatments each booking already covers, for the list above the form.
+                $nvByAppointment = $visit->treatments_by_appointment;
+                $nvCanLink       = $visit->is_editable && hasPermission('opd_register', 'edit');
+            @endphp
             <div class="tab-pane" id="tabNextVisit">
                 <h4 class="mb-1 font-weight-bold" style="color:#0f172a">Schedule Next Visit</h4>
                 <p class="small text-muted mb-4">
                     Books a follow-up for {{ $visit->patient?->name }} with
                     Dr. {{ trim(($visit->doctorProfile?->employee?->f_name ?? '') . ' ' . ($visit->doctorProfile?->employee?->l_name ?? '')) }}.
-                    The patient gets a WhatsApp confirmation now and an automatic reminder before the visit.
+                    The patient gets a WhatsApp confirmation now and an automatic reminder before each visit.
+                    A course rarely finishes in one sitting — add a row for each, and tick which treatments it is for.
                 </p>
 
                 @if($upcomingVisits->count())
@@ -2124,7 +2911,7 @@
                         <div class="table-responsive">
                             <table class="table table-sm table-hover mb-0" style="font-size:13px;">
                                 <thead class="thead-light">
-                                    <tr><th>Date</th><th>Time</th><th>Doctor</th><th>Token</th><th>Reason</th><th></th></tr>
+                                    <tr><th>Date</th><th>Time</th><th>Doctor</th><th>Token</th><th>For</th><th>Reason</th><th></th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach($upcomingVisits as $up)
@@ -2133,6 +2920,13 @@
                                         <td>{{ \Carbon\Carbon::parse($up->appointment_time)->format('h:i A') }}</td>
                                         <td>Dr. {{ $up->doctorProfile?->employee?->f_name }} {{ $up->doctorProfile?->employee?->l_name }}</td>
                                         <td>{{ $up->token ? '#' . $up->token->token_number : '—' }}</td>
+                                        <td>
+                                            @forelse($nvByAppointment[$up->id] ?? [] as $term)
+                                                <span class="nv-for-chip">{{ $term }}</span>
+                                            @empty
+                                                <span class="tx-nil">—</span>
+                                            @endforelse
+                                        </td>
                                         <td>{{ \Illuminate\Support\Str::limit($up->reason ?? '—', 40) }}</td>
                                         <td>
                                             <a href="{{ route('vendor.appointment.show', $up->id) }}"
@@ -2151,52 +2945,589 @@
                         This visit has no doctor assigned, so a follow-up cannot be booked from here.
                     </div>
                 @else
-                <form action="{{ route('vendor.opd.next-visit', $visit->id) }}" method="POST" style="max-width:620px;">
+                {{-- The row markup lives in a template so JS can add as many as the course needs
+                     without rebuilding the treatment list in script — Blade stays the one place
+                     that knows what this visit advised. `__i__` becomes the row index on clone. --}}
+                <template id="nvRowTpl">
+                    <div class="nv-row" data-nv-row>
+                        <div class="nv-row-head">
+                            <span class="nv-row-no" data-nv-label>Visit 1</span>
+                            <button type="button" class="nv-row-drop" data-nv-drop title="Remove this visit">&times; Remove</button>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label class="input-label" style="font-size:12px;">Date <span class="text-danger">*</span></label>
+                                <input type="date" name="visits[__i__][appointment_date]" class="form-control form-control-sm"
+                                       min="{{ date('Y-m-d') }}" data-nv-date required>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label class="input-label" style="font-size:12px;">Time <span class="text-danger">*</span></label>
+                                <input type="time" name="visits[__i__][appointment_time]" class="form-control form-control-sm" data-nv-time required>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label class="input-label" style="font-size:12px;">Slot</label>
+                                <select name="visits[__i__][slot_id]" class="form-control form-control-sm" data-nv-slot>
+                                    <option value="">-- Select date first --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        @if($nvCanLink && $nvTerms->count())
+                            <div class="nv-tx-box">
+                                <label class="input-label" style="font-size:12px;">What is this visit for?</label>
+                                <div>
+                                    @foreach($nvTerms as $item)
+                                        <label class="nv-tx-pick @if($item['booked']) is-booked @endif"
+                                               title="{{ $item['booked'] ? 'Already booked into a follow-up — ticking this moves it to the new one.' : 'Marks this treatment upcoming for that date.' }}">
+                                            <input type="checkbox" name="visits[__i__][treatments][]" value="{{ $item['term'] }}" data-nv-tx>
+                                            {{ $item['term'] }}
+                                        </label>
+                                    @endforeach
+                                </div>
+                                <small class="text-muted">
+                                    Ticked treatments are marked upcoming for this date and carry the booking, so moving the
+                                    appointment later moves the sitting with it.
+                                </small>
+                            </div>
+                        @endif
+
+                        <div class="form-group">
+                            <label class="input-label" style="font-size:12px;">Reason / Notes</label>
+                            <input type="text" name="visits[__i__][reason]" class="form-control form-control-sm" maxlength="500"
+                                   placeholder="Review, dressing change, report follow-up…">
+                            <small class="text-muted">Left blank, the ticked treatments become the reason.</small>
+                        </div>
+                    </div>
+                </template>
+
+                <form action="{{ route('vendor.opd.next-visit', $visit->id) }}" method="POST" id="nvForm" style="max-width:720px;">
                     @csrf
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label class="input-label" style="font-size:12px;">Date <span class="text-danger">*</span></label>
-                            <input type="date" name="appointment_date" id="nvDate" class="form-control"
-                                   min="{{ date('Y-m-d') }}" required>
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label class="input-label" style="font-size:12px;">Time <span class="text-danger">*</span></label>
-                            <input type="time" name="appointment_time" id="nvTime" class="form-control" required>
-                        </div>
+                    <div id="nvRows"></div>
+                    <div class="d-flex align-items-center" style="gap:10px; flex-wrap:wrap;">
+                        <button type="submit" class="btn btn--primary">
+                            <i class="tio-calendar-note"></i> <span id="nvSubmitLabel">Schedule Next Visit</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="nvAdd">
+                            <i class="tio-add"></i> Add another visit
+                        </button>
                     </div>
-                    <div class="form-group">
-                        <label class="input-label" style="font-size:12px;">Slot</label>
-                        <select name="slot_id" id="nvSlot" class="form-control">
-                            <option value="">-- Select date first --</option>
-                        </select>
-                        <small class="text-muted">Leave blank to enter the time manually.</small>
-                    </div>
-                    <div class="form-group">
-                        <label class="input-label" style="font-size:12px;">Reason / Notes</label>
-                        <input type="text" name="reason" class="form-control" maxlength="500"
-                               placeholder="Review, dressing change, report follow-up…">
-                    </div>
-                    <button type="submit" class="btn btn--primary">
-                        <i class="tio-calendar-note"></i> Schedule Next Visit
-                    </button>
                 </form>
+                @if(!$nvCanLink && $nvTerms->count())
+                    <p class="text-muted small mt-3 mb-0">
+                        This visit is closed, so the follow-up is booked on its own — the treatment plan on the printed
+                        receipt is left exactly as it was.
+                    </p>
+                @endif
                 @endif
             </div>
 
-            {{-- TAB: SECURITY --}}
-            <div class="tab-pane" id="tabSecurity">
-                <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Security &amp; Compliance</h4>
-                <p class="small text-muted mb-4">Patient records audit logs and compliance details.</p>
-                <div class="text-dark" style="font-size:13px">
-                    <p class="mb-2"><strong>HIPAA compliance:</strong> All consultation notes and vitals are encrypted at rest.</p>
-                    <p class="mb-2"><strong>Access Logs:</strong> Access to patient #{{ $visit->patient_id }} records is audited.</p>
-                    <div class="border p-2 rounded bg-light" style="font-size:11px; font-family:monospace;">
-                        [2026-06-11 15:47] Access by Dr. {{ $visit->doctorProfile?->employee?->f_name }} (HMIS-Provider)<br>
-                        [2026-06-11 15:40] Vitals profile verified<br>
-                        [2026-06-11 14:32] Encounter record generated via queue token
-                    </div>
+            {{-- TAB: LAB WORK — jobs out at an external lab. Shown only where the hospital's
+                 speciality sends work out, or where it asked for the tab in Hospital Settings.
+                 Every measurement box and every stage name below comes from that speciality's
+                 profile, so a dental clinic types a shade and an optician types an axis. --}}
+            @if($labWorkEnabled ?? false)
+            <div class="tab-pane" id="tabLabWork">
+                @php
+                    $lwFields   = $labWorkProfile['fields'];
+                    $lwStatuses = $labWorkProfile['statuses'];
+                    $lwColours  = \App\Models\OpdLabWork::STATUS_COLOURS;
+                    $lwNotify   = \App\Models\OpdLabWork::NOTIFY_STATUSES;
+                    $lwOpen     = $labWorks->where('is_open', true);
+                    $lwClosed   = $labWorks->where('is_open', false);
+                    $lwPhone    = $visit->patient?->phone;
+                    $lwEditable = $visit->is_editable && hasPermission('opd_register', 'edit');
+                    $lwCurrency = \App\CentralLogics\Helpers::currency_symbol() ?: '₹';
+                @endphp
+
+                <div class="d-flex align-items-start justify-content-between mb-1">
+                    <h4 class="mb-0 font-weight-bold" style="color:#0f172a">{{ $labWorkProfile['label'] }}</h4>
+                    @if($lwEditable)
+                        <button type="button" class="btn btn--primary btn-sm" onclick="lwToggleAdd()">
+                            <i class="tio-add"></i> New job
+                        </button>
+                    @endif
                 </div>
+                <p class="small text-muted mb-3">
+                    Work on the bench or out at a lab. Measurements stay with the job, each stage change
+                    can tell the patient on WhatsApp, and work sent out can be addressed to a lab from
+                    your supplier list and confirmed with them when it changes hands.
+                    @if(blank($lwPhone))
+                        <span class="text-danger">This patient has no phone number, so nothing can be sent to them.</span>
+                    @endif
+                </p>
+
+                {{-- New job. Collapsed by default: on most visits the doctor is checking on work
+                     already out rather than opening more. --}}
+                @if($lwEditable)
+                {{-- A rejected New job comes back to a page whose default tab is Consultation and
+                     whose add form is collapsed, so without this the error is invisible and the
+                     typed values look lost. $lwRejected opens the card; the script at the foot of
+                     the pane brings the tab forward with it. --}}
+                @php $lwRejected = $errors->any() && old('work_type') !== null; @endphp
+                <div class="card mb-3" id="lwAddCard" style="display:{{ $lwRejected ? '' : 'none' }};">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0" style="font-size:13px;">New {{ $labWorkProfile['unit'] }}</h6>
+                    </div>
+                    <form method="POST" action="{{ route('vendor.opd.lab-work.store', $visit->id) }}">
+                        @csrf
+                        <div class="card-body pb-1">
+                            @if($lwRejected)
+                                <div class="alert alert-danger py-2 px-3" style="font-size:12px;">
+                                    <ul class="mb-0 pl-3">
+                                        @foreach($errors->all() as $lwError)
+                                            <li>{{ $lwError }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                            @include('hmis::vendor.opd._lab_work_fields', [
+                                'labWorkProfile' => $labWorkProfile,
+                                'work'           => null,
+                                'withStatus'     => true,
+                            ])
+
+                            {{-- One datalist for the whole tab: the add form and every edit form
+                                 offer the same job list, and a browser only needs one copy. --}}
+                            <datalist id="lwTypeList">
+                                @foreach($labWorkProfile['types'] as $type)
+                                    <option value="{{ $type }}"></option>
+                                @endforeach
+                            </datalist>
+                        </div>
+                        <div class="card-footer py-2 d-flex align-items-center justify-content-between flex-wrap">
+                            {{-- Ticked by default: telling the lab IS the point of opening a job for
+                                 them, and a job saved without the lab hearing about it is one
+                                 somebody has to remember to chase. Untick it for a job opened at the
+                                 impression stage, where there is nothing worth sending yet. --}}
+                            <label class="mb-0 text-muted" style="font-size:11.5px; cursor:pointer;">
+                                <input type="checkbox" name="notify_lab" value="1" class="mr-1" checked>
+                                Send the job to the lab on WhatsApp
+                            </label>
+                            <div>
+                                <button type="button" class="btn btn-light btn-sm" onclick="lwToggleAdd()">Cancel</button>
+                                <button type="submit" class="btn btn--primary btn-sm">Save job</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                @endif
+
+                @if($labWorks->isEmpty())
+                    <div class="border rounded p-4 text-center text-muted" style="font-size:12.5px; background:#f8fafc;">
+                        <i class="tio-lab d-block mb-2" style="font-size:22px; opacity:.5;"></i>
+                        No lab work recorded for this patient.
+                    </div>
+                @endif
+
+                @foreach([['Open', $lwOpen], ['Closed', $lwClosed]] as $lwGroup)
+                    @if($lwGroup[1]->count())
+                        <h6 class="text-muted mt-3 mb-2" style="font-size:11px; text-transform:uppercase; letter-spacing:.04em;">
+                            {{ $lwGroup[0] }} ({{ $lwGroup[1]->count() }})
+                        </h6>
+
+                        @foreach($lwGroup[1] as $work)
+                            @php
+                                $lwColour  = $lwColours[$work->status] ?? ['#475569', '#f1f5f9'];
+                                $lwPairs   = $work->measurementPairs($labWorkProfile);
+                                $lwTold    = $work->last_notified_status === $work->status && $work->last_notified_at;
+                                $lwCustody = $work->custodyPairs();
+                                $lwLabPh   = $work->contactPhone();
+                            @endphp
+                            <div class="card mb-2" style="{{ $work->is_open ? '' : 'opacity:.75;' }}">
+                                <div class="card-body py-2 px-3">
+                                    <div class="d-flex align-items-start justify-content-between flex-wrap">
+                                        <div style="min-width:0;">
+                                            <span class="text-dark" style="font-weight:700; font-size:13.5px;">{{ $work->work_type }}</span>
+                                            @if(filled($work->site))
+                                                <span class="text-muted" style="font-size:12.5px;">· {{ $work->site }}</span>
+                                            @endif
+                                            <span class="badge ml-1" style="font-weight:600; color:{{ $lwColour[0] }}; background:{{ $lwColour[1] }};">
+                                                {{ $work->statusLabel($labWorkProfile) }}
+                                            </span>
+                                            <div class="text-muted mt-1" style="font-size:11.5px;">
+                                                {{-- Where the work is, first thing after the stage: a doctor
+                                                     asking about a crown wants to know who has it before
+                                                     they want to know what it is made of. --}}
+                                                <span class="badge badge-soft-{{ $work->is_internal ? 'info' : 'warning' }} badge-pill mr-1"
+                                                      style="font-weight:600;">
+                                                    {{ $work->is_internal ? 'In-house' : 'External' }}
+                                                </span>
+
+                                                <span class="text-dark" style="font-weight:600;">{{ $work->labDisplayName() }}</span>
+
+                                                @if($work->is_external && filled($work->lab_type))
+                                                    <span>· {{ $work->lab_type }}</span>
+                                                @endif
+
+                                                @if(filled($lwLabPh))
+                                                    <span>· {{ $lwLabPh }}</span>
+                                                @endif
+
+                                                @if($work->sent_on)
+                                                    <span>· Sent {{ $work->sent_on->format('d M') }}</span>
+                                                @endif
+
+                                                @if($work->expected_on)
+                                                    <span class="{{ $work->is_open && $work->expected_on->isPast() ? 'text-danger' : '' }}">
+                                                        · Expected {{ $work->expected_on->format('d M') }}
+                                                    </span>
+                                                @endif
+
+                                                @if($work->received_on)
+                                                    <span>· Received {{ $work->received_on->format('d M') }}</span>
+                                                @endif
+
+                                                @if($work->amount)
+                                                    <span>· {{ $lwCurrency }}{{ number_format($work->amount, 2) }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <div class="text-right" style="white-space:nowrap;">
+                                            @if($lwTold)
+                                                <div class="text-success" style="font-size:11px;">
+                                                    <i class="tio-checkmark-circle"></i>
+                                                    Patient told {{ $work->last_notified_at->diffForHumans() }}
+                                                </div>
+                                            @endif
+
+                                            {{-- Kept apart from the patient's stamp above: they are two
+                                                 different people who were told two different things, and
+                                                 a clinic chasing a lab needs to know which. --}}
+                                            @if($work->vendor_notified_at)
+                                                <div class="text-success" style="font-size:11px;">
+                                                    <i class="tio-checkmark-circle"></i>
+                                                    Lab told {{ $work->vendor_notified_at->diffForHumans() }}
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    @if($lwPairs)
+                                        <div class="mt-2 pt-2" style="border-top:1px solid #f1f5f9; font-size:12px;">
+                                            @foreach($lwPairs as $lwLabel => $lwValue)
+                                                <span class="mr-3">
+                                                    <span class="text-muted">{{ $lwLabel }}:</span>
+                                                    <span class="text-dark" style="font-weight:600;">{{ $lwValue }}</span>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    {{-- Who had it and when. Asked weeks later, when a job has gone
+                                         missing between here and the lab and nobody remembers. --}}
+                                    @if($lwCustody)
+                                        <div class="mt-2 pt-2" style="border-top:1px solid #f1f5f9; font-size:11.5px;">
+                                            <i class="tio-user-switch text-muted mr-1"></i>
+                                            @foreach($lwCustody as $lwCLabel => $lwCValue)
+                                                <span class="mr-3">
+                                                    <span class="text-muted">{{ $lwCLabel }}:</span>
+                                                    <span class="text-dark" style="font-weight:600;">{{ $lwCValue }}</span>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    @if(filled($work->notes))
+                                        <div class="text-muted mt-1" style="font-size:11.5px;">{{ $work->notes }}</div>
+                                    @endif
+
+                                    {{-- Every exchange on this job, and the buttons that record the
+                                         next one. Sits under the summary above rather than replacing
+                                         it: the four names on the card are the latest handover each
+                                         way, this is the whole chain they were drawn from. --}}
+                                    @include('hmis::vendor.handover._trail', [
+                                        'handovers'    => ($labWorkHandovers[$work->id] ?? collect()),
+                                        'hoSubjectId'  => $work->id,
+                                        'hoType'       => 'opd_lab_work',
+                                        'hoCanRecord'  => $lwEditable && $work->is_open && $work->is_external,
+                                    ])
+
+                                    @if($lwEditable)
+                                        <form method="POST" action="{{ route('vendor.opd.lab-work.status', $work->id) }}"
+                                              class="mt-2 pt-2 lw-status-form" style="border-top:1px solid #f1f5f9;">
+                                            @csrf
+                                            <div class="form-inline">
+                                                <select name="status" class="form-control form-control-sm" style="font-size:12px;"
+                                                        onchange="lwCustody(this)">
+                                                    @foreach($lwStatuses as $key => $label)
+                                                        <option value="{{ $key }}" @if($key === $work->status) selected @endif>{{ $label }}</option>
+                                                    @endforeach
+                                                </select>
+
+                                                {{-- Pre-ticked only where the patient has something to act on and a
+                                                     number to reach them at, so the common case is one click and
+                                                     everything else is a deliberate choice. --}}
+                                                <label class="mb-0 ml-2" style="font-size:11.5px; cursor:{{ blank($lwPhone) ? 'not-allowed' : 'pointer' }};">
+                                                    <input type="checkbox" name="notify" value="1" class="mr-1"
+                                                           @if(blank($lwPhone)) disabled @elseif(in_array($work->status, $lwNotify, true)) checked @endif>
+                                                    Tell patient on WhatsApp
+                                                </label>
+
+                                                {{-- The lab's own confirmation of the handover. Shown only on the two
+                                                     moves that ARE a handover, and only where there is a number to
+                                                     send it to. --}}
+                                                <label class="mb-0 ml-2 lw-lab-notify" style="display:none; font-size:11.5px; cursor:{{ blank($lwLabPh) ? 'not-allowed' : 'pointer' }};">
+                                                    <input type="checkbox" name="notify_lab" value="1" class="mr-1"
+                                                           @if(blank($lwLabPh)) disabled @endif>
+                                                    Confirm handover with {{ $work->is_internal ? 'technician' : 'lab' }}
+                                                </label>
+
+                                                <button type="submit" class="btn btn--primary btn-sm ml-2" style="font-size:12px;">
+                                                    Update stage
+                                                </button>
+                                            </div>
+
+                                            {{-- Who passed the work to whom. Only ever shown on the stage that
+                                                 records it: a name typed against the wrong move puts somebody's
+                                                 name on a handover they had no part in, which is why the
+                                                 controller also reads only the pair belonging to the stage
+                                                 being saved rather than trusting what the browser posts. --}}
+                                            <div class="form-row mt-2 lw-custody" data-lw-custody="sent" style="display:none;">
+                                                <div class="form-group col-md-3 mb-1">
+                                                    <label class="input-label text-muted" style="font-size:11px;">Handed over by</label>
+                                                    <input type="text" name="handed_over_by" class="form-control form-control-sm"
+                                                           maxlength="120" placeholder="Your staff"
+                                                           value="{{ $work->handed_over_by }}">
+                                                </div>
+                                                <div class="form-group col-md-3 mb-1">
+                                                    <label class="input-label text-muted" style="font-size:11px;">Collected by</label>
+                                                    <input type="text" name="collected_by" class="form-control form-control-sm"
+                                                           maxlength="120" placeholder="Who took it"
+                                                           value="{{ $work->collected_by }}">
+                                                </div>
+                                            </div>
+
+                                            <div class="form-row mt-2 lw-custody" data-lw-custody="received" style="display:none;">
+                                                <div class="form-group col-md-3 mb-1">
+                                                    <label class="input-label text-muted" style="font-size:11px;">Delivered by</label>
+                                                    <input type="text" name="delivered_by" class="form-control form-control-sm"
+                                                           maxlength="120" placeholder="Who brought it back"
+                                                           value="{{ $work->delivered_by }}">
+                                                </div>
+                                                <div class="form-group col-md-3 mb-1">
+                                                    <label class="input-label text-muted" style="font-size:11px;">Received by</label>
+                                                    <input type="text" name="received_by" class="form-control form-control-sm"
+                                                           maxlength="120" placeholder="Your staff"
+                                                           value="{{ $work->received_by }}">
+                                                </div>
+                                            </div>
+                                        </form>
+
+                                        <div class="mt-1">
+                                            {{-- Resend without moving the stage: the patient missed it, or a
+                                                 relative rang to ask. Separate from the checkbox above so
+                                                 telling someone again never quietly re-files the job. --}}
+                                            @if(filled($lwPhone))
+                                                <form method="POST" action="{{ route('vendor.opd.lab-work.notify', $work->id) }}"
+                                                      class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-link btn-sm p-0" style="font-size:11.5px;">
+                                                        <i class="tio-whatsapp"></i>
+                                                        {{ $lwTold ? 'Send again' : 'Send update now' }}
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                            {{-- Outward, to whoever is making the thing. Carries the patient's
+                                                 name and the specification, so it is never a side effect of
+                                                 anything else on this card — it is its own button, and it says
+                                                 whose number it is going to. --}}
+                                            @if(filled($lwLabPh))
+                                                <form method="POST" action="{{ route('vendor.opd.lab-work.notify-lab', $work->id) }}"
+                                                      class="d-inline ml-3"
+                                                      onsubmit="return confirm('Send this job — including the patient\'s name and the specification — to {{ addslashes($work->labDisplayName()) }}?');">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-link btn-sm p-0" style="font-size:11.5px;">
+                                                        <i class="tio-whatsapp"></i>
+                                                        {{ $work->vendor_notified_at ? 'Resend job to ' : 'Send job to ' }}{{ $work->is_internal ? 'technician' : 'lab' }}
+                                                    </button>
+                                                </form>
+
+                                                {{-- Only offered once something has actually changed hands: a
+                                                     confirmation of a handover that never happened is worse
+                                                     than none. --}}
+                                                @if($work->sent_on || $work->received_on)
+                                                    <form method="POST" action="{{ route('vendor.opd.lab-work.handover', $work->id) }}"
+                                                          class="d-inline ml-3">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-link btn-sm p-0" style="font-size:11.5px;">
+                                                            <i class="tio-checkmark-circle-outlined"></i>
+                                                            Confirm handover
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            @endif
+
+                                            <button type="button" class="btn btn-link btn-sm p-0 ml-3" style="font-size:11.5px;"
+                                                    onclick="lwToggleEdit({{ $work->id }})">
+                                                Edit details
+                                            </button>
+
+                                            @if(hasPermission('opd_register', 'delete'))
+                                                <form method="POST" action="{{ route('vendor.opd.lab-work.destroy', $work->id) }}"
+                                                      class="d-inline ml-3"
+                                                      onsubmit="return confirm('Remove this lab work job? This cannot be undone.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-link btn-sm p-0 text-danger" style="font-size:11.5px;">
+                                                        Remove
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
+
+                                        {{-- Correcting what was recorded — a mistyped shade, a lab that
+                                             changed. Deliberately no stage box: that moves through
+                                             Update stage above, which dates the milestones. --}}
+                                        <div id="lwEdit{{ $work->id }}" class="mt-2 pt-2" style="display:none; border-top:1px solid #f1f5f9;">
+                                            <form method="POST" action="{{ route('vendor.opd.lab-work.update', $work->id) }}">
+                                                @csrf
+                                                @method('PUT')
+                                                @include('hmis::vendor.opd._lab_work_fields', [
+                                                    'labWorkProfile' => $labWorkProfile,
+                                                    'work'           => $work,
+                                                    'withStatus'     => false,
+                                                ])
+                                                <div class="text-right">
+                                                    <button type="button" class="btn btn-light btn-sm"
+                                                            onclick="lwToggleEdit({{ $work->id }})">Cancel</button>
+                                                    <button type="submit" class="btn btn--primary btn-sm">Save details</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    @endif
+                @endforeach
+
+                @if($lwEditable && $lwRejected)
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const btn = document.querySelector('.consult-tab-btn[onclick*="tabLabWork"]');
+                            if (btn) btn.click();
+                        });
+                    </script>
+                @endif
+
+                {{-- One modal for the whole tab, not one per job: it is a single form whose subject
+                     is set when it opens, and rendering a copy inside every card would duplicate
+                     the signature canvas ids as many times as the patient has crowns. --}}
+                @if($lwEditable)
+                    @include('hmis::vendor.handover._modal', ['hoSubjectType' => 'opd_lab_work'])
+                @endif
             </div>
+            @endif
+
+            {{-- TAB: SECURITY — the patient's real access trail, read from hospital_activity_logs.
+                 Shown only where the hospital switched it on in Hospital Settings, which is also
+                 what starts the recording, so the tab is never a window onto an empty table. --}}
+            @if($securityEnabled ?? false)
+            <div class="tab-pane" id="tabSecurity">
+                @php
+                    $actionStyles = [
+                        'viewed'         => ['Opened',      '#475569', '#f1f5f9'],
+                        'created'        => ['Created',     '#166534', '#dcfce7'],
+                        'edited'         => ['Edited',      '#9a3412', '#ffedd5'],
+                        'updated'        => ['Updated',     '#9a3412', '#ffedd5'],
+                        'status_changed' => ['Status',      '#1e40af', '#dbeafe'],
+                        'rescheduled'    => ['Rescheduled', '#1e40af', '#dbeafe'],
+                        'reassigned'     => ['Reassigned',  '#1e40af', '#dbeafe'],
+                        'admitted'       => ['Admitted',    '#166534', '#dcfce7'],
+                        'discharged'     => ['Discharged',  '#3730a3', '#e0e7ff'],
+                        'notified'       => ['Notified',    '#065f46', '#d1fae5'],
+                        'cancelled'      => ['Cancelled',   '#991b1b', '#fee2e2'],
+                        'deleted'        => ['Deleted',     '#991b1b', '#fee2e2'],
+                    ];
+                    $subjectLabels = [
+                        'patient'       => 'Patient record',
+                        'opd_visit'     => 'OPD visit',
+                        'appointment'   => 'Appointment',
+                        'prescription'  => 'Prescription',
+                        'ipd_admission' => 'IPD admission',
+                        'opd_lab_work'  => 'Lab work',
+                    ];
+                    $causerLabels = [
+                        'vendor_employee' => 'Staff',
+                        'vendor'          => 'Hospital admin',
+                        'api_user'        => 'API',
+                    ];
+                @endphp
+
+                <div class="d-flex align-items-start justify-content-between mb-1">
+                    <h4 class="mb-0 font-weight-bold" style="color:#0f172a">Security &amp; Compliance</h4>
+                    <span class="text-muted" style="font-size:11.5px;">
+                        Patient #{{ $visit->patient_id }}{{ $visit->patient?->patient_uid ? ' · ' . $visit->patient->patient_uid : '' }}
+                    </span>
+                </div>
+                <p class="small text-muted mb-3">
+                    Every recorded action on this patient's records — who did it and when.
+                    Chart openings and edits are grouped per person into one entry each,
+                    so a doctor working through a consultation appears once, not once per save.
+                </p>
+
+                @if($securityLog->isEmpty())
+                    <div class="border rounded p-4 text-center text-muted" style="font-size:12.5px; background:#f8fafc;">
+                        <i class="tio-lock-outlined d-block mb-2" style="font-size:22px; opacity:.5;"></i>
+                        Nothing recorded for this patient yet.<br>
+                        <span style="font-size:11.5px;">Entries appear here as this patient's records are opened, edited or updated.</span>
+                    </div>
+                @else
+                    <div class="border rounded" style="overflow:hidden;">
+                        <div class="table-responsive" style="max-height:460px; overflow-y:auto;">
+                            <table class="table table-sm mb-0" style="font-size:12.5px;">
+                                <thead style="position:sticky; top:0; z-index:1; background:#f8fafc;">
+                                    <tr style="font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:#64748b;">
+                                        <th class="border-0 py-2" style="width:150px;">When</th>
+                                        <th class="border-0 py-2" style="width:130px;">Action</th>
+                                        <th class="border-0 py-2" style="width:180px;">By</th>
+                                        <th class="border-0 py-2">Detail</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($securityLog as $entry)
+                                        @php
+                                            $style = $actionStyles[$entry->action]
+                                                ?? [ucfirst(str_replace('_', ' ', $entry->action)), '#475569', '#f1f5f9'];
+                                        @endphp
+                                        <tr>
+                                            <td class="align-middle" style="white-space:nowrap;">
+                                                <span class="text-dark">{{ $entry->created_at?->format('d M Y') }}</span>
+                                                <span class="text-muted">{{ $entry->created_at?->format('H:i') }}</span>
+                                            </td>
+                                            <td class="align-middle">
+                                                <span class="badge" style="font-weight:600; color:{{ $style[1] }}; background:{{ $style[2] }};">
+                                                    {{ $style[0] }}
+                                                </span>
+                                                <div class="text-muted" style="font-size:10.5px;">
+                                                    {{ $subjectLabels[$entry->subject_type] ?? ucfirst(str_replace('_', ' ', $entry->subject_type)) }}
+                                                </div>
+                                            </td>
+                                            <td class="align-middle">
+                                                <span class="text-dark" style="font-weight:600;">{{ $entry->causer_name ?: 'System' }}</span>
+                                                @if($entry->causer_type)
+                                                    <div class="text-muted" style="font-size:10.5px;">
+                                                        {{ $causerLabels[$entry->causer_type] ?? $entry->causer_type }}
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td class="align-middle text-dark">{{ $entry->description }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size:11px;">
+                        Showing the {{ $securityLog->count() }} most recent
+                        {{ \Illuminate\Support\Str::plural('entry', $securityLog->count()) }}.
+                        The full hospital-wide trail is under Activity Log.
+                    </p>
+                @endif
+            </div>
+            @endif
 
         </div>
 
@@ -2301,6 +3632,134 @@
     startClock();
 
     // ── Horizontal Tab Switcher ──
+    // The New job form on the Lab Work tab. Hidden until asked for: most visits are about work
+    // already out at the lab, not about opening more.
+    function lwToggleAdd() {
+        const card = document.getElementById('lwAddCard');
+        if (!card) return;
+        const opening = card.style.display === 'none';
+        card.style.display = opening ? '' : 'none';
+        if (opening) {
+            lwInitSelects(card);
+            card.querySelector('input[name="work_type"]')?.focus();
+        }
+    }
+
+    function lwToggleEdit(id) {
+        const box = document.getElementById('lwEdit' + id);
+        if (!box) return;
+        const opening = box.style.display === 'none';
+        box.style.display = opening ? '' : 'none';
+        if (opening) lwInitSelects(box);
+    }
+
+    // In-house or sent out. Scoped to the .lw-fields the select sits in, because the add form and
+    // every job's edit form each render one and they all use the same field names.
+    function lwMode(select) {
+        const scope = select.closest('.lw-fields');
+        if (!scope) return;
+        scope.querySelectorAll('[data-lw-block]').forEach(block => {
+            block.style.display = block.dataset.lwBlock === select.value ? '' : 'none';
+        });
+    }
+
+    // Show the chosen lab's name, number and address. Read-only on purpose: they belong to the
+    // supplier record and are copied onto the job at save time, so this is there to let staff see
+    // where the work — and the WhatsApp message — is going, not to be retyped per job.
+    function lwVendor(select) {
+        const scope = select.closest('.lw-fields');
+        const box   = scope && scope.querySelector('.lw-lab-contact');
+        if (!box) return;
+
+        const opt = select.options[select.selectedIndex];
+        if (!opt || !opt.value) {
+            box.innerHTML = '<span class="text-muted">Choose a lab to see its details.</span>';
+            return;
+        }
+
+        const phone   = (opt.dataset.phone || '').trim();
+        const address = (opt.dataset.address || '').trim();
+        const bits    = [];
+
+        bits.push(phone
+            ? '<span class="text-dark" style="font-weight:600;">' + lwEscape(phone) + '</span>'
+            : '<span class="text-danger">No phone on this lab — nothing can be sent to them.</span>');
+        if (address) bits.push('<span class="text-muted">' + lwEscape(address) + '</span>');
+
+        box.innerHTML = bits.join('<br>');
+    }
+
+    function lwEscape(value) {
+        const el = document.createElement('span');
+        el.textContent = value;
+        return el.innerHTML;
+    }
+
+    // Select2 for the two pickers in the lab block. Deferred until the form is actually on screen:
+    // both the New job card and every Edit form start hidden, and Select2 measures zero width when
+    // it initialises inside a display:none parent, which leaves a collapsed sliver of a control.
+    function lwInitSelects(scope) {
+        if (!scope || typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+
+        scope.querySelectorAll('[data-lw-select2]').forEach(el => {
+            if (el.dataset.lwSelect2Ready) return;
+            el.dataset.lwSelect2Ready = '1';
+
+            jQuery(el).select2({
+                // Only the lab type accepts something not on the list — a clinic using a kind of
+                // lab nobody has named yet. The lab itself is a supplier record and cannot be
+                // conjured from a consultation screen.
+                tags: el.dataset.lwSelect2 === 'tags',
+                width: '100%',
+                allowClear: true,
+                placeholder: el.dataset.placeholder || '',
+                dropdownParent: jQuery(el).closest('.card').length ? jQuery(el).closest('.card') : jQuery(document.body)
+            }).on('change', function () {
+                if (el.name === 'lab_vendor_id') lwVendor(el);
+            });
+        });
+
+        scope.querySelectorAll('select[name="lab_vendor_id"]').forEach(lwVendor);
+    }
+
+    // Work only changes hands twice — on its way out and on its way back — so the two name boxes
+    // and the lab's confirmation appear on exactly those stages and nowhere else.
+    //
+    // $initial is the page-load pass, which lays the boxes out for the stage a job is already at
+    // but ticks nothing. A job already sitting at "Sent to lab" is not being sent again by someone
+    // opening the record, and a pre-ticked box on every load would resend the confirmation on the
+    // next unrelated stage change.
+    function lwCustody(select, initial) {
+        const form = select.closest('.lw-status-form');
+        if (!form) return;
+
+        const handover = select.value === 'sent' || select.value === 'received';
+
+        form.querySelectorAll('.lw-custody').forEach(row => {
+            row.style.display = row.dataset.lwCustody === select.value ? '' : 'none';
+        });
+
+        const notify = form.querySelector('.lw-lab-notify');
+        if (notify) {
+            notify.style.display = handover ? '' : 'none';
+            const box = notify.querySelector('input[type="checkbox"]');
+            if (box && !box.disabled && initial !== true) box.checked = handover;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.lw-status-form select[name="status"]')
+            .forEach(select => lwCustody(select, true));
+
+        // A rejected New job renders its card already open, so nothing calls lwToggleAdd() to set
+        // its pickers up. offsetParent is null for anything inside a hidden parent, which is
+        // exactly the case Select2 cannot measure — so only what is genuinely on screen is done
+        // here and the rest waits for the click that reveals it.
+        document.querySelectorAll('.lw-fields').forEach(scope => {
+            if (scope.offsetParent !== null) lwInitSelects(scope);
+        });
+    });
+
     function switchTab(btn, tabId) {
         document.querySelectorAll('.consult-tab-btn').forEach(el => el.classList.remove('active'));
         btn.classList.add('active');
@@ -2308,6 +3767,12 @@
         document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
         const activePane = document.getElementById(tabId);
         if (activePane) activePane.classList.add('active');
+
+        // The patient card belongs to the Consultation tab; its crucial rows live in the header
+        // line under the patient's name, which stays put whatever tab is open.
+        document.querySelectorAll('.tab-only-details').forEach(el => {
+            el.style.display = (tabId === 'tabDetails') ? '' : 'none';
+        });
 
         // If switching to Sara AI tab, animate progress bars
         if (tabId === 'tabSaraAI') {
@@ -2320,13 +3785,19 @@
         }
     }
 
-    // ── Next Visit: load this doctor's slots for the chosen date ──
+    // ── Next Visit: a row per follow-up, each loading this doctor's slots for its own date ──
+    // A course of treatment is booked in one go — three sittings a fortnight apart is one form,
+    // not three round trips through the appointment book.
     (function () {
-        const nvDate = document.getElementById('nvDate');
-        if (!nvDate) return;
+        const tpl  = document.getElementById('nvRowTpl');
+        const wrap = document.getElementById('nvRows');
+        if (!tpl || !wrap) return;
 
         const nvSlotsUrl = "{{ route('vendor.appointment.available-slots') }}";
         const nvDoctorId = "{{ $visit->doctor_profile_id }}";
+        // Row indexes are never reused, so removing the middle row cannot make two rows share a
+        // name and collapse into one on the server.
+        let nvIndex = 0;
 
         function nvFormatTime(t) {
             if (!t) return '';
@@ -2335,33 +3806,109 @@
             return `${hour > 12 ? hour - 12 : (hour || 12)}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
         }
 
-        nvDate.addEventListener('change', function () {
-            const slotSel = document.getElementById('nvSlot');
-            slotSel.innerHTML = '<option value="">Loading...</option>';
+        function nvRenumber() {
+            const rows = wrap.querySelectorAll('[data-nv-row]');
+            rows.forEach((row, i) => {
+                row.querySelector('[data-nv-label]').textContent = 'Visit ' + (i + 1);
+                row.querySelector('[data-nv-drop]').style.display = rows.length > 1 ? '' : 'none';
+            });
 
-            fetch(`${nvSlotsUrl}?doctor_profile_id=${nvDoctorId}&date=${this.value}`)
+            const label = document.getElementById('nvSubmitLabel');
+            if (label) {
+                label.textContent = rows.length > 1
+                    ? 'Schedule ' + rows.length + ' Next Visits'
+                    : 'Schedule Next Visit';
+            }
+        }
+
+        function nvLoadSlots(row) {
+            const date = row.querySelector('[data-nv-date]').value;
+            const sel  = row.querySelector('[data-nv-slot]');
+
+            if (!date) {
+                sel.innerHTML = '<option value="">-- Select date first --</option>';
+                return;
+            }
+
+            sel.innerHTML = '<option value="">Loading...</option>';
+
+            fetch(`${nvSlotsUrl}?doctor_profile_id=${nvDoctorId}&date=${date}`)
                 .then(r => r.json())
                 .then(slots => {
                     if (!slots.length) {
-                        slotSel.innerHTML = '<option value="">No slots for this day — enter time manually</option>';
+                        sel.innerHTML = '<option value="">No slots for this day — enter time manually</option>';
                         return;
                     }
-                    slotSel.innerHTML = '<option value="">-- Manual time --</option>';
+                    sel.innerHTML = '<option value="">-- Manual time --</option>';
                     slots.forEach(s => {
                         const label = `${nvFormatTime(s.slot_start)} – ${nvFormatTime(s.slot_end)} | ${s.available}/${s.max_patients} available`;
                         const disabled = s.available <= 0 ? 'disabled' : '';
-                        slotSel.innerHTML += `<option value="${s.id}" data-start="${s.slot_start}" ${disabled}>${label}</option>`;
+                        sel.innerHTML += `<option value="${s.id}" data-start="${s.slot_start}" ${disabled}>${label}</option>`;
                     });
                 })
                 .catch(() => {
-                    slotSel.innerHTML = '<option value="">Could not load slots — enter time manually</option>';
+                    sel.innerHTML = '<option value="">Could not load slots — enter time manually</option>';
                 });
+        }
+
+        function nvBind(row) {
+            row.querySelector('[data-nv-date]').addEventListener('change', () => nvLoadSlots(row));
+
+            row.querySelector('[data-nv-slot]').addEventListener('change', function () {
+                const opt   = this.options[this.selectedIndex];
+                const start = opt ? opt.getAttribute('data-start') : null;
+                if (start) row.querySelector('[data-nv-time]').value = start.substring(0, 5);
+            });
+
+            row.querySelector('[data-nv-drop]').addEventListener('click', function () {
+                row.remove();
+                nvRenumber();
+            });
+
+            row.querySelectorAll('[data-nv-tx]').forEach(box => {
+                const pick = box.closest('.nv-tx-pick');
+                box.addEventListener('change', () => pick.classList.toggle('is-on', box.checked));
+            });
+        }
+
+        function nvAddRow() {
+            const holder = document.createElement('div');
+            holder.innerHTML = tpl.innerHTML.replace(/__i__/g, nvIndex++);
+
+            const row = holder.firstElementChild;
+            wrap.appendChild(row);
+            nvBind(row);
+            nvRenumber();
+            return row;
+        }
+
+        document.getElementById('nvAdd').addEventListener('click', function () {
+            const row = nvAddRow();
+            row.querySelector('[data-nv-date]').focus();
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 
-        document.getElementById('nvSlot')?.addEventListener('change', function () {
-            const start = this.options[this.selectedIndex].getAttribute('data-start');
-            if (start) document.getElementById('nvTime').value = start.substring(0, 5);
-        });
+        nvAddRow();
+
+        /**
+         * Open this tab with one treatment already ticked — what "book a visit for this" on a
+         * treatment chip does when the doctor wants the sitting planned alongside others rather
+         * than booked on the spot. Reuses an empty row instead of stacking blank ones up.
+         */
+        window.nvPrefillTreatment = function (term) {
+            const rows  = Array.from(wrap.querySelectorAll('[data-nv-row]'));
+            const empty = rows.find(row => !row.querySelector('[data-nv-date]').value);
+            const row   = empty || nvAddRow();
+
+            const box = Array.from(row.querySelectorAll('[data-nv-tx]')).find(b => b.value === term);
+            if (box && !box.checked) {
+                box.checked = true;
+                box.dispatchEvent(new Event('change'));
+            }
+
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.querySelector('[data-nv-date]').focus();
+        };
     })();
 
     // ── Edit/Save fields in Sidebar (Allergies, Chronic) ──
@@ -2515,7 +4062,7 @@
         .then(r => r.json())
         .then(data => {
             if (!data || !data.ok) throw new Error('save rejected');
-            if (job.onSaved) job.onSaved();
+            if (job.onSaved) job.onSaved(data);
             setSaveState('saved');
         })
         .catch(() => {
@@ -2540,8 +4087,10 @@
     });
 
     function autosaveNotes() {
-        queueAutosave('notes', () => ({ note_terms: selectedTerms('ntSelect') }),
-            () => renderTerms('notesBadges', selectedTerms('ntSelect'), 'nt-badge'), AUTOSAVE_DELAY.terms);
+        queueAutosave('notes', () => ({ note_terms: selectedTerms('ntSelect') }), () => {
+            renderTerms('notesBadges', selectedTerms('ntSelect'), 'nt-badge');
+            syncRxField('rxNotes', 'rxNotesHint', selectedTerms('ntSelect'));
+        }, AUTOSAVE_DELAY.terms);
     }
 
     function autosaveComplaints() {
@@ -2552,10 +4101,14 @@
     function autosaveDxTx() {
         queueAutosave('dxtx', () => ({
             diagnosis: selectedTerms('dxSelect'),
-            treatment: selectedTerms('txSelect')
-        }), () => {
+            treatment: selectedTerms('txSelect'),
+            willing_treatment: selectedTerms('wtSelect')
+        }), (data) => {
+            if (data && data.treatment_plan) txPlan = data.treatment_plan;
             renderTerms('dxBadges', selectedTerms('dxSelect'), 'dx-badge');
-            renderTerms('txBadges', selectedTerms('txSelect'), 'tx-badge');
+            renderTxBadges(selectedTerms('txSelect'));
+            renderTerms('wtBadges', selectedTerms('wtSelect'), 'wt-badge');
+            syncRxField('rxDiagnosis', 'rxDxHint', selectedTerms('dxSelect'));
         }, AUTOSAVE_DELAY.terms);
     }
 
@@ -2705,6 +4258,22 @@
     }
 
     // ── CC & Notes inline edit ──
+    // Double-clicking the summary opens the same editor the pencil does. A locked
+    // visit, or a card whose editor was never rendered for want of permission,
+    // stays read-only.
+    function editOnDblClick(field) {
+        if (visitLocked) return;
+        const edit = document.getElementById(field === 'cc' ? 'ccEdit' : 'notesEdit');
+        if (!edit || edit.style.display !== 'none') return;
+
+        // A double-click leaves the badge text selected, which then sits highlighted
+        // behind the editor that just opened.
+        const sel = window.getSelection();
+        if (sel) sel.removeAllRanges();
+
+        toggleEdit(field);
+    }
+
     function toggleEdit(field) {
         const view = document.getElementById(field === 'cc' ? 'ccView' : 'notesView');
         const edit = document.getElementById(field === 'cc' ? 'ccEdit' : 'notesEdit');
@@ -2791,6 +4360,11 @@
         const view = document.getElementById('vitalsView');
         const edit = document.getElementById('vitalsEdit');
         if (!edit) return;
+
+        // The panel is folded by default; the pencil has to unfold it or the
+        // inputs open behind a closed card.
+        const wrap = document.getElementById('vitalsProfileBody');
+        if (wrap && wrap.style.display === 'none') toggleVitalsProfile();
 
         const showing = edit.style.display === 'none';
         view.style.display = showing ? 'none' : '';
@@ -2909,6 +4483,12 @@
             renderTxSuggestions();
             autosaveDxTx();
         });
+        jQuery('#wtSelect').select2({
+            tags: false,
+            width: '100%',
+            placeholder: 'Tick what the patient agreed to…',
+            containerCssClass: 'wt-select2'
+        }).on('change', autosaveDxTx);
         jQuery('#txSelect').select2({
             tags: true,
             width: '100%',
@@ -2918,11 +4498,40 @@
         }).on('change', function () {
             syncChipState('dxSelect');
             renderTxSuggestions();
+            syncWillingOptions();
             autosaveDxTx();
         });
         dxSelect2Ready = true;
         syncChipState('dxSelect');
         renderTxSuggestions();
+        syncWillingOptions();
+    }
+
+    /**
+     * The patient can only agree to something that was offered, so Willing Treatment is
+     * a tick-list of whatever Advised Treatment currently holds — never free text. Drop a
+     * treatment from the advice and the consent to it goes with it, which is the honest
+     * reading: it is no longer a plan anyone agreed to.
+     */
+    function syncWillingOptions() {
+        const wt = document.getElementById('wtSelect');
+        if (!wt) return;
+
+        const advised = selectedTerms('txSelect');
+        const keep    = selectedTerms('wtSelect').filter(t => advised.includes(t));
+
+        wt.innerHTML = '';
+        advised.forEach(term => {
+            const opt = document.createElement('option');
+            opt.value = term;
+            opt.textContent = term;
+            opt.selected = keep.includes(term);
+            wt.appendChild(opt);
+        });
+
+        // Namespaced so select2 redraws without firing the change handler that
+        // would queue a second autosave on top of the one already going out.
+        if (window.jQuery && jQuery.fn.select2) jQuery(wt).trigger('change.select2');
     }
 
     /** Select a term on a picker, creating the option when it is one the list has never seen. */
@@ -3021,6 +4630,422 @@
         if (showing) initDxSelect2();
     }
 
+    // ── Advised treatment: one schedule and price per term ──
+    // A course runs over several sittings, so each advised term carries its own status, date,
+    // time, amount and discount. A term with no row is pending and unpriced.
+    let txPlan   = @json((object) $txPlan);
+    let txTerms  = @json($txCurrent);
+    const patientName = @json($visit->patient?->name ?? 'the patient');
+    const visitClosed = @json((bool) $visit->is_completed);
+    const currencySym = @json($rxCurrency);
+    // What this hospital last charged for each term, from the treatment catalog. Used only to
+    // fill an amount box that is still empty — a price set on this visit always wins.
+    let txPrices = @json((object) $treatmentPrices);
+    // The follow-ups these sittings are booked into, keyed by appointment id. A treatment with
+    // one of these is on the desk's day list, not just dated on the plan.
+    let txAppointments = @json((object) $treatmentAppointments);
+    // Whether a plan row gets a pencil — the same test the chips are clickable on.
+    const txCanEdit = @json((bool) $txEditable);
+
+    /** The live booking behind a plan row, if it still stands. */
+    function txAppointment(row) {
+        const appointment = txAppointments[String(row.appointment_id || '')];
+        return appointment || null;
+    }
+
+    function txBookingHeld(row) {
+        const appointment = txAppointment(row);
+        return !!appointment && ['cancelled', 'no_show'].indexOf(appointment.status) === -1;
+    }
+
+    function txMoney(n) {
+        return currencySym + Number(n || 0).toFixed(2);
+    }
+
+    const TX_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Same wording the blade prints, so a row does not change shape when it is re-rendered.
+    function txWhen(row) {
+        const parts = [];
+
+        const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(row.date || '');
+        if (d) parts.push(Number(d[3]) + ' ' + TX_MONTHS[Number(d[2]) - 1] + ' ' + d[1]);
+        else if (row.date) parts.push(row.date);
+
+        const t = /^(\d{1,2}):(\d{2})/.exec(row.time || '');
+        if (t) parts.push((Number(t[1]) % 12 || 12) + ':' + t[2] + ' ' + (Number(t[1]) >= 12 ? 'PM' : 'AM'));
+        else if (row.time) parts.push(row.time);
+
+        return parts.join(' · ');
+    }
+
+    // Red is not a status anyone picks: it is outstanding work on a closed OP.
+    function txState(row) {
+        const state = row.status || 'pending';
+        return (visitClosed && state !== 'completed') ? 'missed' : state;
+    }
+
+    function renderTxTotals() {
+        let gross = 0, disc = 0, paid = 0;
+        txTerms.forEach(term => {
+            const row = txPlan[term] || {};
+            const amount = Number(row.amount || 0);
+            const less   = Number(row.discount || 0);
+            gross += amount;
+            disc  += less;
+            if (row.paid) paid += Math.max(amount - less, 0);
+        });
+        const net = Math.max(gross - disc, 0);
+
+        const put = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+        put('txTotalGross', txMoney(gross));
+        put('txTotalDisc',  txMoney(disc));
+        put('txTotalNet',   txMoney(net));
+        put('txTotalPaid',  txMoney(paid));
+        put('txTotalDue',   txMoney(Math.max(net - paid, 0)));
+
+        // Nothing priced yet, nothing to say about the money.
+        const box = document.getElementById('txTotals');
+        if (box) box.classList.toggle('d-none', !gross);
+
+        const bar = document.getElementById('txPaidBar');
+        if (bar) bar.style.width = (net > 0 ? Math.min(100, Math.round(paid / net * 100)) : 0) + '%';
+
+        renderTxCounts();
+    }
+
+    const txStateLabels = @json($txStateLabels);
+
+    // Doubles as the colour key — see the note on the markup.
+    function renderTxCounts() {
+        const box = document.getElementById('txCounts');
+        if (!box) return;
+
+        const counts = {};
+        txTerms.forEach(term => {
+            const state = txState(txPlan[term] || {});
+            counts[state] = (counts[state] || 0) + 1;
+        });
+
+        box.innerHTML = '';
+        // Fixed order, so the row does not reshuffle as statuses change under the doctor.
+        ['completed', 'upcoming', 'pending', 'missed'].forEach(state => {
+            if (!counts[state]) return;
+            const span = document.createElement('span');
+            const dot  = document.createElement('i');
+            dot.className = 'tx-dot tx-state-' + state;
+            span.appendChild(dot);
+            span.appendChild(document.createTextNode(
+                counts[state] + ' ' + (txStateLabels[state] || state).toLowerCase()
+            ));
+            box.appendChild(span);
+        });
+    }
+
+    function txCell(text, cls) {
+        const td = document.createElement('td');
+        if (cls) td.className = cls;
+        td.textContent = text;
+        return td;
+    }
+
+    // The detail table under the chips: one row per advised treatment.
+    function renderTxTable() {
+        const wrap = document.getElementById('txTableWrap');
+        const body = document.getElementById('txTableBody');
+        if (!wrap || !body) return;
+
+        wrap.style.display = txTerms.length ? '' : 'none';
+        body.innerHTML = '';
+
+        txTerms.forEach(term => {
+            const row    = txPlan[term] || {};
+            const state  = txState(row);
+            const amount = Number(row.amount || 0);
+            const less   = Number(row.discount || 0);
+            const net    = Math.max(amount - less, 0);
+            const when   = txWhen(row);
+
+            const tr = document.createElement('tr');
+            tr.appendChild(txCell(term, 'tx-table-term'));
+
+            const tdState = document.createElement('td');
+            const pill    = document.createElement('span');
+            pill.className = 'tx-pill tx-state-' + state;
+            pill.textContent = txStateLabels[state] || state;
+            tdState.appendChild(pill);
+            tr.appendChild(tdState);
+
+            const tdWhen = txCell(when || 'Not scheduled', when ? '' : 'tx-nil');
+            const appt   = txAppointment(row);
+            if (appt) {
+                const stale = ['cancelled', 'no_show'].indexOf(appt.status) !== -1;
+                const link  = document.createElement('a');
+                link.className = 'tx-booked' + (stale ? ' is-stale' : '');
+                link.href      = appt.url;
+                link.target    = '_blank';
+                link.title     = stale
+                    ? 'That follow-up was ' + appt.status.replace('_', ' ') + ' — open it'
+                    : 'Booked as a next visit — open the appointment';
+                link.innerHTML = '<i class="tio-calendar-note"></i>';
+                link.appendChild(document.createTextNode(appt.token ? '#' + appt.token : 'Booked'));
+                tdWhen.appendChild(link);
+            }
+            tr.appendChild(tdWhen);
+            tr.appendChild(txCell(amount ? txMoney(amount) : '—', 'tx-num' + (amount ? '' : ' tx-nil')));
+            tr.appendChild(txCell(less   ? txMoney(less)   : '—', 'tx-num' + (less   ? '' : ' tx-nil')));
+            tr.appendChild(txCell(net    ? txMoney(net)    : '—', 'tx-num' + (net    ? '' : ' tx-nil')));
+            tr.appendChild(txCell(
+                row.paid ? 'Paid' : (net ? 'Due' : '—'),
+                'text-center ' + (row.paid ? 'tx-paid-yes' : (net ? 'tx-paid-no' : 'tx-nil'))
+            ));
+
+            if (txCanEdit) {
+                const td  = document.createElement('td');
+                const btn = document.createElement('button');
+                td.className = 'text-right';
+                btn.type = 'button';
+                btn.className = 'tx-row-edit';
+                btn.dataset.term = term;
+                btn.dataset.txOpen = '1';
+                btn.title = 'Edit schedule & price';
+                btn.innerHTML = '<i class="tio-edit"></i>';
+                btn.onclick = () => openTxPlanMenu(btn);
+                td.appendChild(btn);
+                tr.appendChild(td);
+            }
+
+            body.appendChild(tr);
+        });
+    }
+
+    function renderTxBadges(terms) {
+        txTerms = terms;
+        const box = document.getElementById('txBadges');
+        if (!box) return;
+        box.innerHTML = '';
+
+        if (!terms.length) {
+            box.innerHTML = '<span class="text-muted small">Not recorded yet.</span>';
+        } else {
+            terms.forEach(term => {
+                const row   = txPlan[term] || {};
+                const state = txState(row);
+                const when  = txWhen(row);
+                const net   = Math.max(Number(row.amount || 0) - Number(row.discount || 0), 0);
+                const tip   = [
+                    txStateLabels[state] || state,
+                    when,
+                    net ? txMoney(net) : '',
+                    row.paid ? 'paid' : '',
+                    txBookingHeld(row) ? 'booked' : ''
+                ].filter(Boolean).join(' · ');
+
+                const span = document.createElement('span');
+                span.className = 'tx-badge tx-chip tx-state-' + state;
+                span.dataset.term = term;
+                span.title = tip + ' — click to change';
+                span.textContent = term;
+                span.onclick = () => openTxPlanMenu(span);
+                box.appendChild(span);
+            });
+        }
+
+        renderTxTable();
+        renderTxTotals();
+    }
+
+    function closeTxStatusMenu() {
+        const open = document.getElementById('txStatusMenu');
+        if (open) open.remove();
+    }
+
+    // Registered once, for the life of the page. A click inside the menu is the doctor using it;
+    // a click on a chip is handled by that chip, which closes the old menu itself.
+    document.addEventListener('click', function (ev) {
+        const menu = document.getElementById('txStatusMenu');
+        if (!menu) return;
+        if (menu.contains(ev.target)) return;
+        if (ev.target.closest && ev.target.closest('.tx-chip, [data-tx-open]')) return;
+        closeTxStatusMenu();
+    });
+
+    function openTxPlanMenu(el) {
+        closeTxStatusMenu();
+        if (visitLocked) return;
+
+        const term = el.dataset.term;
+        const row  = txPlan[term] || {};
+        const menu = document.createElement('div');
+        menu.className = 'tx-status-menu tx-plan-menu';
+        menu.id = 'txStatusMenu';
+        menu.onclick = (ev) => ev.stopPropagation();
+
+        // A sitting with a date is only a note until it is booked. The tick turns it into a real
+        // follow-up — token, day list, WhatsApp reminder — and keeps the two in step afterwards:
+        // move the date here and the appointment moves with it.
+        const appt  = txAppointment(row);
+        const held  = txBookingHeld(row);
+        const bookBox =
+            '<label class="tx-plan-book"><input type="checkbox" id="txPlanBook"' + (held ? ' checked' : '') + '>' +
+                '<span>Book as next visit' +
+                    '<span class="tx-plan-book-note">' +
+                        (held
+                            ? 'Changing the date moves the appointment. Unticking cancels it.'
+                            : 'Creates a follow-up on that date and reminds the patient.') +
+                    '</span>' +
+                '</span>' +
+            '</label>' +
+            (appt
+                ? '<a class="tx-plan-booked" href="' + appt.url + '" target="_blank">' +
+                      '<i class="tio-calendar-note"></i> ' +
+                      (held ? 'Booked' : 'Booking ' + appt.status.replace('_', ' ')) +
+                      (appt.token ? ' · token #' + appt.token : '') + ' — open</a>'
+                : '');
+
+        menu.innerHTML =
+            '<div class="tx-plan-title">' + term + '</div>' +
+            '<div class="tx-plan-row"><div>' +
+                '<label>Status</label>' +
+                '<select class="form-control form-control-sm" id="txPlanStatus">' +
+                    '<option value="pending">Pending</option>' +
+                    '<option value="upcoming">Upcoming</option>' +
+                    '<option value="completed">Completed</option>' +
+                '</select>' +
+            '</div></div>' +
+            '<div class="tx-plan-row">' +
+                '<div><label>Date</label><input type="date" class="form-control form-control-sm" id="txPlanDate"></div>' +
+                '<div><label>Time</label><input type="time" class="form-control form-control-sm" id="txPlanTime"></div>' +
+            '</div>' +
+            '<div class="tx-plan-row">' +
+                '<div><label>Amount</label><input type="number" min="0" step="0.01" class="form-control form-control-sm" id="txPlanAmount" placeholder="0.00"></div>' +
+                '<div><label>Discount</label><input type="number" min="0" step="0.01" class="form-control form-control-sm" id="txPlanDiscount" placeholder="0.00"></div>' +
+            '</div>' +
+            '<label class="tx-plan-paid"><input type="checkbox" id="txPlanPaid"> Paid</label>' +
+            bookBox +
+            '<div class="d-flex align-items-center" style="gap:6px">' +
+                '<button type="button" class="btn btn-sm btn-primary" id="txPlanSave">Save</button>' +
+                '<button type="button" class="btn btn-sm btn-light" id="txPlanCancel">Cancel</button>' +
+                (window.nvPrefillTreatment
+                    ? '<button type="button" class="btn btn-sm btn-link p-0 ml-auto" id="txPlanMulti" ' +
+                          'style="font-size:11px" title="Book this alongside the other sittings on the Next Visit tab">Several sittings…</button>'
+                    : '') +
+            '</div>';
+
+        document.body.appendChild(menu);
+
+        // An amount already set on this visit wins; otherwise open with what this treatment
+        // was last charged at, so the usual case is a glance and a Save.
+        const learnt = txPrices[term] || {};
+        menu.querySelector('#txPlanStatus').value   = row.status || 'pending';
+        menu.querySelector('#txPlanDate').value     = row.date || '';
+        menu.querySelector('#txPlanTime').value     = row.time || '';
+        menu.querySelector('#txPlanAmount').value   = row.amount   ?? learnt.amount   ?? '';
+        menu.querySelector('#txPlanDiscount').value = row.discount ?? learnt.discount ?? '';
+        menu.querySelector('#txPlanPaid').checked   = !!row.paid;
+
+        const box = el.getBoundingClientRect();
+        menu.style.top  = (box.bottom + window.scrollY + 4) + 'px';
+        menu.style.left = Math.min(box.left + window.scrollX,
+                                   window.scrollX + document.documentElement.clientWidth - menu.offsetWidth - 8) + 'px';
+
+        // Booking a date is what "upcoming" means, so ticking the box says so on the status too
+        // rather than leaving a booked sitting in Pending.
+        const bookInput = menu.querySelector('#txPlanBook');
+        bookInput.addEventListener('change', function () {
+            const status = menu.querySelector('#txPlanStatus');
+            if (this.checked && status.value === 'pending') status.value = 'upcoming';
+        });
+
+        const multi = menu.querySelector('#txPlanMulti');
+        if (multi) {
+            multi.onclick = () => {
+                closeTxStatusMenu();
+                const tabBtn = document.querySelector('.consult-tab-btn[onclick*="tabNextVisit"]');
+                if (tabBtn) switchTab(tabBtn, 'tabNextVisit');
+                window.nvPrefillTreatment(term);
+            };
+        }
+
+        menu.querySelector('#txPlanCancel').onclick = closeTxStatusMenu;
+        menu.querySelector('#txPlanSave').onclick   = () => {
+            const wantsBooking = bookInput.checked;
+            const date = menu.querySelector('#txPlanDate').value;
+            const time = menu.querySelector('#txPlanTime').value;
+
+            if (wantsBooking && (!date || !time)) {
+                alert('Give the sitting a date and a time before booking it as a next visit.');
+                return;
+            }
+
+            if (held && !wantsBooking && !confirm('Cancel the follow-up booked for "' + term + '"?')) {
+                return;
+            }
+
+            saveTxPlan(term, {
+                status:   menu.querySelector('#txPlanStatus').value,
+                date:     date,
+                time:     time,
+                amount:   menu.querySelector('#txPlanAmount').value,
+                discount: menu.querySelector('#txPlanDiscount').value,
+                paid:     menu.querySelector('#txPlanPaid').checked ? 1 : 0,
+                book:     wantsBooking ? 1 : 0
+            });
+        };
+    }
+
+    function saveTxPlan(term, row) {
+        if (visitLocked) return;
+
+        const before = (txPlan[term] || {}).status || 'pending';
+
+        fetch(opdQuickUpdateUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ treatment_plan: { [term]: row } })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) throw new Error('save failed');
+
+            txPlan = data.treatment_plan || {};
+            if (data.treatment_prices) txPrices = data.treatment_prices;
+            if (data.treatment_appointments) txAppointments = data.treatment_appointments;
+            closeTxStatusMenu();
+            renderTxBadges(txTerms);
+            setSaveState('saved');
+
+            // Anything the booking could not do — slot full, no time given — comes back beside a
+            // save that did happen, so it is said out loud rather than left to be noticed.
+            if (data.notice) alert(data.notice);
+
+            if (row.status !== before) notifyTreatmentStatus(term, row.status, row);
+        })
+        .catch(() => alert('Could not save that treatment.'));
+    }
+
+    // Only when the status itself moved — editing an amount is not news for the patient. The
+    // status is already saved by this point, and every send is a billed template message, so
+    // it is offered rather than automatic.
+    function notifyTreatmentStatus(term, state, row) {
+        const form = document.getElementById('txWaForm');
+        if (!form) return;
+
+        const when = [row.date, row.time].filter(Boolean).join(' ');
+        const line = state === 'completed'
+            ? '"' + term + '" is marked completed.'
+            : state === 'upcoming'
+                ? '"' + term + '" is booked' + (when ? ' for ' + when : '') + '.'
+                : '"' + term + '" is pending.';
+
+        if (confirm('Saved: ' + line + '\n\nSend the treatment summary to ' + patientName + ' on WhatsApp?')) {
+            form.submit();
+        }
+    }
+
     function selectedTerms(id) {
         const el = document.getElementById(id);
         if (!el) return [];
@@ -3050,6 +5075,7 @@
 
         const diagnosis = selectedTerms('dxSelect');
         const treatment = selectedTerms('txSelect');
+        const willing   = selectedTerms('wtSelect');
 
         // Same reason as saveField: Save supersedes whatever autosave had queued.
         clearTimeout(autosaveTimers['dxtx']);
@@ -3060,18 +5086,16 @@
         fetch(opdQuickUpdateUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ diagnosis: diagnosis, treatment: treatment })
+            body: JSON.stringify({ diagnosis: diagnosis, treatment: treatment, willing_treatment: willing })
         })
         .then(r => r.json())
         .then(data => {
             if (!data.ok) throw new Error('save failed');
+            if (data.treatment_plan) txPlan = data.treatment_plan;
             renderTerms('dxBadges', diagnosis, 'dx-badge');
-            renderTerms('txBadges', treatment, 'tx-badge');
-            // Carry the diagnosis into the prescription form so the doctor doesn't retype it.
-            const rxDiagnosis = document.querySelector('#customRxForm textarea[name="diagnosis"]');
-            if (rxDiagnosis && !rxDiagnosis.value.trim() && diagnosis.length) {
-                rxDiagnosis.value = diagnosis.join(', ');
-            }
+            renderTxBadges(treatment);
+            renderTerms('wtBadges', willing, 'wt-badge');
+            syncRxField('rxDiagnosis', 'rxDxHint', diagnosis);
             toggleDxEdit();
             setSaveState('saved');
         })
@@ -3392,6 +5416,43 @@
             document.getElementById('rxWritingFormBlock').style.display = 'none';
             document.querySelector('.badge-soft-success').style.display = '';
         }
+    }
+
+    // The consultation cards are the record; the prescription fields mirror them.
+    // Once the doctor edits one by hand it stops following, so an intentional
+    // difference between what was diagnosed and what the Rx says survives.
+    function markRxFieldEdited(el, hintId) {
+        el.dataset.synced = '0';
+        const hint = document.getElementById(hintId);
+        if (hint) { hint.textContent = 'Edited here'; hint.classList.add('rx-sync-off'); }
+    }
+
+    function syncRxField(id, hintId, terms) {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.synced !== '1') return;
+        el.value = (terms || []).join(', ');
+        const hint = document.getElementById(hintId);
+        if (hint) hint.classList.remove('rx-sync-off');
+    }
+
+    function toggleVitalsProfile(ev) {
+        // The header is the hit area, but the pencil sitting in it has its own job.
+        if (ev && ev.target.closest('button')) return;
+        const body = document.getElementById('vitalsProfileBody');
+        const chev = document.getElementById('vitalsChevron');
+        if (!body) return;
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : '';
+        if (chev) chev.className = open ? 'tio-chevron-right' : 'tio-chevron-down';
+    }
+
+    function toggleRxPreview() {
+        const sec = document.getElementById('rxPrintSection');
+        const lbl = document.getElementById('rxPreviewLabel');
+        if (!sec) return;
+        const open = sec.style.display !== 'none';
+        sec.style.display = open ? 'none' : '';
+        if (lbl) lbl.textContent = open ? 'Show printable letterhead' : 'Hide printable letterhead';
     }
 
     function printPrescription() {

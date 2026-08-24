@@ -2,6 +2,7 @@
 
 use App\Modules\HMIS\Controllers\Vendor\OpdController;
 use App\Modules\HMIS\Controllers\Vendor\OpdConsultationReceiptController;
+use App\Modules\HMIS\Controllers\Vendor\OpdLabWorkController;
 
 Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::get('',                   [OpdController::class, 'index'])->name('index');
@@ -12,6 +13,34 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::get('{id}/consultation-receipt',        [OpdConsultationReceiptController::class, 'receipt'])->name('consultation-receipt')->middleware('permission:opd_register,view');
     Route::post('{id}/consultation-receipt/store', [OpdConsultationReceiptController::class, 'store'])->name('consultation-receipt.store')->middleware('permission:opd_register,add');
     Route::get('{id}/consultation-receipt/pdf',    [OpdConsultationReceiptController::class, 'pdf'])->name('consultation-receipt.pdf')->middleware('permission:opd_register,view');
+
+    // What each treatment costs. Rows are also created by pricing a treatment on a visit, so the
+    // catalog fills itself in from real use rather than having to be typed out first.
+    //
+    // Declared above `{id}`: that route is a single segment and would otherwise swallow
+    // 'treatment-catalog' and try to load a visit by that name.
+    Route::get('treatment-catalog',              [OpdController::class, 'treatmentCatalog'])->name('treatment-catalog')->middleware('permission:opd_register,view');
+    Route::post('treatment-catalog/store',       [OpdController::class, 'treatmentCatalogSave'])->name('treatment-catalog.store')->middleware('permission:opd_register,edit');
+    Route::post('treatment-catalog/{id}/update', [OpdController::class, 'treatmentCatalogSave'])->name('treatment-catalog.update')->middleware('permission:opd_register,edit');
+    Route::get('treatment-catalog/{id}/delete',  [OpdController::class, 'treatmentCatalogDelete'])->name('treatment-catalog.delete')->middleware('permission:opd_register,edit');
+
+    // Lab work — a crown, a lens, a brace — made in-house or sent out. Shown on the consultation
+    // screen only for hospitals whose speciality does lab work; the controller re-checks that on
+    // every request rather than trusting the tab to have been hidden.
+    //
+    // Declared above `{id}` for the same reason treatment-catalog is: 'lab-work' would otherwise
+    // be read as a visit id.
+    //
+    // notify goes to the PATIENT; notify-lab and notify-handover go to the LAB. Named apart rather
+    // than switched on a parameter, because a message carrying a patient's name and specification
+    // to an outside firm should never be one mistyped value away from a message to the patient.
+    Route::post('{id}/lab-work',              [OpdLabWorkController::class, 'store'])->name('lab-work.store')->middleware('permission:opd_register,add');
+    Route::put('lab-work/{id}',               [OpdLabWorkController::class, 'update'])->name('lab-work.update')->middleware('permission:opd_register,edit');
+    Route::post('lab-work/{id}/status',       [OpdLabWorkController::class, 'status'])->name('lab-work.status')->middleware('permission:opd_register,edit');
+    Route::post('lab-work/{id}/notify',       [OpdLabWorkController::class, 'notify'])->name('lab-work.notify')->middleware('permission:opd_register,edit');
+    Route::post('lab-work/{id}/notify-lab',   [OpdLabWorkController::class, 'notifyVendor'])->name('lab-work.notify-lab')->middleware('permission:opd_register,edit');
+    Route::post('lab-work/{id}/handover',     [OpdLabWorkController::class, 'notifyHandover'])->name('lab-work.handover')->middleware('permission:opd_register,edit');
+    Route::delete('lab-work/{id}',            [OpdLabWorkController::class, 'destroy'])->name('lab-work.destroy')->middleware('permission:opd_register,delete');
 
     Route::get('{id}',               [OpdController::class, 'show'])->name('show')->middleware('permission:opd_register,view');
     Route::get('{id}/edit',          [OpdController::class, 'edit'])->name('edit')->middleware('permission:opd_register,edit');

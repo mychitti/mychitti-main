@@ -16,6 +16,7 @@ class HospitalActivityLogController extends Controller
         'opd'           => ['opd_visit'],
         'ipd'           => ['ipd_admission'],
         'doctors_slots' => ['doctor', 'slot'],
+        'lab_work'      => ['opd_lab_work'],
     ];
 
     public function index(Request $request)

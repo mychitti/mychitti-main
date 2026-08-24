@@ -45,6 +45,28 @@
                             </div>
                             <div class="fg" style="margin-bottom:14px"><label class="fl">Clinical Notes</label><input class="fi" name="clinical_notes" placeholder="Diagnosis / reason for test..."></div>
 
+                            {{-- Where this order is actually run. Left blank it stays on the bench
+                                 here, which is what every order did before these fields existed.
+
+                                 The phone is not cosmetic: it is the number a handover verification
+                                 code goes to when somebody turns up claiming to be from this lab,
+                                 so it is the difference between being able to catch a stranger at
+                                 the counter and having to take their word for it. --}}
+                            <div class="fg" style="margin-bottom:14px">
+                                <label class="fl">Send to an outside lab</label>
+                                <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px">
+                                    <select class="fs" name="external_lab_id" onchange="labPickReferral(this)">
+                                        <option value="">Run in-house</option>
+                                        @foreach ($referralLabs as $rl)
+                                            <option value="{{ $rl->id }}" data-name="{{ $rl->f_name }}" data-phone="{{ $rl->phone }}">{{ $rl->f_name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input class="fi" name="external_lab_name" id="extLabName" placeholder="Lab name" maxlength="190">
+                                    <input class="fi" name="external_lab_phone" id="extLabPhone" placeholder="Lab WhatsApp number" maxlength="40">
+                                </div>
+                                <div style="font-size:10px;color:var(--light)">Leave as “Run in-house” for tests done here. The number is where handover codes and confirmations are sent.</div>
+                            </div>
+
                             <div class="fg"><label class="fl">Select Tests</label>
                                 <input class="fi" id="testFilter" placeholder="Filter tests..." style="margin:6px 0">
                                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="testGrid">
@@ -120,5 +142,15 @@ document.getElementById('testFilter').addEventListener('input',function(){
   var q=this.value.toLowerCase();
   document.querySelectorAll('#testGrid .test-opt').forEach(function(o){o.style.display=o.dataset.name.includes(q)?'':'none';});
 });
+// Picking a lab fills its name and number in, but only into boxes still empty — a number
+// corrected for this one order is the number that lab actually answers, and re-selecting the
+// same lab should not quietly put the stale one back.
+function labPickReferral(sel){
+  var opt=sel.options[sel.selectedIndex];
+  var n=document.getElementById('extLabName'), p=document.getElementById('extLabPhone');
+  if(!opt||!opt.value){ return; }
+  if(n && !n.value.trim()) n.value=opt.dataset.name||'';
+  if(p && !p.value.trim()) p.value=opt.dataset.phone||'';
+}
 </script>
 @endpush
