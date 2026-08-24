@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', ($direction === 'send' ? 'Send' : 'Receive') . ' Notification Settings')
+@section('title', 'Send Notification Settings')
 
 @php
     $activeTab = request('tab', 'whatsapp');
@@ -14,18 +14,10 @@
     <div class="content container-fluid">
         <div class="page-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;">
             <h1 class="page-header-title">
-                <i class="{{ $direction === 'send' ? 'tio-send' : 'tio-notifications-on-outlined' }}"></i>
-                {{ $direction === 'send' ? 'Send Notifications' : 'Receive Notifications' }}
+                <i class="tio-send"></i>
+                Send Notifications
             </h1>
             <div>
-                <a href="{{ route('vendor.notification-settings', ['direction' => 'send']) }}"
-                   class="btn btn-sm {{ $direction === 'send' ? 'btn--primary' : 'btn-outline-primary' }}">
-                    <i class="tio-send"></i> Send
-                </a>
-                <a href="{{ route('vendor.notification-settings', ['direction' => 'receive']) }}"
-                   class="btn btn-sm {{ $direction === 'receive' ? 'btn--primary' : 'btn-outline-primary' }}">
-                    <i class="tio-notifications"></i> Receive
-                </a>
                 {{-- "Is it actually working?" is the question this page can't answer on its own. --}}
                 <a href="{{ route('vendor.whatsapp.message-log') }}" class="btn btn-sm btn-outline-secondary">
                     <i class="tio-history"></i> Message log
@@ -34,11 +26,7 @@
         </div>
 
         <p class="text-muted" style="font-size:13px;">
-            @if ($direction === 'send')
-                Choose which automatic messages your store sends to customers, per action and channel.
-            @else
-                Choose which alerts you receive when something happens in your store, per action and channel.
-            @endif
+            Choose which automatic messages your store sends to customers, per action and channel.
         </p>
 
         {{-- Twenty switches that physically cannot fire are worse than two setup steps: the vendor

@@ -251,6 +251,13 @@ class NotificationPrefs
      */
     public static function enabled(?int $storeId, string $group, string $key): bool
     {
+        // Receive notifications are always on — the settings page no longer exposes them,
+        // so no store can accidentally mute its own incoming alerts.
+        $direction = self::GROUPS[$group]['direction'] ?? null;
+        if ($direction === 'receive') {
+            return true;
+        } 
+
         $default = (bool) (self::GROUPS[$group]['items'][$key]['default'] ?? true);
         if (!$storeId) {
             return $default;

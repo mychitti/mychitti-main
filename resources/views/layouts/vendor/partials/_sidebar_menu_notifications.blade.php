@@ -13,12 +13,7 @@
                 <span class="text-truncate">{{ translate('Send Notifications') }}</span>
             </a>
         </li>
-        <li class="nav-item {{ Request::is('*notification-settings/receive*') ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('vendor.notification-settings', ['direction' => 'receive']) }}" title="{{ translate('Receive Notifications') }}">
-                <span class="tio-circle nav-indicator-icon"></span>
-                <span class="text-truncate">{{ translate('Receive Notifications') }}</span>
-            </a>
-        </li>
     </ul>
 </li>
 @endif
+ 

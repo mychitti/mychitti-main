@@ -20,6 +20,12 @@ class NotificationSettingController extends Controller
     {
         if (!in_array($direction, ['send', 'receive'], true)) {
             abort(404);
+        } 
+
+        // Receive notifications are always on for all stores — the page is removed.
+        // Redirect anyone who hits the old URL or a stale bookmark.
+        if ($direction === 'receive') {
+            return redirect()->route('vendor.notification-settings', ['direction' => 'send']);
         }
 
         $storeId = Helpers::get_store_id();
