@@ -1,4 +1,4 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Generate Hospital Bill')
 
 @section('content')
@@ -88,12 +88,18 @@
                      Prefilled from the patient's standing values plus anything entered for this
                      visit, and editable here so a one-off correction never has to go back to the
                      intake screen. --}}
+                @php 
+                    $allowedLabels = ['Email', 'City', 'Pincode'];
+                    $presetLabels = array_intersect($presetLabels ?? $allowedLabels, $allowedLabels);
+                    if (empty($presetLabels)) { $presetLabels = $allowedLabels; }
+                    $filteredCustomInfo = array_intersect_key($customInfo ?? [], array_flip($allowedLabels));
+                @endphp
                 <div class="card mb-3">
                     <div class="card-header py-2"><h6 class="mb-0"><i class="tio-label-outlined mr-1"></i>More Info</h6></div>
                     <div class="card-body py-2">
                         <div id="custom-buttons" class="mb-2">
-                            @foreach ($presetLabels ?? [] as $label)
-                                @if (!array_key_exists($label, $customInfo ?? []))
+                            @foreach ($presetLabels as $label)
+                                @if (!array_key_exists($label, $filteredCustomInfo))
                                     <button type="button" class="btn btn-outline-primary btn-sm mr-2 mb-2 custom-header-btn"
                                         data-label="{{ $label }}" style="border-radius:999px;font-size:12px;">+ {{ $label }}</button>
                                 @endif
@@ -103,7 +109,7 @@
                         </div>
 
                         <div id="custom-fields">
-                            @foreach ($customInfo ?? [] as $label => $value)
+                            @foreach ($filteredCustomInfo as $label => $value)
                                 <div class="form-group custom-field" data-label="{{ $label }}">
                                     <label style="font-size:12px;font-weight:600;color:#56606e;">{{ $label }}</label>
                                     <div class="d-flex">
@@ -148,29 +154,42 @@
                             </p>
                             @endif
                         </div>
-                        @if($storeGstEnabled)
+                        @if($storeGstEnabled) 
                         <div class="form-group mb-2" id="gstPercentWrap" style="display:none;">
                             <label class="input-label" style="font-size:12px;">GST %</label>
                             <input type="number" name="gst_percent" id="gstPercent" class="form-control form-control-sm"
                                 min="0" max="100" step="0.01" placeholder="e.g. 18">
                         </div>
-                        @endif
+                        @endif  
 
                         <div class="form-group mb-2">
                             <label class="input-label" style="font-size:12px;">Status</label>
-                            <div class="d-flex gap-3">
+                            <div class="d-flex gap-3 flex-wrap">
                                 <div class="custom-control custom-radio custom-control-inline">
                                     <input type="radio" name="payment_status" value="Unpaid" id="ps_unpaid"
-                                        class="custom-control-input" checked>
+                                        class="custom-control-input" checked onchange="togglePaymentStatus()">
                                     <label class="custom-control-label" for="ps_unpaid">Unpaid</label>
                                 </div>
                                 <div class="custom-control custom-radio custom-control-inline">
+                                    <input type="radio" name="payment_status" value="Partially Paid" id="ps_partial"
+                                        class="custom-control-input" onchange="togglePaymentStatus()">
+                                    <label class="custom-control-label" for="ps_partial">Partially Paid</label>
+                                </div>
+                                <div class="custom-control custom-radio custom-control-inline">
                                     <input type="radio" name="payment_status" value="Paid" id="ps_paid"
-                                        class="custom-control-input">
+                                        class="custom-control-input" onchange="togglePaymentStatus()">
                                     <label class="custom-control-label" for="ps_paid">Paid</label>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="form-group mb-2" id="hbPartialWrap" style="display:none;">
+                            <label class="input-label" style="font-size:12px;">Amount Paid (₹) <span class="text-danger">*</span></label>
+                            <input type="number" name="paid_amount" id="hbPaidAmount" class="form-control form-control-sm"
+                                min="0" step="0.01" placeholder="Enter amount paid" oninput="recalc()">
+                            <small class="text-muted d-block mt-1" id="hbBalanceNotice">Remaining Balance: ₹0.00</small>
+                        </div>
+
                         <div class="form-group mb-0">
                             <label class="input-label" style="font-size:12px;">Method</label>
                             <select name="payment_method" id="hbPayMethod" class="form-control form-control-sm" onchange="hbSyncTxn()">
@@ -213,7 +232,7 @@
                                 </tr>
                             </thead>
                             <tbody id="serviceBody">
-                                @foreach($serviceItems as $item)
+                                @forelse($serviceItems as $item)
                                 <tr class="item-row">
                                     <td>
                                         <input type="hidden" name="inv_id[]" value="">
@@ -238,7 +257,15 @@
                                         </button>
                                     </td>
                                 </tr>
-                                @endforeach
+                                @empty
+                                <tr id="noServiceRow">
+                                    <td colspan="5" class="text-center text-muted py-3" style="font-size:12px;">
+                                        <i class="tio-checkmark-circle text-success mr-1"></i>
+                                        Standard consultation fee for this visit has already been receipted below.
+                                        Click <strong>+ Add Row</strong> above if you wish to add extra room or service charges.
+                                    </td>
+                                </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -327,7 +354,73 @@
             </div>
         </div>
     </form>
-</div>
+
+    {{-- ── Receipts & Payment History Section ───────────────────────────────────── --}}
+    <div class="card mt-4">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="tio-history mr-1"></i>Receipts &amp; Payment History</h6>
+            <small class="text-muted">Previous receipts and bill payments for this patient</small>
+        </div>
+        <div class="card-body p-0">
+            @if(!empty($existingReceipts) && count($existingReceipts) > 0)
+                <div class="table-responsive">
+                    <table class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table mb-0" style="font-size:13px;">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Type</th>
+                                <th>Receipt / Ref #</th>
+                                <th>Date</th>
+                                <th>Particulars</th>
+                                <th class="text-right">Total (₹)</th>
+                                <th class="text-right">Paid (₹)</th>
+                                <th class="text-right">Due (₹)</th>
+                                <th>Mode</th>
+                                <th>Status</th>
+                                <th>Billed By</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($existingReceipts as $rec)
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-soft-info">{{ $rec['type'] }}</span>
+                                    </td>
+                                    <td><strong>{{ $rec['receipt_no'] }}</strong></td>
+                                    <td>{{ $rec['date'] }}</td>
+                                    <td>{{ $rec['item_name'] }}</td>
+                                    <td class="text-right">₹{{ number_format($rec['amount'], 2) }}</td>
+                                    <td class="text-right text-success font-weight-bold">₹{{ number_format($rec['paid'], 2) }}</td>
+                                    <td class="text-right text-{{ $rec['due'] > 0 ? 'danger' : 'muted' }}">₹{{ number_format($rec['due'], 2) }}</td>
+                                    <td><span class="badge badge-soft-secondary">{{ $rec['mode'] }}</span></td>
+                                    <td>
+                                        <span class="badge badge-soft-{{ $rec['due'] <= 0 ? 'success' : 'warning' }}">
+                                            {{ $rec['due'] <= 0 ? 'Paid' : 'Partially Paid' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $rec['billed_by'] }}</td>
+                                    <td class="text-center">
+                                        @if(!empty($rec['pdf_url']))
+                                            <a href="{{ $rec['pdf_url'] }}" target="_blank" class="btn btn-xs btn-outline-primary" title="View / Print Receipt">
+                                                <i class="tio-print"></i> View Receipt
+                                            </a>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="text-center text-muted py-4" style="font-size:13px;">
+                    <i class="tio-receipt-outlined style-2 opacity-50" style="font-size:28px;"></i>
+                    <p class="mt-2 mb-0">No previous receipts found for this patient.</p>
+                </div>
+            @endif
+        </div>
+    </div>
 @endsection
 
 @push('script_2')
@@ -345,6 +438,16 @@ function hbSyncTxn() {
     if (!online) txn.value = '';
 }
 document.addEventListener('DOMContentLoaded', hbSyncTxn);
+
+function togglePaymentStatus() {
+    const status = document.querySelector('input[name="payment_status"]:checked')?.value || 'Unpaid';
+    const wrap = document.getElementById('hbPartialWrap');
+    const inp = document.getElementById('hbPaidAmount');
+    if (wrap) wrap.style.display = (status === 'Partially Paid') ? '' : 'none';
+    if (inp) inp.required = (status === 'Partially Paid');
+    recalc();
+}
+document.addEventListener('DOMContentLoaded', togglePaymentStatus);
 
 function toggleHospGst(val) {
     const wrap = document.getElementById('gstPercentWrap');
@@ -370,10 +473,21 @@ function recalc() {
     const total     = base * (1 + gstPct / 100);
     const gstLabel  = gstPct > 0 ? ` (incl. ${gstPct}% GST)` : '';
     document.getElementById('grandTotal').textContent = '₹' + total.toFixed(2) + gstLabel;
+
+    const status = document.querySelector('input[name="payment_status"]:checked')?.value || 'Unpaid';
+    if (status === 'Partially Paid') {
+        const paid = parseFloat(document.getElementById('hbPaidAmount')?.value) || 0;
+        const due = Math.max(0, total - paid);
+        const notice = document.getElementById('hbBalanceNotice');
+        if (notice) notice.textContent = 'Remaining Balance: ₹' + due.toFixed(2);
+    }
 }
 
 // ── Add blank service charge row ─────────────────────────────────────
 function addServiceRow() {
+    const placeholder = document.getElementById('noServiceRow');
+    if (placeholder) placeholder.remove();
+
     const tbody = document.getElementById('serviceBody');
     const tr = document.createElement('tr');
     tr.className = 'item-row';

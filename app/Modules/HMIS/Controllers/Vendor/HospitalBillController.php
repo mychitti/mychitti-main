@@ -101,12 +101,13 @@ class HospitalBillController extends Controller
         // An admission has no intake visit of its own, so only the patient's standing rows apply.
         $customInfo   = DentalIntakeController::decode($patient->custom_info ?? null);
         $presetLabels = DentalIntakeController::PRESET_LABELS;
+        $existingReceipts = $this->fetchExistingReceipts($store_id, $patient->id);
 
         return view('hmis::vendor.hospital.create_bill', compact(
             'patient', 'serviceItems', 'medicineItems',
-            'context', 'contextId', 'admission', 'customInfo', 'presetLabels'
+            'context', 'contextId', 'admission', 'customInfo', 'presetLabels', 'existingReceipts'
         ));
-    }
+    } 
 
     public function createForOPD($visitId)
     {
@@ -123,13 +124,25 @@ class HospitalBillController extends Controller
             . ' ' . ($visit->doctorProfile?->employee?->l_name ?? '')
         );
 
-        $serviceItems = [
-            [
+        // Check if an OPD Consultation Receipt already exists for this visit or patient+doctor
+        $hasConsultationReceipt = false;
+        if ($visit->consultation_receipt_id) {
+            $hasConsultationReceipt = true;
+        } else {
+            $hasConsultationReceipt = \App\Models\OpdConsultationReceipt::where('store_id', $store_id)
+                ->where('opd_visit_id', $visitId)
+                ->exists();
+        }
+
+        $serviceItems = [];
+        // Only include consultation charge if not already receipted/paid
+        if (!$hasConsultationReceipt) {
+            $serviceItems[] = [
                 'name'  => 'OPD Consultation — ' . $doctorName,
                 'qty'   => 1,
                 'price' => $visit->doctorProfile?->consultation_fee ?? 0,
-            ],
-        ];
+            ];
+        }
 
         // Tests and scans raised during this visit belong on the same bill as the consultation.
         // Anything the Lab/Radiology modules already invoiced themselves is skipped — those are
@@ -164,11 +177,101 @@ class HospitalBillController extends Controller
         // lines. Visit values win over the patient's standing ones — see mergedFor().
         $customInfo   = DentalIntakeController::mergedFor($visit);
         $presetLabels = DentalIntakeController::PRESET_LABELS;
+        $existingReceipts = $this->fetchExistingReceipts($store_id, $patient->id, $visitId);
 
         return view('hmis::vendor.hospital.create_bill', compact(
             'patient', 'serviceItems', 'medicineItems',
-            'context', 'contextId', 'visit', 'customInfo', 'presetLabels'
+            'context', 'contextId', 'visit', 'customInfo', 'presetLabels', 'existingReceipts'
         ));
+    }
+
+    /**
+     * Gather all existing consultation receipts, bill payments, and invoices for this patient/visit
+     * to display in the bottom Receipts & Payment History section.
+     */
+    private function fetchExistingReceipts(int $storeId, int $patientId, $visitId = null): array
+    {
+        $receipts = [];
+
+        // 1. OPD Consultation Receipts
+        if (\Illuminate\Support\Facades\Schema::hasTable('opd_consultation_receipts')) {
+            $cReceipts = \App\Models\OpdConsultationReceipt::where('store_id', $storeId)
+                ->where(function ($q) use ($visitId, $patientId) {
+                    if ($visitId) {
+                        $q->where('opd_visit_id', $visitId)
+                          ->orWhere('patient_id', $patientId);
+                    } else {
+                        $q->where('patient_id', $patientId);
+                    }
+                })
+                ->orderByDesc('id')
+                ->get();
+
+            foreach ($cReceipts as $cr) {
+                $receipts[] = [
+                    'type'       => 'Consultation Receipt',
+                    'receipt_no' => 'REC-' . str_pad($cr->bill_no, 5, '0', STR_PAD_LEFT),
+                    'date'       => $cr->receipt_date ? \Carbon\Carbon::parse($cr->receipt_date)->format('d M Y') : '—',
+                    'item_name'  => 'OPD Consultation',
+                    'amount'     => (float) $cr->amount,
+                    'paid'       => (float) $cr->paid,
+                    'due'        => (float) $cr->due,
+                    'mode'       => $cr->payment_mode ?: 'Cash',
+                    'status'     => $cr->due > 0 ? 'Partial' : 'Paid',
+                    'billed_by'  => $cr->billed_by ?: 'Desk',
+                    'pdf_url'    => $cr->opd_visit_id ? route('vendor.opd.consultation-receipt.pdf', $cr->opd_visit_id) : null,
+                ];
+            }
+        }
+
+        // 2. Manual Hospital Invoices & Invoice Payments
+        $invoices = ManualInvoice::where('vendor_id', $storeId)
+            ->where('bill_to', $patientId)
+            ->where('bill_to_type', 'patient')
+            ->orderByDesc('id')
+            ->get();
+
+        foreach ($invoices as $inv) {
+            $pmts = DB::table('invoice_payments')
+                ->where('invoice_type', 'manual')
+                ->where('invoice_id', $inv->id)
+                ->orderBy('id')
+                ->get();
+
+            if ($pmts->isNotEmpty()) {
+                foreach ($pmts as $pmt) {
+                    $receipts[] = [
+                        'type'       => 'Bill Payment Receipt',
+                        'receipt_no' => $pmt->receipt_no,
+                        'date'       => $pmt->payment_date ? \Carbon\Carbon::parse($pmt->payment_date)->format('d M Y') : '—',
+                        'item_name'  => 'Hospital Bill #' . $inv->invoice_id,
+                        'amount'     => (float) $inv->total_amount,
+                        'paid'       => (float) $pmt->amount,
+                        'due'        => (float) $pmt->balance_after,
+                        'mode'       => $pmt->payment_mode ?: 'Cash',
+                        'status'     => $pmt->balance_after <= 0 ? 'Paid' : 'Partial',
+                        'billed_by'  => 'Desk',
+                        'pdf_url'    => $pmt->pdf ? asset('storage/app/public/receipt/' . $pmt->pdf) : route('vendor.invoice.view-invoice', $inv->id),
+                    ];
+                }
+            } else {
+                $receipts[] = [
+                    'type'       => 'Hospital Bill',
+                    'receipt_no' => $inv->invoice_id,
+                    'date'       => $inv->invoice_date ? \Carbon\Carbon::parse($inv->invoice_date)->format('d M Y') : '—',
+                    'item_name'  => 'Hospital Bill #' . $inv->invoice_id,
+                    'amount'     => (float) $inv->total_amount,
+                    'paid'       => $inv->payment_status === 'Paid' ? (float) $inv->total_amount : 0.0,
+                    'due'        => $inv->payment_status === 'Paid' ? 0.0 : (float) $inv->total_amount,
+                    'mode'       => $inv->payment_method ?: 'Cash',
+                    'status'     => $inv->payment_status ?: 'Unpaid',
+                    'billed_by'  => 'Desk',
+                    'pdf_url'    => route('vendor.invoice.view-invoice', $inv->id),
+                ];
+            }
+        }
+
+        return $receipts;
     }
 
     /**
@@ -235,7 +338,8 @@ class HospitalBillController extends Controller
             'item_name.*'    => 'required|string|max:255',
             'item_qty.*'     => 'required|numeric|min:0',
             'item_price.*'   => 'required|numeric|min:0',
-            'payment_status' => 'required|in:Paid,Unpaid',
+            'payment_status' => 'required|in:Paid,Partially Paid,Unpaid',
+            'paid_amount'     => 'nullable|numeric|min:0',
             'tax_type'       => 'nullable|in:gst,non-gst',
             'gst_percent'    => 'nullable|numeric|min:0|max:100',
             'transaction_id' => 'required_if:payment_method,UPI,Card,Net Banking|nullable|string|max:100',
@@ -263,6 +367,14 @@ class HospitalBillController extends Controller
                 ? round($baseAmount * (1 + $gstPercent / 100), 2)
                 : $baseAmount;
 
+            $payStatus = $request->payment_status;
+            $paidAmt   = 0;
+            if ($payStatus === 'Paid') {
+                $paidAmt = $totalAmount;
+            } elseif ($payStatus === 'Partially Paid') {
+                $paidAmt = min($totalAmount, max(0, (float) $request->input('paid_amount', 0)));
+            }
+
             $invoice = ManualInvoice::create([
                 'invoice_id'     => $invoice_id,
                 'invoice_serial' => (int) substr($invoice_id, strrpos($invoice_id, '_') + 1),
@@ -272,9 +384,9 @@ class HospitalBillController extends Controller
                 'user_type'      => 'hospital_patient',
                 'vendor_id'      => $store_id,
                 'total_amount'   => $totalAmount,
-                'payment_status' => $request->payment_status,
+                'payment_status' => 'Unpaid',
                 'payment_method' => $request->payment_method ?? 'Cash',
-                'payment_date'   => $request->payment_status === 'Paid' ? now()->toDateString() : null,
+                'payment_date'   => $paidAmt > 0 ? now()->toDateString() : null,
                 'invoice_date'   => now()->toDateString(),
                 'tax_type'       => $taxType,
                 'reference_number' => $isOnline && $request->transaction_id ? ['transaction_id' => $request->transaction_id] : [],
@@ -306,35 +418,44 @@ class HospitalBillController extends Controller
                 if ($invId) {
                     _updateInventoryStock($invId, $qty, null);
                 }
-            }
+            } 
 
             DB::commit();
         } catch (\Throwable $e) {
-            DB::rollBack();
+            DB::rollBack(); 
             return back()->withErrors(['error' => 'Could not create bill: ' . $e->getMessage()]);
         }
-
-        try {
-            $data = _createBillPdf($invoice, 'vendor');
-            $invoice->update(['pdf' => $data['pdf']]);
-
-            // WhatsApp the patient their bill, if this hospital turned that on. Never blocks the
-            // redirect: the bill is raised either way, and only something the staff member can
-            // actually act on (a missing phone number, a refused send) is worth a message.
-            $wa = InvoiceShare::auto($invoice, 'manual', $data['url'] ?? null);
-            if ($wa['message']) {
-                $wa['status'] === 'sent' ? Toastr::success($wa['message']) : Toastr::warning($wa['message']);
+ 
+        // Record payment & receipt AFTER DB commit so PDF build & WhatsApp API calls never lock the DB
+        if ($paidAmt > 0) { 
+            try {
+                \App\Services\InvoicePayments::record($invoice, 'manual', [
+                    'amount'       => $paidAmt,
+                    'payment_mode' => $request->payment_method ?? 'Cash',
+                    'payment_date' => now()->toDateString(),
+                    'reference'    => $request->transaction_id ?? '',
+                ]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('InvoicePayments::record error: ' . $e->getMessage());
             }
-
-            return redirect(route('vendor.invoice.view-invoice', $invoice->id));
-        } catch (\Throwable $e) {
-            // The bill is already committed — only the PDF failed. Reporting plain success and
-            // bouncing to the admissions list made a real failure look like a redirect bug, so
-            // log the cause and say what actually happened. Most often this is the 'public' disk
-            // (DO Spaces) missing its AWS_* config, which _createBillPdf writes the PDF to.
-            report($e);
-            Toastr::warning('Bill #' . $invoice_id . ' was created, but its PDF could not be generated: ' . $e->getMessage());
-            return redirect(route('vendor.ipd.index'));
         }
+
+        // Generate main bill PDF if not already built by InvoicePayments::record
+        $invoice->refresh();
+        if (!$invoice->pdf) {
+            try {
+                $data = _createBillPdf($invoice, 'vendor');
+                $invoice->update(['pdf' => $data['pdf']]);
+
+                $wa = InvoiceShare::auto($invoice, 'manual', $data['url'] ?? null);
+                if (!empty($wa['message'])) {
+                    $wa['status'] === 'sent' ? Toastr::success($wa['message']) : Toastr::warning($wa['message']);
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return redirect(route('vendor.invoice.view-invoice', $invoice->id));
     }
 }

@@ -27,18 +27,9 @@ class OpdOpType extends Model
     protected $casts = ['hidden' => 'boolean'];
 
     /** The list every hospital starts with. Read, never written to a store's rows. */
-    const DEFAULTS = [
-        'Cash / Self-Paying',
-        'Insurance',
-        'Government Scheme',
-        'Arogyasri',
-        'CGHS',
+    const DEFAULTS = [ 
         'ESI',
-        'Corporate / TPA',
-        'Camp',
-        'Staff / Concession',
-        'Free',
-    ];
+    ]; 
 
     public static function ensureSchema(): void
     {
