@@ -6,6 +6,11 @@ use App\Modules\HMIS\Controllers\Vendor\BasicPharmacyController;
 // premium Inventory module; items added here are visible in paid Inventory and vice-versa.
 Route::group(['prefix' => 'pharmacy', 'as' => 'pharmacy.'], function () {
     Route::get('medicines',                  [BasicPharmacyController::class, 'medicines'])->name('medicines')->middleware('permission:pharmacy,view');
+    Route::get('medicines/pool-search',      [BasicPharmacyController::class, 'searchPool'])->name('medicines.pool-search')->middleware('permission:pharmacy,view');
+
+    // Shared medicine catalog — browse the pool and adopt into this store's pharmacy.
+    Route::get('catalog',                    [BasicPharmacyController::class, 'catalogBrowse'])->name('catalog')->middleware('permission:pharmacy,view');
+    Route::post('catalog/adopt',             [BasicPharmacyController::class, 'catalogAdopt'])->name('catalog.adopt')->middleware('permission:pharmacy,add');
     Route::post('medicines/save',            [BasicPharmacyController::class, 'saveMedicine'])->name('medicines.save')->middleware('permission:pharmacy,add');
     Route::post('medicines/{id}/update',     [BasicPharmacyController::class, 'updateMedicine'])->name('medicines.update')->middleware('permission:pharmacy,edit');
     Route::post('medicines/{id}/add-stock',  [BasicPharmacyController::class, 'addStock'])->name('medicines.add-stock')->middleware('permission:pharmacy,edit');
@@ -14,6 +19,10 @@ Route::group(['prefix' => 'pharmacy', 'as' => 'pharmacy.'], function () {
     // Import / Export medicines
     Route::get('medicines/export',           [BasicPharmacyController::class, 'exportMedicines'])->name('medicines.export')->middleware('permission:pharmacy,view');
     Route::post('medicines/import',          [BasicPharmacyController::class, 'importMedicines'])->name('medicines.import')->middleware('permission:pharmacy,add');
+
+    // Sales figures — what was sold and what it took, across every counter that moves stock.
+    // Declared above 'sale-orders' only for readability; the two are distinct segments.
+    Route::get('sales',                      [BasicPharmacyController::class, 'sales'])->name('sales')->middleware('permission:pharmacy,view');
 
     // Sale Orders (free pharmacy view)
     Route::get('sale-orders',                [BasicPharmacyController::class, 'saleOrders'])->name('sale-orders')->middleware('permission:pharmacy,view');

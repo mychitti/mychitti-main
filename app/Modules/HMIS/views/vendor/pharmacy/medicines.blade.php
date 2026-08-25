@@ -7,6 +7,40 @@
         .pill { font-size:10px; font-weight:700; padding:3px 9px; border-radius:100px; }
         .pill.ok{background:#DCFCE7;color:#15803D}.pill.low{background:#FFFBEB;color:#92400E}.pill.out{background:#FFF1F2;color:#DC2626}.pill.exp{background:#F3E8FF;color:#7C3AED}
         .med-empty { text-align:center; color:#9aa1ab; padding:40px 16px; }
+
+        /* Pool-first search box in the Add Medicine modal. */
+        .mp-search-wrap { position:relative; }
+        .mp-results {
+            display:none; position:absolute; left:0; right:0; top:100%; z-index:1056;
+            background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin-top:2px;
+            max-height:260px; overflow-y:auto; box-shadow:0 8px 24px rgba(15,23,42,.12);
+        }
+        .mp-opt { display:flex; align-items:center; gap:10px; padding:8px 11px; cursor:pointer; border-bottom:1px solid #f4f6f9; }
+        .mp-opt:last-child { border-bottom:0; }
+        .mp-opt:hover, .mp-opt.active { background:#f1f5f9; }
+        .mp-opt img, .mp-thumb {
+            width:34px; height:34px; border-radius:7px; object-fit:cover; flex-shrink:0;
+            background:#f1f5f9; display:flex; align-items:center; justify-content:center;
+            color:#94a3b8; font-size:14px;
+        }
+        .mp-opt-name { font-size:13px; font-weight:600; color:#0f172a; }
+        .mp-opt-meta { font-size:11px; color:#64748b; }
+        .mp-note { font-size:11px; color:#0891b2; font-weight:600; }
+        .mp-empty { padding:10px 12px; font-size:12.5px; color:#64748b; }
+        .mp-picked {
+            display:flex; align-items:center; gap:10px; padding:9px 11px; margin-bottom:12px;
+            border:1px solid #bbf7d0; background:#f0fdf4; border-radius:9px;
+        }
+        .mp-picked img { width:38px; height:38px; border-radius:8px; object-fit:cover; background:#fff; }
+
+        /* The card header's action group is a non-wrapping flex row holding a 240px
+           search box and three buttons — wider than a phone, so it pushed the page
+           sideways and clipped Add Medicine. */
+        @media (max-width: 767px) {
+            .med-actions { flex-wrap: wrap; width: 100%; }
+            .med-actions form { max-width: 100% !important; width: 100%; }
+            .med-actions .btn { flex: 1 1 auto; justify-content: center; }
+        }
     </style>
 @endpush
 
@@ -20,11 +54,14 @@
             <div class="card">
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between" style="gap:10px;">
                     <h3 class="mb-0" style="font-size:15px; font-weight:700;">Medicines &amp; Stock</h3>
-                    <div class="d-flex align-items-center" style="gap:8px;">
+                    <div class="d-flex align-items-center med-actions" style="gap:8px;">
                         <form action="" method="get" class="input-group input-group-sm mb-0" style="max-width:240px;">
                             <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search medicine / SKU...">
                             <div class="input-group-append"><button class="btn btn-outline-secondary"><i class="tio-search"></i></button></div>
                         </form>
+                        <a href="{{ route('vendor.pharmacy.catalog') }}" class="btn btn-sm btn-outline-primary" style="white-space:nowrap;">
+                            <i class="tio-book-opened mr-1"></i> Add from Catalog
+                        </a>
                         <a href="{{ route('vendor.pharmacy.medicines.export') }}" class="btn btn-sm btn-outline-secondary" style="white-space:nowrap;">
                             <i class="tio-download-to mr-1"></i> Export
                         </a>
@@ -145,12 +182,42 @@
                 <form action="{{ route('vendor.pharmacy.medicines.save') }}" method="post">
                     @csrf
                     <div class="modal-body">
-                        <div class="form-group"><label>Medicine Name <span class="text-danger">*</span></label>
-                            <input type="text" name="item_name" class="form-control" required></div>
-                        <div class="form-row">
-                            <div class="form-group col-6"><label>Brand</label><input type="text" name="brand" class="form-control"></div>
-                            <div class="form-group col-6"><label>SKU / Code</label><input type="text" name="sku_id" class="form-control"></div>
+                        {{-- Pool first: the shared catalog is the default way in, and typing a name
+                             by hand is the fallback rather than the other way round. Picking a pooled
+                             medicine fills the identity fields so the pharmacist only prices it. --}}
+                        <input type="hidden" name="catalog_item_id" id="a_catalog_id">
+                        <div class="form-group mp-search-wrap">
+                            <label>Find in the shared medicine catalog</label>
+                            <input type="text" id="mpSearch" class="form-control" autocomplete="off"
+                                   placeholder="Type a medicine or brand — e.g. Pantoprazole, Pan 40">
+                            <div id="mpResults" class="mp-results"></div>
+                            <small class="text-muted">Not listed? Just fill the fields below — we will add it to the catalog for you.</small>
                         </div>
+
+                        <div id="mpPicked" class="mp-picked" style="display:none;">
+                            <img id="mpPickedImg" src="" alt="">
+                            <div class="flex-grow-1">
+                                <div id="mpPickedName" class="font-weight-bold"></div>
+                                <div id="mpPickedMeta" class="text-muted" style="font-size:11.5px;"></div>
+                            </div>
+                            <button type="button" class="btn btn-xs btn-outline-secondary" id="mpClear">Change</button>
+                        </div>
+
+                        <div class="form-group"><label>Medicine Name <span class="text-danger">*</span></label>
+                            <input type="text" name="item_name" id="a_item_name" class="form-control" required></div>
+                        <div class="form-row">
+                            <div class="form-group col-4"><label>Brand</label><input type="text" name="brand" id="a_brand" class="form-control"></div>
+                            <div class="form-group col-4"><label>Strength</label><input type="text" name="strength" id="a_strength" class="form-control" placeholder="40 mg"></div>
+                            <div class="form-group col-4"><label>Type</label>
+                                <select name="form" id="a_form" class="form-control">
+                                    <option value="">— Select —</option>
+                                    @foreach ($forms as $f)
+                                        <option value="{{ $f }}">{{ $f }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group"><label>SKU / Code</label><input type="text" name="sku_id" class="form-control"></div>
                         <div class="form-row">
                             <div class="form-group col-4"><label>Unit <span class="text-danger">*</span></label>
                                 <select name="unit" id="a_unit" class="form-control med-unit-select" required>
@@ -188,7 +255,14 @@
                             <input type="file" name="file" class="form-control" accept=".csv,.txt,.xls,.xlsx" required>
                         </div>
                         <div class="alert alert-soft-info mb-0" style="font-size:12.5px;">
-                            Columns: <strong>item_name, brand, sku_id, unit, mrp, selling_price, stock, reorder_level, expiry_date</strong>.
+                            Columns: <strong>item_name, brand, strength, dosage_form, category, sku_id, unit, mrp, selling_price, stock, reorder_level, expiry_date</strong>.
+                            Only <strong>item_name</strong> is required; <code>medicine_name</code> and
+                            <code>brand_example</code> are recognised too, so a supplier sheet uploads as it is.
+                            No <code>unit</code> column? It is taken from the pack — "10 tablets" sells as Tablet,
+                            "20 ml vial" as Vial, "60 ml" as ml.
+                            <a href="{{ asset('public/assets/pharmacy_medicines_format.csv') }}" download class="d-inline-block mt-2">
+                                <i class="tio-download-to"></i> Download a sample sheet
+                            </a>
                             Existing medicines are matched by SKU (or name) and updated; new ones are created.
                             <a href="{{ route('vendor.pharmacy.medicines.export') }}">Download current list</a> to use as a template.
                         </div>
@@ -254,6 +328,83 @@
 
 @push('script_2')
     <script>
+        // ── Pool-first medicine search ──────────────────────────────────────
+        // The catalog lookup is the primary way to add a medicine; the fields below it stay
+        // editable so an unlisted medicine can still be typed and is queued for the pool.
+        (function () {
+            const url     = "{{ route('vendor.pharmacy.medicines.pool-search') }}";
+            const input   = document.getElementById('mpSearch');
+            const box     = document.getElementById('mpResults');
+            const picked  = document.getElementById('mpPicked');
+            if (!input) return;
+
+            let timer = null, lastQuery = '';
+
+            const esc = t => (t || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+            const hide = () => { box.style.display = 'none'; box.innerHTML = ''; };
+
+            function render(rows) {
+                if (!rows.length) {
+                    box.innerHTML = '<div class="mp-empty">No match in the catalog — fill the fields below and we will add it.</div>';
+                    box.style.display = 'block';
+                    return;
+                }
+                box.innerHTML = rows.map(r => `
+                    <div class="mp-opt" data-item='${esc(JSON.stringify(r))}'>
+                        ${r.image ? `<img src="${esc(r.image)}" alt="">` : '<span class="mp-thumb"><i class="tio-medicine-bottle"></i></span>'}
+                        <div class="flex-grow-1">
+                            <div class="mp-opt-name">${esc(r.label)}</div>
+                            <div class="mp-opt-meta">${esc(r.meta || r.brand || 'Generic')}${r.in_stock ? ' · <span class="mp-note">already in your pharmacy</span>' : ''}</div>
+                        </div>
+                    </div>`).join('');
+                box.style.display = 'block';
+            }
+
+            input.addEventListener('input', function () {
+                const q = this.value.trim();
+                clearTimeout(timer);
+                if (q.length < 2) { hide(); return; }
+                timer = setTimeout(() => {
+                    if (q === lastQuery) return;
+                    lastQuery = q;
+                    fetch(url + '?q=' + encodeURIComponent(q), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                        .then(r => r.json()).then(render).catch(hide);
+                }, 220);
+            });
+
+            box.addEventListener('click', function (e) {
+                const opt = e.target.closest('.mp-opt');
+                if (!opt) return;
+                const r = JSON.parse(opt.dataset.item);
+
+                document.getElementById('a_catalog_id').value = r.id;
+                document.getElementById('a_item_name').value  = r.label;
+                document.getElementById('a_brand').value      = r.brand || '';
+                document.getElementById('a_strength').value   = r.strength || '';
+                document.getElementById('a_form').value       = r.form || '';
+
+                document.getElementById('mpPickedName').textContent = r.label;
+                document.getElementById('mpPickedMeta').textContent = (r.meta || r.brand || 'Generic') + (r.in_stock ? ' · already in your pharmacy' : '');
+                const img = document.getElementById('mpPickedImg');
+                img.src = r.image || "{{ asset('public/assets/admin/img/160x160/img2.jpg') }}";
+                picked.style.display = 'flex';
+
+                input.value = '';
+                hide();
+                document.querySelector('#addMedModal [name=mrp]').focus();
+            });
+
+            document.getElementById('mpClear').addEventListener('click', function () {
+                document.getElementById('a_catalog_id').value = '';
+                picked.style.display = 'none';
+                input.focus();
+            });
+
+            document.addEventListener('click', e => {
+                if (!e.target.closest('.mp-search-wrap')) hide();
+            });
+        })();
+
         const medUpdateUrl = "{{ route('vendor.pharmacy.medicines.update', ['id' => '__ID__']) }}";
         const medAddStockUrl = "{{ route('vendor.pharmacy.medicines.add-stock', ['id' => '__ID__']) }}";
         document.querySelectorAll('.edit-med-btn').forEach(b => b.addEventListener('click', function () {

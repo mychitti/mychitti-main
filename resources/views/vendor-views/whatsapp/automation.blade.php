@@ -12,7 +12,7 @@
 @endpush
 
 @section('content')
-    <div class="content container-fluid">
+    <div class="content container-fluid wa-page">
         <div class="page-header">
             <h1 class="page-header-title">
                 <span class="page-header-icon"><i class="tio-android" style="font-size:22px;"></i></span>

@@ -343,32 +343,13 @@
 
                             {{-- Medicines --}}
                             <div class="col-lg-7">
+                                {{-- Picking a medicine on the last line opens the next one by
+                                     itself, so this is a quiet outlined + only. --}}
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <label class="input-label font-weight-bold mb-0">Medicines</label>
-                                    <button type="button" class="btn btn-sm btn--primary" onclick="apptAddMedRow()">
-                                        <i class="tio-add"></i> Add manually
+                                    <button type="button" class="btn btn-sm rx-add-row" title="Add row" onclick="apptAddMedRow()">
+                                        <i class="tio-add"></i>
                                     </button>
-                                </div>
-
-                                {{-- Pharmacy search --}}
-                                <div class="mb-2" style="position:relative;">
-                                    <div class="input-group input-group-sm">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-white border-right-0">
-                                                <i class="tio-search" style="font-size:13px;color:#6b7280;"></i>
-                                            </span>
-                                        </div>
-                                        <input type="text" id="apptPharmacySearch" class="form-control border-left-0"
-                                            placeholder="Search pharmacy inventory..."
-                                            autocomplete="off"
-                                            oninput="apptPharmDebounce(this.value)">
-                                    </div>
-                                    <ul id="apptPharmSuggestions"
-                                        style="display:none; list-style:none; margin:0; padding:4px 0;
-                                               border:1px solid #e5e7eb; border-top:none; border-radius:0 0 8px 8px;
-                                               background:#fff; max-height:190px; overflow-y:auto;
-                                               position:absolute; width:100%; z-index:99; box-shadow:0 4px 12px rgba(0,0,0,.08);">
-                                    </ul>
                                 </div>
 
                                 <div class="table-responsive">
@@ -377,7 +358,7 @@
                                             <tr>
                                                 <th style="width:34px;">#</th>
                                                 <th style="width:92px;">Type</th>
-                                                <th style="min-width:200px;">Medicine</th>
+                                                <th style="min-width:280px;">Medicine</th>
                                                 <th style="width:130px;">Dose</th>
                                                 <th style="width:125px;">When</th>
                                                 <th style="width:125px;">Frequency</th>
@@ -573,58 +554,13 @@
     function removeMedRow(btn) {
         const rows = document.querySelectorAll('#apptMedTable .med-row');
         if (rows.length <= 1) {
-            btn.closest('.med-row').querySelectorAll('input,select').forEach(el => el.value = '');
+            const row = btn.closest('.med-row');
+            row.querySelectorAll('input,select').forEach(el => el.value = '');
+            if (window.rxMedClearRow) window.rxMedClearRow(row);
             return;
         }
         btn.closest('.med-row').remove();
     }
 
-    // ── Pharmacy search ──────────────────────────────────────
-    let _apptPharmTimer = null;
-    function apptPharmDebounce(val) {
-        clearTimeout(_apptPharmTimer);
-        const ul = document.getElementById('apptPharmSuggestions');
-        if (val.length < 2) { ul.style.display = 'none'; return; }
-        _apptPharmTimer = setTimeout(() => apptPharmFetch(val), 280);
-    }
-
-    function apptPharmFetch(q) {
-        fetch(`${pharmUrl}?q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(items => {
-                const ul = document.getElementById('apptPharmSuggestions');
-                if (!items.length) { ul.style.display = 'none'; return; }
-                ul.innerHTML = items.map(it => `
-                    <li onclick='apptPharmSelect(${JSON.stringify(it)})'
-                        style="padding:7px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #f3f4f6;"
-                        onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
-                        <strong>${it.name}</strong> ${it.banned ? '<span style="color:#b91c1c;font-weight:700;font-size:10px;">⛔ BANNED</span>' : ''}
-                        ${it.price > 0 ? `<span style="float:right;color:#059669;font-size:12px;">₹${parseFloat(it.price).toFixed(0)}</span>` : ''}
-                    </li>`).join('');
-                ul.style.display = 'block';
-            })
-            .catch(() => {});
-    }
-
-    function apptPharmSelect(item) {
-        const firstNameInput = document.querySelector('#apptMedTable .med-row input[name$="[medicine_name]"]');
-        if (firstNameInput && firstNameInput.value.trim() === '') {
-            firstNameInput.value = item.name;
-            const invInput = firstNameInput.closest('.med-row').querySelector('.med-inv-id');
-            if (invInput) invInput.value = item.id;
-            rxBannedCheck(firstNameInput);
-        } else {
-            apptAddMedRow(item);
-        }
-        document.getElementById('apptPharmacySearch').value = '';
-        document.getElementById('apptPharmSuggestions').style.display = 'none';
-    }
-
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('#apptPharmacySearch') && !e.target.closest('#apptPharmSuggestions')) {
-            const ul = document.getElementById('apptPharmSuggestions');
-            if (ul) ul.style.display = 'none';
-        }
-    });
 </script>
 @endpush

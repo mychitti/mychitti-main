@@ -26,10 +26,14 @@ class OpdOpType extends Model
 
     protected $casts = ['hidden' => 'boolean'];
 
-    /** The list every hospital starts with. Read, never written to a store's rows. */
-    const DEFAULTS = [ 
+    /**
+     * The list every hospital starts with. Read, never written to a store's rows. Deliberately
+     * just the one: a hospital builds its own list from the register form or Hospital Settings,
+     * and a long platform list would only be something most of them have to switch off.
+     */
+    const DEFAULTS = [
         'ESI',
-    ]; 
+    ];
 
     public static function ensureSchema(): void
     {

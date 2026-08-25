@@ -160,6 +160,11 @@ class HospitalDashboardController extends Controller
         $vitals_enabled                  = hmis_vitals_enabled($store_id);
         $security_tab_enabled            = hmis_security_tab_enabled($store_id);
         $lab_work_enabled                = hmis_lab_work_enabled($store_id);
+        $daily_report                    = hmis_daily_report_settings($store_id);
+        $daily_report_metrics            = \App\Services\DailyHospitalReport::METRICS;
+        // The report goes to the number on the store record — shown here so a hospital can see
+        // where it will land rather than discovering it when the first one arrives.
+        $daily_report_phone              = \App\CentralLogics\Helpers::get_store_data()->phone ?? null;
         $lab_work_profile                = \App\Models\OpdLabWork::profileFor($store_id);
         $lab_work_auto                   = \App\Models\OpdLabWork::isAutoCategory(
             \App\Models\OpdLabWork::categoryFor($store_id)
@@ -205,7 +210,8 @@ class HospitalDashboardController extends Controller
             'vitals_enabled', 'security_tab_enabled',
             'lab_work_enabled', 'lab_work_profile', 'lab_work_auto',
             'departments', 'states',
-            'opTypeDefaults', 'opTypesOwn', 'opTypesHidden'
+            'opTypeDefaults', 'opTypesOwn', 'opTypesHidden',
+            'daily_report', 'daily_report_metrics', 'daily_report_phone'
         ));
     }
 
@@ -222,6 +228,10 @@ class HospitalDashboardController extends Controller
             'vitals_enabled'                 => 'nullable|boolean',
             'security_tab_enabled'           => 'nullable|boolean',
             'lab_work_enabled'               => 'nullable|boolean',
+            'daily_report_enabled'           => 'nullable|boolean',
+            'daily_report_metrics'           => 'nullable|array',
+            'daily_report_metrics.*'         => 'string|in:' . implode(',', array_keys(\App\Services\DailyHospitalReport::METRICS)),
+            'daily_report_time'              => 'nullable|date_format:H:i',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -255,6 +265,15 @@ class HospitalDashboardController extends Controller
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_lab_work_enabled')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_lab_work_enabled` TINYINT(1) NULL DEFAULT NULL");
         }
+        // The daily WhatsApp summary: whether it is wanted, which figures it carries and when it
+        // goes out. Off by default — a report nobody asked for is an unsolicited message, and it
+        // costs the platform a conversation every day to send.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_daily_report_enabled')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}`
+                ADD COLUMN `hmis_daily_report_enabled` TINYINT(1) NULL DEFAULT 0,
+                ADD COLUMN `hmis_daily_report_metrics` TEXT NULL,
+                ADD COLUMN `hmis_daily_report_time` VARCHAR(5) NULL");
+        }
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'opd_consultation_count')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}`
                 ADD COLUMN `opd_consultation_count` INT NULL,
@@ -277,10 +296,37 @@ class HospitalDashboardController extends Controller
                 'rx_languages'                   => json_encode(
                     collect($request->input('rx_languages', []))->prepend('en')->unique()->values()->all()
                 ),
+                'hmis_daily_report_enabled'      => $request->boolean('daily_report_enabled') ? 1 : 0,
+                // Every box unticked while the report is on would send an empty message, so an
+                // empty selection falls back to the defaults rather than being saved as nothing.
+                'hmis_daily_report_metrics'      => json_encode(
+                    $request->input('daily_report_metrics') ?: \App\Services\DailyHospitalReport::DEFAULT_METRICS
+                ),
+                'hmis_daily_report_time'         => $request->input('daily_report_time') ?: '21:00',
             ]
         );
 
         \Brian2694\Toastr\Facades\Toastr::success('Hospital settings saved.');
+        return back();
+    }
+
+    /**
+     * Send this hospital its daily report right now.
+     *
+     * Same code path as the nightly run, so a test that arrives is proof the real one will. Run
+     * inline rather than queued: the whole point is telling the vendor what happened, and a
+     * queued job could only leave them guessing.
+     */
+    public function testDailyReport()
+    {
+        $store_id = Helpers::get_store_id();
+
+        $result = \App\Jobs\Scheduled\SendDailyHospitalReportJob::test((int) $store_id);
+
+        $result['success']
+            ? \Brian2694\Toastr\Facades\Toastr::success($result['message'])
+            : \Brian2694\Toastr\Facades\Toastr::error($result['message']);
+
         return back();
     }
 

@@ -125,6 +125,17 @@
 
         .dropdown-toggle:not(.dropdown-toggle-empty)::after { display: none !important; }
         .dropdown-menu.show {     left: -156px !important; }
+
+        /* The -156px pull keeps the action menu inside the card on desktop; on a phone the
+           card is already full width, so the same pull hangs it off the left edge. */
+        @media (max-width: 575px) {
+            .dropdown-menu.show { left: auto !important; right: 0 !important; }
+            .page-header { flex-wrap: wrap; gap: 8px; }
+            .appt-card { padding: 12px; }
+            .stat-strip { gap: 6px; }
+            .input-group[style*="max-width"] { max-width: 100% !important; width: 100%; }
+            .date-range-form { flex-wrap: wrap; width: 100%; }
+        }
     </style>
 @endpush
 

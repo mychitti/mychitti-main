@@ -149,7 +149,9 @@ class OpdLabWorkController extends Controller
         // file a job against a real lab's id under a name of its own.
         return [
             'lab_mode'         => 'external',
-            'lab_type'         => $request->lab_type,
+            // The lab's own kind, when the job was not told a different one — it was answered
+            // once on the supplier record and does not need retyping per job.
+            'lab_type'         => filled($request->lab_type) ? $request->lab_type : $vendor?->lab_type,
             'lab_vendor_id'    => $vendor?->id,
             'lab_name'         => $vendor?->f_name,
             'lab_phone'        => $this->contactPhone($request->lab_phone, $vendor?->phone),

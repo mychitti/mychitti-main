@@ -1160,7 +1160,9 @@ class LabController extends Controller
     {
         $this->boot();
         $tests = LabTest::where('store_id', $this->storeId())->withCount('parameters')
-            ->when($request->search, fn($q) => $q->where('name', 'like', "%{$request->search}%")->orWhere('code', 'like', "%{$request->search}%"))
+            ->when($request->search, fn($q) => $q->where(fn($w) => $w
+                ->where('name', 'like', "%{$request->search}%")
+                ->orWhere('code', 'like', "%{$request->search}%")))
             ->orderBy('department')->orderBy('name')->get();
         return $this->view('catalog', compact('tests'));
     }
@@ -1175,11 +1177,15 @@ class LabController extends Controller
     public function saveTest(Request $request, $id = null)
     {
         $this->boot();
+        // The catalog list edits the money and labelling fields inline and posts without any
+        // parameter rows; only the full form sends them. So parameters are validated when they
+        // are present and left untouched when they are not — a quick price edit must not wipe
+        // the reference ranges.
         $request->validate([
             'name'  => 'required|string|max:200',
             'price' => 'required|numeric|min:0',
-            'parameters'      => 'required|array|min:1',
-            'parameters.*.name' => 'required|string',
+            'parameters'        => 'nullable|array',
+            'parameters.*.name' => 'nullable|string',
         ]);
         $storeId = $this->storeId();
 
@@ -1194,6 +1200,17 @@ class LabController extends Controller
             'tat_text'    => $request->tat_text,
             'is_active'   => $request->has('is_active') ? 1 : 0,
         ])->save();
+
+        if (!$request->has('parameters')) {
+            // A test with nothing to measure cannot be resulted, so a brand new one gets a single
+            // parameter named after itself; ranges are filled in later from the full form.
+            if (!$id) {
+                LabTestParameter::create(['lab_test_id' => $test->id, 'name' => $test->name, 'sort_order' => 0]);
+            }
+
+            Toastr::success('Test ' . ($id ? 'updated' : 'added') . '.');
+            return redirect()->route('vendor.lab.catalog');
+        }
 
         $test->parameters()->delete();
         foreach (array_values($request->parameters) as $i => $p) {

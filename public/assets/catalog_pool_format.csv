@@ -1,0 +1,38 @@
+name,brand,strength,type
+Paracetamol,Dolo 500,500 mg,Tablet
+Paracetamol,Dolo 650,650 mg,Tablet
+Paracetamol,Calpol,250 mg/5 ml,Syrup
+Ibuprofen,Brufen 200,200 mg,Tablet
+Ibuprofen,Brufen 400,400 mg,Tablet
+Ibuprofen + Paracetamol,Combiflam,400 mg + 325 mg,Tablet
+Aceclofenac,Aceclo,100 mg,Tablet
+Aceclofenac + Paracetamol,Zerodol-P,100 mg + 325 mg,Tablet
+Diclofenac,Voveran,50 mg,Tablet
+Diclofenac,Voveran,1 ml,Injection
+Naproxen,Naprosyn 250,250 mg,Tablet
+Ketorolac,Ketorol,10 mg,Tablet
+Etoricoxib,Nucoxia 60,60 mg,Tablet
+Pantoprazole,Pan-40,40 mg,Tablet
+Pantoprazole,Pan-D,40 mg,Capsule
+Amoxicillin,Mox 250,250 mg,Capsule
+Amoxicillin + Clavulanic Acid,Augmentin 625,500 mg + 125 mg,Tablet
+Amoxicillin + Clavulanic Acid,Augmentin Duo,200 mg + 28.5 mg,Syrup
+Cefixime,Taxim-O,200 mg,Tablet
+Ceftriaxone,Monocef,1 g,Injection
+Azithromycin,Azithral 500,500 mg,Tablet
+Metronidazole,Flagyl 400,400 mg,Tablet
+Chlorhexidine,Hexidine,0.2%,Mouthwash
+Lignocaine,Xylocaine,2%,Injection
+Betadine,Betadine,5%,Ointment
+Mupirocin,T-Bact,2%,Cream
+Cetirizine,Cetzine,10 mg,Tablet
+Ondansetron,Emeset,4 mg,Tablet
+Ondansetron,Emeset,2 mg/ml,Injection
+Vitamin B Complex,Becosules,,Capsule
+Calcium + Vitamin D3,Shelcal 500,500 mg + 250 IU,Tablet
+Tranexamic Acid,Texakind,500 mg,Tablet
+Dexamethasone,Decdan,0.5 mg,Tablet
+Salbutamol,Asthalin,100 mcg,Inhaler
+Budesonide,Budecort,0.5 mg/2 ml,Respule
+Timolol,Glucomol,0.5%,Eye Drops
+Clotrimazole,Candid,1%,Powder

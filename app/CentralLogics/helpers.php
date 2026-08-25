@@ -86,11 +86,16 @@ class Helpers
         }
 
         $mpdf->Output($tempPath, 'F');
-        return  Storage::disk('public')->putFileAs($relativePath, new HttpFile($tempPath), $fileName);
+
+        // The staging copy has to be deleted, and the unlink below used to sit AFTER the return —
+        // dead code. Every PDF this app has ever generated left a copy behind in storage/app/tmp,
+        // which grows without limit on a box that has little disk to spare. The return value is
+        // unchanged (putFileAs' stored path) so callers behave exactly as before.
+        $stored = Storage::disk('public')->putFileAs($relativePath, new HttpFile($tempPath), $fileName);
 
         @unlink($tempPath);
 
-        return asset('storage/app/public/' . trim($relativePath, '/') . '/' . $fileName);
+        return $stored;
     }
 
     public static function alotServiceCoupon($service_id)
@@ -6368,6 +6373,21 @@ class Helpers
             return false;
         }
     }
+    public static function dashboard_allowed_for_business_type($dashboard, $business_type)
+    {
+        $owned = [
+            'hospital'   => 'hospital',
+            'laundry'    => 'laundry',
+            'retail_pos' => 'pos_retail',
+        ];
+
+        if (!isset($owned[$dashboard])) {
+            return true;
+        }
+
+        return strtolower($business_type ?? '') === $owned[$dashboard];
+    }
+
     public static function permission_check($module_name)
     {
         if (auth('admin')->check()) {

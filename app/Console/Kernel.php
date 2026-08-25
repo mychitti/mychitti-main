@@ -15,6 +15,7 @@ use App\Jobs\Scheduled\PruneSharedPdfsJob;
 use App\Jobs\Scheduled\RegenerateSitemapJob;
 use App\Jobs\Scheduled\ResumeWhatsAppBulkRunsJob;
 use App\Jobs\Scheduled\RunWhatsAppCampaignsJob;
+use App\Jobs\Scheduled\SendDailyHospitalReportJob;
 use App\Jobs\Scheduled\SendDueHmisMessagesJob;
 use App\Jobs\Scheduled\SendAppointmentRebookRemindersJob;
 use App\Jobs\Scheduled\SendRepeatPurchaseRemindersJob;
@@ -99,6 +100,14 @@ class Kernel extends ConsoleKernel
         $schedule->job(new SendServiceRecallRemindersJob)->dailyAt('11:30')
             ->timezone($tz)
             ->name('service-recall-reminders')
+            ->withoutOverlapping();
+
+        // The day's numbers to the hospitals that asked for them. Hourly rather than daily: each
+        // hospital picks the hour its own day ends, and the job only sends to the ones whose
+        // chosen hour is now.
+        $schedule->job(new SendDailyHospitalReportJob)->hourly()
+            ->timezone($tz)
+            ->name('hmis-daily-report')
             ->withoutOverlapping();
 
         // Feedback requests and follow-up reminders the vendor asked to delay.

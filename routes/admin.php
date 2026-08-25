@@ -621,6 +621,22 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::post('terms-and-conditions-save', 'BusinessSettingsController@terms_and_conditions_save')->name('terms-and-conditions.save');
         });
 
+        // SHARED ITEM POOL (catalog) — one curated record per product, adopted by every store.
+        Route::group(['prefix' => 'catalog', 'as' => 'catalog.'], function () {
+            Route::get('/', 'CatalogPoolController@index')->name('index');
+            Route::post('store', 'CatalogPoolController@store')->name('store');
+            Route::post('{id}/update', 'CatalogPoolController@update')->name('update');
+            Route::post('{id}/merge', 'CatalogPoolController@merge')->name('merge');
+            Route::get('{id}/delete', 'CatalogPoolController@destroy')->name('delete');
+            Route::post('import', 'CatalogPoolController@import')->name('import');
+
+            Route::get('suggestions', 'CatalogPoolController@suggestions')->name('suggestions');
+            Route::post('suggestions/verify', 'CatalogPoolController@verify')->name('suggestions.verify');
+            Route::post('suggestions/{id}/approve', 'CatalogPoolController@approve')->name('suggestions.approve');
+            Route::post('suggestions/{id}/merge', 'CatalogPoolController@mergeSuggestion')->name('suggestions.merge');
+            Route::get('suggestions/{id}/reject', 'CatalogPoolController@reject')->name('suggestions.reject');
+        });
+
         // PRICING
         Route::group(['prefix' => 'pricing', 'as' => 'pricing.'], function () {
             Route::get('/', 'PricingController@index')->name('index');

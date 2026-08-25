@@ -225,6 +225,7 @@ class DentalIntakeController extends Controller
             // Optional +91 / 0 trunk prefix, then a 10-digit mobile — Indian numbers start 6-9.
             'phone'   => ['required', 'string', 'max:20', 'regex:/^(?:\+?91|0)?[6-9]\d{9}$/'],
             'age'     => 'required|integer|min:0|max:150',
+            'dob'     => 'nullable|date|before_or_equal:today',
             'gender'  => 'required|in:male,female,other',
             'address'   => 'required|string|max:500',
             'phone_relation' => 'nullable|string|max:100',
@@ -295,6 +296,11 @@ class DentalIntakeController extends Controller
             $patient->name    = $request->name;
             $patient->phone   = $request->phone;
             $patient->age     = $request->age;
+            // Only written when given — an existing patient's date of birth must survive a
+            // re-registration that left the optional box empty.
+            if ($request->filled('dob')) {
+                $patient->dob = $request->dob;
+            }
             $patient->gender  = $request->gender;
             $patient->address = $request->address;
             // Only overwrite when something was typed — an existing patient's recorded relation

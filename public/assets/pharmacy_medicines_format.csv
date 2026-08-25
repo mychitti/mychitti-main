@@ -1,0 +1,13 @@
+item_name,brand,strength,dosage_form,category,sku_id,unit,mrp,selling_price,stock,reorder_level,expiry_date
+Paracetamol 500 mg Tablet,Dolo 500,500 mg,10 tablets,Dental / Pharmacy,RX-0001,,35,32,40,10,31-03-2027
+Paracetamol 650 mg Tablet,Dolo 650,650 mg,15 tablets,Dental / Pharmacy,RX-0002,,35,32,55,15,30-04-2027
+Ibuprofen 400 mg Tablet,Brufen 400,400 mg,10 tablets,Dental / Pharmacy,RX-0004,,25,22,40,10,29-06-2027
+Aceclofenac 100 mg Tablet,Aceclo,100 mg,10 tablets,Dental / Pharmacy,RX-0006,,35,31,30,10,28-08-2027
+Paracetamol Syrup,Calpol,250 mg/5 mL,60 ml,Dental / Pharmacy,RX-0018,,40,36,12,5,22-08-2028
+Tramadol 50 mg Capsule,Ultracet,50 mg,10 capsules,Dental / Pharmacy,RX-0017,,55,50,8,5,23-07-2028
+Lidocaine 2% Injection,Xylocaine,2%,20 ml vial,Dental / Pharmacy,RX-0020,,90,82,20,5,30-04-2027
+Articaine 4% Injection,Septanest,4%,1.7 ml cartridge,Dental / Pharmacy,RX-0022,,45,40,80,20,29-06-2027
+Lignocaine 5% Ointment,Lignocaine Ointment,5%,15 g,Dental / Pharmacy,RX-0024,,55,50,10,3,28-08-2027
+Amoxicillin 500 mg Capsule,Mox 500,500 mg,10 capsules,Dental / Pharmacy,RX-0031,,60,54,25,8,15-09-2027
+Metronidazole 400 mg Tablet,Metrogyl 400,400 mg,10 tablets,Dental / Pharmacy,RX-0035,,20,18,50,15,10-11-2027
+Chlorhexidine 0.2% Mouthwash,Hexidine,0.2%,150 ml,Dental / Pharmacy,RX-0040,,95,85,18,5,05-01-2028

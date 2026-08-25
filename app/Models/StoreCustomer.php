@@ -52,7 +52,26 @@ class StoreCustomer extends Model
         'ledger_account_id',
         'pin_code',
         'user_type',
+        'lab_type',
     ];
+
+    /**
+     * A supplier that is a lab has a kind — ceramic, orthodontic, implant. Kept on the address
+     * book record so it is answered once when the lab is added, instead of retyped on every job.
+     */
+    public static function ensureLabTypeColumn(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('store_customers')
+            && !\Illuminate\Support\Facades\Schema::hasColumn('store_customers', 'lab_type')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `store_customers` ADD COLUMN `lab_type` VARCHAR(120) NULL AFTER `user_type`");
+        }
+    }
 
     public function patient()
     {

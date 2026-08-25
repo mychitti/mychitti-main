@@ -12,7 +12,6 @@
         ['vendor.lab.reagents', 'Reagents', '🧪', 0, '', 'lab_reagent', 'view'],
         ['vendor.lab.history', 'Test History', '📊', 0, '', 'lab_history', 'view'],
         ['vendor.lab.billing', 'Lab Billing', '💰', 0, '', 'lab_billing', 'view'],
-        ['vendor.lab.catalog', 'Test Catalog', '⚙', 0, '', 'lab_catalog', 'view'],
     ];
     $isOwner = auth('vendor')->check();
     $fmt = fn($n) => \App\CentralLogics\Helpers::format_currency($n);
@@ -44,6 +43,9 @@
 .labx .lab-body{padding:16px 20px}
 .labx .layout-2col{display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:start}
 .labx .layout-3col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+/* Grid items default to min-width:auto, so a wide table inside one stretches the column
+   (and the page) instead of scrolling within its card. */
+.labx .layout-2col>*,.labx .layout-3col>*{min-width:0}
 .labx .lcard{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .labx .lcard:last-child{margin-bottom:0}
 .labx .card-hd{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--border)}
@@ -114,6 +116,55 @@
 .labx .test-opt{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer}
 .labx .test-opt.sel{border-color:var(--blue);background:var(--ltblue2)}
 @media(max-width:1100px){.labx .layout-2col{grid-template-columns:1fr}.labx .kpi-strip{grid-template-columns:repeat(4,1fr)}}
+
+/* Lab billing line items — a table on desktop, stacked label/value rows on a phone. */
+.labx .linv-hd,.labx .linv-row{display:grid;grid-template-columns:1fr 80px 100px 110px;gap:8px}
+.labx .linv-hd{padding:8px 16px;font-size:10px;font-weight:700;color:var(--light);text-transform:uppercase;background:#F9FAFB;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.labx .linv-row{padding:9px 16px;border-bottom:1px solid #F3F4F6;font-size:12px}
+
+/* ── Phone / small tablet ─────────────────────────────────────────────
+   Everything here is laid out with fixed-width grid tracks, which overflow the
+   viewport on a phone and leave the whole page scrolling sideways. Collapse the
+   multi-column rows, shrink the page gutters, and let genuinely wide tables
+   scroll inside their own card instead of dragging the page with them. */
+@media(max-width:768px){
+    .labx .lab-body{padding:10px}
+    .labx .kpi-strip{grid-template-columns:repeat(2,1fr)}
+    .labx .kpi-item{border-bottom:1px solid var(--border)}
+    .labx .kpi-val{font-size:18px}
+    .labx .layout-3col,.labx .frow2,.labx .frow3,.labx .frow4{grid-template-columns:1fr}
+    .labx .critical-banner{flex-direction:column;align-items:flex-start;gap:8px}
+    .labx .card-hd{flex-wrap:wrap;gap:8px}
+    .labx .card-actions{flex-wrap:wrap}
+    .labx .search-bar{flex-wrap:wrap}
+    .labx .search-wrap{flex:1 1 100%}
+    .labx .fsel{flex:1 1 auto;min-width:0}
+    .labx .tabs{padding:0 10px}
+    .labx .stat-row,.labx .alert-row{padding-left:12px;padding-right:12px}
+    .labx .alert-row{flex-wrap:wrap}
+
+    /* Billing lines: label above value, no fixed tracks. */
+    .labx .linv-hd{display:none}
+    .labx .linv-row{grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px}
+    .labx .linv-row>div:nth-child(1){grid-column:1/-1}
+    .labx .linv-row>div:nth-child(2){text-align:left!important;font-size:11px}
+    .labx .linv-row>div:nth-child(2)::before{content:'Qty '}
+    .labx .linv-row>div:nth-child(3){display:none}
+    .labx .linv-row>div:nth-child(4){grid-row:2;text-align:right!important}
+
+    /* Wide record tables keep every column and scroll inside their own card. The rows
+       carry the min-width (not the card) so the header and the rows scroll as one and
+       each row's background paints across the full scrolled width. */
+    .labx .lab-body,.labx .layout-2col,.labx .layout-3col{max-width:100%;min-width:0}
+    .labx .layout-2col>*,.labx .layout-3col>*{min-width:0;max-width:100%}
+    .labx .lcard{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+    .labx .tbl-hd,.labx .tbl-row,.labx .result-hd,.labx .result-row{min-width:720px}
+}
+@media(max-width:480px){
+    .labx .kpi-strip{grid-template-columns:repeat(2,1fr)}
+    .labx .lab-body{padding:8px}
+    .labx .btn{padding:6px 12px}
+}
 </style>
 @endpush
 

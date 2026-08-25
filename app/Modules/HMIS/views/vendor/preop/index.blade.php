@@ -6,7 +6,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 .content.container-fluid{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important}
-.preopx{--bg:#07101A;--bg2:#0D1B2A;--bg3:#112236;--bg4:#162B44;--border:#1E3350;--border2:#2A4568;--text:#EBF0F8;--muted:#6B8BAD;--light:#A0B8D0;--blue:#3B9EFF;--blue2:#1A5FA8;--ltblue:#0A1F3D;--green:#2ECC71;--ltgreen:#0A2E1A;--greenA:#27AE60;--red:#E74C3C;--ltred:#2E0A0A;--redA:#C0392B;--amber:#F39C12;--ltamber:#2E1A00;--amberA:#D68910;--purple:#9B59B6;--ltpurple:#1E0A2E;--teal:#1ABC9C;--ltteal:#0A2E26;--cyan:#00BCD4;--ltcyan:#00272E;--gold:#F1C40F;--ltgold:#2E2600;--font:'Outfit',sans-serif;--mono:'DM Mono',monospace;
+.preopx{--bg:#07101A;--bg2:#0D1B2A;--bg3:#112236;--bg4:#162B44;--border:#1E3350;--border2:#2A4568;--text:#EBF0F8;--muted:#9CB4CE;--light:#C7D6E6;--blue:#3B9EFF;--blue2:#1A5FA8;--ltblue:#0A1F3D;--green:#2ECC71;--ltgreen:#0A2E1A;--greenA:#27AE60;--red:#E74C3C;--ltred:#2E0A0A;--redA:#C0392B;--amber:#F39C12;--ltamber:#2E1A00;--amberA:#D68910;--purple:#9B59B6;--ltpurple:#1E0A2E;--teal:#1ABC9C;--ltteal:#0A2E26;--cyan:#00BCD4;--ltcyan:#00272E;--gold:#F1C40F;--ltgold:#2E2600;--font:'Outfit',sans-serif;--mono:'DM Mono',monospace;
   background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;display:block}
 .preopx *{box-sizing:border-box}
 .preopx .topnav{background:var(--bg2);border-bottom:1px solid var(--border);min-height:52px;display:flex;align-items:center;padding:8px 18px;gap:12px;flex-wrap:wrap}
@@ -71,6 +71,25 @@
 .preopx .form-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
 .preopx .finput,.preopx .fselect,.preopx .ftextarea{background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:var(--font);outline:none;width:100%}
 .preopx .finput:focus,.preopx .fselect:focus,.preopx .ftextarea:focus{border-color:var(--teal)}
+/* Dark surface, so anything that falls back to the panel's default #1e2022 text — native
+   select popups, placeholders, autofilled values, date/time pickers — comes out black on
+   navy and is effectively unreadable. Pin the colours to the palette instead. */
+.preopx{color-scheme:dark}
+/* The panel theme colours headings and small print with its own #1e2022 rule, which beats
+   inheritance from .preopx — so card titles came out black on navy. */
+.preopx h1,.preopx h2,.preopx h3,.preopx h4,.preopx h5,.preopx h6,.preopx p,.preopx label,
+.preopx small,.preopx strong,.preopx b,.preopx th,.preopx td,.preopx li,.preopx span,.preopx div{color:inherit}
+.preopx .card-hd h3{color:var(--text)}
+.preopx .form-label{color:#DCE6F2;font-weight:800}
+.preopx .ot-info-title,.preopx .cs-title,.preopx .progress-title,.preopx .result-name{color:#C7D6E6}
+.preopx .pstep-label,.preopx .pt-meta,.preopx .report-meta,.preopx .ot-dl{color:#B4C7DA}
+.preopx a:not(.btn){color:var(--blue)}
+.preopx input,.preopx select,.preopx textarea,.preopx .form-control,.preopx .custom-select{color:var(--text);-webkit-text-fill-color:var(--text);background-color:var(--bg4);border-color:var(--border2)}
+.preopx select option,.preopx select optgroup{background:var(--bg2);color:var(--text)}
+.preopx ::placeholder{color:var(--muted);opacity:1}
+.preopx input:-webkit-autofill,.preopx input:-webkit-autofill:focus{-webkit-text-fill-color:var(--text);-webkit-box-shadow:0 0 0 1000px var(--bg4) inset;caret-color:var(--text)}
+.preopx input[type=date],.preopx input[type=datetime-local],.preopx input[type=time]{color-scheme:dark}
+.preopx ::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.7)}
 .preopx .ftextarea{resize:none;line-height:1.6}
 .preopx .result-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
 .preopx .result-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 13px}

@@ -73,6 +73,12 @@ class HospitalBillController extends Controller
             'price' => $admission->doctorProfile?->consultation_fee ?? 0,
         ];
 
+        // Tests and scans raised across the stay, minus anything the Lab/Radiology modules already
+        // invoiced themselves.
+        foreach ($this->testCharges($store_id, $patient->id, null, $admission->admission_date, $dischargeDate) as $line) {
+            $serviceItems[] = $line;
+        }
+
         $prescriptions = Prescription::where('store_id', $store_id)
             ->where('patient_id', $patient->id)
             ->whereBetween('created_at', [
@@ -85,6 +91,13 @@ class HospitalBillController extends Controller
         $medicineItems = [];
         foreach ($prescriptions as $rx) {
             foreach ($rx->items as $item) {
+                // Dispensed means the pharmacy handed it over and billed it on its own counter
+                // sale. Putting it on the hospital bill as well charges the patient twice for the
+                // same strip — the prescription line is an instruction, not an unpaid charge.
+                if ($item->dispensed) {
+                    continue;
+                }
+
                 $medicineItems[] = [
                     'name'   => $item->medicine_name,
                     'qty'    => $item->quantity ?? 1,
@@ -103,9 +116,16 @@ class HospitalBillController extends Controller
         $presetLabels = DentalIntakeController::PRESET_LABELS;
         $existingReceipts = $this->fetchExistingReceipts($store_id, $patient->id);
 
+        $existingBills = $this->billsForContext($store_id, 'ipd', $admissionId);
+
+        // What has already been collected against this admission. The bill itself stays whole —
+        // every line still shows at full price — and this only changes what is left to pay.
+        $alreadyPaid = round((float) $existingBills->sum('paid'), 2);
+
         return view('hmis::vendor.hospital.create_bill', compact(
             'patient', 'serviceItems', 'medicineItems',
-            'context', 'contextId', 'admission', 'customInfo', 'presetLabels', 'existingReceipts'
+            'context', 'contextId', 'admission', 'customInfo', 'presetLabels', 'existingReceipts',
+            'existingBills', 'alreadyPaid'
         ));
     } 
 
@@ -124,14 +144,34 @@ class HospitalBillController extends Controller
             . ' ' . ($visit->doctorProfile?->employee?->l_name ?? '')
         );
 
-        // Check if an OPD Consultation Receipt already exists for this visit or patient+doctor
+        // The consultation is only left off the bill when money for it has actually been collected:
+        // a receipt linked to this visit, a receipt raised against this visit, or an earlier
+        // receipt for the same patient+doctor still inside its free follow-up window. If no OP
+        // receipt was generated, the fee belongs on the bill.
         $hasConsultationReceipt = false;
-        if ($visit->consultation_receipt_id) {
-            $hasConsultationReceipt = true;
-        } else {
-            $hasConsultationReceipt = \App\Models\OpdConsultationReceipt::where('store_id', $store_id)
-                ->where('opd_visit_id', $visitId)
-                ->exists();
+
+        if (Schema::hasTable('opd_consultation_receipts')) {
+            if ($visit->consultation_receipt_id) {
+                $hasConsultationReceipt = \App\Models\OpdConsultationReceipt::where('store_id', $store_id)
+                    ->where('id', $visit->consultation_receipt_id)
+                    ->exists();
+            }
+
+            if (!$hasConsultationReceipt) {
+                $hasConsultationReceipt = \App\Models\OpdConsultationReceipt::where('store_id', $store_id)
+                    ->where('opd_visit_id', $visitId)
+                    ->exists();
+            }
+
+            // Follow-up covered by an earlier receipt that is still valid and has visits left.
+            if (!$hasConsultationReceipt && $visit->doctor_profile_id) {
+                $hasConsultationReceipt = \App\Models\OpdConsultationReceipt::where('store_id', $store_id)
+                    ->where('patient_id', $visit->patient_id)
+                    ->where('doctor_profile_id', $visit->doctor_profile_id)
+                    ->whereColumn('consultations_used', '<', 'allowed_consultations')
+                    ->whereDate('valid_until', '>=', $visit->visit_date)
+                    ->exists();
+            }
         }
 
         $serviceItems = [];
@@ -151,6 +191,12 @@ class HospitalBillController extends Controller
             $serviceItems[] = $line;
         }
 
+        // Everything the doctor advised and priced on this visit, minus what has already been paid
+        // for sitting by sitting.
+        foreach ($this->treatmentChargesForVisit($visit, $store_id) as $line) {
+            $serviceItems[] = $line;
+        }
+
         $prescriptions = Prescription::where('store_id', $store_id)
             ->where('patient_id', $patient->id)
             ->whereDate('created_at', $visit->visit_date)
@@ -160,6 +206,13 @@ class HospitalBillController extends Controller
         $medicineItems = [];
         foreach ($prescriptions as $rx) {
             foreach ($rx->items as $item) {
+                // Dispensed means the pharmacy handed it over and billed it on its own counter
+                // sale. Putting it on the hospital bill as well charges the patient twice for the
+                // same strip — the prescription line is an instruction, not an unpaid charge.
+                if ($item->dispensed) {
+                    continue;
+                }
+
                 $medicineItems[] = [
                     'name'   => $item->medicine_name,
                     'qty'    => $item->quantity ?? 1,
@@ -179,9 +232,16 @@ class HospitalBillController extends Controller
         $presetLabels = DentalIntakeController::PRESET_LABELS;
         $existingReceipts = $this->fetchExistingReceipts($store_id, $patient->id, $visitId);
 
+        $existingBills = $this->billsForContext($store_id, 'opd', $visitId);
+
+        // What has already been collected against this visit. The bill itself stays whole —
+        // every line still shows at full price — and this only changes what is left to pay.
+        $alreadyPaid = round((float) $existingBills->sum('paid'), 2);
+
         return view('hmis::vendor.hospital.create_bill', compact(
             'patient', 'serviceItems', 'medicineItems',
-            'context', 'contextId', 'visit', 'customInfo', 'presetLabels', 'existingReceipts'
+            'context', 'contextId', 'visit', 'customInfo', 'presetLabels', 'existingReceipts',
+            'existingBills', 'alreadyPaid'
         ));
     }
 
@@ -189,6 +249,70 @@ class HospitalBillController extends Controller
      * Gather all existing consultation receipts, bill payments, and invoices for this patient/visit
      * to display in the bottom Receipts & Payment History section.
      */
+    /**
+     * The two columns that tie a hospital bill back to the visit or admission it came from.
+     *
+     * Added here rather than in a migration, per the project's schema rules. Cheap to call: the
+     * column check is a schema read, and it is skipped for the rest of the request once done.
+     */
+    public static function ensureContextColumns(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (!Schema::hasColumn('manual_invoices', 'hmis_context')) {
+            DB::statement("ALTER TABLE `manual_invoices` ADD COLUMN `hmis_context` VARCHAR(20) NULL");
+        }
+        if (!Schema::hasColumn('manual_invoices', 'hmis_context_id')) {
+            DB::statement("ALTER TABLE `manual_invoices` ADD COLUMN `hmis_context_id` BIGINT UNSIGNED NULL");
+            DB::statement("ALTER TABLE `manual_invoices` ADD INDEX `mi_hmis_context` (`vendor_id`, `hmis_context`, `hmis_context_id`)");
+        }
+    }
+
+    /**
+     * Bills already raised from this same visit or admission, newest first, with what is still
+     * owed on each.
+     *
+     * This is what stops the same visit being billed twice. The screen builds a fresh bill from
+     * the visit's chargeable items every time it is opened, which is right the first time and
+     * wrong every time after — and a gateway timeout on the save is enough to make somebody
+     * reopen it and do exactly that. Only bills carrying the context are found, so bills raised
+     * before these columns existed are invisible here; nothing can be done about those.
+     */
+    private function billsForContext(int $storeId, string $context, $contextId): \Illuminate\Support\Collection
+    {
+        self::ensureContextColumns();
+
+        if (!$contextId) {
+            return collect();
+        }
+
+        return ManualInvoice::where('vendor_id', $storeId)
+            ->where('hmis_context', $context)
+            ->where('hmis_context_id', (int) $contextId)
+            ->orderByDesc('id')
+            ->get()
+            ->map(function ($inv) {
+                $paid = (float) DB::table('invoice_payments')
+                    ->where('invoice_type', 'manual')
+                    ->where('invoice_id', $inv->id)
+                    ->sum('amount');
+
+                return (object) [
+                    'id'         => $inv->id,
+                    'invoice_id' => $inv->invoice_id,
+                    'date'       => $inv->invoice_date,
+                    'total'      => (float) $inv->total_amount,
+                    'paid'       => round($paid, 2),
+                    'due'        => max(0, round((float) $inv->total_amount - $paid, 2)),
+                    'status'     => $inv->payment_status,
+                ];
+            });
+    }
+
     private function fetchExistingReceipts(int $storeId, int $patientId, $visitId = null): array
     {
         $receipts = [];
@@ -284,13 +408,27 @@ class HospitalBillController extends Controller
      */
     private function testChargesForVisit(int $storeId, int $patientId, $visitId, $visitDate): array
     {
+        return $this->testCharges($storeId, $patientId, $visitId, $visitDate, $visitDate);
+    }
+
+    /**
+     * The same, over a window rather than a single day — an admission spans days, so an IPD bill
+     * has to sweep everything raised between admission and discharge.
+     */
+    private function testCharges(int $storeId, int $patientId, $visitId, $from, $to): array
+    {
+        $from = \Carbon\Carbon::parse($from)->startOfDay();
+        $to   = \Carbon\Carbon::parse($to)->endOfDay();
+
         $lines = [];
 
         if (Schema::hasTable('lab_orders')) {
             $orders = LabOrder::where('store_id', $storeId)
-                ->where(function ($q) use ($visitId, $patientId, $visitDate) {
-                    $q->where('opd_id', $visitId)
-                        ->orWhere(fn ($w) => $w->where('patient_id', $patientId)->whereDate('created_at', $visitDate));
+                ->where(function ($q) use ($visitId, $patientId, $from, $to) {
+                    if ($visitId) {
+                        $q->where('opd_id', $visitId);
+                    }
+                    $q->orWhere(fn ($w) => $w->where('patient_id', $patientId)->whereBetween('created_at', [$from, $to]));
                 })
                 ->whereDoesntHave('invoice')
                 ->with('items')
@@ -314,7 +452,7 @@ class HospitalBillController extends Controller
 
             $studies = RadiologyStudy::where('store_id', $storeId)
                 ->where('patient_id', $patientId)
-                ->whereDate('created_at', $visitDate)
+                ->whereBetween('created_at', [$from, $to])
                 ->whereNotIn('id', $billed)
                 ->get();
 
@@ -325,6 +463,51 @@ class HospitalBillController extends Controller
                     'price' => (float) ($study->price ?? 0),
                 ];
             }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * What the doctor advised and priced on this visit, as bill lines.
+     *
+     * Treatments live as free text on the visit with their money in `treatment_plan` — one row per
+     * advised term carrying its own amount, discount and paid flag, because a course is usually
+     * paid for sitting by sitting. A term already marked paid is left off: it has been collected
+     * against, and pulling it in again would charge for it twice. An unpriced term falls back to
+     * whatever this hospital last charged for it (OpdTreatmentPrice), so a term the doctor never
+     * put a figure against still reaches the desk with a rate to confirm rather than a zero.
+     */
+    private function treatmentChargesForVisit(OpdVisit $visit, int $storeId): array
+    {
+        $terms = $visit->treatment_list;
+        if (!$terms) {
+            return [];
+        }
+
+        $plan   = $visit->treatment_plan_map;
+        $learnt = \App\Models\OpdTreatmentPrice::mapFor($storeId, $terms);
+
+        $lines = [];
+        foreach ($terms as $term) {
+            $row = $plan[$term] ?? [];
+
+            if (!empty($row['paid'])) {
+                continue;
+            }
+
+            $amount   = array_key_exists('amount', $row) && $row['amount'] !== null && $row['amount'] !== ''
+                ? (float) $row['amount']
+                : (float) ($learnt[$term]['amount'] ?? 0);
+            $discount = array_key_exists('discount', $row) && $row['discount'] !== null && $row['discount'] !== ''
+                ? (float) $row['discount']
+                : (float) ($learnt[$term]['discount'] ?? 0);
+
+            $lines[] = [
+                'name'  => 'Treatment — ' . $term,
+                'qty'   => 1,
+                'price' => max($amount - $discount, 0),
+            ];
         }
 
         return $lines;
@@ -351,6 +534,8 @@ class HospitalBillController extends Controller
 
         $store_id = Helpers::get_store_id();
         $patient  = Patient::where('store_id', $store_id)->findOrFail($request->patient_id);
+
+        self::ensureContextColumns();
 
         DB::beginTransaction();
         try {
@@ -394,6 +579,10 @@ class HospitalBillController extends Controller
                 // Intake's "more info", as edited on this screen. Same label → value shape the
                 // other billing screens write, so the printed bill needs no special handling.
                 'custom_headers' => json_encode(DentalIntakeController::rowsFrom($request)),
+                // What this bill was raised from. Without it nothing downstream can tell that a
+                // visit has already been billed, which is how one visit ends up with three bills.
+                'hmis_context'    => in_array($request->input('context'), ['opd', 'ipd'], true) ? $request->input('context') : null,
+                'hmis_context_id' => $request->input('context_id') ? (int) $request->input('context_id') : null,
             ]);
 
             $invIds = $request->input('inv_id', []);
@@ -429,9 +618,19 @@ class HospitalBillController extends Controller
         // Record payment & receipt AFTER DB commit so PDF build & WhatsApp API calls never lock the DB
         if ($paidAmt > 0) { 
             try {
+                // This screen speaks the patient's language — UPI, Card, Net Banking, Cheque — while
+                // the payment ledger records only Cash, Online, or both, since that is the split the
+                // books and the receipt care about. Without this mapping every non-cash payment
+                // fell through InvoicePayments' whitelist and was banked as Cash: the money landed
+                // in cash_amount, the invoice read "Cash", and a UPI collection was invisible in
+                // the online takings. The transaction id below is what preserves which rail it was.
+                $mode = in_array($request->payment_method, ['UPI', 'Card', 'Net Banking', 'Online'], true)
+                    ? 'Online'
+                    : 'Cash';
+
                 \App\Services\InvoicePayments::record($invoice, 'manual', [
                     'amount'       => $paidAmt,
-                    'payment_mode' => $request->payment_method ?? 'Cash',
+                    'payment_mode' => $mode,
                     'payment_date' => now()->toDateString(),
                     'reference'    => $request->transaction_id ?? '',
                 ]);

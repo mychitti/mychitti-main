@@ -37,8 +37,15 @@
                         </div>
                         <div class="form-group col-md-3">
                             <label>Date of Birth</label>
-                            <input type="date" name="dob" class="form-control"
-                                value="{{ old('dob', $patient->dob) }}">
+                            <input type="date" id="dob" name="dob" class="form-control"
+                                value="{{ old('dob', $patient->dob ? \Carbon\Carbon::parse($patient->dob)->format('Y-m-d') : '') }}"
+                                max="{{ date('Y-m-d') }}">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Age <small class="text-muted">(years)</small></label>
+                            <input type="number" id="age" name="age" class="form-control" min="0" max="150"
+                                value="{{ old('age', $patient->age ?? ($patient->dob ? \Carbon\Carbon::parse($patient->dob)->age : '')) }}"
+                                placeholder="Auto from DOB, or type it">
                         </div>
                         <div class="form-group col-md-3">
                             <label>Gender</label>
@@ -218,6 +225,36 @@
 
 @push('script_2')
 <script>
+// Age tracks DOB, but the desk can overwrite it — a patient who only knows "about 40" gets an
+// age with no birth date, and a typed age is never clobbered by a later DOB edit.
+(function () {
+    const dob = document.getElementById('dob');
+    const age = document.getElementById('age');
+    if (!dob || !age) return;
+
+    let manual = age.value !== '';
+
+    function ageFrom(value) {
+        const b = new Date(value);
+        if (isNaN(b)) return '';
+        const now = new Date();
+        let a = now.getFullYear() - b.getFullYear();
+        const m = now.getMonth() - b.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+        return a >= 0 && a <= 150 ? a : '';
+    }
+
+    dob.addEventListener('change', function () {
+        if (!dob.value) return;
+        const a = ageFrom(dob.value);
+        if (a === '') return;
+        age.value = a;
+        manual = false;
+    });
+
+    age.addEventListener('input', function () { manual = true; });
+})();
+
 const deleteDocTpl = "{{ route('vendor.patient.delete-document', ['id' => $patient->id, 'docId' => '__DOC__']) }}";
 
 function deleteExistingDoc(docId) {

@@ -63,6 +63,9 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     // OP types — how a visit is paid for (cash, insurer, government scheme). The list is managed
     // on the Hospital Settings page; this is the endpoint its add/off/on buttons post to.
     Route::post('op-types', [OpdController::class, 'opTypesUpdate'])->name('op-types.update')->middleware('permission:opd_register,edit');
+    // Adding one from the register form itself. Separate from the settings endpoint above because
+    // it is the registering clerk who hits it, and they hold add rather than edit.
+    Route::post('op-types/quick-add', [OpdController::class, 'opTypesQuickAdd'])->name('op-types.quick-add')->middleware('permission:opd_register,add');
 
     // The hospital's own view of the clinical dropdowns: what the platform offers for its
     // category, plus anything its doctors added, with a switch to stop offering a term.

@@ -162,6 +162,53 @@
             color: #3b82f6;
             border-bottom-color: #3b82f6;
         }
+
+        /* ── Phone / small tablet ──
+           Six fixed metric columns and a non-wrapping tab row are wider than a
+           phone viewport, which drags the whole page sideways. Fold the metrics
+           into two columns and let the tabs wrap instead of overflowing.
+           The tab row keeps overflow:visible — its dropdowns depend on it — so
+           wrapping is used rather than a horizontal scroller. */
+        @media (max-width: 991px) {
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+                padding: 10px 14px;
+            }
+            .metric-card:nth-child(3n) {
+                border-right: none;
+            }
+            .hospital-tabs-row {
+                padding: 0 10px;
+                flex-wrap: wrap;
+                margin-bottom: 14px;
+            }
+        }
+        @media (max-width: 575px) {
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+                padding: 8px 10px;
+                gap: 6px;
+            }
+            .metric-card {
+                padding: 6px 8px;
+                border-right: none;
+                border-bottom: 1px solid #f1f5f9;
+            }
+            .metric-card:nth-last-child(-n+2) {
+                border-bottom: none;
+            }
+            .metric-card .value {
+                font-size: 17px;
+            }
+            .metric-card .subtext {
+                font-size: 10px;
+                line-height: 1.35;
+            }
+            .hospital-tab-btn {
+                padding: 9px 10px;
+                font-size: 11px;
+            }
+        }
     </style>
 @endpush
 

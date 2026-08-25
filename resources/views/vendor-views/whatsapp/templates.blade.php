@@ -22,7 +22,7 @@
 @endpush
 
 @section('content')
-    <div class="content container-fluid">
+    <div class="content container-fluid wa-page">
         <div class="page-header d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
             <div>
                 <h1 class="page-header-title mb-0"><i class="tio-receipt"></i> Message Templates</h1>

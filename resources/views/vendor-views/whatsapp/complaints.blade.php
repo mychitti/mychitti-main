@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-    <div class="content container-fluid">
+    <div class="content container-fluid wa-page">
         <div class="page-header">
             <h1 class="page-header-title mb-0">
                 <i class="tio-sentiment-dissatisfied"></i> {{ translate('Feedback & Complaints') }}

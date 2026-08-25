@@ -95,8 +95,56 @@
         background:var(--wa-bg); padding:12px 14px; font-size:13px; color:#475569; }
     .wa-note b { color:var(--wa-ink); }
 
+    /* ── Phone ──────────────────────────────────────────────
+       These screens pair a title with an action on one non-wrapping row and set type at
+       desktop sizes; on a phone that squeezes headings into two words a line and cuts the
+       button in half. Let the header rows wrap, hand the action its own full-width line,
+       and step the type down. Scoped to .wa-page so the panel's other screens are untouched. */
+    @media (max-width: 767.98px) {
+        .wa-page.content.container-fluid { padding-left:12px; padding-right:12px; }
+
+        .wa-page .page-header { gap:8px !important; }
+        .wa-page .page-header-title { font-size:19px; }
+        .wa-page .wa-sub { font-size:12px; line-height:1.5; }
+
+        /* Card headers: title on its own line, action beneath it at full width. */
+        .wa-page .card-header,
+        .wa-page .wa-card-h { flex-wrap:wrap; gap:8px; padding-left:14px; padding-right:14px; }
+        .wa-page .card-header > .card-title,
+        .wa-page .card-header > h5 { width:100%; font-size:15px; }
+        .wa-page .card-header > .btn,
+        .wa-page .wa-card-h > .btn { width:100%; justify-content:center; }
+        /* Card headers that pair a title with a group of chips/actions: title first, group below. */
+        .wa-page .wa-card-h > span:first-child { width:100%; }
+        .wa-page .wa-card-h > .d-flex { width:100%; }
+
+        /* Recipient toggles and other button rows stack instead of overflowing. */
+        .wa-page .btn-group:not(.btn-group-sm) { flex-wrap:wrap; }
+        .wa-page .nav-pills { flex-wrap:wrap; }
+        .wa-page .nav-pills .nav-link { padding:6px 11px !important; font-size:12px !important; }
+        .wa-page .form-control, .wa-page select.form-control { max-width:100%; }
+
+        .wa-page .wa-tabs { padding:0 4px; }
+        .wa-page .wa-tabs .nav-link { padding:10px 9px; font-size:12px; }
+
+        .wa-page .wa-card-b { padding:14px; }
+        .wa-page .wa-stat { padding:14px; }
+        .wa-page .wa-stat-val { font-size:21px; }
+        .wa-page .wa-price { font-size:23px; }
+        .wa-page .wa-note { font-size:12.5px; line-height:1.55; }
+
+        /* Rows that pair a label with a value keep both readable instead of colliding. */
+        .wa-page .wa-row { flex-wrap:wrap; }
+
+        /* Wide lists scroll inside their card rather than dragging the page sideways. */
+        .wa-page .table-responsive { -webkit-overflow-scrolling:touch; }
+        .wa-page .wa-table { min-width:520px; }
+    }
+
     @media (max-width: 575.98px) {
         .wa-card-b { padding:14px; }
         .wa-stat-val { font-size:21px; }
+        .wa-page .page-header-title { font-size:17px; }
+        .wa-page .wa-tabs .nav-link { padding:9px 7px; font-size:11.5px; }
     }
 </style>

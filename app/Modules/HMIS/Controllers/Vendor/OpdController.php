@@ -544,10 +544,11 @@ class OpdController extends Controller
             // The labs this clinic already deals with, out of the same address book it invoices
             // them from — picking one fills the name, number and address in rather than leaving
             // staff to retype a number that has to be right for the job to reach anybody.
+            \App\Models\StoreCustomer::ensureLabTypeColumn();
             $labVendors = \App\Models\StoreCustomer::where('store_id', $store_id)
                 ->where('user_type', 'vendor')
                 ->orderBy('f_name')
-                ->get(['id', 'f_name', 'phone', 'address']);
+                ->get(['id', 'f_name', 'phone', 'address', 'lab_type']);
 
             // Who can be put against an in-house job. Active staff only — a bench job cannot be
             // opened against somebody who has left, and the leavers are exactly the names that
@@ -1502,6 +1503,20 @@ class OpdController extends Controller
         Toastr::success('OP types updated');
 
         return back();
+    }
+
+    /**
+     * Add an OP type from the register form. Same store list the settings screen manages — this
+     * one just answers in JSON and redirects nowhere, because it is called mid-registration.
+     */
+    public function opTypesQuickAdd(Request $request)
+    {
+        $request->validate(['name' => 'required|string|max:100']);
+
+        $name = trim($request->name);
+        \App\Models\OpdOpType::add(Helpers::get_store_id(), $name);
+
+        return response()->json(['success' => true, 'name' => $name]);
     }
 
     /** Hide or restore one term for this store. */

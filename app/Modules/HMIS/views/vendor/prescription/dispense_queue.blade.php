@@ -288,6 +288,100 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ── Phones ──
+           The queue is a seven-column table, which no phone can show without either a horizontal
+           scroll or type too small to read at a counter. Below 768px each row becomes its own
+           card: the token and the action — the two things a pharmacist actually reaches for —
+           sit on the top and bottom edges, and the rest read as label/value pairs. The labels come
+           from the same data-label attributes on each cell, so the header row is simply hidden
+           rather than duplicated in markup that could drift out of step with it. */
+        @media (max-width: 767px) {
+            .pharmacy-workspace {
+                padding: 12px;
+                gap: 12px;
+            }
+
+            /* The filter bar is a row of fixed-width controls; stacked, each gets full width. */
+            .date-range-form {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 8px !important;
+            }
+            .date-range-form > * { width: 100%; min-width: 0 !important; }
+            .date-range-form select,
+            .date-range-form .btn { min-width: 0 !important; width: 100%; }
+
+            .queue-card-header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .queue-card-header .actions > .btn-header-action {
+                flex: 1;
+                justify-content: center;
+            }
+
+            /* The table itself, restacked. overflow:visible undoes .table-responsive, which would
+               otherwise keep a scroll container around content that no longer needs one. */
+            .table-responsive { overflow: visible; }
+            .queue-table, .queue-table tbody, .queue-table tr, .queue-table td { display: block; width: 100%; }
+            .queue-table thead { display: none; }
+
+            .queue-table tr {
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                margin: 0 0 10px;
+                padding: 10px 12px;
+                background: #fff;
+            }
+
+            .queue-table td {
+                border: none !important;
+                padding: 5px 0 !important;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                text-align: right;
+            }
+            .queue-table td::before {
+                content: attr(data-label);
+                font-size: 10.5px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: .04em;
+                color: #94a3b8;
+                text-align: left;
+                flex: 0 0 auto;
+            }
+            /* The token leads the card and the action closes it — neither wants a label. */
+            .queue-table td.cell-token,
+            .queue-table td.cell-action { justify-content: flex-start; }
+            .queue-table td.cell-token::before,
+            .queue-table td.cell-action::before { content: none; }
+            .queue-table td.cell-action {
+                margin-top: 8px;
+                padding-top: 10px !important;
+                border-top: 1px solid #f1f5f9 !important;
+            }
+            .queue-table td.cell-action .btn-action {
+                display: block;
+                width: 100%;
+                text-align: center;
+                padding: 9px 12px;
+            }
+
+            /* The empty state is one full-width cell — centred, with no label and no divider. */
+            .queue-table td[colspan] {
+                display: block;
+                text-align: center;
+                border-top: none !important;
+                margin-top: 0;
+            }
+            .queue-table td[colspan]::before { content: none; }
+
+        }
     </style>
 @endpush 
   
@@ -456,18 +550,18 @@
                                     }
                                 @endphp
                                 <tr>
-                                    <td>
+                                    <td class="cell-token">
                                         <div class="token-circle bg-{{ $colorIndex }}">
                                             {{ $tokenNo }}
                                         </div>
                                     </td>
-                                    <td>
+                                    <td data-label="Patient">
                                         <div style="font-weight: 700; color: #0f172a;">{{ $rx->patient?->name }}</div>
                                         <div style="font-size: 11px; color: #64748b;">
                                             {{ $rx->patient?->patient_uid }} — {{ $rx->appointment_id ? 'OPD' : 'IPD' }}
                                         </div>
                                     </td>
-                                    <td>
+                                    <td data-label="Prescription">
                                         <div style="font-weight: 600; color: #2563eb; font-family: monospace;">
                                             RX-{{ $rx->created_at->format('Y-m') }}-{{ str_pad($rx->id, 4, '0', STR_PAD_LEFT) }}
                                         </div>
@@ -475,7 +569,7 @@
                                             Dr. {{ $rx->doctorProfile?->employee?->f_name }} {{ $rx->doctorProfile?->employee?->l_name }}
                                         </div>
                                     </td>
-                                    <td>
+                                    <td data-label="Medicines">
                                         <div style="font-weight: 600; color: #334155;">{{ $total }} medicine(s)</div>
                                         @if($outOfStockInRx > 0)
                                             <div style="font-size: 11px; color: #ef4444; font-weight: 600;">
@@ -487,7 +581,7 @@
                                             </div>
                                         @endif
                                     </td>
-                                    <td>
+                                    <td data-label="Status">
                                         @if($allDone)
                                             <span class="badge-status dispensed">✓ Dispensed</span>
                                         @elseif($dispensed > 0)
@@ -500,10 +594,10 @@
                                             <span class="badge-status waiting">Waiting</span>
                                         @endif
                                     </td>
-                                    <td style="font-weight: 600; color: #475569;">
+                                    <td data-label="Wait" style="font-weight: 600; color: #475569;">
                                         {{ $waitTime }}
                                     </td>
-                                    <td>
+                                    <td class="cell-action" data-label="Action">
                                         @if (hasPermission('pharmacy_dispense_queue', 'dispense'))
                                             @if($allDone)
                                                 <a href="{{ route('vendor.prescription.dispense.show', $rx->id) }}" class="btn-action receipt">

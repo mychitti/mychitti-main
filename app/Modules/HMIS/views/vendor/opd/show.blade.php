@@ -1297,6 +1297,111 @@
         padding-bottom: 8px;
         margin-bottom: 12px;
     }
+
+    /* ── Mobile / tablet ──────────────────────────────────────────────
+       The consultation screen is built as a fixed two-column desk. Below
+       1024px it collapses to one column, and below 768px every header row
+       is allowed to wrap instead of forcing the page wider than the phone. */
+    @media (max-width: 1024px) {
+        .consult-workspace {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px;
+            padding: 12px;
+        }
+        .content-column { min-height: 0; }
+    }
+
+    @media (max-width: 768px) {
+        main.main { overflow-x: hidden; }
+
+        .consult-top-bar {
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px 12px;
+        }
+        .consult-top-bar .brand-logo { font-size: 16px; }
+        .consult-top-bar .encounter-badge {
+            margin-left: 0;
+            display: block;
+            margin-top: 4px;
+            font-size: 10px;
+        }
+        .consult-top-bar .title-text {
+            margin-left: 0;
+            padding-left: 0;
+            border-left: 0;
+        }
+        .consult-top-bar .right-actions {
+            width: 100%;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .doctor-avatar-info { font-size: 11px; }
+        .doctor-avatar-circle { width: 24px; height: 24px; font-size: 11px; }
+        .clock-display { margin-left: auto; }
+
+        .autosave-bar {
+            flex-wrap: wrap;
+            gap: 2px;
+            padding: 5px 12px;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        .patient-consult-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+            padding: 10px 12px;
+        }
+        .patient-avatar-box { width: 36px; height: 36px; font-size: 15px; }
+        .patient-details-text h4 { font-size: 15px; }
+        .patient-key-facts { gap: 6px; }
+        .patient-key-facts .kf + .kf { border-left: 0; padding-left: 0; }
+
+        /* Vitals stay on one line and scroll sideways rather than squashing. */
+        .patient-vitals-row {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px;
+        }
+        .vital-item-card { flex: 0 0 auto; min-width: 72px; padding: 5px 10px; }
+        .vital-item-card .vital-val { font-size: 14px; }
+
+        /* Tab strip scrolls instead of pushing the page out. */
+        .consult-tabs-row {
+            padding: 0 12px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-wrap: nowrap;
+        }
+        .consult-tabs-row::-webkit-scrollbar { height: 0; }
+        .consult-tab-btn { flex: 0 0 auto; padding: 9px 10px; font-size: 11px; }
+        .consult-tabs-aside { margin-left: 0; flex: 0 0 auto; }
+
+        .consult-workspace { padding: 10px; gap: 10px; }
+        .content-column { padding: 12px; border-radius: 6px; }
+
+        /* Fixed-width blocks inside the tabs are the other source of overflow. */
+        .content-column [style*="max-width"],
+        .rx-view-wrap,
+        #nvForm { max-width: 100% !important; }
+        .rx-view-wrap { padding: 14px; }
+
+        .content-column table { width: 100%; }
+        .table-responsive, .tx-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        .risk-snapshot-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media (max-width: 480px) {
+        .consult-top-bar .right-actions { gap: 6px; font-size: 11px; }
+        .status-switch { padding: 3px 8px; }
+        .btn-back-queue { padding: 3px 9px; font-size: 11px; }
+        .consult-workspace { padding: 8px; }
+        .content-column { padding: 10px; }
+        .med-row { flex-wrap: wrap; }
+    }
 </style>
 @endpush
 
@@ -2373,30 +2478,23 @@
                                  which a 5-of-12 column cannot show without wrapping every cell. --}}
                             <div class="col-12">
                                 <div class="card border shadow-none mb-3">
+                                    {{-- Picking a medicine on the last line opens the next one by
+                                         itself, so the button is a quiet outlined + rather than the
+                                         primary call to action it used to be. --}}
                                     <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                                         <h6 class="mb-0 font-weight-bold" style="font-size:12px">Medicines</h6>
-                                        <button type="button" class="btn btn-xs btn-primary" onclick="addCustomMedRow()">
-                                            <i class="tio-add"></i> Add row
+                                        <button type="button" class="btn btn-sm rx-add-row" title="Add row" onclick="addCustomMedRow()">
+                                            <i class="tio-add"></i>
                                         </button>
                                     </div>
 
-                                    {{-- Inventory Search --}}
-                                    <div class="px-2 pt-2 pb-1" style="border-bottom:1px solid #f0f0f0;">
-                                        <div class="input-group input-group-sm" style="position:relative;">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text bg-white border-right-0"><i class="tio-search" style="font-size:12px;"></i></span>
-                                            </div>
-                                            <input type="text" id="pharmacySearch" class="form-control border-left-0" placeholder="Search medicines inventory..." autocomplete="off" oninput="pharmacySearchDebounce(this.value)">
-                                            <ul id="pharmacySuggestions"></ul>
-                                        </div>
-                                    </div>
                                     <div class="table-responsive" style="max-height:340px; overflow-y:auto;">
                                         <table class="table rx-table mb-0">
                                             <thead>
                                                 <tr>
                                                     <th style="width:34px;">#</th>
                                                     <th style="width:92px;">Type</th>
-                                                    <th style="min-width:220px;">Medicine</th>
+                                                    <th style="min-width:280px;">Medicine</th>
                                                     <th style="width:130px;">Dose</th>
                                                     <th style="width:130px;">When</th>
                                                     <th style="width:130px;">Frequency</th>
@@ -3663,48 +3761,65 @@
         });
     } 
  
-    // When a staff member is picked from the in-house technician dropdown, copy their name into
-    // the hidden technician_name field (which the controller already reads) and fill in their phone.
-    function lwStaffPicked(select) {
-        const scope = select.closest('.lw-fields');
-        if (!scope) return;
+    // Picking a lab or a technician prefills the phone box beside it.
+    //
+    // The record's number is only written into an untouched box. A number typed by hand is a
+    // deliberate override for this one job — the ceramist's mobile, the workshop they are at this
+    // week — and re-selecting the same name from the list must not quietly throw it away. Changing
+    // to a DIFFERENT name does replace it, because that number belonged to the person who is no
+    // longer on the job. lwAuto remembers what was filled in so the two cases can be told apart.
+    function lwFillContact(select) {
+        const row = select.closest('.form-row');
+        if (!row) return;
 
+        const input = row.querySelector('[data-lw-phone]');
+        const note  = row.querySelector('.lw-lab-contact');
         const opt   = select.options[select.selectedIndex];
-        const name  = opt && opt.value ? (opt.dataset.name || '') : '';
-        const phone = opt && opt.value ? (opt.dataset.phone || '') : '';
+        const phone = (opt && opt.value) ? (opt.dataset.phone || '').trim() : '';
 
-        const nameInput  = scope.querySelector('input[name="technician_name"]');
-        const phoneInput = scope.querySelector('input[name="technician_phone"]');
-
-        if (nameInput)  nameInput.value  = name;
-        if (phoneInput) phoneInput.value = phone;
-    }
-
-    // Show the chosen lab's name, number and address. Read-only on purpose: they belong to the
-    // supplier record and are copied onto the job at save time, so this is there to let staff see
-    // where the work — and the WhatsApp message — is going, not to be retyped per job.
-    function lwVendor(select) {
-        const scope = select.closest('.lw-fields');
-        const box   = scope && scope.querySelector('.lw-lab-contact');
-        if (!box) return;
-
-        const opt = select.options[select.selectedIndex];
-        if (!opt || !opt.value) {
-            box.innerHTML = '<span class="text-muted">Choose a lab to see its details.</span>';
-            return;
+        if (input) {
+            const auto    = input.dataset.lwAuto || '';
+            const current = input.value.trim();
+            if (current === '' || current === auto) input.value = phone;
+            input.dataset.lwAuto = phone;
         }
 
-        const phone   = (opt.dataset.phone || '').trim();
-        const address = (opt.dataset.address || '').trim();
-        const bits    = [];
-
-        bits.push(phone
-            ? '<span class="text-dark" style="font-weight:600;">' + lwEscape(phone) + '</span>'
-            : '<span class="text-danger">No phone on this lab — nothing can be sent to them.</span>');
-        if (address) bits.push('<span class="text-muted">' + lwEscape(address) + '</span>');
-
-        box.innerHTML = bits.join('<br>');
+        if (note) {
+            const address = (opt && opt.value) ? (opt.dataset.address || '').trim() : '';
+            note.innerHTML = (opt && opt.value && !phone)
+                ? '<span class="text-danger">No number on this record — nothing can be sent until you type one.</span>'
+                : (address ? lwEscape(address) : "Used for this job's messages only.");
+        }
     }
+
+    function lwVendor(select) {
+        lwFillContact(select);
+        lwFillLabType(select);
+    }
+
+    // A lab's kind is answered once where the lab is added, so picking it here fills the box. Only
+    // an untouched one, and only what the last pick put there — a type typed for this job stays.
+    function lwFillLabType(select) {
+        const scope = select.closest('.lw-fields');
+        const box   = scope?.querySelector('[name="lab_type"]');
+        if (!box) return;
+
+        const opt      = select.options[select.selectedIndex];
+        const labType  = (opt && opt.value) ? (opt.dataset.labType || '').trim() : '';
+        const auto     = box.dataset.lwAutoType || '';
+        const current  = (box.value || '').trim();
+        if (current !== '' && current !== auto) return;
+
+        if (labType !== '' && !Array.from(box.options).some(o => o.value === labType)) {
+            box.add(new Option(labType, labType));
+        }
+        box.value = labType;
+        box.dataset.lwAutoType = labType;
+        if (typeof jQuery !== 'undefined' && jQuery.fn.select2 && box.dataset.lwSelect2Ready) {
+            jQuery(box).trigger('change.select2');
+        }
+    }
+    function lwStaff(select)  { lwFillContact(select); }
 
     function lwEscape(value) {
         const el = document.createElement('span');
@@ -3716,27 +3831,35 @@
     // both the New job card and every Edit form start hidden, and Select2 measures zero width when
     // it initialises inside a display:none parent, which leaves a collapsed sliver of a control.
     function lwInitSelects(scope) {
-        if (!scope || typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+        if (!scope) return;
 
-        scope.querySelectorAll('[data-lw-select2]').forEach(el => {
-            if (el.dataset.lwSelect2Ready) return;
-            el.dataset.lwSelect2Ready = '1';
+        // Select2 is a nicety; the prefill below is not. Kept in separate blocks so a page where
+        // select2 has not loaded still gets working pickers and a populated phone box, rather than
+        // returning early and leaving the contact line permanently on its placeholder.
+        if (typeof jQuery !== 'undefined' && jQuery.fn.select2) {
+            scope.querySelectorAll('[data-lw-select2]').forEach(el => {
+                if (el.dataset.lwSelect2Ready) return;
+                el.dataset.lwSelect2Ready = '1';
 
-            jQuery(el).select2({
-                // Only the lab type accepts something not on the list — a clinic using a kind of
-                // lab nobody has named yet. The lab itself is a supplier record and cannot be
-                // conjured from a consultation screen.
-                tags: el.dataset.lwSelect2 === 'tags',
-                width: '100%',
-                allowClear: true,
-                placeholder: el.dataset.placeholder || '',
-                dropdownParent: jQuery(el).closest('.card').length ? jQuery(el).closest('.card') : jQuery(document.body)
-            }).on('change', function () {
-                if (el.name === 'lab_vendor_id') lwVendor(el);
+                jQuery(el).select2({
+                    // Only the lab type accepts something not on the list — a clinic using a kind
+                    // of lab nobody has named yet. A lab and a technician are records elsewhere and
+                    // cannot be conjured from a consultation screen.
+                    tags: el.dataset.lwSelect2 === 'tags',
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: el.dataset.placeholder || '',
+                    dropdownParent: jQuery(el).closest('.card').length ? jQuery(el).closest('.card') : jQuery(document.body)
+                }).on('change', function () {
+                    // Select2 fires its change through jQuery, which does not reach an inline
+                    // onchange attribute — so the prefill is driven from here as well.
+                    if (el.name === 'lab_vendor_id' || el.name === 'technician_id') lwFillContact(el);
+                });
             });
-        });
+        }
 
-        scope.querySelectorAll('select[name="lab_vendor_id"]').forEach(lwVendor);
+        scope.querySelectorAll('select[name="lab_vendor_id"], select[name="technician_id"]')
+            .forEach(lwFillContact);
     }
 
     // Work only changes hands twice — on its way out and on its way back — so the two name boxes
@@ -5362,8 +5485,10 @@
     function removeCustomMedRow(btn) {
         const rows = document.querySelectorAll('#medTable .med-row');
         if (rows.length <= 1) {
-            btn.closest('.med-row').querySelectorAll('input').forEach(el => el.value = '');
-            btn.closest('.med-row').querySelectorAll('select').forEach(el => el.selectedIndex = 0);
+            const row = btn.closest('.med-row');
+            row.querySelectorAll('input').forEach(el => el.value = '');
+            row.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
+            if (window.rxMedClearRow) window.rxMedClearRow(row);
             return;
         }
         btn.closest('.med-row').remove();
@@ -5372,56 +5497,6 @@
     // The row partial wires its delete icon to removeMedRow; this screen named its own copy
     // removeCustomMedRow, so without the alias the icon threw and the row never went away.
     window.removeMedRow = removeCustomMedRow;
-
-    // Pharmacy Search
-    let _pharmTimer = null;
-    function pharmacySearchDebounce(val) {
-        clearTimeout(_pharmTimer);
-        const ul = document.getElementById('pharmacySuggestions');
-        if (val.length < 2) { ul.style.display = 'none'; return; }
-        _pharmTimer = setTimeout(() => pharmacyFetch(val), 280);
-    }
-
-    function pharmacyFetch(q) {
-        fetch(`${pharmacySearchUrl}?q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(items => {
-                const ul = document.getElementById('pharmacySuggestions');
-                if (!items.length) { ul.style.display = 'none'; return; }
-                ul.innerHTML = items.map(it => `
-                    <li onclick="pharmacySelect(${JSON.stringify(it).replace(/"/g, '&quot;')})"
-                        style="padding:7px 12px; cursor:pointer; font-size:12px; border-bottom:1px solid #f3f4f6;"
-                        onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
-                        <strong>${it.name}</strong> ${it.banned ? '<span style="color:#b91c1c;font-weight:700;font-size:10px;">⛔ BANNED</span>' : ''}
-                    </li>`).join('');
-                ul.style.display = 'block';
-            })
-            .catch(() => {});
-    }
-
-    function pharmacySelect(item) {
-        const firstEmpty = Array.from(document.querySelectorAll('#medTable .med-row')).find(row => {
-            const nameInp = row.querySelector('input[name$="[medicine_name]"]');
-            return nameInp && nameInp.value.trim() === '';
-        });
-
-        if (firstEmpty) {
-            const nameInp = firstEmpty.querySelector('input[name$="[medicine_name]"]');
-            nameInp.value = item.name;
-            firstEmpty.querySelector('.med-inv-id').value = item.id;
-            rxBannedCheck(nameInp);
-        } else {
-            addCustomMedRow(item);
-        }
-        document.getElementById('pharmacySearch').value = '';
-        document.getElementById('pharmacySuggestions').style.display = 'none';
-    }
-
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('#pharmacySearch') && !e.target.closest('#pharmacySuggestions')) {
-            document.getElementById('pharmacySuggestions').style.display = 'none';
-        }
-    });
 
     function togglePrescriptionEdit(show) {
         if (show) {

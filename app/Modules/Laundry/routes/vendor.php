@@ -8,6 +8,6 @@ use Illuminate\Support\Facades\Route;
 //  (walk-in orders, challans, item master, monthly register)
 //  HR, inventory, staff → served via base vendor routes + IoC controller binding
 // ══════════════════════════════════════════════════════════════════════════════
-Route::group(['prefix' => 'laundry', 'as' => 'laundry.', 'middleware' => ['planwise:laundry']], function () {
+Route::group(['prefix' => 'laundry', 'as' => 'laundry.', 'middleware' => ['planwise:laundry', 'business-type:laundry']], function () {
     require __DIR__ . '/vendor/laundry-core.php';
 });

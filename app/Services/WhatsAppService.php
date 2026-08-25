@@ -785,8 +785,16 @@ class WhatsAppService
         }
 
         try {
+            // Bounded on purpose. This call sits inside web requests that must finish — raising a
+            // bill, saving a consultation — and Meta is a third party whose slow day is not a
+            // reason for a clinic's screen to hang. Unbounded, a stalled Graph call keeps the
+            // request alive well past any proxy's patience and the user gets a gateway timeout,
+            // with nothing in the log to explain it: PHP's max_execution_time counts CPU time, so
+            // a socket sitting idle never trips it. 15s is far longer than a healthy send needs.
             $resp = Http::withToken($this->cfg['token'])
                 ->acceptJson()
+                ->connectTimeout(5)
+                ->timeout(15)
                 ->post($this->endpoint(), array_merge(['messaging_product' => 'whatsapp'], $payload));
 
             if ($resp->successful()) {
@@ -864,7 +872,11 @@ class WhatsAppService
                 $this->cfg['phone_number_id']
             );
 
+            // Longer than a plain send: this one is pushing a file up. Still bounded, for the same
+            // reason — a media upload that stalls must fail, not hold the whole request open.
             $resp = Http::withToken($this->cfg['token'])
+                ->connectTimeout(5)
+                ->timeout(30)
                 ->attach('file', file_get_contents($path), $filename ?: basename($path), ['Content-Type' => $mime])
                 ->post($url, [
                     'messaging_product' => 'whatsapp',

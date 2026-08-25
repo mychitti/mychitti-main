@@ -58,6 +58,12 @@ class ProfileController extends Controller
         $allowed = ['main', 'leads_page', 'leads_dashboard', 'hr', 'hospital', 'laundry', 'account', 'inventory', 'pos', 'retail_pos'];
         $value   = in_array($request->default_dashboard, $allowed) ? $request->default_dashboard : null;
 
+        // A store may only pin the dashboard of its own business type
+        if ($value !== null && !Helpers::dashboard_allowed_for_business_type($value, Helpers::get_store_data()->business_type ?? '')) {
+            Toastr::error(translate('messages.access_denied'));
+            return back();
+        }
+
         StoreConfig::updateOrCreate(
             ['store_id' => Helpers::get_store_id()],
             ['default_dashboard' => $value]

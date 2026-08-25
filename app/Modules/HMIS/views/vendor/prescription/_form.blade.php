@@ -254,31 +254,13 @@
         {{-- RIGHT: Medicines --}}
         <div class="col-lg-5">
             <div class="card mb-3">
+                {{-- Picking a medicine on the last line opens the next one by itself, so this is
+                     a quiet outlined + rather than a primary button. --}}
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Medicines</h5>
-                    <button type="button" class="btn btn-sm btn--primary" onclick="addMedRow()">
-                        <i class="tio-add"></i> Add manually
+                    <button type="button" class="btn btn-sm rx-add-row" title="Add row" onclick="addMedRow()">
+                        <i class="tio-add"></i>
                     </button>
-                </div>
-
-                {{-- Pharmacy search --}}
-                <div class="px-2 pt-2 pb-1" style="border-bottom:1px solid #f0f0f0;">
-                    <div class="input-group input-group-sm" style="position:relative;">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text bg-white border-right-0">
-                                <i class="tio-search" style="font-size:14px;color:#6b7280;"></i>
-                            </span>
-                        </div>
-                        <input type="text" id="pharmacySearch" class="form-control border-left-0"
-                            placeholder="Search pharmacy inventory..."
-                            autocomplete="off"
-                            oninput="pharmacySearchDebounce(this.value)">
-                    </div>
-                    <ul id="pharmacySuggestions"
-                        style="display:none; list-style:none; margin:0; padding:4px 0;
-                               border:1px solid #e5e7eb; border-top:none; border-radius:0 0 8px 8px;
-                               background:#fff; max-height:200px; overflow-y:auto; position:relative; z-index:99;">
-                    </ul>
                 </div>
 
                 <div class="card-body p-0">
@@ -288,7 +270,7 @@
                                 <tr>
                                     <th style="width:34px;">#</th>
                                     <th style="width:92px;">Type</th>
-                                    <th style="min-width:220px;">Medicine</th>
+                                    <th style="min-width:280px;">Medicine</th>
                                     <th style="width:130px;">Dose</th>
                                     <th style="width:130px;">When</th>
                                     <th style="width:130px;">Frequency</th>
@@ -408,57 +390,14 @@ function addMedRow(prefill) {
 
 function removeMedRow(btn) {
     const rows = document.querySelectorAll('#medTable .med-row');
-    if (rows.length <= 1) { btn.closest('.med-row').querySelectorAll('input,select').forEach(el => el.value = ''); return; }
+    if (rows.length <= 1) {
+        const row = btn.closest('.med-row');
+        row.querySelectorAll('input,select').forEach(el => el.value = '');
+        if (window.rxMedClearRow) window.rxMedClearRow(row);
+        return;
+    }
     btn.closest('.med-row').remove();
 }
-
-// ── Pharmacy search ───────────────────────────────────────
-let _pharmTimer = null;
-function pharmacySearchDebounce(val) {
-    clearTimeout(_pharmTimer);
-    const ul = document.getElementById('pharmacySuggestions');
-    if (val.length < 2) { ul.style.display = 'none'; return; }
-    _pharmTimer = setTimeout(() => pharmacyFetch(val), 280);
-}
-
-function pharmacyFetch(q) {
-    fetch(`${pharmacySearchUrl}?q=${encodeURIComponent(q)}`)
-        .then(r => r.json())
-        .then(items => {
-            const ul = document.getElementById('pharmacySuggestions');
-            if (!items.length) { ul.style.display = 'none'; return; }
-            ul.innerHTML = items.map(it => `
-                <li onclick="pharmacySelect(${JSON.stringify(it).replace(/"/g, '&quot;')})"
-                    style="padding:7px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #f3f4f6;"
-                    onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
-                    <strong>${it.name}</strong> ${it.banned ? '<span style="color:#b91c1c;font-weight:700;font-size:10px;">⛔ BANNED</span>' : ''}
-                    ${it.price > 0 ? `<span style="float:right;color:#059669;font-size:12px;">₹${parseFloat(it.price).toFixed(0)}</span>` : ''}
-                </li>`).join('');
-            ul.style.display = 'block';
-        })
-        .catch(() => {});
-}
-
-function pharmacySelect(item) {
-    const firstNameInput = document.querySelector('#medTable .med-row input[name$="[medicine_name]"]');
-    if (firstNameInput && firstNameInput.value.trim() === '') {
-        firstNameInput.value = item.name;
-        const invInput = firstNameInput.closest('.med-row').querySelector('.med-inv-id');
-        if (invInput) invInput.value = item.id;
-        rxBannedCheck(firstNameInput);
-    } else {
-        addMedRow(item);
-    }
-    document.getElementById('pharmacySearch').value = '';
-    document.getElementById('pharmacySuggestions').style.display = 'none';
-}
-
-// Close suggestions on outside click
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('#pharmacySearch') && !e.target.closest('#pharmacySuggestions')) {
-        document.getElementById('pharmacySuggestions').style.display = 'none';
-    }
-});
 
 // ── Mode toggle: Appointment vs Manual ───────────────────
 function rxModeSwitch(mode) {

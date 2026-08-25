@@ -661,7 +661,9 @@ class RadiologyController extends Controller
     {
         $this->boot();
         $tests = RadiologyTest::where('store_id', $this->storeId())
-            ->when($request->search, fn($q) => $q->where('name', 'like', "%{$request->search}%")->orWhere('modality', 'like', "%{$request->search}%"))
+            ->when($request->search, fn($q) => $q->where(fn($w) => $w
+                ->where('name', 'like', "%{$request->search}%")
+                ->orWhere('modality', 'like', "%{$request->search}%")))
             ->orderBy('modality')->orderBy('name')->get();
         return $this->view('catalog', compact('tests'));
     }

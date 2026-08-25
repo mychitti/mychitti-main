@@ -329,9 +329,19 @@ class InvoicePayments
             ? 'Cash and Online'
             : ($online > 0 ? 'Online' : 'Cash');
 
+        // The status follows the money, in both directions. This only ever runs just after a
+        // payment row was inserted, so there IS a payment — and an invoice with a payment against
+        // it and a balance still outstanding is Partially Paid, not Unpaid.
+        //
+        // Previously only the settled branch wrote a status, which left every part payment showing
+        // as Unpaid wherever the caller had created the invoice that way — the hospital bill screen
+        // does exactly that, deliberately, so that this method stays the single source of truth.
         if ($settled) {
             $invoice->payment_status = 'Paid';
             $invoice->payment_date   = date('Y-m-d');
+        } else {
+            $invoice->payment_status = 'Partially Paid';
+            $invoice->payment_date   = $invoice->payment_date ?: date('Y-m-d');
         }
 
         $invoice->save();

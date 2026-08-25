@@ -16,6 +16,55 @@
         .wk-banner { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:10px 14px; margin-bottom:14px; color:#b91c1c; font-size:12.5px; font-weight:600; display:none; }
         .wk-summary-row { display:flex; justify-content:space-between; padding:6px 0; font-size:13px; }
         .wk-summary-row.total { border-top:1px solid #e2e8f0; margin-top:6px; padding-top:10px; font-weight:800; font-size:16px; }
+
+        /* Phones. This is the pharmacy's landing screen now, and a counter sale gets rung up
+           one-handed — so the cart stops being a five-column table (330px of fixed track before
+           the medicine name even starts) and each line becomes a card. The name leads, price and
+           qty sit side by side as the two things actually typed, and remove is a full-width
+           control rather than a 40px target next to them. */
+        @media (max-width: 575.98px) {
+            .pharmacy-page-content { padding: 12px !important; }
+            .wk-grid { gap: 12px; }
+
+            .wk-cart, .wk-cart tbody, .wk-cart tr, .wk-cart td { display: block; width: 100%; }
+            .wk-cart thead { display: none; }
+            .table-responsive { overflow: visible; }
+
+            .wk-cart tr.wk-line {
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                padding: 10px 12px;
+                margin-bottom: 10px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .wk-cart tr.wk-line > td { border: none !important; padding: 0 !important; }
+            .wk-cart td.wk-c-name { grid-column: 1 / -1; font-weight: 700; font-size: 13.5px; }
+            .wk-cart td[data-label]::before {
+                content: attr(data-label);
+                display: block;
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: .04em;
+                color: #94a3b8;
+                margin-bottom: 3px;
+            }
+            .wk-cart td.wk-c-amt {
+                grid-column: 1 / -1;
+                text-align: left !important;
+                font-weight: 700;
+                border-top: 1px solid #f1f5f9 !important;
+                padding-top: 8px !important;
+            }
+            .wk-cart td.wk-c-rm { grid-column: 1 / -1; }
+            .wk-cart td.wk-c-rm .btn { width: 100%; padding: 8px; }
+
+            /* The empty-state row is one cell and must not be gridded into a card. */
+            .wk-cart tr#wkEmptyRow { display: block; border: none; padding: 0; }
+            .wk-cart tr#wkEmptyRow td { display: block; border: none !important; }
+        }
     </style>
 @endpush
 
@@ -176,13 +225,13 @@
                 const tr = document.createElement('tr');
                 tr.className = 'wk-line';
                 tr.innerHTML = `
-                    <td>${c.name} ${c.banned ? '<span class="wk-banned">⛔ Banned</span>' : ''}
+                    <td class="wk-c-name">${c.name} ${c.banned ? '<span class="wk-banned">⛔ Banned</span>' : ''}
                         <input type="hidden" name="items[${idx}][id]" value="${c.id}">
                     </td>
-                    <td><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="items[${idx}][price]" value="${c.price.toFixed(2)}" data-idx="${idx}" data-f="price"></td>
-                    <td><input type="number" step="1" min="1" class="form-control form-control-sm" name="items[${idx}][qty]" value="${c.qty}" data-idx="${idx}" data-f="qty"></td>
-                    <td class="text-right" data-amt="${idx}"></td>
-                    <td><button type="button" class="btn btn-xs btn-outline-danger" data-rm="${idx}"><i class="tio-clear"></i></button></td>`;
+                    <td data-label="Price (₹)"><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="items[${idx}][price]" value="${c.price.toFixed(2)}" data-idx="${idx}" data-f="price"></td>
+                    <td data-label="Qty"><input type="number" step="1" min="1" class="form-control form-control-sm" name="items[${idx}][qty]" value="${c.qty}" data-idx="${idx}" data-f="qty"></td>
+                    <td class="text-right wk-c-amt" data-label="Amount" data-amt="${idx}"></td>
+                    <td class="wk-c-rm"><button type="button" class="btn btn-xs btn-outline-danger" data-rm="${idx}"><i class="tio-clear"></i></button></td>`;
                 bodyEl.appendChild(tr);
             });
             recalc();

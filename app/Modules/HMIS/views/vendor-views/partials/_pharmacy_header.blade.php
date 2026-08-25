@@ -363,6 +363,42 @@
             border-radius: 8px !important;
             border-color: #cbd5e1 !important;
         }
+
+        /* ── Phone / small tablet ──
+           Six fixed metric columns plus 24px gutters are wider than a phone
+           viewport, which scrolls the whole page sideways and clips the tabs and
+           dropdowns. Fold the metrics down and shrink the gutters. */
+        @media (max-width: 991px) {
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+                padding: 10px 14px;
+            }
+            .metric-card:nth-child(3n) { border-right: none; }
+            .pharmacy-tabs-row { padding: 0 10px; }
+            .pharmacy-top-bar { padding: 10px 14px; }
+            .pharmacy-page-content { padding: 14px !important; }
+        }
+        @media (max-width: 575px) {
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+                padding: 8px 10px;
+                gap: 6px;
+            }
+            .metric-card {
+                padding: 6px 8px;
+                border-right: none;
+                border-bottom: 1px solid #f1f5f9;
+            }
+            .metric-card:nth-last-child(-n+2) { border-bottom: none; }
+            .metric-card .value { font-size: 16px; }
+            .metric-card .subtext { font-size: 10px; line-height: 1.35; }
+            .pharmacy-top-bar { flex-wrap: wrap; gap: 8px; }
+            .pharmacy-top-bar .brand-logo { font-size: 16px; }
+            .pharmacy-top-bar .right-actions { gap: 8px; }
+            .pharmacy-tab-btn { padding: 9px 10px; font-size: 11px; }
+            .pharmacy-tab-dropdown .dropdown-content { min-width: 170px; }
+            .pharmacy-page-content { padding: 10px !important; }
+        }
     </style>
 @endpush
 
@@ -396,7 +432,17 @@
 
 {{-- 3. TABS ROW ── --}}
 <div class="pharmacy-tabs-row">
-    {{-- Medicines & Stock — FREE basic pharmacy (default tab) --}}
+    {{-- Sales — what the counter actually took. First and default: it is the question asked on
+         arrival every morning, where Medicines & Stock is what somebody opens occasionally to
+         correct a price or take stock in. Needs only 'view', so unlike the sale counter itself
+         it is safe as a landing page for everyone who can open the module at all. --}}
+    @if (Route::has('vendor.pharmacy.sales') && hasPermission('pharmacy', 'view'))
+        <a href="{{ route('vendor.pharmacy.sales') }}" class="pharmacy-tab-btn {{ Str::contains($currentRouteName, 'vendor.pharmacy.sales') ? 'active' : '' }}">
+            Sales
+        </a>
+    @endif
+
+    {{-- Medicines & Stock — FREE basic pharmacy --}}
     @if (Route::has('vendor.pharmacy.medicines'))
         <a href="{{ route('vendor.pharmacy.medicines') }}" class="pharmacy-tab-btn {{ Str::contains($currentRouteName, 'vendor.pharmacy.medicines') ? 'active' : '' }}">
             Medicines &amp; Stock

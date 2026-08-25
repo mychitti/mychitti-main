@@ -77,6 +77,12 @@ return [
         'token'                => env('WHATSAPP_TOKEN'),
         'business_account_id'  => env('WHATSAPP_BUSINESS_ACCOUNT_ID'),
         'default_country_code' => env('WHATSAPP_DEFAULT_COUNTRY_CODE', '91'),
+
+        // The daily hospital summary goes out on the PLATFORM number, so it needs one template
+        // approved once on the platform WABA rather than one per hospital. Body variables, in
+        // order: {{1}} hospital name, {{2}} date, {{3}} the figures as one line.
+        'daily_report_template' => env('WHATSAPP_DAILY_REPORT_TEMPLATE', 'daily_report'),
+        'daily_report_language' => env('WHATSAPP_DAILY_REPORT_LANGUAGE', 'en_US'),
     ],
 
     // Vendor-panel "generate with AI" buttons (Phase 4): Review Auto-Reply, Lead follow-up,

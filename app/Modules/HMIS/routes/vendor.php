@@ -7,7 +7,7 @@ require __DIR__ . '/vendor/doctor.php';
 // Basic Pharmacy is free too (shares inventory_items with the premium Inventory module)
 require __DIR__ . '/vendor/pharmacy.php';
 
-Route::group(['middleware' => ['planwise:hospital_manage']], function () {
+Route::group(['middleware' => ['planwise:hospital_manage', 'business-type:hospital']], function () {
     require __DIR__ . '/vendor/hospital.php';
     require __DIR__ . '/vendor/appointment.php';
     require __DIR__ . '/vendor/prescription.php';

@@ -7,28 +7,14 @@
 @push('css_or_js')
     <style>
         /* Phone already in use. Amber, not red — a shared number is normal in a family clinic,
-           so this is a question to answer rather than an error to clear. */
-        .di-matches {
-            border: 1px solid #fde68a;
-            background: #fffbeb;
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 14px;
+           so this is a question to answer rather than an error to clear. It sits under the
+           Relation box because that box is the answer to it. */
+        .di-rel-note {
+            display: block; font-size: 11px; line-height: 1.35; color: #92400e;
+            background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;
+            padding: 5px 8px; margin-top: 5px;
         }
-        .di-matches-head { font-size: 12.5px; font-weight: 700; color: #92400e; margin-bottom: 8px; }
-        .di-matches-foot { font-size: 11.5px; color: #a16207; margin-top: 6px; }
-        .di-match {
-            display: flex; align-items: center; gap: 10px; width: 100%;
-            border: 1px solid #fde68a; background: #fff; border-radius: 8px;
-            padding: 6px 10px; margin-bottom: 6px; text-align: left; cursor: pointer;
-        }
-        .di-match:hover { border-color: #f59e0b; }
-        .di-match.picked { border-color: #16a34a; background: #f0fdf4; }
-        .di-match-name { font-size: 13px; font-weight: 700; color: #1f2937; }
-        .di-match-meta { font-size: 11.5px; color: #7b8794; flex: 1; min-width: 0; }
-        .di-match-pick { font-size: 11px; font-weight: 700; color: #b45309; white-space: nowrap; }
-        .di-match.picked .di-match-pick { color: #15803d; }
-        .di-match.picked .di-match-pick::before { content: '¹3 '; }
+        .di-rel-note b { color: #78350f; }
 
         .di-card { background:#fff; border:1px solid #edf0f5; border-radius:10px; box-shadow:0 1px 2px rgba(16,24,40,.04); margin-bottom:12px; }
         .di-card .hd { padding:9px 14px; border-bottom:1px solid #edf0f5; font-weight:700; font-size:13px; }
@@ -76,7 +62,7 @@
                                  the desk reads straight off the patient, and stacking them pushed the
                                  problem picker below the fold. --}}
                             <div class="form-row">
-                                <div class="form-group col-md-5">
+                                <div class="form-group col-md-4">
                                     <label class="input-label">Patient Name <span class="di-req">*</span></label>
                                     <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
                                         value="{{ old('name') }}" maxlength="150" placeholder="Full name for the bill"
@@ -98,18 +84,37 @@
                                 </div>
                                 {{-- Whose phone it is. Optional and free text on purpose — "Self",
                                      "S/O Ramesh" and "neighbour" are all real answers, and a fixed
-                                     list would force a wrong one. --}}
-                                <div class="form-group col-md-3">
+                                     list would force a wrong one.
+
+                                     Hidden until the number turns out to be shared: on a phone only
+                                     this patient uses the answer is always "Self", so asking for it
+                                     is a box the desk has to skip on every single registration. The
+                                     phone lookup reveals it, with who already holds the number, the
+                                     moment a match comes back. --}}
+                                <div class="form-group col-md-3 {{ old('phone_relation') || $errors->has('phone_relation') ? '' : 'd-none' }}" id="di-relation-wrap">
                                     <label class="input-label">Relation <span class="text-muted" style="font-weight:400;">— optional</span></label>
                                     <input type="text" name="phone_relation" id="di-relation"
                                         class="form-control @error('phone_relation') is-invalid @enderror"
                                         value="{{ old('phone_relation') }}" maxlength="100"
                                         autocomplete="off" placeholder="Whose phone is this? e.g. Self, Son">
+                                    <small class="di-rel-note d-none" id="di-relation-note"></small>
                                     @error('phone_relation')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                                </div>
+                                {{-- Optional, and Age stays the required one: a desk is usually told
+                                     "34" and nothing more, and deriving a birth date from that
+                                     invents a birthday wrong on all but one day of the year. When a
+                                     real date is known it fills Age in, and Age stays editable. --}}
+                                <div class="form-group col-md-3">
+                                    <label class="input-label">Date of Birth</label>
+                                    <input type="date" name="dob" id="di-dob"
+                                        class="form-control @error('dob') is-invalid @enderror"
+                                        value="{{ old('dob') }}" max="{{ date('Y-m-d') }}">
+                                    @error('dob')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                 </div>
                                 <div class="form-group col-md-2">
                                     <label class="input-label">Age <span class="di-req">*</span></label>
-                                    <input type="number" name="age" class="form-control @error('age') is-invalid @enderror"
+                                    <input type="number" name="age" id="di-age"
+                                        class="form-control @error('age') is-invalid @enderror"
                                         value="{{ old('age') }}" min="0" max="150" placeholder="Years" required>
                                     @error('age')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                                 </div>
@@ -125,12 +130,6 @@
                                 </div>
                             </div>
 
-                            {{-- Shown only when the typed number already belongs to someone here.
-                                 Picking one continues as that patient instead of creating a second
-                                 record for them; ignoring it registers a new person on the same
-                                 number, which is the family case. --}}
-                            <input type="hidden" name="patient_id" id="di-patient-id" value="{{ old('patient_id') }}">
-                            <div id="di-phone-matches" class="di-matches d-none"></div>
 
                             {{-- Whether to open a consultation at all. Off, this screen just adds
                                  the person to the books; on, it opens today's visit too and needs a
@@ -223,70 +222,66 @@
 
 @push('script_2')
     <script>
+        // ── Age follows DOB, but stays the desk's to overwrite ───────────────────────
+        // Age is the required field here, DOB the optional extra: a typed age is never clobbered
+        // by a later DOB edit, and a patient known only as "about 40" still registers.
+        (function () {
+            const dob = document.getElementById('di-dob');
+            const age = document.getElementById('di-age');
+            if (!dob || !age) return;
+
+            dob.addEventListener('change', function () {
+                if (!dob.value) return;
+                const b = new Date(dob.value);
+                if (isNaN(b)) return;
+                const now = new Date();
+                let a = now.getFullYear() - b.getFullYear();
+                const m = now.getMonth() - b.getMonth();
+                if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+                if (a >= 0 && a <= 150) age.value = a;
+            });
+        })();
+
         // ── Who else uses this number ────────────────────────────────────────────────
-        // One number covers a whole family, so a match is not an error — it is a question. The
-        // desk either continues as that patient (no duplicate) or registers a relative on the
-        // same number (the family case), and the Relation box says which of them the phone is.
+        // One number covers a whole family, so a match is not an error — it is context, and the
+        // only thing the desk has to do about it is say whose phone the number is. So the notice
+        // lives under the Relation box and reveals it, rather than being a panel of its own; this
+        // screen always registers a new patient either way.
         (function () {
             const lookupUrl = "{{ route('vendor.dental-intake.lookup-phone') }}";
             const phoneBox  = document.getElementById('di-phone');
-            const panel     = document.getElementById('di-phone-matches');
-            const idBox     = document.getElementById('di-patient-id');
-            const nameBox   = document.querySelector('[name="name"]');
-            if (!phoneBox || !panel) return;
+            const relWrap   = document.getElementById('di-relation-wrap');
+            const relBox    = document.getElementById('di-relation');
+            const relNote   = document.getElementById('di-relation-note');
+            if (!phoneBox || !relWrap) return;
 
             let timer = null;
 
-            function clearChoice() {
-                if (idBox) idBox.value = '';
-                panel.querySelectorAll('.di-match.picked').forEach(el => el.classList.remove('picked'));
-            }
-
             function render(matches) {
                 if (!matches.length) {
-                    panel.classList.add('d-none');
-                    panel.innerHTML = '';
+                    relWrap.classList.add('d-none');
+                    if (relNote) { relNote.classList.add('d-none'); relNote.innerHTML = ''; }
+                    // Nothing shares the number, so the answer would only ever be "Self".
+                    if (relBox) relBox.value = '';
                     return;
                 }
 
-                let html = '<div class="di-matches-head">This number is already registered to '
-                    + matches.length + (matches.length === 1 ? ' patient' : ' patients')
-                    + ' — the same person, or a relative sharing the phone?</div>';
+                relWrap.classList.remove('d-none');
 
-                matches.forEach(m => {
-                    const bits = [m.uid, m.age ? m.age + ' yrs' : '', m.gender, m.relation]
-                        .filter(Boolean).join(' · ');
-                    html += '<button type="button" class="di-match" data-id="' + m.id + '"'
-                        + ' data-name="' + escapeAttr(m.name) + '">'
-                        + '<span class="di-match-name">' + escapeHtml(m.name) + '</span>'
-                        + '<span class="di-match-meta">' + escapeHtml(bits) + '</span>'
-                        + '<span class="di-match-pick">Continue as this patient</span>'
-                        + '</button>';
-                });
-
-                html += '<div class="di-matches-foot">Or just carry on below to register someone '
-                    + 'new on this number.</div>';
-
-                panel.innerHTML = html;
-                panel.classList.remove('d-none');
-
-                panel.querySelectorAll('.di-match').forEach(btn => {
-                    btn.addEventListener('click', function () {
-                        const picked = this.classList.contains('picked');
-                        clearChoice();
-                        if (picked) return;          // clicking the chosen one again releases it
-                        this.classList.add('picked');
-                        if (idBox) idBox.value = this.dataset.id;
-                        if (nameBox && !nameBox.value.trim()) nameBox.value = this.dataset.name;
-                    });
-                });
+                if (relNote) {
+                    // Two names at most: the desk needs to recognise the household, not read a list.
+                    const names = matches.slice(0, 2).map(m => escapeHtml(m.name)).join(', ');
+                    const rest  = matches.length - Math.min(matches.length, 2);
+                    relNote.innerHTML = 'This number is already registered to <b>' + names + '</b>'
+                        + (rest > 0 ? ' and ' + rest + ' more' : '')
+                        + '. Whose phone is it for this patient?';
+                    relNote.classList.remove('d-none');
+                }
             }
 
             function escapeHtml(v) { const d = document.createElement('div'); d.textContent = v == null ? '' : v; return d.innerHTML; }
-            function escapeAttr(v) { return escapeHtml(v).replace(/"/g, '&quot;'); }
 
             phoneBox.addEventListener('input', function () {
-                clearChoice();
                 const digits = (this.value || '').replace(/\D/g, '');
                 clearTimeout(timer);
 

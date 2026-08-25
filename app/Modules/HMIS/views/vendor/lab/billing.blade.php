@@ -25,11 +25,11 @@
                         @php $sub = $order->items->sum('price'); @endphp
                         <form method="post" action="{{ route('vendor.lab.orders.invoice', $order->id) }}">
                             @csrf
-                            <div style="display:grid;grid-template-columns:1fr 80px 100px 110px;gap:8px;padding:8px 16px;font-size:10px;font-weight:700;color:var(--light);text-transform:uppercase;background:#F9FAFB;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+                            <div class="linv-hd">
                                 <div>Test Name</div><div style="text-align:center">Qty</div><div style="text-align:right">Rate</div><div style="text-align:right">Amount</div>
                             </div>
                             @foreach ($order->items as $it)
-                                <div style="display:grid;grid-template-columns:1fr 80px 100px 110px;gap:8px;padding:9px 16px;border-bottom:1px solid #F3F4F6;font-size:12px">
+                                <div class="linv-row">
                                     <div style="font-weight:500">{{ $it->test_name }}</div><div style="text-align:center;color:var(--muted)">1</div>
                                     <div style="text-align:right;color:var(--muted)">{{ $fmt($it->price) }}</div><div class="num" style="text-align:right;font-weight:700">{{ $fmt($it->price) }}</div>
                                 </div>

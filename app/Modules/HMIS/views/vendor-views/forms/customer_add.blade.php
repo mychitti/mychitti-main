@@ -31,6 +31,28 @@
     @else
     <input type="hidden" id="add_user_type" name="user_type" value="customer">
     @endif
+    @php($custIsSupplier = request('user_type') === 'vendor' || Route::currentRouteName() == "vendor.invoice.my-bills" || Route::currentRouteName() == "vendor.inventory.purchase.orders" || Route::currentRouteName() == "vendor.laundry.challans.create" || (isset($customer) && $customer->user_type == 'vendor'))
+    {{-- A lab IS a supplier record, so the kind of lab it is belongs here — answered once when the
+         lab is added rather than retyped on every job it is sent. Only shown where lab work is
+         actually run; every other store's supplier list has no use for it. --}}
+    @php($custHospital = function_exists('_isHospital') && _isHospital())
+    @php($custLabWork = $custHospital)
+    @php($custLabTypes = $custLabWork ? \App\Models\OpdLabWork::labTypesFor(\App\CentralLogics\Helpers::get_store_id()) : [])
+    @php($custLabTypeValue = isset($customer) ? (string) ($customer->lab_type ?? '') : '')
+    {{-- A hospital keeps patients on the patient list, so what gets added here is either a client
+         or somebody it BUYS from — a lab most of all. One switch instead of two near-identical
+         pages, because the only difference between them is this line and the lab type. --}}
+    @if ($custHospital && !isset($customer))
+        <div class="mb-2">
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-primary custom-header-btn {{ $custIsSupplier ? '' : 'active' }}"
+                    data-cust-type="customer" onclick="custSetType('customer')">Client</button>
+                <button type="button" class="btn btn-outline-primary custom-header-btn {{ $custIsSupplier ? 'active' : '' }}"
+                    data-cust-type="vendor" onclick="custSetType('vendor')">Supplier / Lab</button>
+            </div>
+        </div>
+    @endif
+
     <div class=" h-100 ">
         <h5>Basic Details</h5>
 
@@ -50,6 +72,37 @@
                 <input type="number" class="form-control iti__tel-input" style="width: 100%;" required name="phone"
                     id="phoneInp" value="{{ isset($customer) ? $customer->phone : '' }}" placeholder="Ex: 9988776655">
             </div>
+            @if ($custLabWork)
+                <div class="col-md-6 p-1 mb-0" id="labTypeGroup" style="{{ $custIsSupplier ? '' : 'display:none;' }}">
+                    <label for="labTypeInp" class="form-label">Lab Type</label>
+                    <input type="text" class="form-control" style="width: 100%;" name="lab_type" id="labTypeInp"
+                        list="custLabTypeList" maxlength="120" value="{{ $custLabTypeValue }}"
+                        placeholder="Ex: Ceramic Lab">
+                    <datalist id="custLabTypeList">
+                        @foreach ($custLabTypes as $custLabTypeOption)
+                            <option value="{{ $custLabTypeOption }}"></option>
+                        @endforeach
+                    </datalist>
+                    <small class="text-muted" style="font-size:10.5px;">Prefills the lab type on jobs sent to this lab.</small>
+                </div>
+            @endif
+            @if ($custHospital)
+                <script>
+                    // The switch owns the hidden user_type the form posts, and the lab type only
+                    // means anything on the supplier side — so it goes with it.
+                    function custSetType(type) {
+                        const hidden = document.getElementById('add_user_type');
+                        if (hidden) hidden.value = type;
+
+                        document.querySelectorAll('[data-cust-type]').forEach(btn => {
+                            btn.classList.toggle('active', btn.dataset.custType === type);
+                        });
+
+                        const labGroup = document.getElementById('labTypeGroup');
+                        if (labGroup) labGroup.style.display = type === 'vendor' ? '' : 'none';
+                    }
+                </script>
+            @endif
             <div class="bg-light col-12 mt-3 p-2">
                 <h5>Optional</h5>
                 <div class="col-12 g-0 row p-0">

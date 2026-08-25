@@ -1,6 +1,22 @@
 @extends('layouts.vendor.app')
 @section('title', 'Treatment Catalog')
 
+@push('css_or_js')
+<style>
+    /* The row is five editable columns wide; without a floor the table squeezes the
+       treatment name down to two letters instead of letting the wrapper scroll. */
+    .txcat-table { min-width: 620px; }
+
+    @media (max-width: 767px) {
+        .content.container-fluid { padding: 0.75rem; }
+        .txcat-head { flex-wrap: wrap; gap: 8px; }
+        .txcat-head form { width: 100%; }
+        .txcat-search { max-width: 100% !important; width: 100%; }
+        .txcat-table td .btn-xs { margin-bottom: 2px; }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="content container-fluid">
 
@@ -66,18 +82,18 @@
 
         <div class="col-lg-8">
             <div class="card">
-                <div class="card-header py-2 bg-light d-flex justify-content-between align-items-center">
+                <div class="card-header py-2 bg-light d-flex justify-content-between align-items-center txcat-head">
                     <h6 class="mb-0 font-weight-bold" style="font-size:13px">
                         Priced treatments <span class="text-muted">({{ $treatments->count() }})</span>
                     </h6>
                     <form method="get" class="mb-0">
-                        <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm"
+                        <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm txcat-search"
                                style="max-width:220px" placeholder="Search treatment...">
                     </form>
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-sm table-align-middle mb-0" style="font-size:13px">
+                    <table class="table table-sm table-align-middle mb-0 txcat-table" style="font-size:13px">
                         <thead class="bg-light">
                             <tr>
                                 <th>Treatment</th>

@@ -17,6 +17,59 @@
         <div class="alert alert-danger">{{ $errors->first() }}</div>
     @endif
 
+    {{-- This visit has been billed before. Said loudly and before anything else, because the
+         screen below has already rebuilt the WHOLE visit at full price — it composes from the
+         visit's chargeable items and cannot know they were billed an hour ago. Saving now raises a
+         second bill for the same work.
+
+         Not blocked, because a supplementary bill for something added later is legitimate. The
+         common case is not that: it is a save that appeared to fail, so somebody opened the screen
+         again. The amount still due is right here so that can be settled on the original bill. --}}
+    @if(($existingBills ?? collect())->isNotEmpty())
+        <div class="alert alert-warning border-warning mb-3" style="border-left-width:4px;">
+            <h6 class="mb-2" style="font-weight:700; font-size:13.5px;">
+                <i class="tio-warning mr-1"></i>
+                {{ ($existingBills->count() === 1 ? 'A bill has' : $existingBills->count() . ' bills have') }}
+                already been raised for this {{ $context === 'ipd' ? 'admission' : 'visit' }}
+            </h6>
+
+            <div class="table-responsive">
+                <table class="table table-sm mb-2" style="font-size:12.5px;">
+                    <thead>
+                        <tr class="text-muted" style="font-size:11px; text-transform:uppercase; letter-spacing:.03em;">
+                            <th>Bill</th><th>Date</th><th class="text-right">Total</th>
+                            <th class="text-right">Paid</th><th class="text-right">Still due</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($existingBills as $eb)
+                            <tr>
+                                <td style="font-weight:600;">{{ $eb->invoice_id }}</td>
+                                <td>{{ $eb->date ? \Carbon\Carbon::parse($eb->date)->format('d M Y') : '—' }}</td>
+                                <td class="text-right">₹{{ number_format($eb->total, 2) }}</td>
+                                <td class="text-right text-success">₹{{ number_format($eb->paid, 2) }}</td>
+                                <td class="text-right {{ $eb->due > 0 ? 'text-danger' : 'text-muted' }}" style="font-weight:600;">
+                                    ₹{{ number_format($eb->due, 2) }}
+                                </td>
+                                <td class="text-right">
+                                    <a href="{{ route('vendor.invoice.view-invoice', $eb->id) }}"
+                                       class="btn btn-sm btn--primary" style="font-size:11.5px;">Open bill</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mb-0 small">
+                To collect what is still owed, open the bill above and record a payment against it —
+                a part payment belongs to the bill it was made against, so raising a new bill here
+                will not reduce it. Only continue below if you are billing something
+                <strong>additional</strong>.
+            </p>
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('vendor.hospital-bill.store') }}" id="billForm">
         @csrf
         <input type="hidden" name="patient_id" value="{{ $patient->id }}">
@@ -215,7 +268,7 @@
                 {{-- ── Section 1: Service Charges ────────────────────── --}}
                 <div class="card mb-3">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0"><i class="tio-hospital mr-1"></i>Service &amp; Room Charges</h6>
+                        <h6 class="mb-0"><i class="tio-hospital mr-1"></i>Services, Treatments &amp; Reports</h6>
                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="addServiceRow()">
                             <i class="tio-add"></i> Add Row
                         </button>
@@ -337,16 +390,39 @@
                 </div>
 
                 {{-- ── Grand Total ─────────────────────────────────────── --}}
+                {{-- The bill stays whole: every line shows at full price and Grand Total is the
+                     bill's own total, which is what gets printed and what the books record. Money
+                     already collected against this visit is subtracted BELOW that, so the figure
+                     staff actually collect on is the one still owed — not the total again. --}}
                 <div class="card mb-3">
-                    <div class="card-body py-2 d-flex justify-content-end align-items-center gap-4">
-                        <span class="text-muted">Grand Total</span>
-                        <h4 class="mb-0 font-weight-bold" id="grandTotal">₹0.00</h4>
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-end align-items-center gap-4">
+                            <span class="text-muted">Grand Total</span>
+                            <h4 class="mb-0 font-weight-bold" id="grandTotal">₹0.00</h4>
+                        </div>
+
+                        @if(($alreadyPaid ?? 0) > 0)
+                            <div class="d-flex justify-content-end align-items-center gap-4 mt-1"
+                                 style="font-size:13px;">
+                                <span class="text-muted">
+                                    Already paid for this {{ $context === 'ipd' ? 'admission' : 'visit' }}
+                                </span>
+                                <span class="text-success" style="font-weight:600;">
+                                    − ₹{{ number_format($alreadyPaid, 2) }}
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-end align-items-center gap-4 mt-2 pt-2"
+                                 style="border-top:1px solid #e9eef5;">
+                                <span style="font-weight:700;">To pay</span>
+                                <h4 class="mb-0 font-weight-bold text-danger" id="hbToPay">₹0.00</h4>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">
                     <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-sm btn--primary">
+                    <button type="submit" class="btn btn-sm btn--primary" id="hbSubmitBtn">
                         <i class="tio-receipt"></i> Save &amp; Generate Bill
                     </button>
                 </div>
@@ -474,12 +550,26 @@ function recalc() {
     const gstLabel  = gstPct > 0 ? ` (incl. ${gstPct}% GST)` : '';
     document.getElementById('grandTotal').textContent = '₹' + total.toFixed(2) + gstLabel;
 
+    // Money already collected against this visit on an earlier bill. The bill's own total is
+    // untouched — this only drives what is still owed, which is the number staff collect on.
+    const alreadyPaid = @json((float) ($alreadyPaid ?? 0));
+    const toPay       = Math.max(0, total - alreadyPaid);
+
+    const toPayEl = document.getElementById('hbToPay');
+    if (toPayEl) toPayEl.textContent = '₹' + toPay.toFixed(2);
+
     const status = document.querySelector('input[name="payment_status"]:checked')?.value || 'Unpaid';
     if (status === 'Partially Paid') {
         const paid = parseFloat(document.getElementById('hbPaidAmount')?.value) || 0;
-        const due = Math.max(0, total - paid);
+        // Measured against what is still owed, not the bill total, so the hint does not tell
+        // somebody ₹1,700 is outstanding when ₹300 of it has already been handed over.
+        const due = Math.max(0, toPay - paid);
         const notice = document.getElementById('hbBalanceNotice');
-        if (notice) notice.textContent = 'Remaining Balance: ₹' + due.toFixed(2);
+        if (notice) {
+            notice.textContent = alreadyPaid > 0
+                ? 'Of ₹' + toPay.toFixed(2) + ' still owed, remaining after this: ₹' + due.toFixed(2)
+                : 'Remaining Balance: ₹' + due.toFixed(2);
+        }
     }
 }
 
@@ -642,5 +732,35 @@ $('#custom-fields').on('click', '.remove-field', function () {
 
     $row.remove();
 });
+
+// Two guards on one submit.
+//
+// The confirm is for a visit that already carries a bill: this screen rebuilt the whole visit at
+// full price and saving raises a second bill for the same work, so it is worth one deliberate
+// click. The button lock is for the ordinary double-click — and for the slow save, where nothing
+// appears to happen for several seconds and the natural reaction is to press it again.
+(function () {
+    const form = document.getElementById('billForm');
+    const btn  = document.getElementById('hbSubmitBtn');
+    if (!form || !btn) return;
+
+    const alreadyBilled = @json(($existingBills ?? collect())->isNotEmpty());
+    const contextWord   = @json($context === 'ipd' ? 'admission' : 'visit');
+
+    form.addEventListener('submit', function (e) {
+        if (alreadyBilled && !form.dataset.hbConfirmed) {
+            const ok = confirm(
+                'A bill has already been raised for this ' + contextWord + '.\n\n'
+                + 'This will create a SECOND bill for the same work. To collect what is still '
+                + 'owed, cancel and open the existing bill instead.\n\nRaise another bill anyway?'
+            );
+            if (!ok) { e.preventDefault(); return; }
+            form.dataset.hbConfirmed = '1';
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="tio-refresh"></i> Generating bill…';
+    });
+})();
 </script>
 @endpush

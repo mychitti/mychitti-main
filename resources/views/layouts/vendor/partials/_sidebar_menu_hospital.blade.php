@@ -271,11 +271,17 @@
                             hasPermission('pharmacy_dispense_queue', 'list') ||
                             hasAnyPermission(['pharmacy.list', 'pharmacy.add'])))
                         @php
-                            // Land on the free Medicines & Stock page by default; the pharmacy header
-                            // tabs provide access to Dispense Queue, Dashboard and the paid modules.
-                            $pharmacyDefaultRoute = Route::has('vendor.pharmacy.medicines')
-                                ? route('vendor.pharmacy.medicines')
-                                : route('vendor.inventory.dashboard');
+                            // Land on Sales — what the counter took is the question asked on
+                            // arrival, and the header tabs reach everything else. It needs only
+                            // 'view', the same permission that opens the module at all, so unlike
+                            // the sale counter (which needs 'dispense') it cannot 403 anyone on
+                            // the module's own entry point. The fallbacks are for stores where the
+                            // free pharmacy routes are not registered at all.
+                            $pharmacyDefaultRoute = Route::has('vendor.pharmacy.sales')
+                                ? route('vendor.pharmacy.sales')
+                                : (Route::has('vendor.pharmacy.medicines')
+                                    ? route('vendor.pharmacy.medicines')
+                                    : route('vendor.inventory.dashboard'));
                         @endphp
                         <li
                             {{-- 'prescription/dispense*' intentionally omitted — the Dispense Queue

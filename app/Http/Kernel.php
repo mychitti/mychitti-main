@@ -97,6 +97,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
         'module.resolve' => \App\Http\Middleware\ResolveModuleControllers::class,
         'module.resolve.views' => \App\Http\Middleware\ResolveModuleViews::class,
         'sales-crm-only' => \App\Http\Middleware\SalesCrmOnly::class,
+        'business-type' => \App\Http\Middleware\BusinessTypeOnly::class,
     ];
 }
  

@@ -47,6 +47,12 @@ class ManualInvoice extends Model
         // Label → value rows printed above the lines. Set by property assignment on the older
         // billing screens; listed here so the invoices built with ::create() can carry it too.
         'custom_headers',
+        // Which hospital record this bill was raised from — 'opd' + a visit id, or 'ipd' + an
+        // admission id. The bill screen posted these from the start and threw them away, so
+        // nothing could answer "has this visit already been billed?" and re-opening the screen
+        // silently re-billed the whole visit at full price. See HospitalBillController.
+        'hmis_context',
+        'hmis_context_id',
     ];
     protected $casts = [
         'reference_number' => 'array',

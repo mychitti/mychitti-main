@@ -12,7 +12,6 @@
         ['vendor.radiology.schedule', 'Schedule', '📅', 0, '', 'radiology_schedule', 'view'],
         ['vendor.radiology.equipment', 'Equipment', '⚙', 0, '', 'radiology_equipment', 'view'],
         ['vendor.radiology.billing', 'Billing', '💰', 0, '', 'radiology_billing', 'view'],
-        ['vendor.radiology.catalog', 'Scan Catalog', '🗂', 0, '', 'radiology_catalog', 'view'],
     ];
     $isOwner = auth('vendor')->check();
     $fmt = fn($n) => \App\CentralLogics\Helpers::format_currency($n);
@@ -88,6 +87,44 @@
 .radx .slot{padding:10px 6px;border-radius:8px;text-align:center;border:1.5px solid transparent;font-size:12px;font-weight:600}
 .radx .slot.available{background:var(--ltgreen);color:var(--greenA);border-color:var(--greenA)}.radx .slot.booked{background:var(--ltblue);color:var(--blue);border-color:var(--blue)}.radx .slot.urgent{background:var(--ltred);color:var(--redA);border-color:var(--redA)}
 @media(max-width:1100px){.radx .layout-2col,.radx .layout-3col{grid-template-columns:1fr}.radx .kpi-strip{grid-template-columns:repeat(4,1fr)}.radx .dicom-body{grid-template-columns:1fr}}
+
+/* Phones. The worklist and reports rows are CSS grids whose column widths are set INLINE on each
+   row (100px 1fr 110px 1fr 90px 90px 96px = 486px of fixed track before any content), so they
+   cannot fit a phone and no stylesheet rule without !important can override them.
+
+   Each row becomes a card: the column track collapses to one, and every labelled cell reads as a
+   label/value pair taken from its own data-label. display stays `grid` on purpose — radFilter()
+   restores rows with style.display='grid', so switching to block here would be undone the moment
+   somebody typed in the search box. */
+@media(max-width:767px){
+  .radx .kpi-strip{grid-template-columns:repeat(2,1fr)}
+
+  .radx .card-hd{align-items:stretch}
+  .radx .card-actions{width:100%;flex-wrap:wrap}
+  .radx .card-actions>*{flex:1 1 auto}
+  .radx .card-actions form,.radx .card-actions .fsel,.radx .card-actions .btn{width:100%}
+
+  .radx .search-bar{flex-wrap:wrap}
+  .radx .search-wrap{flex:1 1 100%}
+  .radx .search-bar .fsel{flex:1 1 calc(50% - 4px);min-width:0}
+
+  .radx .tbl-hd{display:none!important}
+  .radx .tbl-row{grid-template-columns:1fr!important;gap:6px;padding:12px 14px}
+  .radx .tbl-row>*{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:right;min-width:0}
+  .radx .tbl-row>*[data-label]::before{
+    content:attr(data-label);font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.05em;color:var(--light);text-align:left;flex:0 0 auto
+  }
+  /* The action closes the card, above the thumb, with a rule to separate it. Sized by flex-grow
+     rather than width:100% because these cells hold anywhere from one button (worklist) to four
+     (reports) — growing fills the row when there is one and wraps them into halves when there
+     are several, where a fixed full width would simply overflow. */
+  .radx .tbl-row>.cell-action{margin-top:4px;padding-top:9px;border-top:1px solid #F3F4F6;flex-wrap:wrap;gap:6px}
+  .radx .tbl-row>.cell-action .btn{flex:1 1 auto;min-width:calc(50% - 3px);justify-content:center;padding:9px 14px}
+  .radx .tbl-row>.cell-action form{flex:1 1 auto;min-width:calc(50% - 3px)}
+  .radx .tbl-row>.cell-action form .btn{width:100%;min-width:0}
+  .radx .tbl-row>.cell-action .pill{flex:1 1 auto;justify-content:center}
+}
 </style>
 @endpush
 

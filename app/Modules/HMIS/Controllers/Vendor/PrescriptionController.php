@@ -227,9 +227,33 @@ class PrescriptionController extends Controller
         ));
     }
 
+    /**
+     * Drop medicine rows the doctor never filled in.
+     *
+     * The form keeps a spare blank row on screen (and template/appointment flows append one), so a
+     * submit routinely carries a row with no medicine name. Validating that row fails the whole
+     * save with "medicines.N.medicine name is required" even though the visible row is complete —
+     * so blanks are dropped here, matching the save loop which already skips them.
+     */
+    private function stripBlankMedicines(Request $request): void
+    {
+        $rows = $request->input('medicines');
+        if (!is_array($rows)) return;
+
+        $kept = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) continue;
+            if (trim((string) ($row['medicine_name'] ?? '')) === '') continue;
+            $kept[] = $row;
+        }
+
+        $request->merge(['medicines' => $kept]);
+    }
+
     public function store(Request $request)
     {
         self::ensureItemSchema();
+        $this->stripBlankMedicines($request);
         $request->validate([
             'patient_id'        => 'required|integer',
             'doctor_profile_id' => 'required|integer',
@@ -752,6 +776,7 @@ class PrescriptionController extends Controller
     public function update(Request $request, $id)
     {
         self::ensureItemSchema();
+        $this->stripBlankMedicines($request);
         $storeId = $this->storeId();
         $rx = Prescription::where('store_id', $storeId)->findOrFail($id);
 

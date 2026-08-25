@@ -101,6 +101,81 @@
                     </div>
                 </div>
 
+                {{-- Daily report — a summary of the day on WhatsApp, off unless asked for.
+                     Sent from the platform's number rather than the hospital's: this is MyChitti
+                     reporting to its customer, not the hospital messaging a patient, so it works
+                     whether or not they have connected WhatsApp themselves. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-chart-bar-4 mr-1"></i> Daily Report on WhatsApp</h6>
+                    </div>
+                    <div class="card-body">
+                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
+                            <input type="checkbox" name="daily_report_enabled" value="1" class="mr-2 mt-1"
+                                   id="dailyReportToggle"
+                                   {{ old('daily_report_enabled', $daily_report['enabled']) ? 'checked' : '' }}>
+                            <span>
+                                <span style="font-weight:600;">Do you need daily reports?</span>
+                                <small class="text-muted d-block" style="font-size:12px;">
+                                    One WhatsApp message at the end of each day with the numbers you pick below.
+                                    @if($daily_report_phone)
+                                        It goes to <strong>{{ $daily_report_phone }}</strong> — the number on your
+                                        store profile. Change it there to send it somewhere else.
+                                    @else
+                                        Add a phone number to your store profile first — there is nowhere to send it yet.
+                                    @endif
+                                </small>
+                            </span>
+                        </label>
+
+                        <div id="dailyReportOptions" class="mt-3 pl-4"
+                             style="{{ old('daily_report_enabled', $daily_report['enabled']) ? '' : 'display:none;' }}">
+                            <div class="mb-2" style="font-size:12px; font-weight:600; color:#475569;">
+                                What to include
+                            </div>
+                            <div class="row">
+                                @foreach($daily_report_metrics as $key => $label)
+                                    <div class="col-sm-6 col-md-4 mb-2">
+                                        <label class="d-flex align-items-center mb-0" style="cursor:pointer; font-size:13px;">
+                                            <input type="checkbox" name="daily_report_metrics[]" value="{{ $key }}"
+                                                   class="mr-2"
+                                                   {{ in_array($key, old('daily_report_metrics', $daily_report['metrics'])) ? 'checked' : '' }}>
+                                            {{ $label }}
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="d-flex flex-wrap align-items-end" style="gap:14px;">
+                                <div class="form-group mt-2 mb-0" style="max-width:190px;">
+                                    <label class="input-label" style="font-size:12px;">Send at</label>
+                                    <input type="time" name="daily_report_time" class="form-control form-control-sm"
+                                           value="{{ old('daily_report_time', $daily_report['time']) }}">
+                                    <small class="text-muted" style="font-size:11px;">
+                                        Sent on the hour after this time. A day with nothing to report is skipped.
+                                    </small>
+                                </div>
+
+                                {{-- Sends today's figures on the spot, ignoring the hour and the
+                                     quiet-day skip, so the vendor can see what will arrive. --}}
+                                <div class="form-group mt-2 mb-0">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary"
+                                            formaction="{{ route('vendor.hospital.daily-report.test') }}"
+                                            formnovalidate>
+                                        <i class="tio-send"></i> Send me a test now
+                                    </button>
+                                    <small class="text-muted d-block" style="font-size:11px;">
+                                        Uses today's figures so far. Save your settings first.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </div>
+
                 {{-- Lab Work — on by default for the specialities that actually send work out,
                      available to everyone else on request. The measurement boxes behind the tab
                      come from the hospital category chosen above, so the card names which set
@@ -411,6 +486,20 @@
     </div>
 </div>
 @endsection
+
+@push('script_2')
+<script>
+    (function () {
+        const toggle = document.getElementById('dailyReportToggle');
+        const opts   = document.getElementById('dailyReportOptions');
+        if (toggle && opts) {
+            toggle.addEventListener('change', function () {
+                opts.style.display = this.checked ? '' : 'none';
+            });
+        }
+    })();
+</script>
+@endpush
 
 @push('script_2')
 <script>

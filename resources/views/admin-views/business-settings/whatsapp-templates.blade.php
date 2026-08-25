@@ -137,6 +137,58 @@
                             </div>
 
                             <div class="col-lg-5">
+                                {{-- Templates the platform's own automations need. Each one is
+                                     filled in by a job that supplies its variables by position, so
+                                     the body has to keep exactly this shape — hence a one-click
+                                     prefill rather than a name in the docs someone retypes. --}}
+                                @php
+                                    $platformTemplates = [
+                                        [
+                                            'name'     => config('services.whatsapp.daily_report_template', 'daily_report'),
+                                            'label'    => translate('Daily hospital report'),
+                                            'blurb'    => translate('The end-of-day summary hospitals switch on under Hospital Settings. Sent from this number, not theirs.'),
+                                            'category' => 'UTILITY',
+                                            'body'     => "*{{1}}* — daily summary for {{2}}\n\n{{3}}\n\nChange what this includes, or switch it off, under Hospital Settings.",
+                                            'example'  => 'City Hospital | 12 Feb 2026 | New enquiries: 4 · New patients: 2 · Total income: 18,400.00',
+                                        ],
+                                    ];
+                                @endphp
+
+                                <div class="border rounded p-3 mb-3" style="background:#f0fdf4;">
+                                    <h6 class="mb-2" style="font-size:14px;">{{ translate('Suggested Templates') }}</h6>
+                                    <p class="text-muted mb-3" style="font-size:12px;">
+                                        {{ translate('Needed by the platform\'s own automations. Click one to fill the form below, then submit it to Meta.') }}
+                                    </p>
+                                    @foreach($platformTemplates as $t)
+                                        @php
+                                            // Whether it is already on the WABA, read from the list
+                                            // this page has already fetched.
+                                            $existing = collect($templates)->firstWhere('name', $t['name']);
+                                            $status   = $existing['status'] ?? null;
+                                        @endphp
+                                        <div class="d-flex align-items-start justify-content-between mb-2" style="gap:10px;">
+                                            <div>
+                                                <div style="font-size:13px; font-weight:600;">
+                                                    {{ $t['label'] }}
+                                                    <code style="font-size:11px;">{{ $t['name'] }}</code>
+                                                    @if($status)
+                                                        <span class="badge badge-soft-{{ $status === 'APPROVED' ? 'success' : ($status === 'REJECTED' ? 'danger' : 'warning') }}">{{ $status }}</span>
+                                                    @endif
+                                                </div>
+                                                <div class="text-muted" style="font-size:11.5px;">{{ $t['blurb'] }}</div>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary wa-suggest"
+                                                    style="white-space:nowrap;"
+                                                    data-name="{{ $t['name'] }}"
+                                                    data-category="{{ $t['category'] }}"
+                                                    data-body="{{ $t['body'] }}"
+                                                    data-example="{{ $t['example'] }}">
+                                                {{ $status ? translate('Recreate') : translate('Use this') }}
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                </div>
+
                                 <div class="border rounded p-3" style="background:#fafbff;">
                                     <h6 class="mb-3">{{ translate('Create Template') }}</h6>
                                     <form action="{{ env('APP_MODE') != 'demo' ? route('admin.business-settings.third-party.whatsapp-template-create') : 'javascript:' }}" method="post" enctype="multipart/form-data">
@@ -484,5 +536,32 @@
             fileWrap.classList.toggle('d-none', isText);
         });
     })();
+</script>
+@endpush
+
+@push('script_2')
+<script>
+    // Fill the Create Template form from a suggested one. The body shape is fixed by the job
+    // that sends it, so this is the only supported way to get the variables in the right order.
+    document.querySelectorAll('.wa-suggest').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var form = document.querySelector('form[action*="whatsapp-template-create"]');
+            if (!form) return;
+
+            var set = function (name, value) {
+                var el = form.querySelector('[name="' + name + '"]');
+                if (el) el.value = value;
+            };
+
+            set('tpl_name', this.dataset.name);
+            set('tpl_category', this.dataset.category);
+            set('tpl_body', this.dataset.body);
+            set('tpl_example', this.dataset.example);
+
+            form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            var body = form.querySelector('[name="tpl_body"]');
+            if (body) body.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
 </script>
 @endpush

@@ -94,6 +94,7 @@ class PatientController extends Controller
             'phone'  => 'nullable|string|max:20',
             'gender' => 'nullable|in:male,female,other',
             'dob'    => 'nullable|date',
+            'age'    => 'nullable|integer|min:0|max:150',
         ]);
 
         $store_id = Helpers::get_store_id();
@@ -101,6 +102,7 @@ class PatientController extends Controller
         // Add the patient↔client column before the transaction opens — DDL inside one would
         // implicitly commit it and split the registration in half.
         \App\Services\PatientCustomerLink::ensureSchema();
+        DentalIntakeController::ensureSchema();
 
         DB::beginTransaction();
         try {
@@ -109,6 +111,11 @@ class PatientController extends Controller
             $patient->patient_uid = $this->generateUid($store_id);
             $patient->name        = $request->name;
             $patient->dob         = $request->dob;
+            // Age is kept alongside dob, not derived from it on read: the desk may correct it, and
+            // plenty of records carry an age with no birth date at all.
+            $patient->age         = $request->filled('age')
+                ? (int) $request->age
+                : ($request->dob ? \Carbon\Carbon::parse($request->dob)->age : null);
             $patient->gender      = $request->gender;
             $patient->blood_group = $request->blood_group;
             $patient->phone       = $request->phone;
@@ -568,12 +575,14 @@ class PatientController extends Controller
             'phone'  => 'nullable|string|max:20',
             'gender' => 'nullable|in:male,female,other',
             'dob'    => 'nullable|date',
+            'age'    => 'nullable|integer|min:0|max:150',
         ]);
 
         $store_id = Helpers::get_store_id();
         $patient  = Patient::where('store_id', $store_id)->findOrFail($id);
 
         \App\Services\PatientCustomerLink::ensureSchema();
+        DentalIntakeController::ensureSchema();
 
         DB::beginTransaction();
         try {
@@ -581,14 +590,20 @@ class PatientController extends Controller
             // editors (allergies / chronic conditions) post just one field at a time, so
             // assigning every column unconditionally would wipe everything not included.
             $patientFields = [
-                'name', 'dob', 'gender', 'blood_group', 'phone', 'email', 'address',
+                'name', 'dob', 'age', 'gender', 'blood_group', 'phone', 'email', 'address',
                 'city', 'state', 'pincode', 'emergency_contact_name',
                 'emergency_contact_phone', 'emergency_contact_relation', 'allergies',
             ];
             foreach ($patientFields as $f) {
                 if ($request->has($f)) {
-                    $patient->{$f} = $request->input($f);
+                    $patient->{$f} = $request->input($f) === '' ? null : $request->input($f);
                 }
+            }
+
+            // A blanked age on a form that did send a dob falls back to the computed one, so the
+            // record never ends up with neither.
+            if ($request->has('age') && $patient->age === null && $patient->dob) {
+                $patient->age = \Carbon\Carbon::parse($patient->dob)->age;
             }
 
             if ($request->hasFile('photo')) {
@@ -976,6 +991,8 @@ class PatientController extends Controller
             // Optional +91 / 0 trunk prefix, then a 10-digit mobile — Indian numbers start 6-9.
             'phone'   => ['required', 'string', 'max:20', 'regex:/^(?:\+?91|0)?[6-9]\d{9}$/'],
             'age'     => 'required|integer|min:0|max:150',
+            'dob'     => 'nullable|date|before_or_equal:today',
+            'phone_relation' => 'nullable|string|max:100',
             'gender'  => 'required|in:male,female,other',
             'address' => 'required|string|max:500',
         ], [
@@ -996,6 +1013,11 @@ class PatientController extends Controller
             $patient->name       = $request->name;
             $patient->phone      = $request->phone;
             $patient->age        = $request->age;
+            $patient->dob        = $request->filled('dob') ? $request->dob : null;
+            // Only recorded when the number turned out to be shared and the desk answered.
+            $patient->phone_relation = $request->filled('phone_relation')
+                ? trim((string) $request->phone_relation)
+                : null;
             $patient->gender     = $request->gender;
             $patient->address    = $request->address;
             // "More Info" rows off the quick-add modal, in the same label → value shape the intake

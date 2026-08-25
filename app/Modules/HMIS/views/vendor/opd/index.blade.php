@@ -280,6 +280,25 @@
             gap: 6px;
             white-space: nowrap;
         }
+
+        /* ── Phone / small tablet ──
+           The header keeps the title and up to five action buttons on one
+           non-wrapping row, and the filter bar has fixed 160px/450px tracks —
+           together they push the page wider than the viewport and squeeze the
+           title into a one-word-per-line column. Let both wrap instead. */
+        @media (max-width: 767px) {
+            .content.container-fluid { padding: 0.75rem; }
+            .page-header { flex-wrap: wrap; gap: 10px; }
+            .page-header-title { font-size: 18px; width: 100%; }
+            .page-header .d-flex.gap-2 { flex-wrap: wrap; gap: 6px !important; width: 100%; }
+            .btn-hmis-export, .btn-hmis-primary { font-size: 12px !important; padding: 6px 12px !important; }
+            .hmis-card .d-flex.flex-wrap { padding: 10px 12px !important; }
+            .date-range-form { width: 100%; }
+            .hmis-select { min-width: 100% !important; width: 100%; }
+            .hmis-card form .d-flex.gap-2.align-items-center.flex-grow-1 { max-width: 100% !important; width: 100%; }
+            .opd-action-menu { min-width: 150px; }
+            .cancel-reason-note { max-width: 100%; }
+        }
     </style>
 @endpush
 

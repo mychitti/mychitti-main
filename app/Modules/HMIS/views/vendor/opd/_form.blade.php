@@ -173,12 +173,18 @@
                     </div>
                 </div>
                 <div class="form-row">
+                    {{-- Optional, with Age the required one: the desk is usually told "34" and
+                         nothing more. A real date fills Age in, and Age stays editable after. --}}
+                    <div class="form-group col-md-4">
+                        <label class="input-label">Date of Birth</label>
+                        <input type="date" id="qp_dob" class="form-control" max="{{ date('Y-m-d') }}">
+                    </div>
                     <div class="form-group col-md-4">
                         <label class="input-label">Age <span class="text-danger">*</span></label>
                         <input type="number" id="qp_age" class="form-control" min="0" max="150"
                             autocomplete="off" placeholder="Years">
                     </div>
-                    <div class="form-group col-md-8">
+                    <div class="form-group col-md-4">
                         <label class="input-label">Gender <span class="text-danger">*</span></label>
                         <select id="qp_gender" class="form-control">
                             <option value="">Select</option>
@@ -187,6 +193,19 @@
                             <option value="other">Other</option>
                         </select>
                     </div>
+                </div>
+
+                {{-- Whose phone the number is. Hidden until the number turns out to be shared —
+                     on a phone only this patient uses the answer is always "Self", so asking every
+                     time is a box the desk skips. The lookup reveals it, with who already holds the
+                     number, the moment a match comes back. Free text on purpose: "Self",
+                     "S/O Ramesh" and "neighbour" are all answers a desk gives. --}}
+                <div class="form-group d-none" id="qp_relation_wrap">
+                    <label class="input-label">Relation <span class="text-muted" style="font-weight:400;">— optional</span></label>
+                    <input type="text" id="qp_relation" class="form-control" maxlength="100"
+                        autocomplete="off" placeholder="Whose phone is this? e.g. Self, Son">
+                    <small id="qp_relation_note" class="d-none"
+                        style="display:block;font-size:11px;line-height:1.35;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:5px 8px;margin-top:5px;"></small>
                 </div>
 
                 <div class="form-group">
@@ -239,17 +258,46 @@ $(function () {
     // against its container and computes a zero width while it is display:none.
     $('#doctorSelect').select2({ placeholder: 'Select doctor...', width: '100%' });
     $('#visitTypeSelect, #visitTypeSelectEdit').select2({ width: '100%', minimumResultsForSearch: Infinity });
-    $('#opTypeSelect, #opTypeSelectEdit').select2({ placeholder: 'Not specified', width: '100%' });
+    // OP Type takes new entries inline: a desk meeting a scheme for the first time should not
+    // have to leave a half-filled registration for the settings screen. A typed value is saved to
+    // the hospital's list in the background, so it is on the dropdown for everyone next time; if
+    // that save fails the visit still records the type it was given.
+    $('#opTypeSelect, #opTypeSelectEdit').select2({
+        placeholder: 'Not specified',
+        width: '100%',
+        tags: true,
+        createTag: function (params) {
+            const term = $.trim(params.term);
+            if (term === '') return null;
+            return { id: term, text: term + '  (add to list)', newTag: true };
+        },
+    }).on('select2:select', function (e) {
+        if (!e.params.data.newTag) return;
+
+        const name = e.params.data.id;
+        // The option Select2 just created carries the "(add to list)" hint as its label — put the
+        // plain name back, so the closed box and the posted value read the same.
+        $(this).find('option[value="' + name.replace(/"/g, '\\"') + '"]').text(name);
+        $(this).trigger('change.select2');
+
+        $.ajax({
+            url: '{{ route("vendor.opd.op-types.quick-add") }}',
+            method: 'POST',
+            data: { _token: '{{ csrf_token() }}', name: name },
+        });
+    });
 
     // Intercept "Add New Patient" selection
     $('#patientSelect').on('select2:select', function (e) {
         if (e.params.data.id === 'add_new') {
             // Reset back to empty so the select stays "blank" until patient is created
             $(this).val('').trigger('change');
-            $('#qp_name, #qp_phone, #qp_age, #qp_address').val('');
+            $('#qp_name, #qp_phone, #qp_age, #qp_address, #qp_dob, #qp_relation').val('');
             $('#qp_gender').val('');
             $('#qp_phone').removeClass('is-invalid');
             $('#qp_phone_err').addClass('d-none').text('');
+            $('#qp_relation_wrap').addClass('d-none');
+            $('#qp_relation_note').addClass('d-none').empty();
             // Clear any rows left from a previous patient and put every chip back.
             $('#qp-custom-fields').empty();
             $('#qp-custom-buttons button').show();
@@ -285,8 +333,65 @@ $(function () {
         const kept = this.value.replace(/\D/g, '').slice(0, 10);
         if (kept !== this.value) this.value = kept;
         qpPhoneCheck(false);
+        qpLookup(kept);
     }).on('blur', function () {
         qpPhoneCheck(true);
+    });
+
+    // Who else uses this number. One number covers a whole family, so a match is not an error —
+    // it is context, and the only thing the desk has to do about it is say whose phone it is.
+    // Same endpoint the dental intake screen uses; this modal always registers a new patient.
+    let qpLookupTimer = null;
+
+    function qpEscape(v) { return $('<div>').text(v == null ? '' : v).html(); }
+
+    function qpShowMatches(matches) {
+        if (!matches.length) {
+            $('#qp_relation_wrap').addClass('d-none');
+            $('#qp_relation_note').addClass('d-none').empty();
+            // Nothing shares the number, so the answer would only ever be "Self".
+            $('#qp_relation').val('');
+            return;
+        }
+
+        // Two names at most: the desk needs to recognise the household, not read a list.
+        const names = matches.slice(0, 2).map(m => qpEscape(m.name)).join(', ');
+        const rest  = matches.length - Math.min(matches.length, 2);
+
+        $('#qp_relation_wrap').removeClass('d-none');
+        $('#qp_relation_note')
+            .html('This number is already registered to <b>' + names + '</b>'
+                + (rest > 0 ? ' and ' + rest + ' more' : '')
+                + '. Whose phone is it for this patient?')
+            .removeClass('d-none');
+    }
+
+    function qpLookup(digits) {
+        clearTimeout(qpLookupTimer);
+        if (digits.length < 10) { qpShowMatches([]); return; }
+
+        qpLookupTimer = setTimeout(function () {
+            $.ajax({
+                url: '{{ route("vendor.dental-intake.lookup-phone") }}',
+                data: { phone: digits },
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function (res) { qpShowMatches(res.matches || []); },
+                error: function () { qpShowMatches([]); },
+            });
+        }, 300);
+    }
+
+    // Age follows DOB, but stays the desk's to overwrite: a typed age is never clobbered by a
+    // later DOB edit, and a patient known only as "about 40" still registers.
+    $('#qp_dob').on('change', function () {
+        if (!this.value) return;
+        const b = new Date(this.value);
+        if (isNaN(b)) return;
+        const now = new Date();
+        let a = now.getFullYear() - b.getFullYear();
+        const m = now.getMonth() - b.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < b.getDate())) a--;
+        if (a >= 0 && a <= 150) $('#qp_age').val(a);
     });
 
     // More Info rows — same interaction as the intake screen and the advanced bill: a named chip
@@ -341,6 +446,9 @@ $(function () {
         const age     = $('#qp_age').val().trim();
         const gender  = $('#qp_gender').val();
         const address = $('#qp_address').val().trim();
+        const dob      = $('#qp_dob').val();
+        // Only meaningful while the field is showing — a hidden box must not post a stale answer.
+        const relation = $('#qp_relation_wrap').hasClass('d-none') ? '' : $('#qp_relation').val().trim();
 
         // Posted as header_label[] / header_field[] — the same keys the intake form and the bill
         // submit, so the server reads them with one shared helper.
@@ -387,6 +495,8 @@ $(function () {
                 name:         name,
                 phone:        phone,
                 age:          age,
+                dob:          dob,
+                phone_relation: relation,
                 gender:       gender,
                 address:      address,
                 header_label: headerLabels,

@@ -52,7 +52,28 @@ class InventoryItem extends Model
         'sell_loose',
         'stock_type',
         'repeat_days',
+        'catalog_item_id',
     ];
+
+    /** The shared pool record this item was adopted from, when it was. */
+    public function catalogItem()
+    {
+        return $this->belongsTo(CatalogItem::class, 'catalog_item_id');
+    }
+
+    /**
+     * The picture to show: the store's own always wins, the pooled one fills the gap.
+     *
+     * Which also means clearing a store image falls back to the catalog rather than going blank.
+     */
+    public function getDisplayImageUrlAttribute(): ?string
+    {
+        if ($this->image) {
+            return asset('storage/app/public/inventory-item/' . $this->image);
+        }
+
+        return $this->catalog_item_id ? $this->catalogItem?->image_url : null;
+    }
  
     public function purchaseOrders()
     {

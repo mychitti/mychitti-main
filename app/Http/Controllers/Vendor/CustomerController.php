@@ -408,6 +408,12 @@ class CustomerController extends Controller
             return back();
         }
 
+        // A lab is a supplier record — the kind of lab it is is asked here so a job sent to it
+        // does not have to be told again.
+        if ($type === 'vendor' && $request->filled('lab_type')) {
+            StoreCustomer::ensureLabTypeColumn();
+        }
+
         // get fcm token =========
         $customer = new StoreCustomer();
         $customer->store_id =   Helpers::get_store_id();
@@ -418,6 +424,9 @@ class CustomerController extends Controller
         $customer->email = $request->email;
         $customer->phone = $phone;
         $customer->id_number = $request->id_number;
+        if ($type === 'vendor' && $request->filled('lab_type')) {
+            $customer->lab_type = $request->lab_type;
+        }
         if (!empty($request->file('profile_pic'))) {
             $profile_pic = Helpers::upload('profile/', 'png', $request->file('profile_pic'));
             $customer->profile_pic = $profile_pic;
@@ -506,6 +515,10 @@ class CustomerController extends Controller
         $customer->email = $request->email;
         $customer->phone = $phone;
         $customer->id_number = $request->id_number;
+        if ($customer->user_type === 'vendor' && $request->has('lab_type')) {
+            StoreCustomer::ensureLabTypeColumn();
+            $customer->lab_type = $request->lab_type;
+        }
         if (!empty($request->file('profile_pic'))) {
             $profile_pic = Helpers::upload('profile/', 'png', $request->file('profile_pic'));
 

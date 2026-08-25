@@ -8355,6 +8355,59 @@ if (!function_exists('hmis_vitals_enabled')) {
     }
 }
 
+if (!function_exists('hmis_daily_report_settings')) {
+    /**
+     * Whether this hospital wants a daily summary on WhatsApp, and what should be in it.
+     *
+     * Off by default. A report nobody asked for is a message a hospital owner did not consent
+     * to receive, and it costs the platform a conversation every day to send it.
+     *
+     * @return array{enabled: bool, metrics: array<string>, time: string}
+     */
+    function hmis_daily_report_settings($store_id = null): array
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        $off = ['enabled' => false, 'metrics' => \App\Services\DailyHospitalReport::DEFAULT_METRICS, 'time' => '21:00'];
+
+        if (!$store_id) {
+            return $off;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        // Read straight through: the columns are added the first time a hospital saves its
+        // settings, and until then every store reads as off.
+        try {
+            $row = \App\Models\StoreConfig::where('store_id', $store_id)
+                ->first(['hmis_daily_report_enabled', 'hmis_daily_report_metrics', 'hmis_daily_report_time']);
+        } catch (\Throwable $e) {
+            return $cache[$store_id] = $off;
+        }
+
+        if (!$row) {
+            return $cache[$store_id] = $off;
+        }
+
+        $metrics = json_decode((string) ($row->hmis_daily_report_metrics ?? ''), true);
+        if (!is_array($metrics) || !$metrics) {
+            $metrics = \App\Services\DailyHospitalReport::DEFAULT_METRICS;
+        }
+
+        // Only keys that still exist — a metric dropped from the report must not linger in a
+        // hospital's saved selection and reappear if the key is ever reused.
+        $metrics = array_values(array_intersect($metrics, array_keys(\App\Services\DailyHospitalReport::METRICS)));
+
+        return $cache[$store_id] = [
+            'enabled' => (int) ($row->hmis_daily_report_enabled ?? 0) === 1,
+            'metrics' => $metrics ?: \App\Services\DailyHospitalReport::DEFAULT_METRICS,
+            'time'    => substr((string) ($row->hmis_daily_report_time ?: '21:00'), 0, 5),
+        ];
+    }
+}
+
 if (!function_exists('hmis_security_tab_enabled')) {
     /**
      * Whether this hospital shows the Security & Compliance tab on the consultation screen.

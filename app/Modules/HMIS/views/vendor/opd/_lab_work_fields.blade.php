@@ -128,27 +128,29 @@
 <div class="form-row" data-lw-block="internal" style="display:{{ $lwMode === 'internal' ? '' : 'none' }};">
     <div class="form-group col-md-4">
         <label class="input-label" style="font-size:12px;">Technician <span class="text-danger">*</span></label>
-        <select name="technician_staff_id" class="form-control form-control-sm" onchange="lwStaffPicked(this)">
-            <option value="">— Select staff —</option>
+        {{-- The staff row IS the technician: the controller reads the name off it rather than
+             trusting a name posted alongside the id, so the two can never disagree about who did
+             the work. Matched on id, not name — two people called Suresh would otherwise both
+             light up, and a staff member who marries stops matching their own jobs. --}}
+        <select name="technician_id" class="form-control form-control-sm" data-lw-select2="staff"
+                data-placeholder="Choose a technician…" onchange="lwStaff(this)">
+            <option value=""></option>
             @foreach($lwTechnicians as $lwTech)
                 <option value="{{ $lwTech->id }}"
                         data-name="{{ $lwTech->name }}"
                         data-phone="{{ $lwTech->phone }}"
-                        @if($lwOld('technician_name', $work?->technician_name) === $lwTech->name) selected @endif>
-                    {{ $lwTech->name }}
+                        @if((int) $lwOld('technician_id', $work?->technician_id) === (int) $lwTech->id) selected @endif>
+                    {{ $lwTech->name }}{{ filled($lwTech->phone) ? ' — ' . $lwTech->phone : '' }}
                 </option>
             @endforeach
         </select>
-        {{-- The actual field the controller reads — filled from the selected option's name so the
-             existing store / update logic does not need to change. --}}
-        <input type="hidden" name="technician_name"
-               value="{{ $lwOld('technician_name', $work?->technician_name) }}">
     </div>
     <div class="form-group col-md-3">
         <label class="input-label" style="font-size:12px;">Technician phone</label>
         <input type="text" name="technician_phone" class="form-control form-control-sm" maxlength="40"
-               value="{{ $lwOld('technician_phone', $work?->technician_phone) }}" readonly
-               style="background:#f1f5f9;">
+               placeholder="Prefilled from staff" data-lw-phone
+               value="{{ $lwOld('technician_phone', $work?->technician_phone) }}">
+        <small class="text-muted" style="font-size:10.5px;">Used for this job's messages only.</small>
     </div>
 </div>
 
@@ -177,6 +179,7 @@
                             data-name="{{ $lwVendor->f_name }}"
                             data-phone="{{ $lwVendor->phone }}"
                             data-address="{{ $lwVendor->address }}"
+                            data-lab-type="{{ $lwVendor->lab_type ?? '' }}"
                             @if((int) $lwOld('lab_vendor_id', $work?->lab_vendor_id) === (int) $lwVendor->id) selected @endif>
                         {{ $lwVendor->f_name }}{{ filled($lwVendor->phone) ? ' — ' . $lwVendor->phone : '' }}
                     </option>
@@ -200,15 +203,19 @@
                 @endif
             </select>
         </div>
-        {{-- Name, number and address are the supplier record's, shown here as plain text so staff
-             can see where the job — and the WhatsApp message — is actually going, without a box
-             inviting them to type a fourth version of a lab's address that only this one job would
-             ever know about. Correcting any of it is an edit to the supplier. --}}
+        {{-- The number the WhatsApp actually goes to. Prefilled from the supplier record and
+             editable, because a lab's main line is not always the number the ceramist answers and
+             a job at their workshop this week should reach them there. Saved on the JOB only — the
+             supplier record is untouched, so overriding it here cannot silently redirect every
+             other job and invoice for that firm. --}}
         <div class="form-group col-md-4">
-            <label class="input-label" style="font-size:12px;">Contact</label>
-            <div class="form-control-plaintext lw-lab-contact" style="font-size:12.5px; padding-top:.25rem; min-height:31px;">
-                <span class="text-muted">Choose a lab to see its details.</span>
-            </div>
+            <label class="input-label" style="font-size:12px;">Lab phone</label>
+            <input type="text" name="lab_phone" class="form-control form-control-sm" maxlength="40"
+                   placeholder="Prefilled from the lab" data-lw-phone
+                   value="{{ $lwOld('lab_phone', $work?->lab_phone) }}">
+            <small class="text-muted lw-lab-contact" style="font-size:10.5px;">
+                Used for this job's messages only.
+            </small>
         </div>
     </div>
 </div>

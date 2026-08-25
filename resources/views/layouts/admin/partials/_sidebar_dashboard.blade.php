@@ -71,6 +71,29 @@
                         </a>
                     </li>
 
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/catalog*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:"
+                            title="Item Pool">
+                            <i class="tio-book-opened nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Item Pool</span>
+                        </a>
+                        <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                            style="display:{{ Request::is('admin/catalog*') ? 'block' : 'none' }}">
+                            <li class="nav-item {{ Request::is('admin/catalog') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.catalog.index') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Shared Catalog</span>
+                                </a>
+                            </li>
+                            <li class="nav-item {{ Request::is('admin/catalog/suggestions*') ? 'active' : '' }}">
+                                <a class="nav-link" href="{{ route('admin.catalog.suggestions') }}">
+                                    <span class="tio-circle nav-indicator-icon"></span>
+                                    <span class="text-truncate">Suggestions</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('services-billing*') ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:"
                             title="blog">

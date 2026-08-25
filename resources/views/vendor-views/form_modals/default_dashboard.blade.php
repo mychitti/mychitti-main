@@ -41,6 +41,7 @@
                     $active = ($ddCurrent === $key);
                     if ($opt['module'] !== null && !hasMasterModulePermission($opt['module'])) continue;
                     if (isset($opt['business_type']) && strtolower(\App\CentralLogics\Helpers::get_store_data()->business_type ?? '') !== $opt['business_type']) continue;
+                    if (!\App\CentralLogics\Helpers::dashboard_allowed_for_business_type($key, \App\CentralLogics\Helpers::get_store_data()->business_type ?? '')) continue;
                 @endphp
                 <form method="POST" action="{{ route('vendor.profile.default-dashboard') }}" style="margin-bottom:6px;">
                     @csrf

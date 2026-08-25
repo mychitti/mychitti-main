@@ -217,6 +217,11 @@
                     el.add(new Option(value, value));
                 }
                 el.value = value;
+                // select2 paints its own box and does not watch the underlying select, so a
+                // value set from script has to be handed to it explicitly.
+                if (el.classList.contains('rx-med-select') && window.jQuery && jQuery.fn.select2) {
+                    jQuery(el).trigger('change.select2');
+                }
             });
             // Let the page's own banned-medicine watcher see the filled name — it listens for
             // input on the table and would otherwise never fire on a value set from script.

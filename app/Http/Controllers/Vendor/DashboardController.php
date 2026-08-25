@@ -94,6 +94,11 @@ class DashboardController extends Controller
                 $pref = 'leads_page';
             }
         }
+        // Guard business-type-owned dashboards — a store may only open the dashboard of its own
+        // business type (e.g. a Hospital store must never land on the Laundry dashboard)
+        if (!Helpers::dashboard_allowed_for_business_type($pref, $store->business_type ?? '')) {
+            $pref = 'leads_page';
+        }
         // Guard any subscription-required dashboard — if subscription is missing fall back to leads page
         $subscriptionMap = [
             'pos'       => 'pos',
@@ -114,7 +119,7 @@ class DashboardController extends Controller
             'inventory'       => (new InventoryController)->dashboard($request),
             'pos'             => (new SalespointController)->dashboard($request),
             'retail_pos'      => (new \App\Modules\PosRetail\Controllers\Vendor\RetailPosController)->dashboard($request),
-            default           => $store->business_type === 'Hospital'
+            default           => strtolower($store->business_type ?? '') === 'hospital'
                                     ? $this->hospital_dashboard($request)
                                     : $this->master_dashboard($request),
         };

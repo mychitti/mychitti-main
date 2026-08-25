@@ -42,19 +42,19 @@
                                 $doc = $s->doctorProfile ? 'Dr. '.trim(($s->doctorProfile->employee->f_name ?? '').' '.($s->doctorProfile->employee->l_name ?? '')) : ($s->referred_by ?: '—');
                             @endphp
                             <div class="tbl-row {{ $rowCls }}" style="{{ $cols }}" data-status="{{ $s->status }}" data-priority="{{ $s->priority }}" data-search="{{ strtolower($s->study_no.' '.($s->patient->name ?? '').' '.$s->modality.' '.$s->study_name) }}">
-                                <div class="num" style="font-size:11px;color:var(--blue)">{{ $s->study_no }}</div>
-                                <div><div style="font-weight:700;font-size:13px">{{ $s->patient->name ?? '—' }}</div><div style="font-size:10px;color:var(--light)">{{ $s->patient->patient_uid ?? '' }}{{ $s->department ? ' · '.$s->department : '' }}</div></div>
-                                <div><span class="pill {{ $modPill($s->modality) }}">{{ $s->modality }}</span></div>
-                                <div style="font-size:11px">{{ $s->study_name }}</div>
-                                <div>@if($urgent)<span class="pill pill-red">🚨 {{ ucfirst($s->priority) }}</span>@else<span class="pill pill-teal">Routine</span>@endif</div>
-                                <div>
+                                <div class="cell-id num" style="font-size:11px;color:var(--blue)">{{ $s->study_no }}</div>
+                                <div data-label="Patient"><div style="font-weight:700;font-size:13px">{{ $s->patient->name ?? '—' }}</div><div style="font-size:10px;color:var(--light)">{{ $s->patient->patient_uid ?? '' }}{{ $s->department ? ' · '.$s->department : '' }}</div></div>
+                                <div data-label="Modality"><span class="pill {{ $modPill($s->modality) }}">{{ $s->modality }}</span></div>
+                                <div data-label="Study" style="font-size:11px">{{ $s->study_name }}</div>
+                                <div data-label="Priority">@if($urgent)<span class="pill pill-red">🚨 {{ ucfirst($s->priority) }}</span>@else<span class="pill pill-teal">Routine</span>@endif</div>
+                                <div data-label="Status">
                                     @if($s->status==='pending')<span class="pill pill-amber">Pending</span>
                                     @elseif($s->status==='in_progress')<span class="pill pill-navy">● Scanning</span>
                                     @elseif($s->status==='reported')<span class="pill pill-purple">Reported</span>
                                     @elseif($s->status==='verified')<span class="pill pill-teal">✓ Verified</span>
                                     @else<span class="pill pill-green">✓ Sent</span>@endif
                                 </div>
-                                <div>
+                                <div class="cell-action">
                                     @if($s->status==='pending')@if($canStart)<a href="{{ route('vendor.radiology.studies.start', $s->id) }}" class="btn {{ $urgent?'btn-red':'btn-primary' }} btn-xs">Start</a>@else<span class="pill pill-amber">Pending</span>@endif
                                     @elseif($s->status==='in_progress')@if($canWriteReport)<a href="{{ route('vendor.radiology.report', ['study'=>$s->id]) }}" class="btn btn-green btn-xs">Report</a>@endif
                                     @elseif($s->status==='reported')@if($canWriteReport)<a href="{{ route('vendor.radiology.report', ['study'=>$s->id]) }}" class="btn btn-green btn-xs">Verify</a>@endif
