@@ -158,10 +158,20 @@ class SendDailyHospitalReportJob implements ShouldQueue
             return ['success' => false, 'message' => 'Nothing happened today.'];
         }
 
-        $lines = [];
+        // Money in one paragraph, counts in another. Ten figures on one line is a wall of text on
+        // a phone, and the template body is the only place a line break is allowed — a parameter
+        // carrying one is refused by Meta.
+        $money = [];
+        $counts = [];
         foreach ($built as $row) {
-            $lines[] = $row['label'] . ': ' . $row['value'];
+            $line = $row['label'] . ': ' . $row['value'] . ($row['delta'] ?? '');
+            $row['money'] ? $money[] = $line : $counts[] = $line;
         }
+
+        // An empty parameter is refused too, so a hospital that ticked only counts still sends
+        // something in the money slot.
+        $money  = $money ? implode(' · ', $money) : '—';
+        $counts = $counts ? implode(' · ', $counts) : '—';
 
         // A test carries the same context plus a marker, so it never counts as the day's report
         // and can be sent as often as needed while getting the template right.
@@ -169,16 +179,16 @@ class SendDailyHospitalReportJob implements ShouldQueue
             $context .= ':test';
         }
 
-        // Template parameters may not contain newlines, so the figures go as one comma-separated
-        // parameter. {{1}} hospital name, {{2}} date, {{3}} the figures.
+        // {{1}} hospital, {{2}} date, {{3}} the money, {{4}} the counts. Middle dots separate the
+        // figures, never pipes: the template form's "example" field is pipe-separated, so a pipe
+        // here would split one parameter into several when Meta reviews it.
         $components = [[
             'type' => 'body',
             'parameters' => array_map(fn($v) => ['type' => 'text', 'text' => $v], [
                 $store->name ?: 'your hospital',
                 now()->format('d M Y'),
-                // Middle dot, not a pipe: the template form's "example" field is pipe-separated,
-                // so a pipe here would split one parameter into several when Meta reviews it.
-                implode(' · ', $lines),
+                $money,
+                $counts,
             ]),
         ]];
 

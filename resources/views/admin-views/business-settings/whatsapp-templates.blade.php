@@ -148,8 +148,8 @@
                                             'label'    => translate('Daily hospital report'),
                                             'blurb'    => translate('The end-of-day summary hospitals switch on under Hospital Settings. Sent from this number, not theirs.'),
                                             'category' => 'UTILITY',
-                                            'body'     => "Daily summary for {{1}} — {{2}}\n\n{{3}}\n\nChange what this includes, or switch it off, under Hospital Settings.",
-                                            'example'  => 'City Hospital | 12 Feb 2026 | New enquiries: 4 · New patients: 2 · Total income: 18,400.00',
+                                            'body'     => "Daily summary for {{1}} — {{2}}\n\nMoney: {{3}}\n\nActivity: {{4}}\n\nChange what this includes, or switch it off, under Hospital Settings.",
+                                            'example'  => 'City Hospital | 12 Feb 2026 | Lab income: 4,250.00 · Total income: 18,400.00 (up 3,100.00 on yesterday) · Money still owed: 22,900.00 | New enquiries: 4 · New patients: 2 · Booked for tomorrow: 11',
                                         ],
                                     ];
                                 @endphp
