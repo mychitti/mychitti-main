@@ -81,7 +81,10 @@ return [
         // The daily hospital summary goes out on the PLATFORM number, so it needs one template
         // approved once on the platform WABA rather than one per hospital. Body variables, in
         // order: {{1}} hospital name, {{2}} date, {{3}} the figures as one line.
-        'daily_report_template' => env('WHATSAPP_DAILY_REPORT_TEMPLATE', 'daily_report'),
+        // _v2 because the first submission carried three variables; Meta holds a deleted
+        // template name for 30 days, so the shape change needed a new name rather than a
+        // resubmit. The job and the admin suggestion card both read this, so they cannot drift.
+        'daily_report_template' => env('WHATSAPP_DAILY_REPORT_TEMPLATE', 'daily_report_v2'),
         'daily_report_language' => env('WHATSAPP_DAILY_REPORT_LANGUAGE', 'en_US'),
     ],
 
