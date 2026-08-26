@@ -484,10 +484,17 @@ class WhatsAppService
         if ($body === '') {
             return null;
         }
-        if (preg_match('/^\{\{\s*[a-z0-9_]+\s*\}\}/i', $body)) {
+
+        // Meta reads *{{1}}* as a leading parameter and refuses it: bold, italic, strikethrough
+        // and monospace marks are formatting, not text. Strip them before the edge checks, or a
+        // body that only *looks* like it opens with a word is rejected after the round trip
+        // ("Leading or Trailing Params Not Allowed") instead of here.
+        $bare = trim(preg_replace('/^[*_~`\s]+|[*_~`\s]+$/u', '', $body));
+
+        if (preg_match('/^\{\{\s*[a-z0-9_]+\s*\}\}/i', $bare)) {
             return 'The message can’t start with a variable. Put some text before it — e.g. "Hi {{1}}" instead of "{{1}}".';
         }
-        if (preg_match('/\{\{\s*[a-z0-9_]+\s*\}\}$/i', $body)) {
+        if (preg_match('/\{\{\s*[a-z0-9_]+\s*\}\}$/i', $bare)) {
             return 'The message can’t end with a variable. Add some text after it — e.g. "{{2}}. See you then!" instead of ending on "{{2}}".';
         }
 
