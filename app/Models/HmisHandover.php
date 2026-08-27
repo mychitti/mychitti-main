@@ -372,4 +372,45 @@ class HmisHandover extends Model
             ->values()
             ->all();
     }
+
+    /**
+     * Whoever this lab sent last time, with the phone and ID they gave then.
+     *
+     * Labs send the same runner most days, and making the counter retype a name the record
+     * already holds is how phones and ID references stop being filled in at all. So it is offered
+     * as a default and nothing more — an ordinary editable box, because the visit where somebody
+     * else turns up is exactly the visit this must not quietly get in the way of.
+     *
+     * Drafts are skipped. A row without `happened_at` is a verification somebody started and
+     * walked away from; the name on it was never confirmed by an exchange actually taking place,
+     * and defaulting to it would carry an abandoned typo forward into every future handover.
+     */
+    public static function lastRunner(int $storeId, ?int $labVendorId, ?string $labName = null): ?array
+    {
+        $query = static::where('store_id', $storeId)
+            ->whereNotNull('happened_at')
+            ->whereNotNull('person_name')
+            ->where('person_name', '!=', '');
+
+        if ($labVendorId) {
+            $query->where('lab_vendor_id', $labVendorId);
+        } elseif (filled($labName)) {
+            $query->where('lab_name', $labName);
+        } else {
+            return null;
+        }
+
+        $last = $query->orderByDesc('happened_at')->orderByDesc('id')->first();
+
+        if (!$last) {
+            return null;
+        }
+
+        return [
+            'name'   => trim((string) $last->person_name),
+            'phone'  => trim((string) $last->person_phone),
+            'id_ref' => trim((string) $last->person_id_ref),
+            'when'   => optional($last->happened_at)->format('d M Y'),
+        ];
+    }
 }

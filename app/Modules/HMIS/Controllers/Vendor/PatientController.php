@@ -994,7 +994,7 @@ class PatientController extends Controller
             'dob'     => 'nullable|date|before_or_equal:today',
             'phone_relation' => 'nullable|string|max:100',
             'gender'  => 'required|in:male,female,other',
-            'address' => 'required|string|max:500',
+            'address' => 'nullable|string|max:500',
         ], [
             'phone.regex' => 'Enter a valid 10-digit mobile number.',
         ]);

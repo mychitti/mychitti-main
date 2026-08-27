@@ -6,24 +6,13 @@
 
      $handovers    : collection of HmisHandover, already filtered to dated (non-draft) rows
      $hoSubjectId  : the record they belong to
-     $hoCanRecord  : whether to offer the buttons that open the modal --}}
+     $hoCanRecord  : whether a handover may still be recorded against this record — now only
+                     governs the "Mark confirmed" line below, since recording a new one is
+                     started by moving the job's stage rather than by a button of its own --}}
 @php
     $hoCanRecord = $hoCanRecord ?? false;
     $hoType      = $hoType ?? 'opd_lab_work';
 @endphp
-
-@if($hoCanRecord)
-    <div class="mt-2 pt-2" style="border-top:1px solid #f1f5f9;">
-        <button type="button" class="btn btn-outline-secondary btn-sm" style="font-size:11.5px;"
-                onclick="hoOpen({{ $hoSubjectId }}, 'out', '{{ $hoType }}')">
-            <i class="tio-arrow-upward"></i> Someone is collecting
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm ml-1" style="font-size:11.5px;"
-                onclick="hoOpen({{ $hoSubjectId }}, 'in', '{{ $hoType }}')">
-            <i class="tio-arrow-downward"></i> Someone is delivering
-        </button>
-    </div>
-@endif
 
 @if($handovers->count())
     <div class="mt-2 pt-2" style="border-top:1px solid #f1f5f9;">

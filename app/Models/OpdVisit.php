@@ -107,7 +107,7 @@ class OpdVisit extends Model
      * A course of treatment rarely happens in one sitting: a dressing today, a review on Friday,
      * a second sitting next month. Each advised term therefore carries its own row —
      *
-     *   term => ['status' => 'pending'|'upcoming'|'completed',
+     *   term => ['status' => 'pending'|'upcoming'|'in_progress'|'completed',
      *            'date' => 'Y-m-d', 'time' => 'H:i', 'amount' => float, 'discount' => float,
      *            'paid' => bool, 'appointment_id' => int|null]
      *

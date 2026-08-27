@@ -227,7 +227,7 @@ class DentalIntakeController extends Controller
             'age'     => 'required|integer|min:0|max:150',
             'dob'     => 'nullable|date|before_or_equal:today',
             'gender'  => 'required|in:male,female,other',
-            'address'   => 'required|string|max:500',
+            'address'   => 'nullable|string|max:500',
             'phone_relation' => 'nullable|string|max:100',
             'problem'   => 'required|array|min:1',
             'problem.*' => 'string|max:150',

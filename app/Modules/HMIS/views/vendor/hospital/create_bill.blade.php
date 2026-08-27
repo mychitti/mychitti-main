@@ -2,6 +2,136 @@
 @section('title', 'Generate Hospital Bill')
 
 @section('content')
+<style>
+    /* The action row belongs to the totals card it now sits in, separated by a rule rather than
+       by the page background. */
+    /* Both of these sit in the card but OUTSIDE .card-body, so that the rules above them run the
+       full width of the card. That also means they inherit none of its padding and have to carry
+       their own — 1.25rem, matching Bootstrap's .card-body, so everything lines up under the
+       Grand Total. */
+    .hb-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 1.25rem;
+        border-top: 1px solid #e9eef5;
+    }
+
+    /* How the bill is being settled, sitting between the total and the button. A section of the
+       totals card rather than a card of its own — it belongs to this bill, not beside it. */
+    .hb-pay {
+        padding: 14px 1.25rem 16px;
+        border-top: 1px solid #e9eef5;
+    }
+    .hb-pay-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 8px;
+    }
+    /* Three groups across a wide card. The grid holds the GROUPS, not the individual controls, so
+       revealing Amount Paid or Transaction ID grows its own column instead of inserting a cell and
+       shunting everything after it along. */
+    .hb-pay-body {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 16px 26px;
+        align-items: start;
+    }
+    .hb-pay-lbl {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: 5px;
+    }
+    .hb-pay-note {
+        font-size: 11px;
+        margin: 6px 0 0;
+        line-height: 1.35;
+    }
+
+    /* Tax Type and Status as segmented pills rather than loose radios. Three radios on one line
+       wrapped the moment the column narrowed, dropping "Paid" onto a line of its own; a segment
+       group keeps them one control and makes the chosen one obvious at a glance. */
+    .hb-seg {
+        display: inline-flex;
+        border: 1px solid #dfe3ec;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #fff;
+        max-width: 100%;
+    }
+    .hb-seg label {
+        margin: 0;
+        border-right: 1px solid #eef1f6;
+        cursor: pointer;
+    }
+    .hb-seg label:last-child { border-right: 0; }
+    /* Kept focusable and reachable by keyboard — moved out of sight, not removed. */
+    .hb-seg input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+        pointer-events: none;
+    }
+    .hb-seg span {
+        display: block;
+        padding: 6px 14px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #64748b;
+        white-space: nowrap;
+        transition: background .12s, color .12s;
+    }
+    .hb-seg label:hover span { background: #f5f7fb; }
+    .hb-seg input:checked + span {
+        background: #2563eb;
+        color: #fff;
+    }
+    .hb-seg input:focus-visible + span { box-shadow: inset 0 0 0 2px rgba(37, 99, 235, .45); }
+    .hb-seg input:disabled + span {
+        opacity: .45;
+        cursor: not-allowed;
+        background: #f8fafc;
+    }
+    .hb-seg label:has(input:disabled) { cursor: not-allowed; }
+
+    /* Raising the bill is the one committing action on this screen, so it is stated outright.
+       btn--primary renders pale here and an enabled button that looks greyed out reads as one
+       waiting on something that has not been filled in. */
+    .hb-submit {
+        background: #2563eb;
+        border: 1px solid #2563eb;
+        color: #fff;
+        font-weight: 600;
+        padding: 7px 18px;
+        border-radius: 7px;
+        box-shadow: 0 1px 2px rgba(37, 99, 235, .35);
+    }
+    .hb-submit:hover,
+    .hb-submit:focus {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, .4);
+    }
+    /* The submit handler locks the button for the length of the save. Only then should it look
+       unavailable — which is the whole reason it must not look that way at rest. */
+    .hb-submit:disabled,
+    .hb-submit[disabled] {
+        background: #93b4f4;
+        border-color: #93b4f4;
+        box-shadow: none;
+        cursor: not-allowed;
+    }
+</style>
 <div class="content container-fluid">
     <div class="page-header d-flex justify-content-between align-items-center">
         <h1 class="page-header-title mb-0">
@@ -78,8 +208,14 @@
 
         <div class="row">
 
-            {{-- ── Left column: patient + context info + payment ──────── --}}
-            <div class="col-md-4">
+            {{-- ── Patient + context info + payment. Second on wide screens, so the bill itself
+                   sits on the left where reading starts and this stays beside it for reference.
+                   Ordered rather than moved: the two columns hold a few hundred lines of nested
+                   markup between them, and swapping the source is the version of this change most
+                   likely to break something. Below md they stack, and the patient still comes
+                   first there — on a phone the identity is the context you need before the bill,
+                   and nothing is side by side to swap anyway. ── --}}
+            <div class="col-md-4 order-md-2">
 
                 {{-- Patient card --}}
                 <div class="card mb-3">
@@ -177,93 +313,82 @@
                     </div>
                 </div>
 
-                {{-- Payment --}}
-                @php
-                    $storeGstEnabled = \App\CentralLogics\Helpers::get_store_data()->gst &&
-                        json_decode(\App\CentralLogics\Helpers::get_store_data()->gst)->status;
-                @endphp
+                {{-- ── Receipts & Payment History ──────────────────────────
+                     Alongside the bill rather than under it: what this patient has already paid
+                     is the thing you check while deciding what to charge now, and at the foot of
+                     the page it sat below the button that had already committed the decision.
+                     The subtitle drops here — the heading says it, and a sidebar has no room to
+                     say it twice. ── --}}
                 <div class="card mb-3">
-                    <div class="card-header py-2"><h6 class="mb-0"><i class="tio-money mr-1"></i>Payment</h6></div>
-                    <div class="card-body py-2">
-
-                        {{-- Tax Type --}}
-                        <div class="form-group mb-2">
-                            <label class="input-label" style="font-size:12px;">Tax Type</label>
-                            <div class="d-flex gap-3 mt-1">
-                                <label class="d-flex align-items-center gap-1 mb-0" style="cursor:pointer; font-size:13px;">
-                                    <input type="radio" name="tax_type" value="non-gst" checked
-                                        onchange="toggleHospGst(this.value)"> Non-GST
-                                </label>
-                                <label class="d-flex align-items-center gap-1 mb-0"
-                                    style="cursor:{{ $storeGstEnabled ? 'pointer' : 'not-allowed' }}; opacity:{{ $storeGstEnabled ? '1' : '0.5' }}; font-size:13px;">
-                                    <input type="radio" name="tax_type" value="gst"
-                                        {{ $storeGstEnabled ? 'onchange=toggleHospGst(this.value)' : 'disabled' }}> GST
-                                </label>
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-history mr-1"></i>Receipts &amp; Payment History</h6>
+                    </div>
+                    <div class="card-body p-0">
+            @if(!empty($existingReceipts) && count($existingReceipts) > 0)
+                <div class="table-responsive">
+                    <table class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table mb-0" style="font-size:13px;">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Type</th>
+                                <th>Receipt / Ref #</th>
+                                <th>Date</th>
+                                <th>Particulars</th>
+                                <th class="text-right">Total (₹)</th>
+                                <th class="text-right">Paid (₹)</th>
+                                <th class="text-right">Due (₹)</th>
+                                <th>Mode</th>
+                                <th>Status</th>
+                                <th>Billed By</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($existingReceipts as $rec)
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-soft-info">{{ $rec['type'] }}</span>
+                                    </td>
+                                    <td><strong>{{ $rec['receipt_no'] }}</strong></td>
+                                    <td>{{ $rec['date'] }}</td>
+                                    <td>{{ $rec['item_name'] }}</td>
+                                    <td class="text-right">₹{{ number_format($rec['amount'], 2) }}</td>
+                                    <td class="text-right text-success font-weight-bold">₹{{ number_format($rec['paid'], 2) }}</td>
+                                    <td class="text-right text-{{ $rec['due'] > 0 ? 'danger' : 'muted' }}">₹{{ number_format($rec['due'], 2) }}</td>
+                                    <td><span class="badge badge-soft-secondary">{{ $rec['mode'] }}</span></td>
+                                    <td>
+                                        <span class="badge badge-soft-{{ $rec['due'] <= 0 ? 'success' : 'warning' }}">
+                                            {{ $rec['due'] <= 0 ? 'Paid' : 'Partially Paid' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $rec['billed_by'] }}</td>
+                                    <td class="text-center">
+                                        @if(!empty($rec['pdf_url']))
+                                            <a href="{{ $rec['pdf_url'] }}" target="_blank" class="btn btn-xs btn-outline-primary" title="View / Print Receipt">
+                                                <i class="tio-print"></i> View Receipt
+                                            </a>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                        @else
+                            <div class="text-center text-muted py-4" style="font-size:13px;">
+                                <i class="tio-receipt-outlined style-2 opacity-50" style="font-size:28px;"></i>
+                                <p class="mt-2 mb-0">No previous receipts found for this patient.</p>
                             </div>
-                            @if(!$storeGstEnabled)
-                            <p class="mb-0 mt-1 text-warning" style="font-size:11px;">
-                                <i class="tio-info-outined"></i> GST not configured.
-                                <a href="{{ route('vendor.shop.edit') }}" target="_blank">Set up GST in Shop Settings</a>
-                            </p>
-                            @endif
-                        </div>
-                        @if($storeGstEnabled) 
-                        <div class="form-group mb-2" id="gstPercentWrap" style="display:none;">
-                            <label class="input-label" style="font-size:12px;">GST %</label>
-                            <input type="number" name="gst_percent" id="gstPercent" class="form-control form-control-sm"
-                                min="0" max="100" step="0.01" placeholder="e.g. 18">
-                        </div>
-                        @endif  
-
-                        <div class="form-group mb-2">
-                            <label class="input-label" style="font-size:12px;">Status</label>
-                            <div class="d-flex gap-3 flex-wrap">
-                                <div class="custom-control custom-radio custom-control-inline">
-                                    <input type="radio" name="payment_status" value="Unpaid" id="ps_unpaid"
-                                        class="custom-control-input" checked onchange="togglePaymentStatus()">
-                                    <label class="custom-control-label" for="ps_unpaid">Unpaid</label>
-                                </div>
-                                <div class="custom-control custom-radio custom-control-inline">
-                                    <input type="radio" name="payment_status" value="Partially Paid" id="ps_partial"
-                                        class="custom-control-input" onchange="togglePaymentStatus()">
-                                    <label class="custom-control-label" for="ps_partial">Partially Paid</label>
-                                </div>
-                                <div class="custom-control custom-radio custom-control-inline">
-                                    <input type="radio" name="payment_status" value="Paid" id="ps_paid"
-                                        class="custom-control-input" onchange="togglePaymentStatus()">
-                                    <label class="custom-control-label" for="ps_paid">Paid</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group mb-2" id="hbPartialWrap" style="display:none;">
-                            <label class="input-label" style="font-size:12px;">Amount Paid (₹) <span class="text-danger">*</span></label>
-                            <input type="number" name="paid_amount" id="hbPaidAmount" class="form-control form-control-sm"
-                                min="0" step="0.01" placeholder="Enter amount paid" oninput="recalc()">
-                            <small class="text-muted d-block mt-1" id="hbBalanceNotice">Remaining Balance: ₹0.00</small>
-                        </div>
-
-                        <div class="form-group mb-0">
-                            <label class="input-label" style="font-size:12px;">Method</label>
-                            <select name="payment_method" id="hbPayMethod" class="form-control form-control-sm" onchange="hbSyncTxn()">
-                                <option value="Cash">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="Card">Card</option>
-                                <option value="Net Banking">Net Banking</option>
-                                <option value="Cheque">Cheque</option>
-                            </select>
-                        </div>
-                        <div class="form-group mb-0 mt-2" id="hbTxnWrap" style="display:none;">
-                            <label class="input-label" style="font-size:12px;">Transaction ID <span class="text-danger">*</span></label>
-                            <input type="text" name="transaction_id" id="hbTxnId" class="form-control form-control-sm" placeholder="UPI / card / online reference">
-                        </div>
+                        @endif
                     </div>
                 </div>
 
             </div>
 
-            {{-- ── Right column: line items ─────────────────────────── --}}
-            <div class="col-md-8">
+            {{-- ── The bill itself: line items, medicines, totals and the button that raises it.
+                   First on wide screens. ── --}}
+            <div class="col-md-8 order-md-1">
 
                 {{-- ── Section 1: Service Charges ────────────────────── --}}
                 <div class="card mb-3">
@@ -418,100 +543,139 @@
                             </div>
                         @endif
                     </div>
-                </div>
 
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-sm btn--primary" id="hbSubmitBtn">
-                        <i class="tio-receipt"></i> Save &amp; Generate Bill
-                    </button>
+                    {{-- How it is being settled, between the total and the button that raises the
+                         bill: the figure above is what is owed, this is what is being paid against
+                         it, and the button commits both. A section rather than a card of its own —
+                         it is part of this bill, not a panel sitting beside it. --}}
+                    @php
+                        $storeGstEnabled = \App\CentralLogics\Helpers::get_store_data()->gst &&
+                            json_decode(\App\CentralLogics\Helpers::get_store_data()->gst)->status;
+                    @endphp
+                    <div class="hb-pay">
+                        <div class="hb-pay-title"><i class="tio-money mr-1"></i>Payment</div>
+                        {{-- Three self-contained groups, each owning whatever it reveals. Every
+                             control used to be its own grid cell, so the GST note made the first
+                             column tall, the status radios wrapped onto two lines, and showing
+                             Transaction ID inserted a cell that reflowed the whole row. --}}
+                        <div class="hb-pay-body">
+
+                            <div class="hb-pay-group">
+                                <span class="hb-pay-lbl">Tax Type</span>
+                                <div class="hb-seg">
+                                    <label>
+                                        <input type="radio" name="tax_type" value="non-gst" checked
+                                               onchange="toggleHospGst(this.value)"><span>Non-GST</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="tax_type" value="gst"
+                                               {{ $storeGstEnabled ? 'onchange=toggleHospGst(this.value)' : 'disabled' }}><span>GST</span>
+                                    </label>
+                                </div>
+
+                                @if(!$storeGstEnabled)
+                                    <p class="hb-pay-note text-warning">
+                                        <i class="tio-info-outined"></i> GST not configured.
+                                        <a href="{{ route('vendor.shop.edit') }}" target="_blank">Set it up</a>
+                                    </p>
+                                @else
+                                    <div id="gstPercentWrap" style="display:none;" class="mt-2">
+                                        <span class="hb-pay-lbl">GST %</span>
+                                        <input type="number" name="gst_percent" id="gstPercent" class="form-control form-control-sm"
+                                               min="0" max="100" step="0.01" placeholder="e.g. 18">
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="hb-pay-group">
+                                <span class="hb-pay-lbl">Status</span>
+                                <div class="hb-seg">
+                                    <label>
+                                        <input type="radio" name="payment_status" value="Unpaid" id="ps_unpaid"
+                                               checked onchange="togglePaymentStatus()"><span>Unpaid</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="payment_status" value="Partially Paid" id="ps_partial"
+                                               onchange="togglePaymentStatus()"><span>Partial</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="payment_status" value="Paid" id="ps_paid"
+                                               onchange="togglePaymentStatus()"><span>Paid</span>
+                                    </label>
+                                </div>
+
+                                <div id="hbPartialWrap" style="display:none;" class="mt-2">
+                                    <span class="hb-pay-lbl">Amount Paid (₹) <span class="text-danger">*</span></span>
+                                    <input type="number" name="paid_amount" id="hbPaidAmount" class="form-control form-control-sm"
+                                           min="0" step="0.01" placeholder="Enter amount paid" oninput="recalc()">
+                                    <small class="text-muted d-block mt-1" id="hbBalanceNotice">Remaining Balance: ₹0.00</small>
+                                </div>
+                            </div>
+
+                            <div class="hb-pay-group">
+                                <span class="hb-pay-lbl">Method</span>
+                                <select name="payment_method" id="hbPayMethod" class="form-control form-control-sm" onchange="hbSyncTxn()">
+                                    <option value="Cash">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Card">Card</option>
+                                    <option value="Net Banking">Net Banking</option>
+                                    <option value="Cheque">Cheque</option>
+                                </select>
+
+                                <div id="hbTxnWrap" style="display:none;" class="mt-2">
+                                    <span class="hb-pay-lbl">
+                                        Transaction ID
+                                        <span class="text-danger" id="hbTxnReq">*</span>
+                                        <span class="text-muted" id="hbTxnOpt" style="display:none; font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span>
+                                    </span>
+                                    <input type="text" name="transaction_id" id="hbTxnId" class="form-control form-control-sm"
+                                           placeholder="UPI / card / online reference">
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {{-- Inside the totals card, not floating on the page under it: raising the bill
+                         is what the figure above is for, and the two read as one act. --}}
+                    <div class="hb-actions">
+                        <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-sm hb-submit" id="hbSubmitBtn">
+                            <i class="tio-receipt mr-1"></i> Save &amp; Generate Bill
+                        </button>
+                    </div>
                 </div>
 
             </div>
         </div>
     </form>
 
-    {{-- ── Receipts & Payment History Section ───────────────────────────────────── --}}
-    <div class="card mt-4">
-        <div class="card-header py-2 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0"><i class="tio-history mr-1"></i>Receipts &amp; Payment History</h6>
-            <small class="text-muted">Previous receipts and bill payments for this patient</small>
-        </div>
-        <div class="card-body p-0">
-            @if(!empty($existingReceipts) && count($existingReceipts) > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table mb-0" style="font-size:13px;">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Type</th>
-                                <th>Receipt / Ref #</th>
-                                <th>Date</th>
-                                <th>Particulars</th>
-                                <th class="text-right">Total (₹)</th>
-                                <th class="text-right">Paid (₹)</th>
-                                <th class="text-right">Due (₹)</th>
-                                <th>Mode</th>
-                                <th>Status</th>
-                                <th>Billed By</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($existingReceipts as $rec)
-                                <tr>
-                                    <td>
-                                        <span class="badge badge-soft-info">{{ $rec['type'] }}</span>
-                                    </td>
-                                    <td><strong>{{ $rec['receipt_no'] }}</strong></td>
-                                    <td>{{ $rec['date'] }}</td>
-                                    <td>{{ $rec['item_name'] }}</td>
-                                    <td class="text-right">₹{{ number_format($rec['amount'], 2) }}</td>
-                                    <td class="text-right text-success font-weight-bold">₹{{ number_format($rec['paid'], 2) }}</td>
-                                    <td class="text-right text-{{ $rec['due'] > 0 ? 'danger' : 'muted' }}">₹{{ number_format($rec['due'], 2) }}</td>
-                                    <td><span class="badge badge-soft-secondary">{{ $rec['mode'] }}</span></td>
-                                    <td>
-                                        <span class="badge badge-soft-{{ $rec['due'] <= 0 ? 'success' : 'warning' }}">
-                                            {{ $rec['due'] <= 0 ? 'Paid' : 'Partially Paid' }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $rec['billed_by'] }}</td>
-                                    <td class="text-center">
-                                        @if(!empty($rec['pdf_url']))
-                                            <a href="{{ $rec['pdf_url'] }}" target="_blank" class="btn btn-xs btn-outline-primary" title="View / Print Receipt">
-                                                <i class="tio-print"></i> View Receipt
-                                            </a>
-                                        @else
-                                            <span class="text-muted">—</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <div class="text-center text-muted py-4" style="font-size:13px;">
-                    <i class="tio-receipt-outlined style-2 opacity-50" style="font-size:28px;"></i>
-                    <p class="mt-2 mb-0">No previous receipts found for this patient.</p>
-                </div>
-            @endif
-        </div>
-    </div>
 @endsection
 
 @push('script_2')
 <script>
 const INV_SEARCH_URL = "{{ route('vendor.hospital-bill.inventory-search') }}";
 
-// Require a transaction ID for non-cash payment methods.
+// Offer a transaction ID for every non-cash method, but only insist on it where the payer is
+// actually handed one. UPI settles on the counter's own phone with nothing to copy down until
+// they go looking for it, so the box is there to fill in and never blocks the bill. The rule in
+// HospitalBillController::store matches this exactly.
 function hbSyncTxn() {
     const sel = document.getElementById('hbPayMethod'); if (!sel) return;
-    const online = (sel.value || '').toLowerCase() !== 'cash';
+    const method = (sel.value || '').toLowerCase();
+    const online = method !== 'cash';
+    const mustHave = method === 'card' || method === 'net banking';
+
     const wrap = document.getElementById('hbTxnWrap');
-    const txn = document.getElementById('hbTxnId');
+    const txn  = document.getElementById('hbTxnId');
     wrap.style.display = online ? '' : 'none';
-    txn.required = online;
+    txn.required = mustHave;
     if (!online) txn.value = '';
+
+    const req = document.getElementById('hbTxnReq');
+    const opt = document.getElementById('hbTxnOpt');
+    if (req) req.style.display = mustHave ? '' : 'none';
+    if (opt) opt.style.display = mustHave ? 'none' : '';
 }
 document.addEventListener('DOMContentLoaded', hbSyncTxn);
 

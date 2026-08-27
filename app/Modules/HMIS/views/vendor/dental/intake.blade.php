@@ -167,10 +167,9 @@
                             @endif
 
                             <div class="form-group">
-                                <label class="input-label">Address <span class="di-req">*</span></label>
+                                <label class="input-label">Address</label>
                                 <textarea name="address" class="form-control @error('address') is-invalid @enderror"
-                                    rows="1" maxlength="500" placeholder="House / street, area, city and pincode"
-                                    required>{{ old('address') }}</textarea>
+                                    rows="1" maxlength="500" placeholder="House / street, area, city and pincode">{{ old('address') }}</textarea>
                                 @error('address')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                             </div>
 
@@ -213,7 +212,6 @@
 
             <div class="d-flex flex-wrap di-actions" style="gap:8px;">
                 <button type="submit" name="action" value="visit" class="btn btn--primary">Register Patient</button>
-                <button type="submit" name="action" value="bill" class="btn btn-outline-primary">Register &amp; Generate Bill</button>
                 <a href="{{ route('vendor.patient.list') }}" class="btn btn-secondary">Cancel</a>
             </div>
         </form>

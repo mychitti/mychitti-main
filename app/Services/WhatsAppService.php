@@ -34,6 +34,13 @@ class WhatsAppService
     const DEFAULT_LEAD_ACCEPTED_TEMPLATE = 'vendor_lead_alert_accepted3';
 
     /**
+     * Template warning a vendor that their wallet could not cover a receiving add-on renewal
+     * (overridden by whatsapp_config.addon_low_balance_template). Body takes four variables:
+     * store name, add-on label, price, wallet balance.
+     */
+    const DEFAULT_ADDON_LOW_BALANCE_TEMPLATE = 'vendor_addon_low_balance';
+
+    /**
      * Template for the vendor's "send test message" button. vendor_test_template2 is the branded
      * one approved on the platform WABA; its body takes one variable — the recipient's name.
      * Override with whatsapp_config.test_template / test_template_lang.
@@ -158,6 +165,7 @@ class WhatsAppService
         self::DEFAULT_APPT_REMINDER_TEMPLATE,
         self::DEFAULT_LEAD_TEMPLATE,
         self::DEFAULT_LEAD_ACCEPTED_TEMPLATE,
+        self::DEFAULT_ADDON_LOW_BALANCE_TEMPLATE,
         self::DEFAULT_TEST_TEMPLATE,
         'staff_forward',
         // Every other suggested template behind a role in TEMPLATE_ROLES. Kept as literals
@@ -2461,9 +2469,22 @@ class WhatsAppService
             ->get();
     }
 
+    /**
+     * Guards the schema checks below. storeHasFeature() calls ensureReceivingTable() for every
+     * store on every lead, so without this each fan-out would spend a hasTable plus three
+     * hasColumn round trips per store on information_schema for a shape that cannot change
+     * mid-request.
+     */
+    protected static bool $receivingTableChecked = false;
+
     /** Per-store paid receiving add-ons. Idempotent, no migration files. */
     public static function ensureReceivingTable(): void
     {
+        if (static::$receivingTableChecked) {
+            return;
+        }
+        static::$receivingTableChecked = true;
+
         if (!Schema::hasTable('wa_receiving_features')) {
             DB::statement("CREATE TABLE `wa_receiving_features` (
                 `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -2477,6 +2498,26 @@ class WhatsAppService
                 PRIMARY KEY (`id`),
                 UNIQUE KEY `waf_store_feature` (`store_id`, `feature`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        }
+
+        // Monthly wallet renewal. Before these columns existed an add-on was a single manual
+        // purchase that pushed active_until one month and was never touched again, so every
+        // subscription lapsed silently a month after it was bought.
+        if (!Schema::hasColumn('wa_receiving_features', 'auto_renew')) {
+            DB::statement("ALTER TABLE `wa_receiving_features` ADD COLUMN `auto_renew` TINYINT(1) NOT NULL DEFAULT 1");
+            DB::statement("ALTER TABLE `wa_receiving_features` ADD KEY `waf_renew_idx` (`auto_renew`, `active_until`)");
+        }
+
+        // Guards a double charge: the renewal run refuses to bill a store twice on one day
+        // however many times it is invoked.
+        if (!Schema::hasColumn('wa_receiving_features', 'last_renewed_on')) {
+            DB::statement("ALTER TABLE `wa_receiving_features` ADD COLUMN `last_renewed_on` DATE NULL");
+        }
+
+        // Rate-limits the "wallet is short" alert to one a day, so a vendor who stays empty
+        // through the whole grace window gets a nudge rather than a daily pile.
+        if (!Schema::hasColumn('wa_receiving_features', 'last_alert_on')) {
+            DB::statement("ALTER TABLE `wa_receiving_features` ADD COLUMN `last_alert_on` DATE NULL");
         }
     }
 
@@ -2610,6 +2651,80 @@ class WhatsAppService
     }
 
     /**
+     * Warn a vendor that their wallet could not cover a receiving add-on renewal.
+     *
+     * Deliberately NOT gated on storeHasFeature(): the whole point is that the add-on is about
+     * to lapse (or just has), so checking it would silence the one message that explains why.
+     *
+     * Logged at every exit for the same reason the lead alerts are — a renewal that fails
+     * quietly is what put six stores off WhatsApp for a month without anyone noticing.
+     */
+    public static function sendAddOnRenewalFailedNotification(
+        int $storeId,
+        string $featureLabel,
+        float $price,
+        float $balance,
+        ?string $activeUntil = null
+    ): void {
+        Log::info('ADDON-WA: renewal alert requested', [
+            'store_id' => $storeId, 'feature' => $featureLabel, 'price' => $price, 'balance' => $balance,
+        ]);
+
+        $store = DB::table('stores')->where('id', $storeId)->first();
+        if (!$store || empty($store->phone)) {
+            Log::info('ADDON-WA: skipped — store missing or no phone', ['store_id' => $storeId]);
+            return;
+        }
+
+        $wa = static::make();
+        if (!$wa->isConfigured()) {
+            Log::info('ADDON-WA: skipped — platform WhatsApp not configured', ['store_id' => $storeId]);
+            return;
+        }
+
+        $cfg      = Helpers::get_business_settings('whatsapp_config');
+        $template = !empty($cfg['addon_low_balance_template'])
+            ? $cfg['addon_low_balance_template']
+            : self::DEFAULT_ADDON_LOW_BALANCE_TEMPLATE;
+        $lang = !empty($cfg['addon_low_balance_template_lang'])
+            ? $cfg['addon_low_balance_template_lang']
+            : self::DEFAULT_LEAD_TEMPLATE_LANG;
+
+        $vendorName = $store->name ?: 'Vendor';
+        $sent = false;
+
+        if ($template) {
+            $components = [[
+                'type' => 'body',
+                'parameters' => array_map(
+                    fn($v) => ['type' => 'text', 'text' => $v],
+                    [$vendorName, $featureLabel, _price($price), _price($balance)]
+                ),
+            ]];
+            $res  = $wa->sendTemplate($store->phone, $template, $lang, $components, 'addon renewal failed');
+            $sent = !empty($res['success']);
+            if (!$sent) {
+                Log::warning('ADDON-WA: template send failed', [
+                    'store_id' => $storeId, 'template' => $template, 'error' => $res['message'] ?? null,
+                ]);
+            }
+        }
+
+        // Plain text only reaches a vendor who messaged us in the last 24 hours, so this is a
+        // long shot rather than a safety net. It is still worth trying — and the in-app
+        // notification raised alongside it by the renewal command does not share the limit.
+        if (!$sent) {
+            $until = $activeUntil ? " Your add-on runs out on {$activeUntil}." : '';
+            $msg = "Hello {$vendorName}, we could not renew your {$featureLabel} add-on on MyChitti.\n\n"
+                . "Amount due: " . _price($price) . "\n"
+                . "Wallet balance: " . _price($balance) . "\n\n"
+                . "Please top up your wallet to keep receiving lead alerts on WhatsApp."
+                . $until;
+            $wa->sendText($store->phone, $msg, true, 'addon renewal failed');
+        }
+    }
+
+    /**
      * Per-store status of every receiving add-on (subscribed / paid-until / live).
      * Shared by the vendor lead-settings screen and anything else that renders the add-on cards.
      */
@@ -2628,6 +2743,11 @@ class WhatsAppService
                 'active_until' => $row->active_until ?? null,
                 'paid_active'  => (bool) $active,
                 'live'         => $active && (bool) ($row->enabled ?? false),
+                // Subscribed at all? A row that has lapsed still exists, and the renewal
+                // switch has to stay reachable so the vendor can turn it off while expired.
+                'subscribed'   => (bool) $row,
+                'auto_renew'   => (bool) ($row->auto_renew ?? false),
+                'renews_on'    => $row->active_until ?? null,
             ];
         }
         return $out;

@@ -29,7 +29,7 @@ class OpdLabWork extends Model
         'technician_id', 'technician_name', 'technician_phone',
         'handed_over_by', 'collected_by', 'delivered_by', 'received_by',
         'status', 'sent_on', 'expected_on', 'received_on', 'fitted_on',
-        'amount', 'notes', 'last_notified_status', 'last_notified_at', 'vendor_notified_at',
+        'amount', 'notes', 'remake_reason', 'last_notified_status', 'last_notified_at', 'vendor_notified_at',
     ];
 
     protected $casts = [
@@ -70,8 +70,13 @@ class OpdLabWork extends Model
         'impression', 'sent', 'in_progress', 'trial', 'ready', 'received', 'fitted', 'remake', 'cancelled',
     ];
 
-    /** Stages where the patient has something to do about it, so a paid-for message is worth sending. */
-    const NOTIFY_STATUSES = ['trial', 'ready', 'received', 'fitted'];
+    /**
+     * Stages where the patient has something to do about it, so a paid-for message is worth
+     * sending. Remake is here for the opposite reason to the rest: nothing is ready, and a
+     * patient expecting their work back this week is the person most owed the news that it
+     * has gone back to be made again.
+     */
+    const NOTIFY_STATUSES = ['trial', 'ready', 'received', 'fitted', 'remake'];
 
     /** Stages that close a job out of the open-work count. */
     const CLOSED_STATUSES = ['fitted', 'cancelled'];
@@ -348,6 +353,10 @@ class OpdLabWork extends Model
             'delivered_by'       => "VARCHAR(120) NULL AFTER `collected_by`",
             'received_by'        => "VARCHAR(120) NULL AFTER `delivered_by`",
             'vendor_notified_at' => "TIMESTAMP NULL AFTER `last_notified_at`",
+            // Why a job went back. Holds the most recent reason for the card to show; every one
+            // of them is also written into the activity log, so a piece that has been remade
+            // twice keeps both accounts rather than only the last.
+            'remake_reason'      => "TEXT NULL AFTER `notes`",
         ];
 
         foreach ($columns as $column => $definition) {
@@ -556,10 +565,16 @@ class OpdLabWork extends Model
             $parts[] = $label . ': ' . $value;
         }
 
-        if (!$parts) {
-            return trim((string) $this->notes) ?: 'As discussed';
+        $line = $parts ? implode(', ', $parts) : (trim((string) $this->notes) ?: 'As discussed');
+
+        // A job going back carries what was wrong with it. Folded into the spec rather than sent
+        // as its own line because the message to the lab is an approved template with a fixed set
+        // of variables — and a remake instruction without the complaint on it is the one thing
+        // the lab cannot act on.
+        if ($this->status === 'remake' && filled($this->remake_reason)) {
+            $line .= ' — REMAKE: ' . trim((string) $this->remake_reason);
         }
 
-        return implode(', ', $parts);
+        return $line;
     }
 }

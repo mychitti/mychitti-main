@@ -131,8 +131,10 @@
             </div>
         </div>
 
-        {{-- Diagnosis --}}
-        @if($rx->diagnosis)
+        {{-- Diagnosis. A hospital that hands the sheet to the patient may not want the condition
+             named on something that leaves the building — Hospital Settings → Clinical Recording
+             decides, and leaves both this and the advice below off when switched off. --}}
+        @if($rx->diagnosis && hmis_rx_print_clinical($rx->store_id))
         <div class="rx-section mt-3">
             <p class="rx-section-label">{{ $L['diagnosis'] }}</p>
             <p class="rx-section-body">{{ $tx('diagnosis', $rx->diagnosis) }}</p>
@@ -175,7 +177,7 @@
         @endif
 
         {{-- Notes --}}
-        @if($rx->notes)
+        @if($rx->notes && hmis_rx_print_clinical($rx->store_id))
         <div class="rx-section mt-4">
             <p class="rx-section-label">{{ $L['advice'] }}</p>
             <p class="rx-section-body">{{ $tx('notes', $rx->notes) }}</p>

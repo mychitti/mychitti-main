@@ -4,6 +4,7 @@ namespace App\Modules\HMIS\Controllers\Vendor;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Models\HmisHandover;
 use App\Models\HospitalActivityLog;
 use App\Models\OpdLabWork;
 use App\Models\OpdVisit;
@@ -178,6 +179,217 @@ class OpdLabWorkController extends Controller
         return $typed !== '' ? mb_substr($typed, 0, 40) : (trim((string) $onRecord) ?: null);
     }
 
+    /**
+     * Every job in the building on one screen — the chase list.
+     *
+     * The consultation card answers "where has this patient's crown got to". Nobody works that way
+     * at the counter: the questions asked each morning are which pieces are late, which came back
+     * yesterday and are waiting to be fitted, and which delivery nobody has confirmed with the lab
+     * yet. Answering those one visit at a time means opening forty records, so the same rows are
+     * listed here across every patient, with the handover form on each of them.
+     *
+     * Two tabs off the same data. Jobs is the work itself, one row per piece. Handovers is the
+     * exchange log — every collection and delivery in date order, which is the view wanted when
+     * something has gone missing and the question is who was standing at the counter that
+     * afternoon rather than which crown it was.
+     */
+    public function register(Request $request)
+    {
+        $this->guard();
+
+        $storeId = $this->storeId();
+        OpdLabWork::ensureSchema();
+        HmisHandover::ensureSchema();
+
+        $profile = OpdLabWork::profileFor($storeId);
+        $tab     = $request->input('tab') === 'handovers' ? 'handovers' : 'jobs';
+        $today   = now()->toDateString();
+
+        $statusCounts = OpdLabWork::where('store_id', $storeId)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        // Jobs carrying an arrival nobody has vouched for. Read whichever tab is open: it is a
+        // filter on one and a warning on every row of the other.
+        $provisional = HmisHandover::where('store_id', $storeId)
+            ->where('subject_type', 'opd_lab_work')
+            ->whereNotNull('happened_at')
+            ->where('verify_state', 'provisional')
+            ->pluck('subject_id')
+            ->unique()
+            ->values();
+
+        $counts = [
+            'open'    => (int) $statusCounts->reject(fn ($n, $status) => in_array($status, OpdLabWork::CLOSED_STATUSES, true))->sum(),
+            'overdue' => OpdLabWork::where('store_id', $storeId)->open()
+                ->whereNotNull('expected_on')
+                ->whereDate('expected_on', '<', $today)
+                ->count(),
+            'ready'       => (int) ($statusCounts['ready'] ?? 0) + (int) ($statusCounts['received'] ?? 0),
+            'unconfirmed' => $provisional->count(),
+        ];
+
+        // The labs that actually have work here rather than the whole supplier book: a filter
+        // listing forty firms this clinic has never sent a crown to is one nobody uses.
+        $labOptions = OpdLabWork::where('store_id', $storeId)
+            ->whereNotNull('lab_vendor_id')
+            ->select('lab_vendor_id', 'lab_name')
+            ->distinct()
+            ->orderBy('lab_name')
+            ->get()
+            ->pluck('lab_name', 'lab_vendor_id')
+            ->filter();
+
+        $filters = [
+            'q'     => trim((string) $request->input('q')),
+            'scope' => in_array($request->input('scope'), ['open', 'overdue', 'ready', 'unconfirmed', 'closed', 'all'], true)
+                ? $request->input('scope')
+                : 'open',
+            'stage' => in_array($request->input('stage'), OpdLabWork::STATUSES, true) ? $request->input('stage') : '',
+            'lab'   => (string) $request->input('lab'),
+            'state' => array_key_exists((string) $request->input('state'), HmisHandover::STATES) ? $request->input('state') : '',
+            'dir'   => array_key_exists((string) $request->input('dir'), HmisHandover::DIRECTIONS) ? $request->input('dir') : '',
+            'from'  => $request->input('from'),
+            'to'    => $request->input('to'),
+        ];
+
+        $jobs      = null;
+        $handovers = null;
+        $trails    = collect();
+        $subjects  = collect();
+
+        if ($tab === 'jobs') {
+            $query = OpdLabWork::with('patient')->where('store_id', $storeId);
+
+            if ($filters['q'] !== '') {
+                $term = $filters['q'];
+                $query->where(function ($w) use ($term) {
+                    $w->where('work_type', 'like', "%{$term}%")
+                        ->orWhere('site', 'like', "%{$term}%")
+                        ->orWhere('lab_name', 'like', "%{$term}%")
+                        ->orWhere('technician_name', 'like', "%{$term}%")
+                        ->orWhereHas('patient', function ($p) use ($term) {
+                            $p->where('name', 'like', "%{$term}%")
+                                ->orWhere('patient_uid', 'like', "%{$term}%")
+                                ->orWhere('phone', 'like', "%{$term}%");
+                        });
+                });
+            }
+
+            // A named stage answers on its own — asking for "sent" and being handed only the open
+            // ones would be the same list twice. The scopes below are the shapes a stage cannot
+            // describe: late, unvouched-for, finished.
+            if ($filters['stage'] !== '') {
+                $query->where('status', $filters['stage']);
+            } elseif ($filters['scope'] === 'closed') {
+                $query->whereIn('status', OpdLabWork::CLOSED_STATUSES);
+            } elseif ($filters['scope'] === 'overdue') {
+                $query->open()->whereNotNull('expected_on')->whereDate('expected_on', '<', $today);
+            } elseif ($filters['scope'] === 'ready') {
+                // The two stages where the piece exists and somebody is waiting on it — finished at
+                // the lab, or already back on the shelf. One question at the counter, two stages.
+                $query->whereIn('status', ['ready', 'received']);
+            } elseif ($filters['scope'] === 'unconfirmed') {
+                // Not narrowed to open work: a delivery taken on trust is worth confirming even
+                // after the piece has been fitted, and closing the job did not make it genuine.
+                $query->whereIn('id', $provisional->all() ?: [0]);
+            } elseif ($filters['scope'] !== 'all') {
+                $query->open();
+            }
+
+            if ($filters['lab'] === 'internal') {
+                $query->where('lab_mode', 'internal');
+            } elseif (ctype_digit($filters['lab'])) {
+                $query->where('lab_vendor_id', (int) $filters['lab']);
+            }
+
+            if ($filters['from']) {
+                $query->whereDate('created_at', '>=', $filters['from']);
+            }
+            if ($filters['to']) {
+                $query->whereDate('created_at', '<=', $filters['to']);
+            }
+
+            // Closed work sinks; everything else rises by how soon it is due, with jobs that were
+            // never given a date behind the ones that were. This is the order the page is read in
+            // — the top of it is what to chase this morning.
+            $jobs = $query
+                ->orderByRaw("FIELD(status, 'cancelled', 'fitted') ASC")
+                ->orderByRaw('expected_on IS NULL ASC')
+                ->orderBy('expected_on')
+                ->orderByDesc('id')
+                ->paginate(25)
+                ->withQueryString();
+
+            $trails = HmisHandover::where('store_id', $storeId)
+                ->where('subject_type', 'opd_lab_work')
+                ->whereIn('subject_id', $jobs->pluck('id'))
+                ->whereNotNull('happened_at')
+                ->orderByDesc('happened_at')
+                ->get()
+                ->groupBy('subject_id');
+        } else {
+            $query = HmisHandover::with('patient')
+                ->where('store_id', $storeId)
+                ->where('subject_type', 'opd_lab_work')
+                ->whereNotNull('happened_at');
+
+            if ($filters['q'] !== '') {
+                $term = $filters['q'];
+                $query->where(function ($w) use ($term) {
+                    $w->where('person_name', 'like', "%{$term}%")
+                        ->orWhere('lab_name', 'like', "%{$term}%")
+                        ->orWhere('staff_name', 'like', "%{$term}%")
+                        ->orWhere('purpose', 'like', "%{$term}%")
+                        ->orWhereHas('patient', function ($p) use ($term) {
+                            $p->where('name', 'like', "%{$term}%")
+                                ->orWhere('patient_uid', 'like', "%{$term}%");
+                        });
+                });
+            }
+
+            if ($filters['state'] !== '') {
+                $query->where('verify_state', $filters['state']);
+            }
+            if ($filters['dir'] !== '') {
+                $query->where('direction', $filters['dir']);
+            }
+            if ($filters['lab'] === 'internal') {
+                $query->whereNull('lab_vendor_id');
+            } elseif (ctype_digit($filters['lab'])) {
+                $query->where('lab_vendor_id', (int) $filters['lab']);
+            }
+            if ($filters['from']) {
+                $query->whereDate('happened_at', '>=', $filters['from']);
+            }
+            if ($filters['to']) {
+                $query->whereDate('happened_at', '<=', $filters['to']);
+            }
+
+            $handovers = $query->orderByDesc('happened_at')->paginate(30)->withQueryString();
+
+            // What was in their hands, fetched once for the page. The log keeps the lab and the
+            // person on its own row, but never what moved — that is still the job.
+            $subjects = OpdLabWork::where('store_id', $storeId)
+                ->whereIn('id', $handovers->pluck('subject_id'))
+                ->get()
+                ->keyBy('id');
+        }
+
+        return view('hmis::vendor.opd.lab_work_register', [
+            'profile'    => $profile,
+            'tab'        => $tab,
+            'filters'    => $filters,
+            'counts'     => $counts,
+            'labOptions' => $labOptions,
+            'jobs'       => $jobs,
+            'trails'     => $trails,
+            'handovers'  => $handovers,
+            'subjects'   => $subjects,
+        ]);
+    }
+
     public function store(Request $request, $visitId)
     {
         $this->guard();
@@ -294,6 +506,14 @@ class OpdLabWorkController extends Controller
             'collected_by'   => 'nullable|string|max:120',
             'delivered_by'   => 'nullable|string|max:120',
             'received_by'    => 'nullable|string|max:120',
+            // A remake with no reason recorded is the row a clinic most wants to read back when a
+            // lab disputes the rework, so it is required here rather than only in the browser.
+            'remake_reason'     => 'required_if:status,remake|nullable|string|max:2000',
+            'edit_measurements' => 'nullable|boolean',
+            'measurements'      => 'nullable|array',
+            'measurements.*'    => 'nullable|string|max:190',
+        ], [
+            'remake_reason.required_if' => 'Say what was wrong with the work before sending it back.',
         ]);
 
         $storeId = $this->storeId();
@@ -320,18 +540,44 @@ class OpdLabWorkController extends Controller
             $work->notes = $request->notes;
         }
 
+        // Read only on the move it belongs to, for the same reason the custody pair is: the form
+        // shows this box on one stage, but a browser posts every input it holds, and a reason left
+        // over from an earlier remake would otherwise be rewritten onto an unrelated stage change.
+        $remakeReason = $request->status === 'remake' ? trim((string) $request->remake_reason) : null;
+        if ($remakeReason !== null && $remakeReason !== '') {
+            $work->remake_reason = $remakeReason;
+        }
+
+        // The corrected specification, and only when this move is a remake AND the box asking for
+        // it was ticked. Both conditions matter: without the first a stale set could be written on
+        // an unrelated stage change, and without the second an untouched remake would blank every
+        // measurement, because a form posts empty inputs just as readily as filled ones.
+        $measured = false;
+        if ($request->status === 'remake' && $request->boolean('edit_measurements')) {
+            $work->measurements = $this->measurements($request, $profile) ?: null;
+            $measured = true;
+        }
+
         $work->save();
 
         HospitalActivityLog::record(
             $storeId, 'opd_lab_work', (int) $work->id, 'status_changed',
             $profile['label'] . ' job for patient #' . $work->patient_id . ' — ' . $work->title()
                 . ': ' . $from . ' to ' . $work->statusLabel($profile)
-                . ($custody ? ' (' . $this->movementLine($work, $request->status) . ')' : ''),
+                . ($custody ? ' (' . $this->movementLine($work, $request->status) . ')' : '')
+                . ($remakeReason ? ' — ' . $remakeReason : '')
+                . ($measured ? ' (measurements revised)' : ''),
             [
-                'patient_id' => $work->patient_id,
-                'from'       => $from,
-                'to'         => $work->status,
-                'custody'    => $custody ?: null,
+                'patient_id'    => $work->patient_id,
+                'from'          => $from,
+                'to'            => $work->status,
+                'custody'       => $custody ?: null,
+                // Kept per entry as well as on the job, so a piece remade twice keeps both
+                // accounts instead of the second overwriting the first.
+                'remake_reason' => $remakeReason ?: null,
+                // What it was changed to, so the trail shows the spec each remake was made against
+                // rather than only the latest one sitting on the job.
+                'measurements'  => $measured ? $work->measurements : null,
             ]
         );
 
@@ -344,7 +590,13 @@ class OpdLabWorkController extends Controller
         // Checked against the stage rather than the tick alone: the box is only shown on the two
         // moves that are a handover, and a confirmation of a handover that did not happen — from a
         // stale tab, or a hand-made request — tells the lab something untrue.
-        if ($request->boolean('notify_lab') && in_array($request->status, ['sent', 'received'], true)) {
+        // A remake is the third move the lab hears about, and it needs a different message: not a
+        // confirmation that something changed hands, but the job itself again — the specification
+        // as it now stands, with the complaint folded into it by specLine(). Sending a handover
+        // note here would tell the lab a piece had moved and never tell them to remake it.
+        if ($request->boolean('notify_lab') && $request->status === 'remake') {
+            $this->sendJobToLab($work, $profile);
+        } elseif ($request->boolean('notify_lab') && in_array($request->status, ['sent', 'received'], true)) {
             $this->sendHandover($work, $request->status);
         }
 

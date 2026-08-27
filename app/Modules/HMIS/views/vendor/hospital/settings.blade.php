@@ -82,6 +82,20 @@
                         <h6 class="mb-0"><i class="tio-heart-outlined mr-1"></i> Clinical Recording</h6>
                     </div>
                     <div class="card-body">
+                        <label class="d-flex align-items-start mb-3" style="cursor:pointer;">
+                            <input type="checkbox" name="rx_print_clinical" value="1" class="mr-2 mt-1"
+                                   {{ old('rx_print_clinical', $rx_print_clinical) ? 'checked' : '' }}>
+                            <span>
+                                <span style="font-weight:600;">Print prescription with diagnosis and doctor's advice</span>
+                                <small class="text-muted d-block" style="font-size:12px;">
+                                    Switch off and the printed sheet carries only the medicines — the
+                                    condition and the advice are left off it, and off the prescription
+                                    card on the consultation screen too, so what your staff see is what
+                                    the patient is handed. Both are still recorded on the visit either way.
+                                </small>
+                            </span>
+                        </label>
+
                         <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
                             <input type="checkbox" name="vitals_enabled" value="1" class="mr-2 mt-1"
                                    {{ old('vitals_enabled', $vitals_enabled) ? 'checked' : '' }}>

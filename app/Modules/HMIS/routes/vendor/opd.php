@@ -34,6 +34,9 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     // notify goes to the PATIENT; notify-lab and notify-handover go to the LAB. Named apart rather
     // than switched on a parameter, because a message carrying a patient's name and specification
     // to an outside firm should never be one mistyped value away from a message to the patient.
+    // Every job across every patient, with the handover form on each row — the counter's own view
+    // of the same records the consultation card shows one patient at a time.
+    Route::get('lab-work',                    [OpdLabWorkController::class, 'register'])->name('lab-work.index')->middleware('permission:opd_register,view');
     Route::post('{id}/lab-work',              [OpdLabWorkController::class, 'store'])->name('lab-work.store')->middleware('permission:opd_register,add');
     Route::put('lab-work/{id}',               [OpdLabWorkController::class, 'update'])->name('lab-work.update')->middleware('permission:opd_register,edit');
     Route::post('lab-work/{id}/status',       [OpdLabWorkController::class, 'status'])->name('lab-work.status')->middleware('permission:opd_register,edit');

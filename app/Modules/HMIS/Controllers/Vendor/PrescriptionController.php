@@ -250,6 +250,45 @@ class PrescriptionController extends Controller
         $request->merge(['medicines' => $kept]);
     }
 
+    /**
+     * The diagnosis and advice a prescription should carry.
+     *
+     * The OPD consultation form stopped asking for either: both are recorded on the visit itself,
+     * and a second copy on the prescription form only gave the two a way to disagree. When the
+     * request carries them — the standalone prescription form still does, having no visit to read
+     * from — they win untouched. Otherwise they come off the linked OPD visit, and failing that
+     * from whatever the prescription already held, so an edit never blanks a saved sheet.
+     *
+     * @return array{diagnosis: ?string, notes: ?string}
+     */
+    private function clinicalFromVisit(Request $request, ?Prescription $rx = null): array
+    {
+        $diagnosis = $request->filled('diagnosis') ? $request->input('diagnosis') : null;
+        $notes     = $request->filled('notes')     ? $request->input('notes')     : null;
+
+        if ($diagnosis !== null && $notes !== null) {
+            return ['diagnosis' => $diagnosis, 'notes' => $notes];
+        }
+
+        $visitId = $request->input('service_request_id') ?: $rx?->service_request_id;
+        $visit   = $visitId
+            ? \App\Models\OpdVisit::where('store_id', $this->storeId())
+                ->where('service_request_id', $visitId)
+                ->first()
+            : null;
+
+        return [
+            // chief_complaint stands in when nothing was diagnosed, matching what the old mirrored
+            // field showed on the form.
+            'diagnosis' => $diagnosis
+                ?? ($visit ? ($visit->diagnosis ?: $visit->chief_complaint) : null)
+                ?? $rx?->diagnosis,
+            'notes' => $notes
+                ?? ($visit?->notes)
+                ?? $rx?->notes,
+        ];
+    }
+
     public function store(Request $request)
     {
         self::ensureItemSchema();
@@ -268,6 +307,12 @@ class PrescriptionController extends Controller
             'language'                  => 'nullable|string|in:' . implode(',', array_keys(Prescription::LANGUAGES)),
         ]);
 
+        // The OPD consultation form no longer asks for these — they are already recorded on the
+        // visit, and asking twice let the two drift apart. Taken from the visit at save so the
+        // prescription stays a document in its own right rather than something that rewrites
+        // itself whenever the visit is edited later.
+        $clinical = $this->clinicalFromVisit($request);
+
         DB::beginTransaction();
         try {
             $rx = Prescription::create([
@@ -276,8 +321,8 @@ class PrescriptionController extends Controller
                 'doctor_profile_id'  => $request->doctor_profile_id,
                 'appointment_id'     => $request->appointment_id ?: null,
                 'service_request_id' => $request->service_request_id ?: null,
-                'diagnosis'          => $request->diagnosis,
-                'notes'              => $request->notes,
+                'diagnosis'          => $clinical['diagnosis'],
+                'notes'              => $clinical['notes'],
                 'follow_up_date'     => $request->follow_up_date ?: null,
                 'language'           => $request->input('language') ?: 'en',
                 'is_finalized'       => $request->has('finalize'),
@@ -797,11 +842,15 @@ class PrescriptionController extends Controller
             'language'                  => 'nullable|string|in:' . implode(',', array_keys(Prescription::LANGUAGES)),
         ]);
 
+        // As in store(): absent from the OPD form, so taken from the visit. An edit that does
+        // send them — the standalone prescription form still has the fields — wins as before.
+        $clinical = $this->clinicalFromVisit($request, $rx);
+
         DB::beginTransaction();
         try {
             $rx->update([
-                'diagnosis'      => $request->diagnosis,
-                'notes'          => $request->notes,
+                'diagnosis'      => $clinical['diagnosis'],
+                'notes'          => $clinical['notes'],
                 'follow_up_date' => $request->follow_up_date ?: null,
                 'language'       => $request->input('language') ?: ($rx->language ?: 'en'),
                 'is_finalized'   => $request->has('finalize'),

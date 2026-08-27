@@ -1553,6 +1553,13 @@ class WhatsAppController extends Controller
                 'enabled'      => 1,
                 'price'        => $price,
                 'active_until' => $activeUntil,
+                // A vendor paying by hand is opting into the add-on continuing; the switch on
+                // the card lets them turn the monthly deduction back off at any point. An
+                // existing row that had it off keeps it off — buying one more month is not an
+                // instruction to start charging automatically.
+                'auto_renew'   => $row->auto_renew ?? 1,
+                'last_renewed_on' => now()->toDateString(),
+                'last_alert_on'   => null,
                 'updated_at'   => now(),
                 'created_at'   => $row->created_at ?? now(),
             ]
@@ -1584,6 +1591,47 @@ class WhatsAppController extends Controller
             ->update(['enabled' => $row->enabled ? 0 : 1, 'updated_at' => now()]);
 
         Toastr::success($row->enabled ? 'Receiving paused.' : 'Receiving resumed.');
+        return back();
+    }
+
+    /**
+     * Turn the monthly wallet deduction for a receiving add-on on or off.
+     *
+     * Separate from featureToggle above on purpose: that one mutes the notifications inside a
+     * period already paid for, this one decides whether the wallet is ever charged again.
+     * Reachable while the add-on is expired too, so a vendor can switch auto-renew off without
+     * first having to buy another month.
+     */
+    public function featureAutoRenew(Request $request)
+    {
+        $request->validate(['feature' => 'required']);
+        $feature = $request->feature;
+        $meta = WhatsAppService::RECEIVING_FEATURES[$feature] ?? null;
+        if (!$meta) {
+            Toastr::error('Unknown feature.');
+            return back();
+        }
+
+        $storeId = Helpers::get_store_id();
+        WhatsAppService::ensureReceivingTable();
+        $row = DB::table('wa_receiving_features')->where('store_id', $storeId)->where('feature', $feature)->first();
+        if (!$row) {
+            Toastr::error('Subscribe first to set up automatic renewal.');
+            return back();
+        }
+
+        $on = !$row->auto_renew;
+        DB::table('wa_receiving_features')->where('id', $row->id)->update([
+            'auto_renew' => $on ? 1 : 0,
+            // Clear the low-balance stamp so switching back on can warn again the same day.
+            'last_alert_on' => null,
+            'updated_at' => now(),
+        ]);
+
+        Toastr::success($on
+            ? 'Auto-renew on — ' . _price($row->price ?: $meta['price']) . ' will be deducted from your wallet each month.'
+            : 'Auto-renew off — your wallet will not be charged again for ' . $meta['label'] . '.');
+
         return back();
     }
 

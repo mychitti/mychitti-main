@@ -750,7 +750,10 @@ class OpdController extends Controller
         }
 
         if ($canLink && $linked) {
-            $plan = $plan->only($advised);
+            // Both lists, for the reason quickUpdate prunes against both: the plan follows what
+            // the patient accepted, so pruning to the advised list alone would strip the booking
+            // that was just made against a willing treatment.
+            $plan = $plan->only(collect($advised)->merge($visit->willing_treatment_list)->unique()->values()->all());
             $visit->treatment_plan = $plan->isEmpty() ? null : json_encode($plan->all());
             $visit->save();
         }
@@ -890,7 +893,7 @@ class OpdController extends Controller
             'willing_treatment'   => 'nullable|array',
             'willing_treatment.*' => 'string|max:150',
             'treatment_plan'             => 'nullable|array',
-            'treatment_plan.*.status'    => 'required|in:pending,upcoming,completed',
+            'treatment_plan.*.status'    => 'required|in:pending,upcoming,in_progress,completed',
             'treatment_plan.*.date'      => 'nullable|date',
             'treatment_plan.*.time'      => 'nullable|date_format:H:i',
             'treatment_plan.*.amount'    => 'nullable|numeric|min:0|max:99999999',
@@ -957,9 +960,13 @@ class OpdController extends Controller
             $visit->{$column} = $terms->isEmpty() ? null : $terms->implode(', ');
             $saved[$field]    = $terms->all();
 
-            // Editing the advised list can drop a term that carried a schedule and a price.
-            if ($field === 'treatment') {
-                $plan = collect($visit->treatment_plan_map)->only($terms->all());
+            // Editing either list can drop a term that carried a schedule and a price. The plan
+            // is keyed on whichever list drives it — willing once the patient has chosen — so it
+            // is pruned against both: keeping only the advised terms would delete the schedule
+            // and price of anything the patient accepted that was never on the advised list.
+            if ($field === 'treatment' || $field === 'willing_treatment') {
+                $keep = collect($visit->treatment_list)->merge($visit->willing_treatment_list)->unique()->values();
+                $plan = collect($visit->treatment_plan_map)->only($keep->all());
                 $visit->treatment_plan   = $plan->isEmpty() ? null : json_encode($plan->all());
                 $saved['treatment_plan'] = $plan->all();
             }
@@ -980,7 +987,9 @@ class OpdController extends Controller
         // rows are merged onto what is already planned rather than replacing it. Terms no longer
         // advised are dropped: a plan for a treatment that is no longer offered is noise.
         if ($request->has('treatment_plan')) {
-            $advised = $visit->treatment_list;
+            // Both lists, as everywhere else the plan is trimmed: it follows what the patient
+            // accepted, which need not still be on the advised list.
+            $advised = collect($visit->treatment_list)->merge($visit->willing_treatment_list)->unique()->values()->all();
             $plan    = collect($visit->treatment_plan_map);
             $notes   = [];
 
@@ -992,14 +1001,21 @@ class OpdController extends Controller
                     continue;
                 }
 
-                $amount   = isset($row['amount'])   && $row['amount']   !== '' ? (float) $row['amount']   : null;
-                $discount = isset($row['discount']) && $row['discount'] !== '' ? (float) $row['discount'] : null;
-
                 // The appointment a sitting is booked into is never taken from the request — it
                 // is what the visit already knows, moved on by the booking sync below. Otherwise
                 // a stale tab could re-point a treatment at somebody else's appointment.
                 $existing      = (array) ($plan[$term] ?? []);
                 $appointmentId = $this->syncTreatmentBooking($visit, $term, $row, $existing, $plan, $notes);
+
+                // Money is no longer edited on the OPD screen, so its inputs simply are not sent.
+                // An absent key therefore means "leave alone", not "clear" — clearing would wipe
+                // the figures Billing reads off the plan and blank the paid flag that keeps a
+                // settled treatment off the next bill.
+                $hasAmount   = array_key_exists('amount', $row)   && $row['amount']   !== '';
+                $hasDiscount = array_key_exists('discount', $row) && $row['discount'] !== '';
+
+                $amount   = $hasAmount   ? (float) $row['amount']   : ($existing['amount']   ?? null);
+                $discount = $hasDiscount ? (float) $row['discount'] : ($existing['discount'] ?? null);
 
                 $plan[$term] = [
                     'status'         => $row['status'],
@@ -1007,13 +1023,19 @@ class OpdController extends Controller
                     'time'           => ($row['time'] ?? '') ?: null,
                     'amount'         => $amount,
                     'discount'       => $discount,
-                    'paid'           => (bool) ($row['paid'] ?? false),
+                    'paid'           => array_key_exists('paid', $row)
+                        ? (bool) $row['paid']
+                        : (bool) ($existing['paid'] ?? false),
                     'appointment_id' => $appointmentId,
                 ];
 
                 // Whatever this hospital charged for the treatment becomes what it is offered
-                // next time — there is no price list to read one from.
-                \App\Models\OpdTreatmentPrice::remember($store_id, $term, $amount, $discount);
+                // next time — there is no price list to read one from. Only when a price was
+                // actually submitted: remembering the carried-over value would keep rewriting
+                // the catalogue with a figure nobody just typed.
+                if ($hasAmount || $hasDiscount) {
+                    \App\Models\OpdTreatmentPrice::remember($store_id, $term, $amount, $discount);
+                }
             }
 
             $plan = $plan->only($advised);

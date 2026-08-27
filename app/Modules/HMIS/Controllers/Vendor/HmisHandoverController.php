@@ -11,18 +11,17 @@ use App\Models\OpdLabWork;
 use App\Services\HmisWhatsAppShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Recording what changed hands at the counter, and proving who it changed hands with.
  *
  * The thing being defended against is narrow and specific: a stranger walking in with a printed
- * report that no lab ever produced, and that report reaching a patient's chart. Signatures and
- * photographs do not stop that — a forger signs a false name without hesitating — so the two
+ * report that no lab ever produced, and that report reaching a patient's chart. A signature or a
+ * photograph does not stop that — a forger signs a false name without hesitating — so the two
  * controls that actually bite live here instead.
  *
  * The first is free: nothing can arrive from a lab that was never sent anything. checkDispatch()
- * asks that before anyone is asked to sign, and most of the attack dies on that question alone.
+ * asks that before anyone writes a name down, and most of the attack dies on that question alone.
  *
  * The second is the code, and its direction is what matters. It goes to the lab's own saved
  * number, not to the phone of whoever is standing there, so passing it requires being able to
@@ -109,6 +108,55 @@ class HmisHandoverController extends Controller
     }
 
     /**
+     * What is moving and how many pieces of it, read off the job instead of typed at the counter.
+     *
+     * Both of these were boxes on the form and neither earned its place. The job already says what
+     * it is and how many units it is, and asking the counter to say it again is only a chance for
+     * the two to disagree — on the one record that exists to be believed months later.
+     *
+     * The wording follows the direction because the same job crossing the counter twice is not the
+     * same object twice: an impression goes out, a finished crown comes back, and a trail that
+     * cannot tell those apart is not a trail. Work type rather than a fixed vocabulary, because
+     * this form serves dental, optical, hearing and P&O clinics and "Impression" is only right for
+     * one of them.
+     */
+    protected function movement(string $type, $subject, string $direction): array
+    {
+        if ($type !== 'opd_lab_work') {
+            return [
+                'purpose'    => $direction === 'out'
+                    ? (trim((string) $subject->sample_type) ?: 'Samples')
+                    : 'Report',
+                'item_count' => 1,
+            ];
+        }
+
+        $work = trim((string) $subject->work_type) ?: 'Lab work';
+
+        $purpose = $direction === 'out'
+            ? match ($subject->status) {
+                'trial'  => $work . ' — trial back to lab',
+                'remake' => $work . ' — remake',
+                default  => $work,
+            }
+            : match ($subject->status) {
+                'trial'  => $work . ' — trial',
+                'remake' => $work . ' — remake returned',
+                default  => $work,
+            };
+
+        // Units is the count of things the lab was asked to make, which is the count of things
+        // that cross the counter. Only the dental profile defines it; everywhere else one packet
+        // changing hands is the honest answer rather than a number nobody recorded.
+        $units = (int) (((array) ($subject->measurements ?? []))['units'] ?? 0);
+
+        return [
+            'purpose'    => mb_substr($purpose, 0, 120),
+            'item_count' => $units > 0 ? min($units, 999) : 1,
+        ];
+    }
+
+    /**
      * Whether anything could legitimately be moving this way right now.
      *
      * This is the cheapest and by far the most effective control in the whole feature, because it
@@ -186,8 +234,8 @@ class HmisHandoverController extends Controller
     }
 
     /**
-     * Everything the counter needs before anyone signs anything: is this expected, who is this
-     * lab, and who have they sent before.
+     * Everything the counter needs before a name goes down: is this expected, who is this lab, who
+     * have they sent before, and who they sent last time.
      */
     public function start(Request $request, string $type, $id)
     {
@@ -199,19 +247,21 @@ class HmisHandoverController extends Controller
         [$expected, $reason] = $this->checkDispatch($type, $subject, $direction);
 
         return response()->json([
-            'success'   => true,
-            'title'     => $this->titleOf($type, $subject),
-            'direction' => $direction,
-            'strict'    => (bool) (HmisHandover::DIRECTIONS[$direction]['strict'] ?? false),
-            'lab'       => [
+            'success'     => true,
+            'title'       => $this->titleOf($type, $subject),
+            'direction'   => $direction,
+            'strict'      => (bool) (HmisHandover::DIRECTIONS[$direction]['strict'] ?? false),
+            'lab'         => [
                 'name'     => $lab['name'],
                 'phone'    => $lab['phone'],
                 'masked'   => HmisWhatsAppShare::maskedPhone($lab['phone']),
                 'internal' => $lab['internal'],
             ],
-            'expected'  => $expected,
-            'reason'    => $reason,
-            'runners'   => HmisHandover::knownRunners($this->storeId(), $lab['vendor_id'], $lab['name']),
+            'expected'    => $expected,
+            'reason'      => $reason,
+            'movement'    => $this->movement($type, $subject, $direction),
+            'runners'     => HmisHandover::knownRunners($this->storeId(), $lab['vendor_id'], $lab['name']),
+            'last_person' => HmisHandover::lastRunner($this->storeId(), $lab['vendor_id'], $lab['name']),
         ]);
     }
 
@@ -234,11 +284,11 @@ class HmisHandoverController extends Controller
         $request->validate([
             'direction'   => 'required|in:out,in',
             'person_name' => 'required|string|max:150',
-            'purpose'     => 'nullable|string|max:120',
             'handover_id' => 'nullable|integer',
         ]);
 
-        $lab = $this->labOf($type, $subject);
+        $lab      = $this->labOf($type, $subject);
+        $movement = $this->movement($type, $subject, $request->direction);
 
         if (blank($lab['phone'])) {
             return response()->json([
@@ -262,7 +312,7 @@ class HmisHandoverController extends Controller
                 'subject_id'    => (int) $subject->id,
                 'patient_id'    => $subject->patient_id,
                 'direction'     => $request->direction,
-                'purpose'       => $request->purpose,
+                'purpose'       => $movement['purpose'],
                 'lab_vendor_id' => $lab['vendor_id'],
                 'lab_name'      => $lab['name'],
                 'lab_phone'     => $lab['phone'],
@@ -278,7 +328,7 @@ class HmisHandoverController extends Controller
             $handover->forceFill([
                 'direction'   => $request->direction,
                 'person_name' => $request->person_name,
-                'purpose'     => $request->purpose,
+                'purpose'     => $movement['purpose'],
                 'lab_phone'   => $lab['phone'],
             ])->save();
         }
@@ -364,12 +414,7 @@ class HmisHandoverController extends Controller
             'person_name'     => 'required|string|max:150',
             'person_phone'    => 'nullable|string|max:40',
             'person_id_ref'   => 'nullable|string|max:80',
-            'purpose'         => 'nullable|string|max:120',
-            'item_count'      => 'nullable|integer|min:1|max:999',
-            'item_note'       => 'nullable|string|max:255',
-            'notes'           => 'nullable|string|max:2000',
             'handover_id'     => 'nullable|integer',
-            'signature'       => 'nullable|string',
             'photo'           => 'nullable|image|max:8192',
             'override_reason' => 'nullable|string|max:255',
         ]);
@@ -377,6 +422,7 @@ class HmisHandoverController extends Controller
         $storeId  = $this->storeId();
         $lab      = $this->labOf($type, $subject);
         $title    = $this->titleOf($type, $subject);
+        $movement = $this->movement($type, $subject, $request->direction);
         $strict   = (bool) (HmisHandover::DIRECTIONS[$request->direction]['strict'] ?? false);
 
         [$expected, $expectedReason] = $this->checkDispatch($type, $subject, $request->direction);
@@ -408,9 +454,8 @@ class HmisHandoverController extends Controller
             'subject_id'        => (int) $subject->id,
             'patient_id'        => $subject->patient_id,
             'direction'         => $request->direction,
-            'purpose'           => $request->purpose,
-            'item_count'        => $request->item_count ?: null,
-            'item_note'         => $request->item_note,
+            'purpose'           => $movement['purpose'],
+            'item_count'        => $movement['item_count'],
             'lab_vendor_id'     => $lab['vendor_id'],
             'lab_name'          => $lab['name'],
             'lab_phone'         => $lab['phone'],
@@ -421,7 +466,6 @@ class HmisHandoverController extends Controller
             'happened_at'       => now(),
             'dispatch_expected' => $expected,
             'override_reason'   => $expected ? null : $request->override_reason,
-            'notes'             => $request->notes,
             'ip'                => $request->ip(),
         ]);
 
@@ -432,10 +476,8 @@ class HmisHandoverController extends Controller
             : ($strict ? 'provisional' : 'recorded');
 
         if (!$verified) {
-            $handover->verify_method = filled($request->signature) ? 'signature' : 'none';
+            $handover->verify_method = 'none';
         }
-
-        $handover->signature_path = $this->saveDataUrl($request->input('signature'), 'sig') ?: $handover->signature_path;
 
         // upload() returns the bare filename, so the directory is put back on: what is stored is a
         // disk-relative path, which is what mediaUrl() and the slip both expect.
@@ -557,37 +599,6 @@ class HmisHandoverController extends Controller
             ? ['delivered_by' => $person, 'received_by' => $staff]
             : ['handed_over_by' => $staff, 'collected_by' => $person]
         )->save();
-    }
-
-    /**
-     * A signature drawn on the counter tablet, arriving as a data URL.
-     *
-     * Written straight to the public disk rather than through the upload helper, which expects an
-     * UploadedFile. Size-capped because a canvas PNG has no business being large and a data URL is
-     * the easiest thing in the world to point at a hundred megabytes.
-     */
-    protected function saveDataUrl(?string $dataUrl, string $prefix): ?string
-    {
-        $dataUrl = trim((string) $dataUrl);
-        if ($dataUrl === '' || !preg_match('#^data:image/(png|jpeg);base64,#i', $dataUrl, $m)) {
-            return null;
-        }
-
-        $binary = base64_decode(substr($dataUrl, strpos($dataUrl, ',') + 1), true);
-        if ($binary === false || strlen($binary) < 128 || strlen($binary) > 2 * 1024 * 1024) {
-            return null;
-        }
-
-        $ext  = strtolower($m[1]) === 'jpeg' ? 'jpg' : 'png';
-        $path = HmisHandover::MEDIA_DIR . '/' . $prefix . '-' . now()->format('Ymd') . '-' . uniqid() . '.' . $ext;
-
-        try {
-            Storage::disk('public')->put($path, $binary);
-        } catch (\Throwable $e) {
-            return null;
-        }
-
-        return $path;
     }
 
     /**

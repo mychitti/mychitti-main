@@ -336,6 +336,15 @@ class Kernel extends ConsoleKernel
             ->name('whatsapp-billing')
             ->withoutOverlapping();
 
+        // Paid receiving add-ons (Lead Notifications) renew from the vendor wallet. Daily and
+        // after the plan run above, so a vendor who tops up is picked up the next morning and
+        // the two never contend for the same wallet row.
+        $schedule->command('whatsapp:renew-addons')
+            ->dailyAt('05:15')
+            ->timezone($tz)
+            ->name('whatsapp-addon-renewals')
+            ->withoutOverlapping();
+
         // PLATFORM FEE MONTHLY DEDUCTION =======================================
         $schedule->command('platform-fee:deduct')
             ->monthlyOn(1, '00:00')

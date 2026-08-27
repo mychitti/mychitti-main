@@ -168,12 +168,29 @@
                     {{-- Outpatient --}}
                     {{-- Outpatient — single direct OPD Register link (only live item) --}}
                     @if (selected_menu('opd_register') && hasAnyPermission(['opd_register.list', 'opd_register.add', 'opd_register.export']))
-                        <li class="nav-item {{ Request::is('opd*') && request('scope') !== 'my' ? 'active' : '' }}">
+                        <li class="nav-item {{ Request::is('opd*') && !Request::is('opd/lab-work*') && request('scope') !== 'my' ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link"
                                 href="{{ route('vendor.opd.index') }}" title="OPD Register">
                                 <img src="{{ asset('storage/app/public/uploaded/sidebar_icons/outpatient.png') }}"
                                     alt="" class="nav-link-icon">
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">OPD
+                                    Register</span>
+                            </a>
+                        </li>
+                    @endif
+
+                    {{-- Lab work across every patient — crowns, lenses, braces out at a lab, and who
+                         carried each one in or out. Its own entry rather than a tab inside the OPD
+                         register because it is read by the counter rather than by a doctor: the
+                         question is which pieces are late today, not what happened at one visit.
+                         Only for hospitals whose speciality does lab work. --}}
+                    @if (selected_menu('opd_register') && Route::has('vendor.opd.lab-work.index')
+                        && hmis_lab_work_enabled() && hasPermission('opd_register', 'view'))
+                        <li class="nav-item {{ Request::is('opd/lab-work*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link"
+                                href="{{ route('vendor.opd.lab-work.index') }}" title="Lab work and handovers, all patients">
+                                <i class="tio-lab nav-link-icon" style="font-size:18px;"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Lab Work
                                     Register</span>
                             </a>
                         </li>

@@ -130,6 +130,7 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::get('whatsapp/bulk/history/{runId}/export', 'WhatsAppController@bulkHistoryExport')->name('whatsapp.bulk.history.export');
         Route::post('whatsapp/features/subscribe', 'WhatsAppController@featureSubscribe')->name('whatsapp.features.subscribe');
         Route::post('whatsapp/features/toggle', 'WhatsAppController@featureToggle')->name('whatsapp.features.toggle');
+        Route::post('whatsapp/features/auto-renew', 'WhatsAppController@featureAutoRenew')->name('whatsapp.features.auto-renew');
         // WhatsApp Business Platform billing — the monthly plan, template slots, AI tokens.
         Route::get('whatsapp/billing', 'WhatsAppController@billing')->name('whatsapp.billing');
         Route::post('whatsapp/billing/subscribe', 'WhatsAppController@billingSubscribe')->name('whatsapp.billing.subscribe');

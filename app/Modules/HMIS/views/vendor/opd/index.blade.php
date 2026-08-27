@@ -316,6 +316,12 @@
                 <a href="{{ route('vendor.opd.export', array_filter(['date_range'=>$preset,'custom_date_range'=>request('custom_date_range'),'doctor'=>request('doctor'),'search'=>request('search')])) }}"
                    class="btn btn-hmis-export"><i class="tio-download"></i> Export</a>
                 @endif
+                @if (hmis_lab_work_enabled() && hasPermission('opd_register', 'view'))
+                <a href="{{ route('vendor.opd.lab-work.index') }}" class="btn btn-hmis-export"
+                   title="Every lab work job across all patients, and who carried each one in or out">
+                    <i class="tio-lab"></i> Lab Work
+                </a>
+                @endif
                 @if (hasPermission('opd_register', 'edit'))
                 <a href="{{ route('vendor.opd.terms') }}" class="btn btn-hmis-export"
                    title="Choose which diagnosis and treatment terms your doctors are offered">

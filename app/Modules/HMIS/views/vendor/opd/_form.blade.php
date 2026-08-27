@@ -209,7 +209,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="input-label">Address <span class="text-danger">*</span></label>
+                    <label class="input-label">Address</label>
                     <input type="text" id="qp_address" class="form-control" placeholder="Address">
                 </div>
 
@@ -478,11 +478,6 @@ $(function () {
             $('#qp_gender').focus();
             return;
         }
-        if (!address) {
-            $('#quickPatientError').text('Address is required.').show();
-            return;
-        }
-
         const btn = $(this);
         btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-1"></span> Saving...');
         $('#quickPatientError').hide();

@@ -151,6 +151,18 @@
                                             'body'     => "Daily summary for {{1}} — {{2}}\n\nMoney: {{3}}\n\nActivity: {{4}}\n\nChange what this includes, or switch it off, under Hospital Settings.",
                                             'example'  => 'City Hospital | 12 Feb 2026 | Lab income: 4,250.00 · Total income: 18,400.00 (up 3,100.00 on yesterday) · Money still owed: 22,900.00 | New enquiries: 4 · New patients: 2 · Booked for tomorrow: 11',
                                         ],
+                                        [
+                                            'name'     => \App\Services\WhatsAppService::DEFAULT_ADDON_LOW_BALANCE_TEMPLATE,
+                                            'label'    => translate('Add-on renewal failed'),
+                                            'blurb'    => translate('Warns a vendor that their wallet could not cover the monthly Lead Notifications renewal. Sent by the daily renewal run, which retries for a week before giving up.'),
+                                            'category' => 'UTILITY',
+                                            'header'   => 'Add-on renewal failed',
+                                            'footer'   => 'MyChitti',
+                                            // {{3}} and {{4}} arrive already formatted by _price(), symbol included —
+                                            // so no currency sign belongs in front of them here.
+                                            'body'     => "Hello {{1}}, we could not renew your {{2}} add-on on MyChitti because your wallet balance is too low.\n\nAmount due: {{3}}\nWallet balance: {{4}}\n\nTop up your wallet to keep receiving these alerts on WhatsApp. We will try again tomorrow.",
+                                            'example'  => 'Khb Service Center | Lead Notifications | ₹200.00 | ₹45.00',
+                                        ],
                                     ];
                                 @endphp
 
@@ -182,7 +194,9 @@
                                                     data-name="{{ $t['name'] }}"
                                                     data-category="{{ $t['category'] }}"
                                                     data-body="{{ $t['body'] }}"
-                                                    data-example="{{ $t['example'] }}">
+                                                    data-example="{{ $t['example'] }}"
+                                                    data-header="{{ $t['header'] ?? '' }}"
+                                                    data-footer="{{ $t['footer'] ?? '' }}">
                                                 {{ $status ? translate('Recreate') : translate('Use this') }}
                                             </button>
                                         </div>
@@ -557,6 +571,17 @@
             set('tpl_category', this.dataset.category);
             set('tpl_body', this.dataset.body);
             set('tpl_example', this.dataset.example);
+
+            // Header and footer are static decoration — the sending job supplies body variables
+            // only — but they still have to reach Meta at submission, and a half-filled form is
+            // how a suggested template ends up on the WABA looking nothing like the real one.
+            set('tpl_header', this.dataset.header || '');
+            set('tpl_footer', this.dataset.footer || '');
+            if (this.dataset.header) {
+                set('tpl_header_format', 'TEXT');
+                var fmt = form.querySelector('[name="tpl_header_format"]');
+                if (fmt) fmt.dispatchEvent(new Event('change', { bubbles: true }));
+            }
 
             form.scrollIntoView({ behavior: 'smooth', block: 'center' });
             var body = form.querySelector('[name="tpl_body"]');

@@ -480,7 +480,11 @@ class HospitalBillController extends Controller
      */
     private function treatmentChargesForVisit(OpdVisit $visit, int $storeId): array
     {
-        $terms = $visit->treatment_list;
+        // Bill what the patient agreed to. Advice they declined is still recorded on the visit,
+        // but charging for it would put treatments on the bill that were never going to happen.
+        // Falls back to the advised list while no willing list has been recorded, which is how
+        // every visit taken before consent was captured separately still bills correctly.
+        $terms = $visit->willing_treatment_list ?: $visit->treatment_list;
         if (!$terms) {
             return [];
         }
@@ -525,7 +529,11 @@ class HospitalBillController extends Controller
             'paid_amount'     => 'nullable|numeric|min:0',
             'tax_type'       => 'nullable|in:gst,non-gst',
             'gst_percent'    => 'nullable|numeric|min:0|max:100',
-            'transaction_id' => 'required_if:payment_method,UPI,Card,Net Banking|nullable|string|max:100',
+            // UPI is deliberately not in this list. A counter taking a UPI payment sees the money
+            // land on their own phone and has no reference to hand until they open the app for it,
+            // so demanding one here stopped bills being raised for a number nobody needed. Card and
+            // net banking still carry a slip with the reference printed on it.
+            'transaction_id' => 'required_if:payment_method,Card,Net Banking|nullable|string|max:100',
         ]);
 
         $taxType    = $request->input('tax_type', 'non-gst');

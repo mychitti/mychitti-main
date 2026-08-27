@@ -158,6 +158,7 @@ class HospitalDashboardController extends Controller
         $opd_consultation_count          = (int) ($config?->opd_consultation_count ?? 1);
         $opd_consultation_validity_days  = (int) ($config?->opd_consultation_validity_days ?? 7);
         $vitals_enabled                  = hmis_vitals_enabled($store_id);
+        $rx_print_clinical               = hmis_rx_print_clinical($store_id);
         $security_tab_enabled            = hmis_security_tab_enabled($store_id);
         $lab_work_enabled                = hmis_lab_work_enabled($store_id);
         $daily_report                    = hmis_daily_report_settings($store_id);
@@ -207,7 +208,7 @@ class HospitalDashboardController extends Controller
         return view('hmis::vendor.hospital.settings', compact(
             'prefix', 'padding', 'serial', 'previewMuid',
             'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages',
-            'vitals_enabled', 'security_tab_enabled',
+            'vitals_enabled', 'rx_print_clinical', 'security_tab_enabled',
             'lab_work_enabled', 'lab_work_profile', 'lab_work_auto',
             'departments', 'states',
             'opTypeDefaults', 'opTypesOwn', 'opTypesHidden',
@@ -226,6 +227,7 @@ class HospitalDashboardController extends Controller
             'rx_languages'                   => 'nullable|array',
             'rx_languages.*'                 => 'string|in:' . implode(',', array_keys(\App\Models\Prescription::LANGUAGES)),
             'vitals_enabled'                 => 'nullable|boolean',
+            'rx_print_clinical'              => 'nullable|boolean',
             'security_tab_enabled'           => 'nullable|boolean',
             'lab_work_enabled'               => 'nullable|boolean',
             'daily_report_enabled'           => 'nullable|boolean',
@@ -252,6 +254,12 @@ class HospitalDashboardController extends Controller
         // existing hospital keeps the vitals cards without visiting this page.
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_vitals_enabled')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_vitals_enabled` TINYINT(1) NULL DEFAULT 1");
+        }
+        // Whether a prescription names the condition and repeats the doctor's advice, or carries
+        // only the medicines. Nullable with null read as on, so no hospital's sheet changes shape
+        // without somebody choosing it here.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_rx_print_clinical')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_rx_print_clinical` TINYINT(1) NULL DEFAULT 1");
         }
         // Whether the consultation screen carries a Security & Compliance tab, and with it the
         // access trail that feeds it. Defaults to 0: the trail is only worth keeping for a
@@ -289,6 +297,7 @@ class HospitalDashboardController extends Controller
                 'opd_consultation_count'         => (int) $request->opd_consultation_count,
                 'opd_consultation_validity_days' => (int) $request->opd_consultation_validity_days,
                 'hmis_vitals_enabled'            => $request->boolean('vitals_enabled') ? 1 : 0,
+                'hmis_rx_print_clinical'         => $request->boolean('rx_print_clinical') ? 1 : 0,
                 'hmis_security_tab_enabled'      => $request->boolean('security_tab_enabled') ? 1 : 0,
                 'hmis_lab_work_enabled'          => $request->boolean('lab_work_enabled') ? 1 : 0,
                 // English is always kept: it is the fallback the printed sheet falls back to for

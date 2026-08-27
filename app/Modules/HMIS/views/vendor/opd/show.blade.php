@@ -513,6 +513,17 @@
         color: #64748b;
         margin-bottom: 4px;
     }
+    /* Sub-cards inside Diagnosis & Treatment. Flatter than a card of their own — a tinted header
+       strip and a hairline border — so three of them read as one card divided into sections
+       rather than as four cards stacked on the page. */
+    .dx-subcard > .card-header {
+        background: #fcfdfe;
+        border-bottom: 1px solid #eef1f4;
+        min-height: 0;
+    }
+    .dx-subcard > .card-header .tx-col-lbl {
+        margin-bottom: 0;
+    }
     .tx-chip { cursor: pointer; }
     .tx-counts {
         display: flex;
@@ -564,6 +575,13 @@
         background: #fee2e2;
         border-color: #f87171;
         color: #991b1b;
+    }
+    /* Under way right now — blue, so it reads as active rather than as another shade of waiting
+       between the yellow of pending and the orange of booked. */
+    .tx-state-in_progress {
+        background: #dbeafe;
+        border-color: #60a5fa;
+        color: #1e40af;
     }
     /* Net, due and how much of the plan has been collected: one statement under the table it
        totals, rather than a figure repeated beside every chip. */
@@ -896,31 +914,54 @@
         font-weight: 700;
         opacity: .55;
     }
-    #dxEdit .select2-container--default .select2-selection--multiple {
+    /* Diagnosis, Advised and Willing each sit in their own editor panel, so every rule here has
+       to name all three. `height: auto` with a min-height is what lets the box grow as tags wrap
+       instead of the theme's fixed control height cutting the second row off outside the border —
+       which is what happens the moment these boxes are only half the width. */
+    #dxEdit .select2-container--default .select2-selection--multiple,
+    #txEdit .select2-container--default .select2-selection--multiple,
+    #wtEdit .select2-container--default .select2-selection--multiple {
         border-color: #e7eaf3;
         min-height: 34px;
         height: auto;
     }
-    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+    #txEdit .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+    #wtEdit .select2-container--default .select2-selection--multiple .select2-selection__rendered {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        padding-bottom: 2px;
+        gap: 4px;
+        padding-bottom: 4px;
     }
-    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice,
+    #txEdit .select2-container--default .select2-selection--multiple .select2-selection__choice,
+    #wtEdit .select2-container--default .select2-selection--multiple .select2-selection__choice {
         background: #eff6ff;
         border: 1px solid #bfdbfe;
         color: #1d4ed8;
         font-size: 11px;
         font-weight: 600;
         padding: 1px 6px;
+        /* The gap above owns the spacing now, so the theme's own margins cannot double it up
+           or leave a wrapped row sitting flush against the one over it. */
+        margin: 0;
+        max-width: 100%;
     }
-    #dxEdit .tx-select2 .select2-selection__choice {
+    /* A term long enough to outrun the box wraps its label rather than widening the control and
+       pushing the × out of reach. */
+    #dxEdit .select2-selection__choice > *,
+    #txEdit .select2-selection__choice > *,
+    #wtEdit .select2-selection__choice > * {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    #txEdit .tx-select2 .select2-selection__choice {
         background: #f5f3ff;
         border-color: #ddd6fe;
         color: #6d28d9;
     }
-    #dxEdit .wt-select2 .select2-selection__choice {
+    #wtEdit .wt-select2 .select2-selection__choice {
         background: #ecfdf5;
         border-color: #a7f3d0;
         color: #047857;
@@ -970,7 +1011,9 @@
        offsets the theme and select2custom.css disagree on, and `color: inherit` keeps each ×
        the colour of the chip it belongs to (amber / blue / violet). */
     #ccEdit .cc-select2 .select2-selection__choice,
-    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice,
+    #txEdit .select2-container--default .select2-selection--multiple .select2-selection__choice,
+    #wtEdit .select2-container--default .select2-selection--multiple .select2-selection__choice {
         display: inline-flex;
         flex-direction: row-reverse;
         align-items: center;
@@ -978,7 +1021,9 @@
     }
 
     #ccEdit .cc-select2 .select2-selection__choice__remove,
-    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove,
+    #txEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove,
+    #wtEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
         position: static !important;
         inset: auto !important;
         float: none !important;
@@ -990,7 +1035,9 @@
     }
 
     #ccEdit .cc-select2 .select2-selection__choice__remove:hover,
-    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+    #dxEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover,
+    #txEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover,
+    #wtEdit .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
         opacity: 1;
     }
 
@@ -1237,6 +1284,86 @@
 
     /* ── OP + Prescription workspace ── */
     .opd-collapse-head { cursor:pointer; }
+    /* ── Lab work card ──
+       A job is read in a fixed order: what it is, who has it, when it is due, what was specified.
+       All four used to share one run of dot-separated values, which meant finding any of them
+       involved reading the punctuation. Each is its own band now, in that order. */
+    .lw-card { border:1px solid #e7eaf3; border-radius:10px; }
+    .lw-title { font-weight:700; font-size:14px; color:#1e293b; }
+    .lw-sub { font-size:12px; color:#64748b; }
+    .lw-stamp { font-size:11px; color:#059669; white-space:nowrap; }
+    .lw-rule { border-top:1px solid #f1f5f9; margin:12px 0; }
+
+    /* Two columns that wrap to two rows on a narrow card: identity on the left, the dates and
+       the price on the right. Both are metadata about the same job, so they share a line rather
+       than each taking a band of their own. */
+    .lw-row { display:flex; align-items:baseline; justify-content:space-between; gap:6px 16px; flex-wrap:wrap; }
+    .lw-meta { font-size:11.5px; color:#64748b; white-space:nowrap; }
+    .lw-meta b { color:#334155; font-weight:600; }
+    .lw-meta .is-late { color:#dc2626; font-weight:600; }
+
+    /* The specification. Pairs sit at their natural width and stay left-aligned — a grid of 1fr
+       columns spread them the full width of the card and left every label stranded from its own
+       value. Label over value, because these are read as a set rather than as a sentence. */
+    .lw-spec { display:flex; flex-wrap:wrap; gap:11px 30px; }
+    .lw-spec-lbl { display:block; font-size:9.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#94a3b8; margin-bottom:3px; }
+    .lw-spec-val { font-size:12.5px; font-weight:600; color:#1e293b; }
+
+    .lw-note { font-size:12px; color:#475569; display:flex; align-items:baseline; gap:7px; }
+    .lw-note-lbl { font-size:9.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:#94a3b8; flex:none; }
+    /* A job still sitting at remake: the complaint is the thing to read on the card. */
+    .lw-issue { color:#991b1b; background:#fef2f2; border-left:2px solid #f87171; padding:5px 9px; border-radius:0 4px 4px 0; }
+    .lw-issue .lw-note-lbl { color:#dc2626; }
+
+    /* Updating the stage is the one control that moves the job on, so it keeps the weight.
+       Everything else is a link — deliberately neutral, since the theme paints a bare .btn-link
+       in its danger colour and made sending a WhatsApp look like deleting something. Remove is
+       the only red one, and it is pushed away from the rest. */
+    .lw-actions { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; }
+    .lw-actions .btn-link { font-size:11.5px; padding:0; vertical-align:baseline; color:#475569; }
+    .lw-actions .btn-link:hover { color:#1e293b; text-decoration:underline; }
+    .lw-actions .btn-link .tio-whatsapp { color:#25d366; }
+    .lw-actions .lw-danger { margin-left:auto; }
+    .lw-actions .lw-danger .btn-link { color:#dc2626; }
+
+    /* The stage form as one panel, and — when the stage needs nothing else — as one ROW.
+       The form itself is the flex container: the stage bar contributes its controls directly
+       (display:contents), the blocks that only some stages need take a full line each, and the
+       button is pushed to the end of whatever line it lands on. So the ordinary case is a single
+       line with the button inline, and a remake or a handover wraps it below the fields it
+       submits, without a class to toggle or a second layout to keep in step. */
+    .lw-status-form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+        background: #f8fafc;
+        border: 1px solid #e9eef5;
+        border-radius: 9px;
+        padding: 10px 12px;
+    }
+    .lw-stage-bar { display: contents; }
+    /* Every browser's UA sheet already hides these, but as a direct flex child a hidden input
+       that slipped through would take a gap's worth of space at the head of the row. */
+    .lw-status-form input[type="hidden"] { display: none; }
+    /* Full width, so each forces its own line and pushes the button past it. */
+    .lw-status-form .lw-remake,
+    .lw-status-form .lw-custody { flex: 0 0 100%; margin-top: 0 !important; }
+    .lw-stage-go { margin-left: auto; }
+    /* btn--primary renders pale here, so an enabled button looked like one waiting on something
+       unfilled. Stated outright instead. */
+    .lw-update-btn {
+        background: #2563eb;
+        border: 1px solid #2563eb;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 16px;
+        border-radius: 7px;
+        line-height: 1.4;
+    }
+    .lw-update-btn:hover, .lw-update-btn:focus { background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+
     .dbl-editable { cursor:pointer; }
     .rx-actions .rx-lang { order:-1; margin-left:0; margin-right:auto; }
     .rx-sync-hint { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#0ea5e9; }
@@ -1854,12 +1981,22 @@
                     };
 
                     $wtCurrent = $visit->willing_treatment_list;
+
+                    // The plan is what the patient actually agreed to. Advice they turned down
+                    // stays recorded as advice, but carries no schedule, no price and no row —
+                    // nothing is scheduled or billed that the patient did not accept.
+                    // Until a willing list exists there is nothing else to go on, so the advised
+                    // list drives the plan exactly as it always has.
+                    $planIsWilling = count($wtCurrent) > 0;
+                    $planTerms     = $planIsWilling ? $wtCurrent : $txCurrent;
+
                     $txPlan   = $visit->treatment_plan_map;
                     $txStateLabels = [
-                        'pending'   => 'Pending',
-                        'upcoming'  => 'Upcoming',
-                        'completed' => 'Completed',
-                        'missed'    => 'Not done',
+                        'pending'     => 'Pending',
+                        'upcoming'    => 'Upcoming',
+                        'in_progress' => 'In progress',
+                        'completed'   => 'Completed',
+                        'missed'      => 'Not done',
                     ];
                     $rxCurrency = \App\CentralLogics\Helpers::currency_symbol() ?: '₹';
 
@@ -1881,54 +2018,37 @@
                         return implode(' · ', $parts);
                     };
 
-                    // One pass over the advised list feeds all three readings of it: the chips,
+                    // One pass over the plan list feeds all three readings of it: the chips,
                     // the state counts that stand in for a colour key, and the detail table.
+                    // Amount, discount and paid live in the plan row and are still read by
+                    // Billing — they are simply never shown or edited on this screen.
                     $txRows = [];
                     $txStateCounts = [];
-                    $txSum = ['gross' => 0.0, 'discount' => 0.0, 'paid' => 0.0];
 
-                    foreach ($txCurrent as $term) {
+                    foreach ($planTerms as $term) {
                         $row   = $txPlan[$term] ?? [];
                         $state = $row['status'] ?? 'pending';
                         $state = ($visit->is_completed && $state !== 'completed') ? 'missed' : $state;
 
-                        $amount = (float) ($row['amount'] ?? 0);
-                        $less   = (float) ($row['discount'] ?? 0);
-                        $net    = max($amount - $less, 0);
-                        $isPaid = !empty($row['paid']);
                         $when   = $txWhen($row);
                         // Booked as a real follow-up, or just a date pencilled onto the plan.
                         $appt   = $treatmentAppointments[(int) ($row['appointment_id'] ?? 0)] ?? null;
 
                         $txStateCounts[$state] = ($txStateCounts[$state] ?? 0) + 1;
-                        $txSum['gross']    += $amount;
-                        $txSum['discount'] += $less;
-                        if ($isPaid) {
-                            $txSum['paid'] += $net;
-                        }
 
                         $txRows[] = [
                             'term'     => $term,
                             'state'    => $state,
                             'when'     => $when,
-                            'amount'   => $amount,
-                            'discount' => $less,
-                            'net'      => $net,
-                            'paid'     => $isPaid,
                             'appt'     => $appt,
                             'tip'      => implode(' · ', array_filter([
                                 $txStateLabels[$state],
                                 $when ?: null,
-                                $net ? $rxCurrency . number_format($net, 2) : null,
-                                $isPaid ? 'paid' : null,
                                 $appt ? 'booked' : null,
                             ])),
                         ];
                     }
 
-                    $txSum['net'] = max($txSum['gross'] - $txSum['discount'], 0);
-                    $txSum['due'] = max($txSum['net'] - $txSum['paid'], 0);
-                    $txPaidPct = $txSum['net'] > 0 ? min(100, round($txSum['paid'] / $txSum['net'] * 100)) : 0;
                     $txEditable = $visit->is_editable && hasPermission('opd_register', 'edit');
 
                     $dxChoices = $rankTerms(collect($diagnosisOptions ?? [])->merge($dxCurrent), $termInsights['diagnosisByKey'] ?? []);
@@ -1937,21 +2057,35 @@
                     // One-tap chips for what this hospital actually sees most.
                     $dxQuick = collect($dxUsage)->keys()->take(\App\Services\OpdTermInsights::TOP_QUICK);
                 @endphp
+                {{-- One card for the consultation's clinical record, with Diagnosis, Advised and
+                     Willing as sub-cards inside it: three separate decisions, recorded at
+                     different moments by different people, but read as one thing.
+                     Money is deliberately absent from all three — what a treatment costs and
+                     whether it has been paid belongs to Billing, where it is settled. --}}
                 <div class="card shadow-none border mb-3">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                         <h6 class="mb-0 font-weight-bold" style="font-size:13px">Diagnosis &amp; Treatment</h6>
                         @if ($visit->is_completed)
                             <span class="visit-locked" title="This visit is completed. The OP receipt has been issued, so the record is closed."><i class="tio-lock"></i> Completed</span>
-                        @elseif (hasPermission('opd_register', 'edit'))
-                            <button class="btn btn-xs btn-soft-secondary" onclick="toggleDxEdit()">
-                                <i class="tio-edit" id="dxEditIcon"></i>
-                            </button>
                         @endif
                     </div>
-                    <div class="card-body py-3" id="dxView">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="tx-col-lbl">Diagnosis</div>
+                    <div class="card-body py-3">
+
+                        {{-- Diagnosis and the advice that follows from it sit side by side: one is
+                             read against the other, and they are short enough to share a line.
+                             h-100 on both keeps the pair level however many terms each holds. --}}
+                        <div class="row mb-2">
+                        <div class="col-md-6">
+                        <div class="card shadow-none border mb-0 h-100 dx-subcard">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <span class="tx-col-lbl mb-0">Diagnosis</span>
+                                @if (!$visit->is_completed && hasPermission('opd_register', 'edit'))
+                                    <button class="btn btn-xs btn-soft-secondary" onclick="toggleTermEdit('dx')" title="Edit diagnosis">
+                                        <i class="tio-edit"></i>
+                                    </button>
+                                @endif
+                            </div>
+                            <div class="card-body py-2 dbl-editable" id="dxView" ondblclick="editOnDblClick('dx', event)" title="Double-click to edit">
                                 <div id="dxBadges">
                                     @forelse($dxCurrent as $term)
                                         <span class="dx-badge">{{ $term }}</span>
@@ -1960,206 +2094,215 @@
                                     @endforelse
                                 </div>
                             </div>
-
-                            {{-- Same three columns in the same order as the editor below, so
-                                 opening the pencil rearranges nothing. Chips only: each carries
-                                 its status as colour, and everything else about the treatment —
-                                 when, how much, paid or not — is in the table under the row,
-                                 which a column three inches wide could never hold. --}}
-                            <div class="col-md-4">
-                                <div class="tx-col-lbl">Advised Treatment</div>
-                                <div id="txBadges">
-                                    @forelse($txRows as $r)
-                                        <span class="tx-badge tx-chip tx-state-{{ $r['state'] }}" data-term="{{ $r['term'] }}"
-                                              onclick="openTxPlanMenu(this)" title="{{ $r['tip'] }} — click to change">
-                                            {{ $r['term'] }}
-                                        </span>
-                                    @empty
-                                        <span class="text-muted small">Not recorded yet.</span>
-                                    @endforelse
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="tx-col-lbl">Willing Treatment</div>
-                                <div id="wtBadges">
-                                    @forelse($wtCurrent as $term)
-                                        <span class="wt-badge">{{ $term }}</span>
-                                    @empty
-                                        <span class="text-muted small">Not recorded yet.</span>
-                                    @endforelse
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- The detail behind the chips. One row per advised treatment: the
-                             schedule, what it comes to and whether it has been paid — the things
-                             a tooltip cannot say and nobody hovers for on a tablet. --}}
-                        <div class="tx-table-wrap" id="txTableWrap" @if(!count($txRows)) style="display:none" @endif>
-                            <div class="tx-table-head">
-                                <div class="tx-col-lbl mb-0">Treatment Plan</div>
-                                {{-- How many sit in each state, which doubles as the colour key
-                                     for the chips above: a standing legend explains colours
-                                     nobody is looking at, while "1 completed · 2 pending" is the
-                                     thing a doctor wants to know. --}}
-                                <div class="tx-counts" id="txCounts">
-                                    @foreach(['completed', 'upcoming', 'pending', 'missed'] as $state)
-                                        @if(!empty($txStateCounts[$state]))
-                                            <span><i class="tx-dot tx-state-{{ $state }}"></i>{{ $txStateCounts[$state] }} {{ strtolower($txStateLabels[$state]) }}</span>
-                                        @endif
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <div class="table-responsive">
-                                <table class="tx-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Treatment</th>
-                                            <th>Status</th>
-                                            <th>Scheduled</th>
-                                            <th class="tx-num">Amount</th>
-                                            <th class="tx-num">Discount</th>
-                                            <th class="tx-num">Net</th>
-                                            <th class="text-center">Payment</th>
-                                            @if($txEditable)
-                                                <th></th>
-                                            @endif
-                                        </tr>
-                                    </thead>
-                                    <tbody id="txTableBody">
-                                        @foreach($txRows as $r)
-                                            <tr>
-                                                <td class="tx-table-term">{{ $r['term'] }}</td>
-                                                <td><span class="tx-pill tx-state-{{ $r['state'] }}">{{ $txStateLabels[$r['state']] }}</span></td>
-                                                <td>
-                                                    @if($r['when'])
-                                                        {{ $r['when'] }}
-                                                    @else
-                                                        <span class="tx-nil">Not scheduled</span>
-                                                    @endif
-                                                    @if($r['appt'])
-                                                        {{-- Booked, so this date is on the desk's day list too. Red once the
-                                                             booking has been called off, which is news the plan must not hide. --}}
-                                                        <a href="{{ $r['appt']['url'] }}" target="_blank"
-                                                           class="tx-booked @if(in_array($r['appt']['status'], ['cancelled', 'no_show'])) is-stale @endif"
-                                                           title="{{ in_array($r['appt']['status'], ['cancelled', 'no_show']) ? 'That follow-up was ' . str_replace('_', ' ', $r['appt']['status']) . ' — open it' : 'Booked as a next visit — open the appointment' }}">
-                                                            <i class="tio-calendar-note"></i>{{ $r['appt']['token'] ? '#' . $r['appt']['token'] : 'Booked' }}
-                                                        </a>
-                                                    @endif
-                                                </td>
-                                                <td class="tx-num @if(!$r['amount']) tx-nil @endif">{{ $r['amount'] ? $rxCurrency . number_format($r['amount'], 2) : '—' }}</td>
-                                                <td class="tx-num @if(!$r['discount']) tx-nil @endif">{{ $r['discount'] ? $rxCurrency . number_format($r['discount'], 2) : '—' }}</td>
-                                                <td class="tx-num @if(!$r['net']) tx-nil @endif">{{ $r['net'] ? $rxCurrency . number_format($r['net'], 2) : '—' }}</td>
-                                                <td class="text-center">
-                                                    @if($r['paid'])
-                                                        <span class="tx-paid-yes">Paid</span>
-                                                    @elseif($r['net'])
-                                                        <span class="tx-paid-no">Due</span>
-                                                    @else
-                                                        <span class="tx-nil">—</span>
-                                                    @endif
-                                                </td>
-                                                @if($txEditable)
-                                                    <td class="text-right">
-                                                        <button type="button" class="tx-row-edit" data-tx-open data-term="{{ $r['term'] }}"
-                                                                onclick="openTxPlanMenu(this)" title="Edit schedule &amp; price">
-                                                            <i class="tio-edit"></i>
-                                                        </button>
-                                                    </td>
-                                                @endif
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="3" class="tx-foot-lbl">Total</td>
-                                            <td class="tx-num" id="txTotalGross">{{ $rxCurrency }}{{ number_format($txSum['gross'], 2) }}</td>
-                                            <td class="tx-num" id="txTotalDisc">{{ $rxCurrency }}{{ number_format($txSum['discount'], 2) }}</td>
-                                            <td class="tx-num" id="txTotalNet">{{ $rxCurrency }}{{ number_format($txSum['net'], 2) }}</td>
-                                            <td class="text-center tx-paid-figure" id="txTotalPaid">{{ $rxCurrency }}{{ number_format($txSum['paid'], 2) }}</td>
-                                            @if($txEditable)
-                                                <td></td>
-                                            @endif
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            <div id="txTotals" class="tx-due-strip @if(!$txSum['gross']) d-none @endif">
-                                <div class="tx-due-line">
-                                    <span class="tx-money-lbl">Balance due</span>
-                                    <span class="tx-money-due" id="txTotalDue">{{ $rxCurrency }}{{ number_format($txSum['due'], 2) }}</span>
-                                </div>
-                                <div class="tx-bar" title="Collected against this plan">
-                                    <div class="tx-bar-fill" id="txPaidBar" style="width: {{ $txPaidPct }}%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @if (hasPermission('opd_register', 'edit'))
-                        <div class="card-body py-3" id="dxEdit" style="display:none;">
-                            @if ($dxQuick->isNotEmpty())
-                                <div class="mb-2">
-                                    <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">
-                                        Seen most here
+                            @if (hasPermission('opd_register', 'edit'))
+                                <div class="card-body py-2 border-top" id="dxEdit" style="display:none;">
+                                    @if ($dxQuick->isNotEmpty())
+                                        <div class="mb-2">
+                                            <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">
+                                                Seen most here
+                                            </div>
+                                            @foreach ($dxQuick as $term)
+                                                <button type="button" class="term-chip" data-term="{{ $term }}"
+                                                    onclick="toggleChipTerm('dxSelect', this)"
+                                                    title="Recorded {{ $dxUsage[$term] }} time{{ $dxUsage[$term] == 1 ? '' : 's' }} in the last two years">
+                                                    {{ $term }} <span class="term-chip-count">{{ $dxUsage[$term] }}</span>
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    <div class="form-group mb-2">
+                                        <select id="dxSelect" class="form-control form-control-sm" multiple>
+                                            @foreach($dxChoices as $term)
+                                                <option value="{{ $term }}" @if(in_array($term, $dxCurrent)) selected @endif>{{ $term }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted">Most-used first. Pick from the list, or type a new one and press Enter.</small>
                                     </div>
-                                    @foreach ($dxQuick as $term)
-                                        <button type="button" class="term-chip" data-term="{{ $term }}"
-                                            onclick="toggleChipTerm('dxSelect', this)"
-                                            title="Recorded {{ $dxUsage[$term] }} time{{ $dxUsage[$term] == 1 ? '' : 's' }} in the last two years">
-                                            {{ $term }} <span class="term-chip-count">{{ $dxUsage[$term] }}</span>
-                                        </button>
-                                    @endforeach
+                                    <div class="mt-2 d-flex gap-2">
+                                        <button class="btn btn-sm btn-primary" onclick="saveDxTx(this)">Save</button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleTermEdit('dx')">Cancel</button>
+                                    </div>
                                 </div>
                             @endif
-                            <div class="row">
-                                <div class="col-md-4 form-group mb-2">
-                                    <label class="input-label" style="font-size:12px">Diagnosis</label>
-                                    <select id="dxSelect" class="form-control form-control-sm" multiple>
-                                        @foreach($dxChoices as $term)
-                                            <option value="{{ $term }}" @if(in_array($term, $dxCurrent)) selected @endif>{{ $term }}</option>
-                                        @endforeach
-                                    </select>
-                                    <small class="text-muted">Most-used first. Pick from the list, or type a new one and press Enter.</small>
-                                </div>
-                                <div class="col-md-4 form-group mb-2">
-                                    <label class="input-label" style="font-size:12px">Advised Treatment</label>
-                                    <select id="txSelect" class="form-control form-control-sm" multiple>
-                                        @foreach($txChoices as $term)
-                                            <option value="{{ $term }}" @if(in_array($term, $txCurrent)) selected @endif>{{ $term }}</option>
-                                        @endforeach
-                                    </select>
-                                    <small class="text-muted">
-                                        What you recommended.
-                                        <a href="{{ route('vendor.opd.treatment-catalog') }}" target="_blank" class="ml-1">Prices</a>
-                                    </small>
-                                </div>
-                                <div class="col-md-4 form-group mb-2">
-                                    <label class="input-label" style="font-size:12px">Willing Treatment</label>
-                                    <select id="wtSelect" class="form-control form-control-sm" multiple>
-                                        @foreach($txCurrent as $term)
-                                            <option value="{{ $term }}" @if(in_array($term, $wtCurrent)) selected @endif>{{ $term }}</option>
-                                        @endforeach
-                                    </select>
-                                    <small class="text-muted">Ticked off the advised list. Leave empty if they agreed to all of it.</small>
-                                </div>
-                            </div>
-                            {{-- Populated from the diagnoses currently selected. Suggestions only —
-                                 what this hospital has in fact given for that diagnosis before,
-                                 never applied on the doctor's behalf. --}}
-                            <div id="txSuggestBox" class="mb-2" style="display:none;">
-                                <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">
-                                    Usually given here for <span id="txSuggestFor" class="text-dark"></span>
-                                </div>
-                                <div id="txSuggest"></div>
-                            </div>
-                            <div class="mt-2 d-flex gap-2">
-                                <button class="btn btn-sm btn-primary" onclick="saveDxTx(this)">Save</button>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleDxEdit()">Cancel</button>
-                            </div>
                         </div>
-                    @endif
+
+                        </div>
+                        <div class="col-md-6">
+                        <div class="card shadow-none border mb-0 h-100 dx-subcard">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <span class="tx-col-lbl mb-0">Advised Treatment</span>
+                                @if (!$visit->is_completed && hasPermission('opd_register', 'edit'))
+                                    <button class="btn btn-xs btn-soft-secondary" onclick="toggleTermEdit('tx')" title="Edit advised treatment">
+                                        <i class="tio-edit"></i>
+                                    </button>
+                                @endif
+                            </div>
+                            <div class="card-body py-2 dbl-editable" id="txView" ondblclick="editOnDblClick('tx', event)" title="Double-click to edit">
+                                <div id="txBadges">
+                                    @if($planIsWilling)
+                                        {{-- The patient has chosen, so advice is now the record of what
+                                             was offered — plain, and not a way into the plan. --}}
+                                        @forelse($txCurrent as $term)
+                                            <span class="tx-badge">{{ $term }}</span>
+                                        @empty
+                                            <span class="text-muted small">Not recorded yet.</span>
+                                        @endforelse
+                                    @else
+                                        @forelse($txRows as $r)
+                                            <span class="tx-badge tx-chip tx-state-{{ $r['state'] }}" data-term="{{ $r['term'] }}"
+                                                  onclick="openTxPlanMenu(this)" title="{{ $r['tip'] }} — click to change">
+                                                {{ $r['term'] }}
+                                            </span>
+                                        @empty
+                                            <span class="text-muted small">Not recorded yet.</span>
+                                        @endforelse
+                                    @endif
+                                </div>
+                            </div>
+                            @if (hasPermission('opd_register', 'edit'))
+                                <div class="card-body py-2 border-top" id="txEdit" style="display:none;">
+                                    <div class="form-group mb-2">
+                                        <select id="txSelect" class="form-control form-control-sm" multiple>
+                                            @foreach($txChoices as $term)
+                                                <option value="{{ $term }}" @if(in_array($term, $txCurrent)) selected @endif>{{ $term }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted">
+                                            What you recommended.
+                                            <a href="{{ route('vendor.opd.treatment-catalog') }}" target="_blank" class="ml-1">Prices</a>
+                                        </small>
+                                    </div>
+                                    {{-- Populated from the diagnoses currently selected. Suggestions only —
+                                         what this hospital has in fact given for that diagnosis before,
+                                         never applied on the doctor's behalf. --}}
+                                    <div id="txSuggestBox" class="mb-2" style="display:none;">
+                                        <div class="text-muted mb-1" style="font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;">
+                                            Usually given here for <span id="txSuggestFor" class="text-dark"></span>
+                                        </div>
+                                        <div id="txSuggest"></div>
+                                    </div>
+                                    <div class="mt-2 d-flex gap-2">
+                                        <button class="btn btn-sm btn-primary" onclick="saveDxTx(this)">Save</button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleTermEdit('tx')">Cancel</button>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        </div>
+                        </div>
+
+                        {{-- Willing runs the full width: it carries the treatment plan table, which
+                             a half-width column could not hold. --}}
+                        <div class="card shadow-none border mb-0 dx-subcard">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <span class="tx-col-lbl mb-0">Willing Treatment</span>
+                                @if (!$visit->is_completed && hasPermission('opd_register', 'edit'))
+                                    <button class="btn btn-xs btn-soft-secondary" onclick="toggleTermEdit('wt')" title="Edit willing treatment">
+                                        <i class="tio-edit"></i>
+                                    </button>
+                                @endif
+                            </div>
+                            <div class="card-body py-2 dbl-editable" id="wtView" ondblclick="editOnDblClick('wt', event)" title="Double-click to edit">
+                                <div id="wtBadges">
+                                    @if($planIsWilling)
+                                        {{-- tx-badge, not wt-badge, as the base: .wt-badge is declared after
+                                             .tx-state-* at equal specificity, so it would repaint every chip
+                                             green and lose the status colour. --}}
+                                        @foreach($txRows as $r)
+                                            <span class="tx-badge tx-chip tx-state-{{ $r['state'] }}" data-term="{{ $r['term'] }}"
+                                                  onclick="openTxPlanMenu(this)" title="{{ $r['tip'] }} — click to change">
+                                                {{ $r['term'] }}
+                                            </span>
+                                        @endforeach
+                                    @else
+                                        <span class="text-muted small">Not recorded yet.</span>
+                                    @endif
+                                </div>
+
+                                {{-- The detail behind the chips: what is scheduled and where it has got
+                                     to. What any of it costs is neither asked nor answered here. --}}
+                                <div class="tx-table-wrap" id="txTableWrap" @if(!count($txRows)) style="display:none" @endif>
+                                    <div class="tx-table-head">
+                                        <div class="tx-col-lbl mb-0">Treatment Plan</div>
+                                        {{-- How many sit in each state, which doubles as the colour key
+                                             for the chips above. --}}
+                                        <div class="tx-counts" id="txCounts">
+                                            @foreach(['completed', 'in_progress', 'upcoming', 'pending', 'missed'] as $state)
+                                                @if(!empty($txStateCounts[$state]))
+                                                    <span><i class="tx-dot tx-state-{{ $state }}"></i>{{ $txStateCounts[$state] }} {{ strtolower($txStateLabels[$state]) }}</span>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="tx-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Treatment</th>
+                                                    <th>Status</th>
+                                                    <th>Scheduled</th>
+                                                    @if($txEditable)
+                                                        <th></th>
+                                                    @endif
+                                                </tr>
+                                            </thead>
+                                            <tbody id="txTableBody">
+                                                @foreach($txRows as $r)
+                                                    <tr>
+                                                        <td class="tx-table-term">{{ $r['term'] }}</td>
+                                                        <td><span class="tx-pill tx-state-{{ $r['state'] }}">{{ $txStateLabels[$r['state']] }}</span></td>
+                                                        <td>
+                                                            @if($r['when'])
+                                                                {{ $r['when'] }}
+                                                            @else
+                                                                <span class="tx-nil">Not scheduled</span>
+                                                            @endif
+                                                            @if($r['appt'])
+                                                                {{-- Booked, so this date is on the desk's day list too. Red once the
+                                                                     booking has been called off, which is news the plan must not hide. --}}
+                                                                <a href="{{ $r['appt']['url'] }}" target="_blank"
+                                                                   class="tx-booked @if(in_array($r['appt']['status'], ['cancelled', 'no_show'])) is-stale @endif"
+                                                                   title="{{ in_array($r['appt']['status'], ['cancelled', 'no_show']) ? 'That follow-up was ' . str_replace('_', ' ', $r['appt']['status']) . ' — open it' : 'Booked as a next visit — open the appointment' }}">
+                                                                    <i class="tio-calendar-note"></i>{{ $r['appt']['token'] ? '#' . $r['appt']['token'] : 'Booked' }}
+                                                                </a>
+                                                            @endif
+                                                        </td>
+                                                        @if($txEditable)
+                                                            <td class="text-right">
+                                                                <button type="button" class="tx-row-edit" data-tx-open data-term="{{ $r['term'] }}"
+                                                                        onclick="openTxPlanMenu(this)" title="Edit schedule">
+                                                                    <i class="tio-edit"></i>
+                                                                </button>
+                                                            </td>
+                                                        @endif
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            @if (hasPermission('opd_register', 'edit'))
+                                <div class="card-body py-2 border-top" id="wtEdit" style="display:none;">
+                                    <div class="form-group mb-2">
+                                        <select id="wtSelect" class="form-control form-control-sm" multiple>
+                                            @foreach($txCurrent as $term)
+                                                <option value="{{ $term }}" @if(in_array($term, $wtCurrent)) selected @endif>{{ $term }}</option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted">Ticked off the advised list. Leave empty if they agreed to all of it.</small>
+                                    </div>
+                                    <div class="mt-2 d-flex gap-2">
+                                        <button class="btn btn-sm btn-primary" onclick="saveDxTx(this)">Save</button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleTermEdit('wt')">Cancel</button>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                    </div>
                 </div>
 
                 {{-- Full Vitals Grid --}}
@@ -2352,7 +2495,7 @@
                         @if($currentPrescription->follow_up_date)
                             <div class="rx-followup"><i class="tio-calendar-note"></i> Follow-up on <strong>{{ $currentPrescription->follow_up_date->format('d M Y') }}</strong></div>
                         @endif
-                        @if($currentPrescription->notes)
+                        @if($currentPrescription->notes && hmis_rx_print_clinical())
                             <div class="rx-advice"><span class="rx-advice-lbl">Advice</span> {{ $currentPrescription->notes }}</div>
                         @endif
                     </div>
@@ -2406,7 +2549,7 @@
                             </tbody>
                         </table>
 
-                        @if($currentPrescription->notes)
+                        @if($currentPrescription->notes && hmis_rx_print_clinical())
                             <div class="mt-3" style="font-size:12px;">
                                 <strong>Advice / Notes:</strong>
                                 <p style="margin:4px 0 0; color:#334155;">{{ $currentPrescription->notes }}</p>
@@ -2445,28 +2588,12 @@
                         @endif
 
                         <div class="row">
-                            {{-- Diagnosis and advice are recorded once, in the consultation
-                                 cards above. These mirror them until the doctor types something
-                                 different here, at which point the mirror releases. --}}
-                            <div class="col-md-5">
-                                <div class="form-group">
-                                    <label class="input-label d-flex justify-content-between align-items-center mb-1">
-                                        <span>Diagnosis <span class="text-danger">*</span></span>
-                                        <span class="rx-sync-hint" id="rxDxHint">Synced from Diagnosis &amp; Treatment</span>
-                                    </label>
-                                    <textarea name="diagnosis" id="rxDiagnosis" data-synced="1" oninput="markRxFieldEdited(this, 'rxDxHint')" class="form-control form-control-sm" rows="3" placeholder="Primary diagnosis..." required>{{ $currentPrescription->diagnosis ?? ($visit->diagnosis ?: $visit->chief_complaint) }}</textarea>
-                                </div>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="form-group">
-                                    <label class="input-label d-flex justify-content-between align-items-center mb-1">
-                                        <span>Doctor's Advice / Notes</span>
-                                        <span class="rx-sync-hint" id="rxNotesHint">Synced from Consultation Notes</span>
-                                    </label>
-                                    <textarea name="notes" id="rxNotes" data-synced="1" oninput="markRxFieldEdited(this, 'rxNotesHint')" class="form-control form-control-sm" rows="3" placeholder="Rest, diet, precautions, advice...">{{ $currentPrescription->notes ?? $visit->notes }}</textarea>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
+                            {{-- Diagnosis and the doctor's advice used to be mirrored here from the
+                                 consultation cards above, which meant the same two things were
+                                 recorded twice and could drift apart. They are taken from the visit
+                                 when the prescription is saved instead, and whether they appear on
+                                 the sheet is a hospital setting. --}}
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label class="input-label">Follow-Up Date</label>
                                     <input type="date" name="follow_up_date" class="form-control form-control-sm" value="{{ $currentPrescription && $currentPrescription->follow_up_date ? $currentPrescription->follow_up_date->format('Y-m-d') : '' }}">
@@ -3135,15 +3262,41 @@
                     $lwPhone    = $visit->patient?->phone;
                     $lwEditable = $visit->is_editable && hasPermission('opd_register', 'edit');
                     $lwCurrency = \App\CentralLogics\Helpers::currency_symbol() ?: '₹';
+
+                    // Your own side of every custody box, off the staff list rather than spelled
+                    // out by hand each time. Same active-employees list the technician picker uses,
+                    // so a leaver stops being offered here the moment they stop being offered there.
+                    $lwStaffNames = collect($labTechnicians ?? [])
+                        ->map(fn($lwS) => trim((string) $lwS->name))
+                        ->filter()
+                        ->unique()
+                        ->values();
                 @endphp
+
+                {{-- Once for the whole section, not once per job: a datalist is addressed by id and
+                     repeating it inside the card loop would leave every box pointing at the first. --}}
+                <datalist id="lwStaffNames">
+                    @foreach($lwStaffNames as $lwStaffName)
+                        <option value="{{ $lwStaffName }}"></option>
+                    @endforeach
+                </datalist>
 
                 <div class="d-flex align-items-start justify-content-between mb-1">
                     <h4 class="mb-0 font-weight-bold" style="color:#0f172a">{{ $labWorkProfile['label'] }}</h4>
-                    @if($lwEditable)
-                        <button type="button" class="btn btn--primary btn-sm" onclick="lwToggleAdd()">
-                            <i class="tio-add"></i> New job
-                        </button>
-                    @endif
+                    <div class="d-flex align-items-center" style="gap:8px;">
+                        {{-- The same jobs read the other way round: every patient at once, which is
+                             how the counter chases them rather than how a doctor reads one. --}}
+                        <a href="{{ route('vendor.opd.lab-work.index') }}" class="btn btn-outline-secondary btn-sm"
+                           title="Every lab work job across all patients, and who carried each one in or out">
+                            <i class="tio-list-numbered"></i> All patients
+                        </a>
+
+                        @if($lwEditable)
+                            <button type="button" class="btn btn--primary btn-sm" onclick="lwToggleAdd()">
+                                <i class="tio-add"></i> New job
+                            </button>
+                        @endif
+                    </div>
                 </div>
                 <p class="small text-muted mb-3">
                     Work on the bench or out at a lab. Measurements stay with the job, each stage change
@@ -3230,60 +3383,44 @@
                                 $lwTold    = $work->last_notified_status === $work->status && $work->last_notified_at;
                                 $lwCustody = $work->custodyPairs();
                                 $lwLabPh   = $work->contactPhone();
+
+                                // The dated milestones and the money, as label => [value, isLate].
+                                // Built here so the markup below stays one loop rather than four
+                                // near-identical conditionals.
+                                $lwFacts = [];
+                                if ($work->sent_on) {
+                                    $lwFacts['Sent'] = [$work->sent_on->format('d M'), false];
+                                }
+                                if ($work->expected_on) {
+                                    $lwFacts['Expected'] = [
+                                        $work->expected_on->format('d M'),
+                                        $work->is_open && $work->expected_on->isPast(),
+                                    ];
+                                }
+                                if ($work->received_on) {
+                                    $lwFacts['Received'] = [$work->received_on->format('d M'), false];
+                                }
+                                if ($work->amount) {
+                                    $lwFacts['Amount'] = [$lwCurrency . number_format($work->amount, 2), false];
+                                }
                             @endphp
-                            <div class="card mb-2" style="{{ $work->is_open ? '' : 'opacity:.75;' }}">
-                                <div class="card-body py-2 px-3">
-                                    <div class="d-flex align-items-start justify-content-between flex-wrap">
+                            <div class="card lw-card mb-2" style="{{ $work->is_open ? '' : 'opacity:.75;' }}">
+                                <div class="card-body py-3 px-3">
+                                    {{-- 1. What it is, and where it has got to. --}}
+                                    <div class="lw-row">
                                         <div style="min-width:0;">
-                                            <span class="text-dark" style="font-weight:700; font-size:13.5px;">{{ $work->work_type }}</span>
+                                            <span class="lw-title">{{ $work->work_type }}</span>
                                             @if(filled($work->site))
-                                                <span class="text-muted" style="font-size:12.5px;">· {{ $work->site }}</span>
+                                                <span class="lw-sub">· {{ $work->site }}</span>
                                             @endif
                                             <span class="badge ml-1" style="font-weight:600; color:{{ $lwColour[0] }}; background:{{ $lwColour[1] }};">
                                                 {{ $work->statusLabel($labWorkProfile) }}
                                             </span>
-                                            <div class="text-muted mt-1" style="font-size:11.5px;">
-                                                {{-- Where the work is, first thing after the stage: a doctor
-                                                     asking about a crown wants to know who has it before
-                                                     they want to know what it is made of. --}}
-                                                <span class="badge badge-soft-{{ $work->is_internal ? 'info' : 'warning' }} badge-pill mr-1"
-                                                      style="font-weight:600;">
-                                                    {{ $work->is_internal ? 'In-house' : 'External' }}
-                                                </span>
-
-                                                <span class="text-dark" style="font-weight:600;">{{ $work->labDisplayName() }}</span>
-
-                                                @if($work->is_external && filled($work->lab_type))
-                                                    <span>· {{ $work->lab_type }}</span>
-                                                @endif
-
-                                                @if(filled($lwLabPh))
-                                                    <span>· {{ $lwLabPh }}</span>
-                                                @endif
-
-                                                @if($work->sent_on)
-                                                    <span>· Sent {{ $work->sent_on->format('d M') }}</span>
-                                                @endif
-
-                                                @if($work->expected_on)
-                                                    <span class="{{ $work->is_open && $work->expected_on->isPast() ? 'text-danger' : '' }}">
-                                                        · Expected {{ $work->expected_on->format('d M') }}
-                                                    </span>
-                                                @endif
-
-                                                @if($work->received_on)
-                                                    <span>· Received {{ $work->received_on->format('d M') }}</span>
-                                                @endif
-
-                                                @if($work->amount)
-                                                    <span>· {{ $lwCurrency }}{{ number_format($work->amount, 2) }}</span>
-                                                @endif
-                                            </div>
                                         </div>
 
-                                        <div class="text-right" style="white-space:nowrap;">
+                                        <div class="text-right">
                                             @if($lwTold)
-                                                <div class="text-success" style="font-size:11px;">
+                                                <div class="lw-stamp">
                                                     <i class="tio-checkmark-circle"></i>
                                                     Patient told {{ $work->last_notified_at->diffForHumans() }}
                                                 </div>
@@ -3293,7 +3430,7 @@
                                                  different people who were told two different things, and
                                                  a clinic chasing a lab needs to know which. --}}
                                             @if($work->vendor_notified_at)
-                                                <div class="text-success" style="font-size:11px;">
+                                                <div class="lw-stamp">
                                                     <i class="tio-checkmark-circle"></i>
                                                     Lab told {{ $work->vendor_notified_at->diffForHumans() }}
                                                 </div>
@@ -3301,33 +3438,75 @@
                                         </div>
                                     </div>
 
-                                    @if($lwPairs)
-                                        <div class="mt-2 pt-2" style="border-top:1px solid #f1f5f9; font-size:12px;">
-                                            @foreach($lwPairs as $lwLabel => $lwValue)
-                                                <span class="mr-3">
-                                                    <span class="text-muted">{{ $lwLabel }}:</span>
-                                                    <span class="text-dark" style="font-weight:600;">{{ $lwValue }}</span>
-                                                </span>
-                                            @endforeach
+                                    {{-- 2. Who has it, and when it is due — one line, because both are
+                                         metadata about the same job. A doctor asking about a crown wants
+                                         to know who is holding it before what it is made of. --}}
+                                    <div class="lw-row mt-2">
+                                        <div class="lw-sub">
+                                            <span class="badge badge-soft-{{ $work->is_internal ? 'info' : 'warning' }} badge-pill mr-1"
+                                                  style="font-weight:600;">
+                                                {{ $work->is_internal ? 'In-house' : 'External' }}
+                                            </span>
+                                            <span class="text-dark" style="font-weight:600;">{{ $work->labDisplayName() }}</span>
+                                            @if($work->is_external && filled($work->lab_type))
+                                                <span>· {{ $work->lab_type }}</span>
+                                            @endif
+                                            @if(filled($lwLabPh))
+                                                <span>· <a href="tel:{{ $lwLabPh }}" class="text-muted">{{ $lwLabPh }}</a></span>
+                                            @endif
                                         </div>
-                                    @endif
 
-                                    {{-- Who had it and when. Asked weeks later, when a job has gone
-                                         missing between here and the lab and nobody remembers. --}}
-                                    @if($lwCustody)
-                                        <div class="mt-2 pt-2" style="border-top:1px solid #f1f5f9; font-size:11.5px;">
-                                            <i class="tio-user-switch text-muted mr-1"></i>
-                                            @foreach($lwCustody as $lwCLabel => $lwCValue)
-                                                <span class="mr-3">
-                                                    <span class="text-muted">{{ $lwCLabel }}:</span>
-                                                    <span class="text-dark" style="font-weight:600;">{{ $lwCValue }}</span>
-                                                </span>
-                                            @endforeach
-                                        </div>
-                                    @endif
+                                        @if($lwFacts)
+                                            <div class="lw-meta">
+                                                @foreach($lwFacts as $lwFLabel => $lwFact)
+                                                    <span @if($lwFact[1]) class="is-late" @endif>{{ $lwFLabel }}
+                                                        <b @if($lwFact[1]) class="is-late" @endif>{{ $lwFact[0] }}</b></span>@if(!$loop->last) <span class="mx-1">·</span> @endif
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
 
-                                    @if(filled($work->notes))
-                                        <div class="text-muted mt-1" style="font-size:11.5px;">{{ $work->notes }}</div>
+                                    {{-- 3. What was specified, and who has had it. One band, one rule:
+                                         two grids that look alike read as one long list of fields. --}}
+                                    @if($lwPairs || $lwCustody || filled($work->notes) || filled($work->remake_reason))
+                                        <div class="lw-rule"></div>
+
+                                        @if($lwPairs)
+                                            <div class="lw-spec">
+                                                @foreach($lwPairs as $lwLabel => $lwValue)
+                                                    <div>
+                                                        <span class="lw-spec-lbl">{{ $lwLabel }}</span>
+                                                        <span class="lw-spec-val">{{ $lwValue }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+
+                                        {{-- Who had it and when. Asked weeks later, when a job has gone
+                                             missing between here and the lab and nobody remembers. --}}
+                                        @if($lwCustody)
+                                            <div class="lw-sub mt-2">
+                                                <i class="tio-user-switch mr-1"></i>
+                                                @foreach($lwCustody as $lwCLabel => $lwCValue)
+                                                    <span>{{ $lwCLabel }} <b class="text-dark">{{ $lwCValue }}</b></span>@if(!$loop->last) <span class="mx-1">·</span> @endif
+                                                @endforeach
+                                            </div>
+                                        @endif
+
+                                        @if(filled($work->notes))
+                                            <div class="lw-note mt-3">
+                                                <span class="lw-note-lbl">Note</span>{{ $work->notes }}
+                                            </div>
+                                        @endif
+
+                                        {{-- Why the piece went back. Shown in red for as long as the job
+                                             is still at that stage, and quietly afterwards — the reason a
+                                             remake happened stays worth reading once it is fitted. --}}
+                                        @if(filled($work->remake_reason))
+                                            <div class="lw-note mt-3 @if($work->status === 'remake') lw-issue @endif">
+                                                <span class="lw-note-lbl">Issue</span>{{ $work->remake_reason }}
+                                            </div>
+                                        @endif
                                     @endif
 
                                     {{-- Every exchange on this job, and the buttons that record the
@@ -3342,11 +3521,21 @@
                                     ])
 
                                     @if($lwEditable)
+                                        {{-- A panel rather than a run of controls on the card: this is the one
+                                             thing here that changes the job, and everything it takes — the
+                                             stage, who to tell, the reason, the names — belongs inside it. --}}
                                         <form method="POST" action="{{ route('vendor.opd.lab-work.status', $work->id) }}"
-                                              class="mt-2 pt-2 lw-status-form" style="border-top:1px solid #f1f5f9;">
+                                              class="mt-2 lw-status-form">
                                             @csrf
-                                            <div class="form-inline">
-                                                <select name="status" class="form-control form-control-sm" style="font-size:12px;"
+                                            <div class="lw-stage-bar">
+                                                {{-- Sent and received are the two stages that ARE a handover, so
+                                                     choosing either opens the form that records who actually
+                                                     took or brought the work. data-ho-record carries the same
+                                                     condition the buttons used to be drawn under. --}}
+                                                <select name="status" class="form-control form-control-sm" style="font-size:12px; width:auto; min-width:160px;"
+                                                        data-ho-subject="{{ $work->id }}"
+                                                        data-ho-type="opd_lab_work"
+                                                        data-ho-record="{{ $work->is_open && $work->is_external ? 1 : 0 }}"
                                                         onchange="lwCustody(this)">
                                                     @foreach($lwStatuses as $key => $label)
                                                         <option value="{{ $key }}" @if($key === $work->status) selected @endif>{{ $label }}</option>
@@ -3356,8 +3545,9 @@
                                                 {{-- Pre-ticked only where the patient has something to act on and a
                                                      number to reach them at, so the common case is one click and
                                                      everything else is a deliberate choice. --}}
-                                                <label class="mb-0 ml-2" style="font-size:11.5px; cursor:{{ blank($lwPhone) ? 'not-allowed' : 'pointer' }};">
-                                                    <input type="checkbox" name="notify" value="1" class="mr-1"
+                                                <label class="mb-0" style="font-size:11.5px; cursor:{{ blank($lwPhone) ? 'not-allowed' : 'pointer' }};">
+                                                    <input type="checkbox" name="notify" value="1" class="mr-1 lw-patient-notify"
+                                                           data-notify-stages="{{ json_encode($lwNotify) }}"
                                                            @if(blank($lwPhone)) disabled @elseif(in_array($work->status, $lwNotify, true)) checked @endif>
                                                     Tell patient on WhatsApp
                                                 </label>
@@ -3365,15 +3555,13 @@
                                                 {{-- The lab's own confirmation of the handover. Shown only on the two
                                                      moves that ARE a handover, and only where there is a number to
                                                      send it to. --}}
-                                                <label class="mb-0 ml-2 lw-lab-notify" style="display:none; font-size:11.5px; cursor:{{ blank($lwLabPh) ? 'not-allowed' : 'pointer' }};">
+                                                <label class="mb-0 lw-lab-notify" style="display:none; font-size:11.5px; cursor:{{ blank($lwLabPh) ? 'not-allowed' : 'pointer' }};">
                                                     <input type="checkbox" name="notify_lab" value="1" class="mr-1"
                                                            @if(blank($lwLabPh)) disabled @endif>
-                                                    Confirm handover with {{ $work->is_internal ? 'technician' : 'lab' }}
+                                                    <span class="lw-lab-notify-text"
+                                                          data-handover="Confirm handover with {{ $work->is_internal ? 'technician' : 'lab' }}"
+                                                          data-remake="Send the job back to the {{ $work->is_internal ? 'technician' : 'lab' }}">Confirm handover with {{ $work->is_internal ? 'technician' : 'lab' }}</span>
                                                 </label>
-
-                                                <button type="submit" class="btn btn--primary btn-sm ml-2" style="font-size:12px;">
-                                                    Update stage
-                                                </button>
                                             </div>
 
                                             {{-- Who passed the work to whom. Only ever shown on the stage that
@@ -3381,10 +3569,62 @@
                                                  name on a handover they had no part in, which is why the
                                                  controller also reads only the pair belonging to the stage
                                                  being saved rather than trusting what the browser posts. --}}
+                                            {{-- Why it is going back, and the measurements if they are the
+                                                 thing that changed. Shown on the remake stage only, and the
+                                                 reason is required there — the controller enforces it too,
+                                                 so a stage moved from a stale tab cannot slip through blank.
+
+                                                 Only these two, not the whole details form: a remake changes
+                                                 the specification, not the lab, the dates or the price, and
+                                                 those still have their own panel behind Edit details. --}}
+                                            <div class="mt-2 lw-remake" style="display:none;">
+                                                <label class="input-label text-muted mb-1" style="font-size:11px;">
+                                                    What went wrong? <span class="text-danger">*</span>
+                                                </label>
+                                                <textarea name="remake_reason" class="form-control form-control-sm" rows="2"
+                                                          maxlength="2000" style="font-size:12px;"
+                                                          placeholder="e.g. shade too dark, margin does not seat, patient unhappy with shape">{{ $work->remake_reason }}</textarea>
+
+                                                <label class="mb-0 mt-2 d-inline-flex align-items-center" style="font-size:11.5px; cursor:pointer;">
+                                                    <input type="checkbox" name="edit_measurements" value="1" class="mr-1 lw-remake-toggle"
+                                                           onchange="lwRemakeFields(this)">
+                                                    Edit measurements?
+                                                </label>
+
+                                                {{-- Same names as the details form, but in a different form
+                                                     element, so each posts only its own set. The partial
+                                                     writes no ids, so nothing collides. --}}
+                                                <div class="lw-remake-fields mt-2" style="display:none;">
+                                                    <div class="form-row">
+                                                        @foreach($labWorkProfile['fields'] as $lwFKey => $lwField)
+                                                            @php $lwFVal = (array) ($work->measurements ?? []); @endphp
+                                                            <div class="form-group col-md-3 mb-2">
+                                                                <label class="input-label text-muted" style="font-size:11px;">{{ $lwField['label'] }}</label>
+                                                                @if($lwField['type'] === 'select')
+                                                                    <select name="measurements[{{ $lwFKey }}]" class="form-control form-control-sm" style="font-size:12px;">
+                                                                        <option value="">—</option>
+                                                                        @foreach($lwField['options'] as $lwFOpt)
+                                                                            <option value="{{ $lwFOpt }}" @if((string) ($lwFVal[$lwFKey] ?? '') === (string) $lwFOpt) selected @endif>{{ $lwFOpt }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                @else
+                                                                    <input type="{{ $lwField['type'] === 'number' ? 'number' : 'text' }}"
+                                                                           name="measurements[{{ $lwFKey }}]" class="form-control form-control-sm"
+                                                                           style="font-size:12px;" maxlength="190"
+                                                                           placeholder="{{ $lwField['placeholder'] ?? '' }}"
+                                                                           value="{{ $lwFVal[$lwFKey] ?? '' }}">
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div class="form-row mt-2 lw-custody" data-lw-custody="sent" style="display:none;">
                                                 <div class="form-group col-md-3 mb-1">
                                                     <label class="input-label text-muted" style="font-size:11px;">Handed over by</label>
                                                     <input type="text" name="handed_over_by" class="form-control form-control-sm"
+                                                           list="lwStaffNames" autocomplete="off"
                                                            maxlength="120" placeholder="Your staff"
                                                            value="{{ $work->handed_over_by }}">
                                                 </div>
@@ -3406,13 +3646,21 @@
                                                 <div class="form-group col-md-3 mb-1">
                                                     <label class="input-label text-muted" style="font-size:11px;">Received by</label>
                                                     <input type="text" name="received_by" class="form-control form-control-sm"
+                                                           list="lwStaffNames" autocomplete="off"
                                                            maxlength="120" placeholder="Your staff"
                                                            value="{{ $work->received_by }}">
                                                 </div>
                                             </div>
+
+                                            {{-- Last, after everything it submits. Sitting up beside the stage
+                                                 picker it read as though it applied to that box alone, while the
+                                                 reason and the measurements underneath went with it unannounced. --}}
+                                            <div class="lw-stage-go">
+                                                <button type="submit" class="lw-update-btn">Update stage</button>
+                                            </div>
                                         </form>
 
-                                        <div class="mt-1">
+                                        <div class="lw-actions mt-2 pt-2" style="border-top:1px solid #f1f5f9;">
                                             {{-- Resend without moving the stage: the patient missed it, or a
                                                  relative rang to ask. Separate from the checkbox above so
                                                  telling someone again never quietly re-files the job. --}}
@@ -3433,7 +3681,7 @@
                                                  whose number it is going to. --}}
                                             @if(filled($lwLabPh))
                                                 <form method="POST" action="{{ route('vendor.opd.lab-work.notify-lab', $work->id) }}"
-                                                      class="d-inline ml-3"
+                                                      class="d-inline"
                                                       onsubmit="return confirm('Send this job — including the patient\'s name and the specification — to {{ addslashes($work->labDisplayName()) }}?');">
                                                     @csrf
                                                     <button type="submit" class="btn btn-link btn-sm p-0" style="font-size:11.5px;">
@@ -3447,7 +3695,7 @@
                                                      than none. --}}
                                                 @if($work->sent_on || $work->received_on)
                                                     <form method="POST" action="{{ route('vendor.opd.lab-work.handover', $work->id) }}"
-                                                          class="d-inline ml-3">
+                                                          class="d-inline">
                                                         @csrf
                                                         <button type="submit" class="btn btn-link btn-sm p-0" style="font-size:11.5px;">
                                                             <i class="tio-checkmark-circle-outlined"></i>
@@ -3457,14 +3705,14 @@
                                                 @endif
                                             @endif
 
-                                            <button type="button" class="btn btn-link btn-sm p-0 ml-3" style="font-size:11.5px;"
+                                            <button type="button" class="btn btn-link btn-sm p-0" style="font-size:11.5px;"
                                                     onclick="lwToggleEdit({{ $work->id }})">
                                                 Edit details
                                             </button>
 
                                             @if(hasPermission('opd_register', 'delete'))
                                                 <form method="POST" action="{{ route('vendor.opd.lab-work.destroy', $work->id) }}"
-                                                      class="d-inline ml-3"
+                                                      class="d-inline lw-danger"
                                                       onsubmit="return confirm('Remove this lab work job? This cannot be undone.');">
                                                     @csrf
                                                     @method('DELETE')
@@ -3751,6 +3999,19 @@
         if (opening) lwInitSelects(box);
     }
 
+    /**
+     * The measurement boxes on the remake stage, behind their own tick.
+     *
+     * A remake does not always mean the specification was wrong — sometimes the lab simply made it
+     * badly to a spec that was right. So the boxes stay shut until somebody says the measurements
+     * are the thing that changed, and the controller only reads them when this is ticked.
+     */
+    function lwRemakeFields(toggle) {
+        const wrap = toggle.closest('.lw-remake');
+        const box  = wrap && wrap.querySelector('.lw-remake-fields');
+        if (box) box.style.display = toggle.checked ? '' : 'none';
+    }
+
     // In-house or sent out. Scoped to the .lw-fields the select sits in, because the add form and
     // every job's edit form each render one and they all use the same field names.
     function lwMode(select) {
@@ -3874,16 +4135,70 @@
         if (!form) return;
 
         const handover = select.value === 'sent' || select.value === 'received';
+        const remake   = select.value === 'remake';
 
         form.querySelectorAll('.lw-custody').forEach(row => {
             row.style.display = row.dataset.lwCustody === select.value ? '' : 'none';
         });
 
+        // A remake is the third move the lab has to hear about: the work is going back to them,
+        // and the message carries the complaint and the corrected spec with it. Handovers get the
+        // confirmation instead, so the same box says two different things.
+        const tellLab = handover || remake;
+
+        // The patient's box follows the stage being chosen, not the one the job is still at. It was
+        // only ever set server-side from the saved status, so picking a stage the patient should
+        // hear about left the box unticked until the page had already been saved and reloaded.
+        const patient = form.querySelector('.lw-patient-notify');
+        if (patient && !patient.disabled && initial !== true) {
+            let stages = [];
+            try { stages = JSON.parse(patient.dataset.notifyStages || '[]'); } catch (e) { stages = []; }
+            patient.checked = stages.indexOf(select.value) !== -1;
+        }
+
         const notify = form.querySelector('.lw-lab-notify');
         if (notify) {
-            notify.style.display = handover ? '' : 'none';
+            notify.style.display = tellLab ? '' : 'none';
+            const text = notify.querySelector('.lw-lab-notify-text');
+            if (text) {
+                text.textContent = remake ? text.dataset.remake : text.dataset.handover;
+            }
             const box = notify.querySelector('input[type="checkbox"]');
-            if (box && !box.disabled && initial !== true) box.checked = handover;
+            if (box && !box.disabled && initial !== true) box.checked = tellLab;
+        }
+
+        // A remake needs a reason, and often a corrected specification with it — the shade that was
+        // wrong, the margin that did not seat. Just those two: the lab, the dates and the price are
+        // not what a remake changes, and they keep their own panel behind Edit details.
+        const reason = form.querySelector('.lw-remake');
+        if (reason) {
+            reason.style.display = remake ? '' : 'none';
+            const box = reason.querySelector('textarea');
+            if (box) box.required = remake;
+
+            // Leaving the stage takes the measurement boxes down with it, so a set left open and
+            // half-edited cannot be posted against some other stage.
+            if (!remake) {
+                const toggle = reason.querySelector('.lw-remake-toggle');
+                if (toggle) {
+                    toggle.checked = false;
+                    lwRemakeFields(toggle);
+                }
+            }
+        }
+
+        // Moving to one of those two stages is the moment a handover happens, so it opens the
+        // form that records who took or brought the work — replacing the pair of buttons that
+        // used to sit above. Never on the page-load pass: opening a record would otherwise throw
+        // the modal up before anyone had touched anything.
+        if (initial !== true && handover
+            && select.dataset.hoRecord === '1'
+            && typeof window.hoOpen === 'function') {
+            window.hoOpen(
+                select.dataset.hoSubject,
+                select.value === 'sent' ? 'out' : 'in',
+                select.dataset.hoType
+            );
         }
     }
 
@@ -4229,7 +4544,6 @@
     function autosaveNotes() {
         queueAutosave('notes', () => ({ note_terms: selectedTerms('ntSelect') }), () => {
             renderTerms('notesBadges', selectedTerms('ntSelect'), 'nt-badge');
-            syncRxField('rxNotes', 'rxNotesHint', selectedTerms('ntSelect'));
         }, AUTOSAVE_DELAY.terms);
     }
 
@@ -4246,9 +4560,19 @@
         }), (data) => {
             if (data && data.treatment_plan) txPlan = data.treatment_plan;
             renderTerms('dxBadges', selectedTerms('dxSelect'), 'dx-badge');
-            renderTxBadges(selectedTerms('txSelect'));
-            renderTerms('wtBadges', selectedTerms('wtSelect'), 'wt-badge');
-            syncRxField('rxDiagnosis', 'rxDxHint', selectedTerms('dxSelect'));
+
+            // Same hand-over as saveDxTx: autosave and Save must not leave the two columns
+            // disagreeing about which one owns the plan.
+            const asTreatment = selectedTerms('txSelect');
+            const asWilling   = selectedTerms('wtSelect');
+            planIsWilling = asWilling.length > 0;
+            if (planIsWilling) {
+                renderTerms('txBadges', asTreatment, 'tx-badge');
+                renderTxBadges(asWilling);
+            } else {
+                renderTerms('wtBadges', asWilling, 'wt-badge');
+                renderTxBadges(asTreatment);
+            }
         }, AUTOSAVE_DELAY.terms);
     }
 
@@ -4401,9 +4725,20 @@
     // Double-clicking the summary opens the same editor the pencil does. A locked
     // visit, or a card whose editor was never rendered for want of permission,
     // stays read-only.
-    function editOnDblClick(field) {
+    // Every card names its panels {field}View / {field}Edit, so the field key is enough to find
+    // them: 'cc', 'notes', and the three clinical sub-cards 'dx', 'tx' and 'wt'.
+    const TERM_CARD_FIELDS = ['dx', 'tx', 'wt'];
+
+    function editOnDblClick(field, ev) {
         if (visitLocked) return;
-        const edit = document.getElementById(field === 'cc' ? 'ccEdit' : 'notesEdit');
+
+        // Chips and plan rows carry their own click behaviour. Opening the term editor on top of
+        // the schedule menu a double-click there just opened is not what was meant by it.
+        if (ev && ev.target.closest && ev.target.closest('.tx-chip, .tx-table-wrap, button, a, input, select, textarea')) {
+            return;
+        }
+
+        const edit = document.getElementById(field + 'Edit');
         if (!edit || edit.style.display !== 'none') return;
 
         // A double-click leaves the badge text selected, which then sits highlighted
@@ -4411,7 +4746,7 @@
         const sel = window.getSelection();
         if (sel) sel.removeAllRanges();
 
-        toggleEdit(field);
+        TERM_CARD_FIELDS.indexOf(field) !== -1 ? toggleTermEdit(field) : toggleEdit(field);
     }
 
     function toggleEdit(field) {
@@ -4759,22 +5094,42 @@
         box.style.display = '';
     }
 
-    function toggleDxEdit() {
-        const view = document.getElementById('dxView');
-        const edit = document.getElementById('dxEdit');
-        if (!edit) return;
+    // Diagnosis, Advised and Willing are three cards with a pencil each, so the toggle is keyed:
+    // 'dx' | 'tx' | 'wt'. Every Select2 stays in the DOM whichever card is open, which is why one
+    // save can still send all three fields.
+    function toggleTermEdit(key) {
+        const view = document.getElementById(key + 'View');
+        const edit = document.getElementById(key + 'Edit');
+        if (!view || !edit) return;
         const showing = edit.style.display === 'none';
         view.style.display = showing ? 'none' : '';
         edit.style.display = showing ? '' : 'none';
-        // Select2 needs a visible container to size itself, so build it on first open.
+        // All three Select2s are built together on the first open of any card. They are declared
+        // width:'100%', a CSS percentage rather than a resolved pixel width, so the two still
+        // hidden at that moment size themselves correctly when their own card is opened.
         if (showing) initDxSelect2();
+    }
+
+    /** Drop every card back to its read-only face — used after a save. */
+    function closeTermEdits() {
+        ['dx', 'tx', 'wt'].forEach(key => {
+            const view = document.getElementById(key + 'View');
+            const edit = document.getElementById(key + 'Edit');
+            if (view && edit) {
+                view.style.display = '';
+                edit.style.display = 'none';
+            }
+        });
     }
 
     // ── Advised treatment: one schedule and price per term ──
     // A course runs over several sittings, so each advised term carries its own status, date,
     // time, amount and discount. A term with no row is pending and unpriced.
     let txPlan   = @json((object) $txPlan);
-    let txTerms  = @json($txCurrent);
+    // The terms the plan is built from — willing when the patient has chosen, advised until then.
+    // Kept in step with $planTerms server-side; saveDxTx recomputes it when either list changes.
+    let txTerms  = @json($planTerms);
+    let planIsWilling = @json($planIsWilling);
     const patientName = @json($visit->patient?->name ?? 'the patient');
     const visitClosed = @json((bool) $visit->is_completed);
     const currencySym = @json($rxCurrency);
@@ -4825,35 +5180,10 @@
         return (visitClosed && state !== 'completed') ? 'missed' : state;
     }
 
+    // The plan carries no money on this screen any more, so the only running figure left is how
+    // many treatments sit in each state. Kept under its old name because renderTxBadges and the
+    // plan menu both call it after every change.
     function renderTxTotals() {
-        let gross = 0, disc = 0, paid = 0;
-        txTerms.forEach(term => {
-            const row = txPlan[term] || {};
-            const amount = Number(row.amount || 0);
-            const less   = Number(row.discount || 0);
-            gross += amount;
-            disc  += less;
-            if (row.paid) paid += Math.max(amount - less, 0);
-        });
-        const net = Math.max(gross - disc, 0);
-
-        const put = (id, value) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        };
-        put('txTotalGross', txMoney(gross));
-        put('txTotalDisc',  txMoney(disc));
-        put('txTotalNet',   txMoney(net));
-        put('txTotalPaid',  txMoney(paid));
-        put('txTotalDue',   txMoney(Math.max(net - paid, 0)));
-
-        // Nothing priced yet, nothing to say about the money.
-        const box = document.getElementById('txTotals');
-        if (box) box.classList.toggle('d-none', !gross);
-
-        const bar = document.getElementById('txPaidBar');
-        if (bar) bar.style.width = (net > 0 ? Math.min(100, Math.round(paid / net * 100)) : 0) + '%';
-
         renderTxCounts();
     }
 
@@ -4872,7 +5202,7 @@
 
         box.innerHTML = '';
         // Fixed order, so the row does not reshuffle as statuses change under the doctor.
-        ['completed', 'upcoming', 'pending', 'missed'].forEach(state => {
+        ['completed', 'in_progress', 'upcoming', 'pending', 'missed'].forEach(state => {
             if (!counts[state]) return;
             const span = document.createElement('span');
             const dot  = document.createElement('i');
@@ -4904,9 +5234,6 @@
         txTerms.forEach(term => {
             const row    = txPlan[term] || {};
             const state  = txState(row);
-            const amount = Number(row.amount || 0);
-            const less   = Number(row.discount || 0);
-            const net    = Math.max(amount - less, 0);
             const when   = txWhen(row);
 
             const tr = document.createElement('tr');
@@ -4935,13 +5262,6 @@
                 tdWhen.appendChild(link);
             }
             tr.appendChild(tdWhen);
-            tr.appendChild(txCell(amount ? txMoney(amount) : '—', 'tx-num' + (amount ? '' : ' tx-nil')));
-            tr.appendChild(txCell(less   ? txMoney(less)   : '—', 'tx-num' + (less   ? '' : ' tx-nil')));
-            tr.appendChild(txCell(net    ? txMoney(net)    : '—', 'tx-num' + (net    ? '' : ' tx-nil')));
-            tr.appendChild(txCell(
-                row.paid ? 'Paid' : (net ? 'Due' : '—'),
-                'text-center ' + (row.paid ? 'tx-paid-yes' : (net ? 'tx-paid-no' : 'tx-nil'))
-            ));
 
             if (txCanEdit) {
                 const td  = document.createElement('td');
@@ -4951,7 +5271,7 @@
                 btn.className = 'tx-row-edit';
                 btn.dataset.term = term;
                 btn.dataset.txOpen = '1';
-                btn.title = 'Edit schedule & price';
+                btn.title = 'Edit schedule';
                 btn.innerHTML = '<i class="tio-edit"></i>';
                 btn.onclick = () => openTxPlanMenu(btn);
                 td.appendChild(btn);
@@ -4964,7 +5284,9 @@
 
     function renderTxBadges(terms) {
         txTerms = terms;
-        const box = document.getElementById('txBadges');
+        // The clickable chips belong to whichever list drives the plan, so this renders into the
+        // Willing column once the patient has chosen and the Advised column until then.
+        const box = document.getElementById(planIsWilling ? 'wtBadges' : 'txBadges');
         if (!box) return;
         box.innerHTML = '';
 
@@ -4975,12 +5297,9 @@
                 const row   = txPlan[term] || {};
                 const state = txState(row);
                 const when  = txWhen(row);
-                const net   = Math.max(Number(row.amount || 0) - Number(row.discount || 0), 0);
                 const tip   = [
                     txStateLabels[state] || state,
                     when,
-                    net ? txMoney(net) : '',
-                    row.paid ? 'paid' : '',
                     txBookingHeld(row) ? 'booked' : ''
                 ].filter(Boolean).join(' · ');
 
@@ -5053,6 +5372,7 @@
                 '<select class="form-control form-control-sm" id="txPlanStatus">' +
                     '<option value="pending">Pending</option>' +
                     '<option value="upcoming">Upcoming</option>' +
+                    '<option value="in_progress">In progress</option>' +
                     '<option value="completed">Completed</option>' +
                 '</select>' +
             '</div></div>' +
@@ -5060,11 +5380,6 @@
                 '<div><label>Date</label><input type="date" class="form-control form-control-sm" id="txPlanDate"></div>' +
                 '<div><label>Time</label><input type="time" class="form-control form-control-sm" id="txPlanTime"></div>' +
             '</div>' +
-            '<div class="tx-plan-row">' +
-                '<div><label>Amount</label><input type="number" min="0" step="0.01" class="form-control form-control-sm" id="txPlanAmount" placeholder="0.00"></div>' +
-                '<div><label>Discount</label><input type="number" min="0" step="0.01" class="form-control form-control-sm" id="txPlanDiscount" placeholder="0.00"></div>' +
-            '</div>' +
-            '<label class="tx-plan-paid"><input type="checkbox" id="txPlanPaid"> Paid</label>' +
             bookBox +
             '<div class="d-flex align-items-center" style="gap:6px">' +
                 '<button type="button" class="btn btn-sm btn-primary" id="txPlanSave">Save</button>' +
@@ -5077,15 +5392,9 @@
 
         document.body.appendChild(menu);
 
-        // An amount already set on this visit wins; otherwise open with what this treatment
-        // was last charged at, so the usual case is a glance and a Save.
-        const learnt = txPrices[term] || {};
-        menu.querySelector('#txPlanStatus').value   = row.status || 'pending';
-        menu.querySelector('#txPlanDate').value     = row.date || '';
-        menu.querySelector('#txPlanTime').value     = row.time || '';
-        menu.querySelector('#txPlanAmount').value   = row.amount   ?? learnt.amount   ?? '';
-        menu.querySelector('#txPlanDiscount').value = row.discount ?? learnt.discount ?? '';
-        menu.querySelector('#txPlanPaid').checked   = !!row.paid;
+        menu.querySelector('#txPlanStatus').value = row.status || 'pending';
+        menu.querySelector('#txPlanDate').value   = row.date || '';
+        menu.querySelector('#txPlanTime').value   = row.time || '';
 
         const box = el.getBoundingClientRect();
         menu.style.top  = (box.bottom + window.scrollY + 4) + 'px';
@@ -5125,13 +5434,12 @@
                 return;
             }
 
+            // amount, discount and paid are deliberately absent — the OPD screen no longer edits
+            // them, and quickUpdate treats a missing key as "leave the stored value alone".
             saveTxPlan(term, {
                 status:   menu.querySelector('#txPlanStatus').value,
                 date:     date,
                 time:     time,
-                amount:   menu.querySelector('#txPlanAmount').value,
-                discount: menu.querySelector('#txPlanDiscount').value,
-                paid:     menu.querySelector('#txPlanPaid').checked ? 1 : 0,
                 book:     wantsBooking ? 1 : 0
             });
         };
@@ -5177,9 +5485,11 @@
         const when = [row.date, row.time].filter(Boolean).join(' ');
         const line = state === 'completed'
             ? '"' + term + '" is marked completed.'
-            : state === 'upcoming'
-                ? '"' + term + '" is booked' + (when ? ' for ' + when : '') + '.'
-                : '"' + term + '" is pending.';
+            : state === 'in_progress'
+                ? '"' + term + '" is under way.'
+                : state === 'upcoming'
+                    ? '"' + term + '" is booked' + (when ? ' for ' + when : '') + '.'
+                    : '"' + term + '" is pending.';
 
         if (confirm('Saved: ' + line + '\n\nSend the treatment summary to ' + patientName + ' on WhatsApp?')) {
             form.submit();
@@ -5233,10 +5543,19 @@
             if (!data.ok) throw new Error('save failed');
             if (data.treatment_plan) txPlan = data.treatment_plan;
             renderTerms('dxBadges', diagnosis, 'dx-badge');
-            renderTxBadges(treatment);
-            renderTerms('wtBadges', willing, 'wt-badge');
-            syncRxField('rxDiagnosis', 'rxDxHint', diagnosis);
-            toggleDxEdit();
+
+            // Recording the first willing term hands the plan — and the clickable chips — over
+            // to that list, and clearing the last one hands it back. Both columns are redrawn
+            // each time, so the one that just stopped driving the plan loses its chips.
+            planIsWilling = willing.length > 0;
+            if (planIsWilling) {
+                renderTerms('txBadges', treatment, 'tx-badge');
+                renderTxBadges(willing);
+            } else {
+                renderTerms('wtBadges', willing, 'wt-badge');
+                renderTxBadges(treatment);
+            }
+            closeTermEdits();
             setSaveState('saved');
         })
         .catch(() => alert('Save failed.'))
@@ -5508,23 +5827,6 @@
             document.getElementById('rxWritingFormBlock').style.display = 'none';
             document.querySelector('.badge-soft-success').style.display = '';
         }
-    }
-
-    // The consultation cards are the record; the prescription fields mirror them.
-    // Once the doctor edits one by hand it stops following, so an intentional
-    // difference between what was diagnosed and what the Rx says survives.
-    function markRxFieldEdited(el, hintId) {
-        el.dataset.synced = '0';
-        const hint = document.getElementById(hintId);
-        if (hint) { hint.textContent = 'Edited here'; hint.classList.add('rx-sync-off'); }
-    }
-
-    function syncRxField(id, hintId, terms) {
-        const el = document.getElementById(id);
-        if (!el || el.dataset.synced !== '1') return;
-        el.value = (terms || []).join(', ');
-        const hint = document.getElementById(hintId);
-        if (hint) hint.classList.remove('rx-sync-off');
     }
 
     function toggleVitalsProfile(ev) {

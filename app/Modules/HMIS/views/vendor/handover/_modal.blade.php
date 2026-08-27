@@ -4,7 +4,7 @@
      The order of the panels is the order the checks are worth doing in. The expectation banner
      comes first and costs nothing — a report cannot arrive from a lab that was never sent
      anything, and that question is answered before anyone is asked to write a name down. The code
-     comes second, and only on the way in. The signature comes last, because it is the thing being
+     comes second, and only on the way in. The photo comes last, because it is the thing being
      filed rather than the thing being checked.
 
      $hoSubjectType : 'opd_lab_work' | 'lab_order' --}}
@@ -30,7 +30,6 @@
                 @csrf
                 <input type="hidden" name="direction" id="hoDirection" value="out">
                 <input type="hidden" name="handover_id" id="hoHandoverId" value="">
-                <input type="hidden" name="signature" id="hoSignature" value="">
 
                 <div class="modal-header py-2">
                     <h5 class="modal-title" id="hoModalTitle" style="font-size:15px; font-weight:700;">Record handover</h5>
@@ -47,6 +46,10 @@
                                 <span id="hoDirectionLabel">Collected from us</span>
                                 · <span id="hoLabName">—</span>
                             </div>
+                            {{-- What will be written down as changing hands. Shown rather than asked
+                                 for: the job already knows what it is and how many units it is, and
+                                 a counter retyping either is only a chance for the two to differ. --}}
+                            <div class="text-muted mt-1" style="font-size:11.5px;" id="hoMovement"></div>
                         </div>
                         <span class="badge badge-soft-secondary" id="hoDirectionBadge" style="font-weight:600;">Going out</span>
                     </div>
@@ -78,36 +81,21 @@
                             {{-- A name this lab has never sent before. Not a block — labs hire, and
                                  the first honest delivery from a new runner looks exactly like this
                                  — but it is the moment to look at an ID card rather than wave it by. --}}
-                            <small class="text-warning d-block mt-1" id="hoNewRunner" style="display:none !important; font-size:11px;">
+                            <small class="text-warning mt-1" id="hoNewRunner" style="display:none; font-size:11px;">
                                 <i class="tio-info-outined"></i> First time this lab has sent this person. Check their ID.
                             </small>
+                            {{-- Said out loud, because a name that filled itself in is a name nobody
+                                 read. The date is there so it is obvious how stale the guess is. --}}
+                            <small class="text-muted mt-1" id="hoLastPerson" style="display:none; font-size:11px;"></small>
                         </div>
                         <div class="form-group col-md-3">
                             <label class="input-label" style="font-size:12px;">Their phone</label>
-                            <input type="text" name="person_phone" class="form-control form-control-sm" maxlength="40">
+                            <input type="text" name="person_phone" id="hoPersonPhone" class="form-control form-control-sm" maxlength="40">
                         </div>
                         <div class="form-group col-md-4">
                             <label class="input-label" style="font-size:12px;">ID shown</label>
-                            <input type="text" name="person_id_ref" class="form-control form-control-sm" maxlength="80"
+                            <input type="text" name="person_id_ref" id="hoPersonId" class="form-control form-control-sm" maxlength="80"
                                    placeholder="Employee no., Aadhaar last 4">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-5">
-                            <label class="input-label" style="font-size:12px;">What is changing hands</label>
-                            <input type="text" name="purpose" id="hoPurpose" class="form-control form-control-sm"
-                                   list="hoPurposes" maxlength="120">
-                            <datalist id="hoPurposes"></datalist>
-                        </div>
-                        <div class="form-group col-md-2">
-                            <label class="input-label" style="font-size:12px;">Items</label>
-                            <input type="number" name="item_count" class="form-control form-control-sm" min="1" max="999" value="1">
-                        </div>
-                        <div class="form-group col-md-5">
-                            <label class="input-label" style="font-size:12px;">Packet / description</label>
-                            <input type="text" name="item_note" class="form-control form-control-sm" maxlength="255"
-                                   placeholder="Sealed pouch, 2 tubes, sealed envelope">
                         </div>
                     </div>
 
@@ -160,19 +148,10 @@
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label class="input-label" style="font-size:12px;">Signature</label>
-                            <div class="border rounded" style="background:#fff;">
-                                <canvas id="hoPad" style="width:100%; height:110px; display:block; touch-action:none; cursor:crosshair;"></canvas>
-                            </div>
-                            <button type="button" class="btn btn-link btn-sm p-0 mt-1" id="hoClearPad" style="font-size:11px;">Clear</button>
-                        </div>
-                        <div class="form-group col-md-6">
+                        <div class="form-group col-md-6 mb-0">
                             <label class="input-label" style="font-size:12px;">Photo (person, ID, or the packet)</label>
                             <input type="file" name="photo" class="form-control-file" accept="image/*" capture="environment"
                                    style="font-size:12px;">
-                            <label class="input-label mt-2" style="font-size:12px;">Notes</label>
-                            <input type="text" name="notes" class="form-control form-control-sm" maxlength="2000">
                         </div>
                     </div>
                 </div>
@@ -196,21 +175,12 @@
 
     const url = (key, type, id) => URLS[key].replace('opd_lab_work', type).replace(SENT_ID, id);
 
-    // Suggested wording for what is in the packet. Only a suggestion: the box stays free text,
-    // because a courier turning up with something nobody predicted is exactly the case worth
-    // being able to describe rather than forcing into the nearest wrong option.
-    const PURPOSES = {
-        opd_lab_work: {
-            out: ['Impression', 'Trial work back to lab', 'Remake', 'Shade tab', 'Model'],
-            in:  ['Finished work', 'Trial / jaw', 'Remake returned', 'Model returned'],
-        },
-        lab_order: {
-            out: ['Blood samples', 'Urine sample', 'Swab', 'Biopsy / histopath', 'Mixed samples'],
-            in:  ['Printed report', 'Report + slides', 'Slides returned', 'Corrected report'],
-        },
-    };
-
     let state = { type: null, id: null, direction: 'out', runners: [], verified: false };
+
+    // Which open the answers on screen belong to. A reply for the job that was on screen a moment
+    // ago is worse than no reply now that it fills boxes in: a slow response from the last job
+    // would put that lab's runner into this job's form, and it would be submitted.
+    let openSeq = 0;
 
     const $ = id => document.getElementById(id);
 
@@ -223,14 +193,34 @@
         });
     }
 
+    // The same lab tends to send the same person, so last visit's answer is offered as this
+    // visit's default — the counter confirms rather than retypes, which is the difference between
+    // the phone and ID boxes being filled in and being skipped.
+    //
+    // Only ever into boxes nobody has touched. This lands a moment after the modal opens, by which
+    // time somebody quick is already typing, and a default that overwrites a real answer is worse
+    // than no default at all.
+    function prefillPerson(last) {
+        if (!last || !last.name || $('hoPerson').value.trim() !== '') return;
+
+        $('hoPerson').value = last.name;
+        if (last.phone  && !$('hoPersonPhone').value.trim()) $('hoPersonPhone').value = last.phone;
+        if (last.id_ref && !$('hoPersonId').value.trim())    $('hoPersonId').value    = last.id_ref;
+
+        $('hoLastPerson').innerHTML = '<i class="tio-history"></i> Filled in from '
+            + (last.when ? 'their last visit on ' + last.when : 'their last visit')
+            + '. Change it if someone else is here.';
+        $('hoLastPerson').style.display = 'block';
+    }
+
     // Opened from a button on a job row. Everything shown is fetched fresh rather than rendered
     // into the page per job: the expectation check has to reflect the record as it is now, not as
     // it was when the page was loaded, and a tab left open all afternoon is the normal case here.
     window.hoOpen = function (subjectId, direction, subjectType) {
         state = { type: subjectType || SUBJECT, id: subjectId, direction: direction, runners: [], verified: false };
+        const seq = ++openSeq;
 
         $('hoForm').reset();
-        $('hoSignature').value = '';
         $('hoHandoverId').value = '';
         $('hoDirection').value = direction;
         $('hoOtpRow').style.display = 'none';
@@ -239,14 +229,14 @@
         $('hoOtpMsg').textContent = '';
         $('hoUnexpected').style.display = 'none';
         $('hoNewRunner').style.display = 'none';
-        clearPad();
+        $('hoLastPerson').style.display = 'none';
+        $('hoMovement').textContent = '';
 
         const inbound = direction === 'in';
         $('hoVerifyBlock').style.display = inbound ? '' : 'none';
         $('hoDirectionBadge').textContent = inbound ? 'Coming in' : 'Going out';
         $('hoDirectionLabel').textContent = inbound ? 'Delivered to us' : 'Collected from us';
         $('hoSubmit').textContent = inbound ? 'Record delivery' : 'Record collection';
-        fill($('hoPurposes'), (PURPOSES[state.type] || {})[direction]);
 
         $('hoForm').action = url('store', state.type, subjectId);
 
@@ -255,13 +245,19 @@
         })
             .then(r => r.json())
             .then(d => {
-                if (!d || !d.success) return;
+                if (!d || !d.success || seq !== openSeq) return;
 
                 $('hoTitle').textContent = d.title || '—';
                 $('hoLabName').textContent = (d.lab && d.lab.name) || 'No lab on this job';
                 $('hoLabPhone').textContent = (d.lab && d.lab.masked) || 'no number saved';
                 state.runners = d.runners || [];
                 fill($('hoRunners'), state.runners);
+                prefillPerson(d.last_person);
+
+                if (d.movement) {
+                    const n = d.movement.item_count || 1;
+                    $('hoMovement').textContent = d.movement.purpose + ' · ' + n + (n > 1 ? ' items' : ' item');
+                }
 
                 if (!d.expected) {
                     $('hoUnexpected').style.display = '';
@@ -284,6 +280,9 @@
         const name = this.value.trim().toLowerCase();
         const known = state.runners.some(r => String(r).trim().toLowerCase() === name);
         $('hoNewRunner').style.display = (name.length > 2 && !known && state.runners.length) ? 'block' : 'none';
+
+        // Typed over, so it is no longer last visit's name and saying it is would be a lie.
+        $('hoLastPerson').style.display = 'none';
     });
 
     $('hoSendOtp').addEventListener('click', function () {
@@ -302,7 +301,6 @@
         body.append('_token', TOKEN);
         body.append('direction', state.direction);
         body.append('person_name', person);
-        body.append('purpose', $('hoPurpose').value);
         if ($('hoHandoverId').value) body.append('handover_id', $('hoHandoverId').value);
 
         fetch(url('otp', state.type, state.id), {
@@ -354,57 +352,7 @@
             .catch(() => {});
     });
 
-    // ── Signature pad ─────────────────────────────────────────────────────────
-    // Hand-rolled rather than a library: it is a few dozen lines, it has to work on a counter
-    // tablet with no internet, and pulling a CDN script onto a clinical screen for this would be
-    // the heaviest part of the whole feature.
-    const pad = $('hoPad');
-    const ctx = pad.getContext('2d');
-    let drawing = false, dirty = false;
-
-    function sizePad() {
-        const ratio = window.devicePixelRatio || 1;
-        const rect = pad.getBoundingClientRect();
-        if (!rect.width) return;
-        pad.width = rect.width * ratio;
-        pad.height = rect.height * ratio;
-        ctx.scale(ratio, ratio);
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.strokeStyle = '#0f172a';
-    }
-
-    function clearPad() {
-        ctx.clearRect(0, 0, pad.width, pad.height);
-        dirty = false;
-        $('hoSignature').value = '';
-    }
-
-    function point(e) {
-        const rect = pad.getBoundingClientRect();
-        const t = e.touches ? e.touches[0] : e;
-        return { x: t.clientX - rect.left, y: t.clientY - rect.top };
-    }
-
-    function start(e) { drawing = true; dirty = true; const p = point(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
-    function move(e) { if (!drawing) return; const p = point(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
-    function end() { drawing = false; }
-
-    pad.addEventListener('mousedown', start);
-    pad.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', end);
-    pad.addEventListener('touchstart', start, { passive: false });
-    pad.addEventListener('touchmove', move, { passive: false });
-    pad.addEventListener('touchend', end);
-    $('hoClearPad').addEventListener('click', clearPad);
-
-    // Sized when the modal is actually visible: a canvas measured while its container is display:none
-    // comes back zero-wide and silently swallows every stroke drawn on it afterwards.
-    window.jQuery && jQuery('#hoModal').on('shown.bs.modal', sizePad);
-
     $('hoForm').addEventListener('submit', function () {
-        if (dirty) $('hoSignature').value = pad.toDataURL('image/png');
         $('hoSubmit').disabled = true;
     });
 })();

@@ -8355,6 +8355,42 @@ if (!function_exists('hmis_vitals_enabled')) {
     }
 }
 
+if (!function_exists('hmis_rx_print_clinical')) {
+    /**
+     * Whether a prescription carries the diagnosis and the doctor's advice, or only the medicines.
+     *
+     * Some practices hand the patient a sheet that names the condition; others deliberately do
+     * not, because the sheet leaves the building and the diagnosis is the part of it nobody else
+     * needs to read. This governs the printed sheet and the prescription card on the consultation
+     * screen alike, so what staff see matches what the patient is given.
+     *
+     * Defaults to on: every hospital keeps printing exactly what it prints today until it says
+     * otherwise.
+     */
+    function hmis_rx_print_clinical($store_id = null): bool
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        if (!$store_id) {
+            return true;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        // Read straight through rather than asking the schema first: the column is added the
+        // first time a hospital saves its settings, and until then every store reads as on.
+        try {
+            $value = \App\Models\StoreConfig::where('store_id', $store_id)->value('hmis_rx_print_clinical');
+        } catch (\Throwable $e) {
+            return $cache[$store_id] = true;
+        }
+
+        return $cache[$store_id] = ($value === null || (int) $value === 1);
+    }
+}
+
 if (!function_exists('hmis_daily_report_settings')) {
     /**
      * Whether this hospital wants a daily summary on WhatsApp, and what should be in it.

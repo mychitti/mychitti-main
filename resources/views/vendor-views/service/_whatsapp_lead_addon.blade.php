@@ -49,12 +49,51 @@
                         </form>
                     </div>
                 @else
+                    @if ($f['subscribed'])
+                        <div class="text-muted mt-2" style="font-size:12px;">
+                            Expired on <b>{{ $f['active_until'] }}</b> — you are not receiving these alerts.
+                        </div>
+                    @endif
                     <form method="post" action="{{ route('vendor.whatsapp.features.subscribe') }}" class="mt-2"
                           onsubmit="return confirm('Subscribe to {{ $f['meta']['label'] }} for {{ _price($f['meta']['price']) }} from your wallet?');">
                         @csrf
                         <input type="hidden" name="feature" value="{{ $key }}">
-                        <button class="btn btn-sm btn--primary">Subscribe — {{ _price($f['meta']['price']) }}/mo</button>
+                        <button class="btn btn-sm btn--primary">
+                            {{ $f['subscribed'] ? 'Reactivate' : 'Subscribe' }} — {{ _price($f['meta']['price']) }}/mo
+                        </button>
                     </form>
+                @endif
+
+                {{-- Monthly wallet deduction. Shown for any store that has ever subscribed,
+                     expired included, so auto-renew can be switched off without buying a month
+                     first. Separate from Pause above: that mutes alerts inside a paid period,
+                     this decides whether the wallet is charged again at all. --}}
+                @if ($f['subscribed'])
+                    <div class="border-top mt-2 pt-2 d-flex justify-content-between align-items-center" style="gap:8px;">
+                        <div style="font-size:12px;">
+                            <b>Auto-renew</b>
+                            <div class="text-muted">
+                                @if ($f['auto_renew'])
+                                    {{ _price($f['meta']['price']) }} is deducted from your wallet on
+                                    <b>{{ $f['renews_on'] }}</b>. We message you on WhatsApp if your wallet is short.
+                                @else
+                                    Off — your wallet will not be charged, and this add-on stops on
+                                    <b>{{ $f['active_until'] }}</b>.
+                                @endif
+                            </div>
+                        </div>
+                        <form method="post" action="{{ route('vendor.whatsapp.features.auto-renew') }}"
+                              onsubmit="return confirm('{{ $f['auto_renew']
+                                    ? 'Turn off auto-renew? This add-on will stop when the current month ends.'
+                                    : 'Turn on auto-renew? ' . _price($f['meta']['price']) . ' will be deducted from your wallet each month.' }}');">
+                            @csrf
+                            <input type="hidden" name="feature" value="{{ $key }}">
+                            <button class="btn btn-sm {{ $f['auto_renew'] ? 'btn-outline-secondary' : 'btn-outline-success' }}"
+                                    style="white-space:nowrap;">
+                                {{ $f['auto_renew'] ? 'Turn off' : 'Turn on' }}
+                            </button>
+                        </form>
+                    </div>
                 @endif
             </div>
         @endforeach
