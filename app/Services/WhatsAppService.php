@@ -2722,6 +2722,29 @@ class WhatsAppService
                 . $until;
             $wa->sendText($store->phone, $msg, true, 'addon renewal failed');
         }
+
+        // Send email reminder to vendor regarding the add-on renewal and bill deduction
+        try {
+            $vendorEmail = $store->email ?? DB::table('vendors')->where('id', $store->vendor_id ?? 0)->value('email');
+            if (filled($vendorEmail)) {
+                $untilText = $activeUntil ? " Your add-on active until: {$activeUntil}." : '';
+                $subject = "Reminder: Add-on Bill Deduction — " . $featureLabel;
+                $body = "Hello {$vendorName},\n\n"
+                    . "This is a reminder regarding your {$featureLabel} add-on on MyChitti.\n\n"
+                    . "Bill Amount to be deducted: " . _price($price) . "\n"
+                    . "Current Wallet Balance: " . _price($balance) . "\n"
+                    . $untilText . "\n\n"
+                    . "Please ensure sufficient wallet balance to maintain uninterrupted WhatsApp notifications for lead alerts.\n\n"
+                    . "Best regards,\nMyChitti Team";
+
+                \Illuminate\Support\Facades\Mail::raw($body, function ($message) use ($vendorEmail, $subject) {
+                    $message->to($vendorEmail)->subject($subject);
+                });
+                Log::info('ADDON-EMAIL: Renewal email reminder sent', ['store_id' => $storeId, 'email' => $vendorEmail]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('ADDON-EMAIL: Failed sending renewal reminder email', ['store_id' => $storeId, 'error' => $e->getMessage()]);
+        }
     }
 
     /**

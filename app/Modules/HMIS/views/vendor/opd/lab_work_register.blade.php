@@ -42,9 +42,9 @@
         .lwr-filters { background: #fff; border: 1px solid #e5e9f0; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
         .lwr-filters .form-control { font-size: 12.5px; height: 32px; }
         .lwr-filters label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; font-weight: 700; margin-bottom: 3px; }
-
+ 
         /* ── The list: one border round the lot, hairlines between rows, labels once ── */
-        .lwr-list { background: #fff; border: 1px solid #e5e9f0; border-radius: 10px; overflow: hidden; }
+        .lwr-list { background: #fff; border: 1px solid #e5e9f0; border-radius: 10px; }
         .lwr-head, .lwr-row {
             display: grid; grid-template-columns: 1.1fr 1.3fr 1.15fr 1.45fr;
             gap: 16px; padding: 11px 16px; align-items: start;
@@ -52,9 +52,10 @@
         .lwr-head {
             background: #f8fafc; border-bottom: 1px solid #e5e9f0;
             font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; font-weight: 700;
+            border-top-left-radius: 9px; border-top-right-radius: 9px;
         }
         .lwr-row { border-bottom: 1px solid #f1f5f9; }
-        .lwr-row:last-child { border-bottom: 0; }
+        .lwr-row:last-child { border-bottom: 0; border-bottom-left-radius: 9px; border-bottom-right-radius: 9px; }
         .lwr-row:hover { background: #fcfdff; }
         .lwr-row.is-late { box-shadow: inset 3px 0 0 #ef4444; }
         .lwr-row.is-closed { background: #fcfcfd; }
@@ -78,8 +79,7 @@
         .lwr-tag.is-int { border-color: #bfdbfe; color: #1d4ed8; background: #eff6ff; }
         .lwr-ok { color: #16a34a; font-size: 11px; }
 
-        /* ── Actions: one control row, then one row of quiet links. Only the arrow glyphs carry
-              colour — four differently coloured links in a 200px column is what made this shout. ── */
+        /* ── Actions: control row with status form and Actions dropdown ── */
         .lwr-move { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .lwr-move select { height: 30px; font-size: 12px; min-width: 146px; width: auto; padding: 2px 6px; }
         .lwr-move .lwr-go {
@@ -88,6 +88,18 @@
         }
         .lwr-move .lwr-go:hover { background: #1d4ed8; }
         .lwr-tell { font-size: 11px; color: #64748b; cursor: pointer; margin: 0; display: inline-flex; align-items: center; gap: 4px; }
+        .lwr-actions-btn {
+            height: 28px; padding: 0 10px; font-size: 11.5px; font-weight: 600; border-radius: 6px;
+            border: 1px solid #cbd5e1; background: #fff; color: #475569; display: inline-flex; align-items: center; gap: 4px;
+            cursor: pointer; transition: all .15s ease;
+        }
+        .lwr-actions-btn:hover, .lwr-actions-btn:focus { background: #f8fafc; border-color: #94a3b8; color: #0f172a; outline: none; }
+        .lwr-dropdown-menu { font-size: 12px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); padding: 4px 0; min-width: 160px; }
+        .lwr-dropdown-menu .dropdown-item { padding: 6px 12px; color: #334155; font-weight: 500; display: flex; align-items: center; }
+        .lwr-dropdown-menu .dropdown-item:hover { background-color: #f1f5f9; color: #0f172a; }
+        .lwr-dropdown-menu .dropdown-item .g { font-weight: 700; width: 16px; text-align: center; margin-right: 6px; }
+        .lwr-dropdown-menu .dropdown-item.is-out .g { color: #d97706; }
+        .lwr-dropdown-menu .dropdown-item.is-in .g { color: #059669; }
         .lwr-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 7px; }
         .lwr-links form { display: inline; }
         .lwr-link {
@@ -362,20 +374,16 @@
                         @endif
                     </div>
 
-                    {{-- What can be done from here: move the stage, record who is at the counter,
-                         tell the lab. Anything else — the specification, the price, a remake and its
-                         reason — stays on the consultation record behind Open. --}}
                     <div class="lwr-cell" data-l="Action">
                         @if($lwrCanEdit)
-                            <form method="POST" action="{{ route('vendor.opd.lab-work.status', $job->id) }}" class="lwr-move">
+                            <form method="POST" action="{{ route('vendor.opd.lab-work.status', $job->id) }}" class="lwr-move"
+                                  data-job-id="{{ $job->id }}"
+                                  data-job-title="{{ e($job->title()) }}"
+                                  data-remake-reason="{{ e($job->remake_reason ?? '') }}"
+                                   data-patient-phone="{{ e($job->patient?->phone ?? '') }}">
                                 @csrf
-                                {{-- Every stage, including remake, so the box always shows where the
-                                     job actually is. Choosing remake from here bounces back asking
-                                     for a reason — that belongs on the record with the corrected
-                                     specification, not on a one-line row. A job already at remake
-                                     carries its stored reason through, so moving it on from here is
-                                     not blocked by a box this form does not show. --}}
-                                <select name="status" class="form-control form-control-sm"
+                                <select name="status" class="form-control form-control-sm lwr-status-select"
+                                        data-previous="{{ $job->status }}"
                                         title="Remakes are recorded on the patient's record, where the reason and the corrected measurements go">
                                     @foreach($lwrStatuses as $lwrKey => $lwrLabel)
                                         <option value="{{ $lwrKey }}" @if($lwrKey === $job->status) selected @endif>{{ $lwrLabel }}</option>
@@ -396,32 +404,37 @@
                             </form>
                         @endif
 
-                        <div class="lwr-links">
-                            {{-- The counter form, on the two moves that are a physical exchange.
-                                 Only for work that leaves the building: an in-house job never has a
-                                 stranger at the counter, and offering the form on one invites
-                                 handovers that are really staff walking down a corridor. --}}
-                            @if($lwrCanEdit && $job->is_external && $job->is_open)
-                                <a href="javascript:void(0)" class="lwr-link is-out"
-                                   onclick="hoOpen({{ $job->id }}, 'out', 'opd_lab_work')" title="Someone is here to collect this">
-                                    <span class="g">↑</span> Going out
+                        <div class="dropdown mt-2">
+                            <button type="button" class="lwr-actions-btn dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Actions
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right lwr-dropdown-menu">
+                                <a href="{{ $lwrOpen }}" class="dropdown-item">
+                                    <i class="tio-open-in-new mr-2 text-muted"></i> Open record
                                 </a>
-                                <a href="javascript:void(0)" class="lwr-link is-in"
-                                   onclick="hoOpen({{ $job->id }}, 'in', 'opd_lab_work')" title="Someone has brought this back">
-                                    <span class="g">↓</span> Coming in
-                                </a>
-                            @endif
 
-                            @if($lwrCanEdit && filled($lwrLabPh) && ($job->sent_on || $job->received_on))
-                                <form method="POST" action="{{ route('vendor.opd.lab-work.handover', $job->id) }}">
-                                    @csrf
-                                    <button type="submit" class="lwr-link" title="Send the lab a confirmation of the handover">
-                                        Confirm handover
-                                    </button>
-                                </form>
-                            @endif
+                                @if($lwrCanEdit && $job->is_external && $job->is_open)
+                                    <div class="dropdown-divider my-1"></div>
+                                    <a href="javascript:void(0)" class="dropdown-item is-out"
+                                       onclick="hoOpen({{ $job->id }}, 'out', 'opd_lab_work')" title="Someone is here to collect this">
+                                        <span class="g">↑</span> Going out
+                                    </a>
+                                    <a href="javascript:void(0)" class="dropdown-item is-in"
+                                       onclick="hoOpen({{ $job->id }}, 'in', 'opd_lab_work')" title="Someone has brought this back">
+                                        <span class="g">↓</span> Coming in
+                                    </a>
+                                @endif
 
-                            <a href="{{ $lwrOpen }}" class="lwr-link">Open record</a>
+                                @if($lwrCanEdit && filled($lwrLabPh) && ($job->sent_on || $job->received_on))
+                                    <div class="dropdown-divider my-1"></div>
+                                    <form method="POST" action="{{ route('vendor.opd.lab-work.handover', $job->id) }}" class="m-0 p-0">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item border-0 bg-transparent text-left w-100" title="Send the lab a confirmation of the handover">
+                                            <i class="tio-checkmark-circle-outlined text-info mr-2"></i> Confirm handover
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
                         </div>
                     </div>
 
@@ -564,4 +577,115 @@
         <div class="d-flex justify-content-end mt-3">{{ $handovers->links() }}</div>
     @endif
 </div>
+
+{{-- Remake Reason Modal --}}
+<div class="modal fade" id="lwrRemakeModal" tabindex="-1" role="dialog" aria-labelledby="lwrRemakeModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <form method="POST" id="lwrRemakeForm">
+                @csrf
+                <input type="hidden" name="status" value="remake">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title" id="lwrRemakeModalTitle" style="font-size:15px; font-weight:700;">Record Remake</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="text-dark font-weight-bold mb-2" id="lwrRemakeJobTitle" style="font-size:13px;">—</div>
+                    <div class="form-group mb-3">
+                        <label class="input-label" style="font-size:12px; font-weight:600;">
+                            What was wrong with the work? <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="remake_reason" id="lwrRemakeReason" class="form-control form-control-sm" rows="3" required
+                                  placeholder="e.g. Shade too dark, margin does not seat, patient unhappy with shape"></textarea>
+                    </div>
+                    <div class="form-group mb-0" id="lwrRemakeTellPatientGroup">
+                        <label class="lwr-tell d-inline-flex align-items-center gap-2">
+                            <input type="checkbox" name="notify" value="1" id="lwrRemakeNotify"> Tell patient on WhatsApp
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-white btn-sm" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Mark for Remake</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('script_2')
+<script>
+    $(document).ready(function () {
+        // Intercept dropdown selection for Sent to lab, Received at clinic, or Sent for remake
+        $(document).on('change', '.lwr-status-select', function () {
+            var $select = $(this);
+            var val = $select.val();
+            var prevVal = $select.data('previous') || '';
+            var $form = $select.closest('.lwr-move');
+
+            if (val === 'sent') {
+                $select.val(prevVal);
+                var jobId = $form.data('job-id');
+                if (typeof window.hoOpen === 'function') {
+                    window.hoOpen(jobId, 'out', 'opd_lab_work');
+                }
+            } else if (val === 'received') {
+                $select.val(prevVal);
+                var jobId = $form.data('job-id');
+                if (typeof window.hoOpen === 'function') {
+                    window.hoOpen(jobId, 'in', 'opd_lab_work');
+                }
+            } else if (val === 'remake') {
+                $select.val(prevVal);
+                openRemakeModal($form);
+            }
+        });
+
+        // Intercept form submit if Move button is clicked while sent/received/remake is selected
+        $(document).on('submit', '.lwr-move', function (e) {
+            var $form = $(this);
+            var $select = $form.find('.lwr-status-select');
+            var val = $select.val();
+
+            if (val === 'sent') {
+                e.preventDefault();
+                var jobId = $form.data('job-id');
+                if (typeof window.hoOpen === 'function') {
+                    window.hoOpen(jobId, 'out', 'opd_lab_work');
+                }
+            } else if (val === 'received') {
+                e.preventDefault();
+                var jobId = $form.data('job-id');
+                if (typeof window.hoOpen === 'function') {
+                    window.hoOpen(jobId, 'in', 'opd_lab_work');
+                }
+            } else if (val === 'remake') {
+                e.preventDefault();
+                openRemakeModal($form);
+            }
+        });
+
+        function openRemakeModal($form) {
+            var actionUrl = $form.attr('action');
+            var title = $form.data('job-title') || 'Lab Work';
+            var reason = $form.data('remake-reason') || '';
+            var phone = $form.data('patient-phone') || '';
+
+            $('#lwrRemakeForm').attr('action', actionUrl);
+            $('#lwrRemakeJobTitle').text(title);
+            $('#lwrRemakeReason').val(reason);
+
+            if (phone) {
+                $('#lwrRemakeTellPatientGroup').show();
+            } else {
+                $('#lwrRemakeTellPatientGroup').hide();
+            }
+
+            $('#lwrRemakeModal').modal('show');
+        }
+    });
+</script>
+@endpush

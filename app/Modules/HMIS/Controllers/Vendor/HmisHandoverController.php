@@ -102,9 +102,12 @@ class HmisHandoverController extends Controller
     /** What this subject is, in one line, for the message and the slip. */
     protected function titleOf(string $type, $subject): string
     {
-        return $type === 'opd_lab_work'
-            ? $subject->title()
-            : trim((string) $subject->order_no) . ' — ' . ($subject->sample_type ?: 'Lab order');
+        if ($type === 'opd_lab_work') {
+            $patientName = trim(($subject->patient?->f_name ?? '') . ' ' . ($subject->patient?->l_name ?? ''));
+            $workTitle   = $subject->title();
+            return $patientName ? ($patientName . ' — ' . $workTitle) : $workTitle;
+        }
+        return (trim((string) $subject->order_no) ?: 'Order #' . $subject->id) . ' — ' . ($subject->sample_type ?: 'Lab order');
     }
 
     /**
@@ -221,6 +224,38 @@ class HmisHandoverController extends Controller
         return 'Staff';
     }
 
+    protected function staffList(): array
+    {
+        $storeId = $this->storeId();
+        $names   = collect();
+
+        $current = $this->staffName();
+        if (filled($current)) {
+            $names->push($current);
+        }
+
+        if (auth('vendor')->check()) {
+            $v = auth('vendor')->user();
+            $vName = trim(($v->f_name ?? '') . ' ' . ($v->l_name ?? ''));
+            if (filled($vName)) {
+                $names->push($vName);
+            }
+        }
+
+        $employees = VendorEmployee::where(function ($q) use ($storeId) {
+            if ($storeId) $q->where('store_id', $storeId);
+        })->get();
+
+        foreach ($employees as $e) {
+            $eName = trim(($e->f_name ?? '') . ' ' . ($e->l_name ?? ''));
+            if (filled($eName)) {
+                $names->push($eName);
+            }
+        }
+
+        return $names->filter()->unique()->values()->all();
+    }
+
     protected function causer(): array
     {
         if (auth('vendor_employee')->check()) {
@@ -248,6 +283,7 @@ class HmisHandoverController extends Controller
 
         return response()->json([
             'success'     => true,
+            'subject_id'  => $subject->id,
             'title'       => $this->titleOf($type, $subject),
             'direction'   => $direction,
             'strict'      => (bool) (HmisHandover::DIRECTIONS[$direction]['strict'] ?? false),
@@ -262,6 +298,8 @@ class HmisHandoverController extends Controller
             'movement'    => $this->movement($type, $subject, $direction),
             'runners'     => HmisHandover::knownRunners($this->storeId(), $lab['vendor_id'], $lab['name']),
             'last_person' => HmisHandover::lastRunner($this->storeId(), $lab['vendor_id'], $lab['name']),
+            'default_staff' => $this->staffName(),
+            'staff_members' => $this->staffList(),
         ]);
     }
 
@@ -414,6 +452,7 @@ class HmisHandoverController extends Controller
             'person_name'     => 'required|string|max:150',
             'person_phone'    => 'nullable|string|max:40',
             'person_id_ref'   => 'nullable|string|max:80',
+            'staff_name'      => 'nullable|string|max:150',
             'handover_id'     => 'nullable|integer',
             'photo'           => 'nullable|image|max:8192',
             'override_reason' => 'nullable|string|max:255',
@@ -462,7 +501,7 @@ class HmisHandoverController extends Controller
             'person_name'       => $request->person_name,
             'person_phone'      => $request->person_phone,
             'person_id_ref'     => $request->person_id_ref,
-            'staff_name'        => $this->staffName(),
+            'staff_name'        => $request->filled('staff_name') ? $request->staff_name : $this->staffName(),
             'happened_at'       => now(),
             'dispatch_expected' => $expected,
             'override_reason'   => $expected ? null : $request->override_reason,

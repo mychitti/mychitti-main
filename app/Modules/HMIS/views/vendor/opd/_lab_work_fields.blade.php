@@ -228,7 +228,7 @@
     <div class="form-group col-md-3">
         <label class="input-label" style="font-size:12px;">Sent on</label>
         <input type="date" name="sent_on" class="form-control form-control-sm"
-               value="{{ $lwOld('sent_on', $work?->sent_on?->format('Y-m-d')) }}">
+               value="{{ $lwOld('sent_on', $work?->sent_on?->format('Y-m-d') ?: date('Y-m-d')) }}">
     </div>
     <div class="form-group col-md-3">
         <label class="input-label" style="font-size:12px;">Expected</label>

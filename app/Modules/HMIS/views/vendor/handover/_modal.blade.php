@@ -37,11 +37,14 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-
+ 
                 <div class="modal-body py-3">
                     <div class="d-flex align-items-center justify-content-between flex-wrap mb-2">
                         <div style="min-width:0;">
-                            <div class="text-dark" style="font-weight:700; font-size:13.5px;" id="hoTitle">—</div>
+                            <div class="text-dark" style="font-weight:700; font-size:13.5px;">
+                                <span class="badge badge-soft-info mr-1" id="hoJobIdBadge" style="font-size:11px; padding: 3px 6px;">#—</span>
+                                <span id="hoTitle">—</span>
+                            </div>
                             <div class="text-muted" style="font-size:11.5px;">
                                 <span id="hoDirectionLabel">Collected from us</span>
                                 · <span id="hoLabName">—</span>
@@ -70,32 +73,40 @@
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group col-md-5">
-                            <label class="input-label" style="font-size:12px;">
+                        <div class="form-group col-md-4">
+                            <label class="input-label" style="font-size:12px;" id="hoStaffLabel">
+                                Handed over by <span class="text-danger">*</span>
+                            </label>
+                            <select name="staff_name" id="hoStaff" class="form-control form-control-sm" style="width:100%;">
+                                <option value=""></option>
+                                @if(isset($lwStaffNames) && count($lwStaffNames))
+                                    @foreach($lwStaffNames as $sn)
+                                        <option value="{{ $sn }}">{{ $sn }}</option>
+                                    @endforeach
+                                @endif
+                            </select> 
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label class="input-label" style="font-size:12px;" id="hoPersonLabel">
                                 Who is here <span class="text-danger">*</span>
                             </label>
                             <input type="text" name="person_name" id="hoPerson" class="form-control form-control-sm"
                                    list="hoRunners" required maxlength="150" autocomplete="off"
-                                   placeholder="Name of the person at the counter">
+                                   placeholder="Name of the runner / collector">
                             <datalist id="hoRunners"></datalist>
-                            {{-- A name this lab has never sent before. Not a block — labs hire, and
-                                 the first honest delivery from a new runner looks exactly like this
-                                 — but it is the moment to look at an ID card rather than wave it by. --}}
                             <small class="text-warning mt-1" id="hoNewRunner" style="display:none; font-size:11px;">
                                 <i class="tio-info-outined"></i> First time this lab has sent this person. Check their ID.
                             </small>
-                            {{-- Said out loud, because a name that filled itself in is a name nobody
-                                 read. The date is there so it is obvious how stale the guess is. --}}
                             <small class="text-muted mt-1" id="hoLastPerson" style="display:none; font-size:11px;"></small>
                         </div>
-                        <div class="form-group col-md-3">
+                        <div class="form-group col-md-2">
                             <label class="input-label" style="font-size:12px;">Their phone</label>
                             <input type="text" name="person_phone" id="hoPersonPhone" class="form-control form-control-sm" maxlength="40">
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-2">
                             <label class="input-label" style="font-size:12px;">ID shown</label>
                             <input type="text" name="person_id_ref" id="hoPersonId" class="form-control form-control-sm" maxlength="80"
-                                   placeholder="Employee no., Aadhaar last 4">
+                                   placeholder="Aadhaar / ID">
                         </div>
                     </div>
 
@@ -216,7 +227,7 @@
     // Opened from a button on a job row. Everything shown is fetched fresh rather than rendered
     // into the page per job: the expectation check has to reflect the record as it is now, not as
     // it was when the page was loaded, and a tab left open all afternoon is the normal case here.
-    window.hoOpen = function (subjectId, direction, subjectType) {
+    window.hoOpen = function (subjectId, direction, subjectType, jobTitle) {
         state = { type: subjectType || SUBJECT, id: subjectId, direction: direction, runners: [], verified: false };
         const seq = ++openSeq;
 
@@ -232,11 +243,20 @@
         $('hoLastPerson').style.display = 'none';
         $('hoMovement').textContent = '';
 
-        const inbound = direction === 'in';
+        const inbound = direction === 'in'; 
+        const actionHeading = inbound ? 'Record Delivery from Lab' : 'Record Collection by Lab';
+
         $('hoVerifyBlock').style.display = inbound ? '' : 'none';
         $('hoDirectionBadge').textContent = inbound ? 'Coming in' : 'Going out';
-        $('hoDirectionLabel').textContent = inbound ? 'Delivered to us' : 'Collected from us';
-        $('hoSubmit').textContent = inbound ? 'Record delivery' : 'Record collection';
+        $('hoDirectionLabel').textContent = inbound ? 'Delivered by lab runner' : 'Collected by lab runner';
+        $('hoSubmit').textContent = inbound ? 'Record Delivery' : 'Record Collection';
+
+        if ($('hoJobIdBadge')) $('hoJobIdBadge').textContent = 'Job #' + subjectId;
+        if ($('hoTitle')) $('hoTitle').textContent = jobTitle || ('Job #' + subjectId);
+        $('hoModalTitle').textContent = actionHeading + ' — Job #' + subjectId;
+
+        if ($('hoStaffLabel')) $('hoStaffLabel').innerHTML = (inbound ? 'Received by' : 'Handed over by') + ' <span class="text-danger">*</span>';
+        if ($('hoPersonLabel')) $('hoPersonLabel').innerHTML = (inbound ? 'Deliverer (Who is here)' : 'Collector (Who is here)') + ' <span class="text-danger">*</span>';
 
         $('hoForm').action = url('store', state.type, subjectId);
 
@@ -247,7 +267,43 @@
             .then(d => {
                 if (!d || !d.success || seq !== openSeq) return;
 
-                $('hoTitle').textContent = d.title || '—';
+                var displayId = d.subject_id || subjectId;
+                if ($('hoJobIdBadge')) $('hoJobIdBadge').textContent = 'Job #' + displayId;
+                
+                var titleText = d.title || jobTitle || '';
+                $('hoTitle').textContent = titleText || ('Job #' + displayId);
+
+                $('hoModalTitle').textContent = actionHeading + ' — Job #' + displayId + (titleText ? ' (' + titleText + ')' : '');
+
+                var labText = (d.lab && d.lab.name) ? d.lab.name : 'Lab';
+                if (d.lab && d.lab.masked) labText += ' · ' + d.lab.masked;
+                $('hoLabName').textContent = labText;
+                var $hoStaff = window.jQuery ? window.jQuery('#hoStaff') : null;
+                if ($hoStaff && $hoStaff.length) {
+                    if (window.jQuery && jQuery.fn.select2 && $hoStaff.hasClass('select2-hidden-accessible')) {
+                        $hoStaff.select2('destroy');
+                    }
+                    $hoStaff.empty().append('<option value=""></option>');
+                    var staffMembers = d.staff_members || [];
+                    var defStaff = d.default_staff || '';
+                    staffMembers.forEach(function (name) {
+                        var isSel = (name === defStaff) ? ' selected' : '';
+                        $hoStaff.append('<option value="' + name + '"' + isSel + '>' + name + '</option>');
+                    });
+                    if (defStaff && staffMembers.indexOf(defStaff) === -1) {
+                        $hoStaff.append('<option value="' + defStaff + '" selected>' + defStaff + '</option>');
+                    }
+                    if (window.jQuery && jQuery.fn.select2) {
+                        $hoStaff.select2({
+                            dropdownParent: window.jQuery('#hoModal'),
+                            tags: true,
+                            allowClear: true,
+                            placeholder: 'Select staff member',
+                            width: '100%'
+                        });
+                    }
+                }
+
                 $('hoLabName').textContent = (d.lab && d.lab.name) || 'No lab on this job';
                 $('hoLabPhone').textContent = (d.lab && d.lab.masked) || 'no number saved';
                 state.runners = d.runners || [];

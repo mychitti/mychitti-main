@@ -3266,11 +3266,30 @@
                     // Your own side of every custody box, off the staff list rather than spelled
                     // out by hand each time. Same active-employees list the technician picker uses,
                     // so a leaver stops being offered here the moment they stop being offered there.
-                    $lwStaffNames = collect($labTechnicians ?? [])
-                        ->map(fn($lwS) => trim((string) $lwS->name))
-                        ->filter()
-                        ->unique()
-                        ->values();
+                    $lwStaffNames = collect();
+                    if (auth('vendor_employee')->check()) {
+                        $emp = auth('vendor_employee')->user();
+                        $eName = trim(($emp->f_name ?? '') . ' ' . ($emp->l_name ?? ''));
+                        if (filled($eName)) $lwStaffNames->push($eName);
+                    }
+                    if (auth('vendor')->check()) {
+                        $v = auth('vendor')->user();
+                        $vName = trim(($v->f_name ?? '') . ' ' . ($v->l_name ?? ''));
+                        if (filled($vName)) $lwStaffNames->push($vName);
+                    }
+                    foreach ($labTechnicians ?? [] as $lwS) {
+                        $sName = trim((string) ($lwS->name ?? ''));
+                        if (filled($sName)) $lwStaffNames->push($sName);
+                    }
+                    if ($lwStaffNames->isEmpty()) {
+                        $storeId = \App\CentralLogics\Helpers::get_store_id();
+                        $emps = \App\Models\VendorEmployee::where('store_id', $storeId)->get();
+                        foreach ($emps as $e) {
+                            $eName = trim(($e->f_name ?? '') . ' ' . ($e->l_name ?? ''));
+                            if (filled($eName)) $lwStaffNames->push($eName);
+                        }
+                    }
+                    $lwStaffNames = $lwStaffNames->filter()->unique()->values();
                 @endphp
 
                 {{-- Once for the whole section, not once per job: a datalist is addressed by id and
@@ -3619,38 +3638,8 @@
                                                     </div>
                                                 </div>
                                             </div>
+ 
 
-                                            <div class="form-row mt-2 lw-custody" data-lw-custody="sent" style="display:none;">
-                                                <div class="form-group col-md-3 mb-1">
-                                                    <label class="input-label text-muted" style="font-size:11px;">Handed over by</label>
-                                                    <input type="text" name="handed_over_by" class="form-control form-control-sm"
-                                                           list="lwStaffNames" autocomplete="off"
-                                                           maxlength="120" placeholder="Your staff"
-                                                           value="{{ $work->handed_over_by }}">
-                                                </div>
-                                                <div class="form-group col-md-3 mb-1">
-                                                    <label class="input-label text-muted" style="font-size:11px;">Collected by</label>
-                                                    <input type="text" name="collected_by" class="form-control form-control-sm"
-                                                           maxlength="120" placeholder="Who took it"
-                                                           value="{{ $work->collected_by }}">
-                                                </div>
-                                            </div>
-
-                                            <div class="form-row mt-2 lw-custody" data-lw-custody="received" style="display:none;">
-                                                <div class="form-group col-md-3 mb-1">
-                                                    <label class="input-label text-muted" style="font-size:11px;">Delivered by</label>
-                                                    <input type="text" name="delivered_by" class="form-control form-control-sm"
-                                                           maxlength="120" placeholder="Who brought it back"
-                                                           value="{{ $work->delivered_by }}">
-                                                </div>
-                                                <div class="form-group col-md-3 mb-1">
-                                                    <label class="input-label text-muted" style="font-size:11px;">Received by</label>
-                                                    <input type="text" name="received_by" class="form-control form-control-sm"
-                                                           list="lwStaffNames" autocomplete="off"
-                                                           maxlength="120" placeholder="Your staff"
-                                                           value="{{ $work->received_by }}">
-                                                </div>
-                                            </div>
 
                                             {{-- Last, after everything it submits. Sitting up beside the stage
                                                  picker it read as though it applied to that box alone, while the
@@ -4206,18 +4195,65 @@
         document.querySelectorAll('.lw-status-form select[name="status"]')
             .forEach(select => lwCustody(select, true));
 
+        if (window.jQuery && jQuery.fn.select2) {
+            $('.lw-staff-select').select2({
+                tags: true,
+                allowClear: true,
+                width: '100%'
+            });
+        }
+
         // A rejected New job renders its card already open, so nothing calls lwToggleAdd() to set
         // its pickers up. offsetParent is null for anything inside a hidden parent, which is
         // exactly the case Select2 cannot measure — so only what is genuinely on screen is done
         // here and the rest waits for the click that reveals it.
-        document.querySelectorAll('.lw-fields').forEach(scope => {
-            if (scope.offsetParent !== null) lwInitSelects(scope);
-        });
+        // Check URL parameters for active tab on page load
+        const urlParams = new URLSearchParams(window.location.search);
+        let tabParam = urlParams.get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : '');
+
+        if (tabParam) {
+            let targetTabId = tabParam;
+            if (!targetTabId.startsWith('tab')) {
+                const map = {
+                    'details': 'tabDetails',
+                    'consultation': 'tabDetails',
+                    'rx': 'tabPastRx',
+                    'past_rx': 'tabPastRx',
+                    'pastrx': 'tabPastRx',
+                    'tests': 'tabTests',
+                    'reports': 'tabReports',
+                    'next_visit': 'tabNextVisit',
+                    'nextvisit': 'tabNextVisit',
+                    'lab': 'tabLabWork',
+                    'lab_work': 'tabLabWork',
+                    'labwork': 'tabLabWork',
+                    'mode': 'tabMode',
+                    'security': 'tabSecurity',
+                    'sara': 'tabSaraAI',
+                    'sara_ai': 'tabSaraAI',
+                    'saraai': 'tabSaraAI',
+                    'timeline': 'tabTimeline'
+                };
+                targetTabId = map[tabParam.toLowerCase()] || ('tab' + tabParam.charAt(0).toUpperCase() + tabParam.slice(1));
+            }
+
+            const targetBtn = document.querySelector(`.consult-tab-btn[onclick*="${targetTabId}"]`);
+            if (targetBtn) {
+                switchTab(targetBtn, targetTabId);
+            }
+        }
     });
 
     function switchTab(btn, tabId) {
+        if (typeof btn === 'string' && !tabId) {
+            tabId = btn;
+            btn = document.querySelector(`.consult-tab-btn[onclick*="${tabId}"]`);
+        }
+
+        if (!tabId) return;
+
         document.querySelectorAll('.consult-tab-btn').forEach(el => el.classList.remove('active'));
-        btn.classList.add('active');
+        if (btn) btn.classList.add('active');
 
         document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
         const activePane = document.getElementById(tabId);
@@ -4237,6 +4273,26 @@
                     bar.style.width = width;
                 });
             }, 100);
+        }
+
+        // Persist tab parameter in browser URL
+        if (window.history && window.history.replaceState) {
+            const url = new URL(window.location.href);
+            const shortNameMap = {
+                'tabDetails': 'details',
+                'tabPastRx': 'past_rx',
+                'tabTests': 'tests',
+                'tabReports': 'reports',
+                'tabNextVisit': 'next_visit',
+                'tabLabWork': 'lab_work',
+                'tabMode': 'mode',
+                'tabSecurity': 'security',
+                'tabSaraAI': 'sara_ai',
+                'tabTimeline': 'timeline'
+            };
+            const shortName = shortNameMap[tabId] || tabId.replace(/^tab/, '').replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+            url.searchParams.set('tab', shortName);
+            window.history.replaceState(null, '', url.toString());
         }
     }
 
