@@ -101,6 +101,9 @@ class BannerController extends Controller
             return back();
         }
         $banner->status = $request->status;
+        if ($banner->publish_at && $banner->publish_at <= now()) {
+            $banner->publish_at = null;
+        }
         $banner->save();
         Toastr::success(translate('messages.banner_status_updated'));
         return back();

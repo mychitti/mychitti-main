@@ -214,7 +214,12 @@ class BannerController extends BaseController
 
     public function updateStatus(Request $request): RedirectResponse
     {
-        $this->bannerRepo->update(id: $request['id'], data: ['status' => $request['status']]);
+        $banner = $this->bannerRepo->getFirstWithoutGlobalScopeWhere(params: ['id' => $request['id']]);
+        $data = ['status' => $request['status']];
+        if ($banner && $banner->publish_at && $banner->publish_at <= now()) {
+            $data['publish_at'] = null;
+        }
+        $this->bannerRepo->update(id: $request['id'], data: $data);
         Toastr::success(translate('messages.banner_status_updated'));
         return back();
     }

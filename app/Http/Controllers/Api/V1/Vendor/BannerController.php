@@ -101,6 +101,9 @@ class BannerController extends Controller
         }
         $banner = Banner::findOrFail($request->id);
         $banner->status = $request->status;
+        if ($banner->publish_at && $banner->publish_at <= now()) {
+            $banner->publish_at = null;
+        }
         $banner->save();
 
         return response()->json(['message' => translate('messages.banner_status_updated')], 200);

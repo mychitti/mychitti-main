@@ -215,7 +215,10 @@ class Kernel extends ConsoleKernel
                 ->where('status', 0)
                 ->whereNotNull('publish_at')
                 ->where('publish_at', '<=', now())
-                ->update(['status' => 1]);
+                ->update([
+                    'status' => 1,
+                    'publish_at' => null
+                ]);
                 Log::info('Schedule job finished at ' . now());
 
         })->name('banner-scheduled-publish')
