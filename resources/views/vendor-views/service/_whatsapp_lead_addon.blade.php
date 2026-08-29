@@ -97,5 +97,51 @@
                 @endif
             </div>
         @endforeach
+
+        {{-- What the add-on does BESIDES notifying you, spelled out and chooseable.
+             It is sold as "tell me on WhatsApp when a lead arrives", and it also accepted every
+             lead — spending the lead charge from the wallet — and quoted the customer off a figure
+             saved in settings, with nobody looking. Three named behaviours instead, because a
+             store that only wants the alert should not have to pause the add-on to get it.
+             Shown whether or not the add-on is active: worth setting before it starts. --}}
+        @php
+            $leadAutoAccept  = lead_auto_accept_enabled();
+            $leadAutoConfirm = lead_auto_confirm_enabled();
+            $leadMode = !$leadAutoAccept ? 'notify' : ($leadAutoConfirm ? 'accept_quote' : 'accept');
+            $leadModes = [
+                'accept_quote' => [
+                    'title' => 'Accept and quote automatically',
+                    'desc'  => 'The lead is accepted the moment it arrives and the customer is sent a confirmation '
+                             . 'request at your saved visiting charge (' . _price($storeConfig->lead_visiting_charge ?? 0) . ').',
+                ],
+                'accept' => [
+                    'title' => 'Accept automatically, quote by hand',
+                    'desc'  => 'The lead is accepted for you, the customer is told nothing about price, and you send '
+                             . 'the quote from the lead card when you are ready.',
+                ],
+                'notify' => [
+                    'title' => 'Just notify me',
+                    'desc'  => 'Nothing is accepted and nothing is charged to your wallet. The lead arrives as New and '
+                             . 'waits for you to accept it — you still get the WhatsApp alert this add-on is for.',
+                ],
+            ];
+        @endphp
+        <div class="border rounded p-3 mt-3" style="background:#f8fafc;">
+            <b style="font-size:13px;">When a new lead arrives</b>
+            <form method="post" action="{{ route('vendor.service.lead-auto-confirm') }}" class="mt-2 mb-0">
+                @csrf
+                @foreach($leadModes as $modeKey => $mode)
+                    <label class="d-flex align-items-start mb-2" style="cursor:pointer; gap:8px;">
+                        <input type="radio" name="mode" value="{{ $modeKey }}" class="mt-1"
+                               {{ $leadMode === $modeKey ? 'checked' : '' }}>
+                        <span>
+                            <span style="font-weight:600; font-size:12.5px;">{{ $mode['title'] }}</span>
+                            <small class="text-muted d-block" style="font-size:11.5px;">{{ $mode['desc'] }}</small>
+                        </span>
+                    </label>
+                @endforeach
+                <button class="btn btn-sm btn-outline-primary">Save</button>
+            </form>
+        </div>
     </div>
 </div>

@@ -1753,6 +1753,139 @@ class ServiceController extends Controller
         Toastr::success('Lead settings updated successfully');
         return back();
     }
+    /**
+     * What holding the leads add-on actually does to an incoming lead.
+     *
+     * One choice of three rather than two switches, because the middle option only means anything
+     * if the first is on, and a pair of checkboxes lets someone select the impossible combination
+     * and wonder why nothing happens.
+     *
+     * Its own endpoint rather than a field on the lead settings form: it sits in the add-on card,
+     * which has to live outside that form (nested forms are invalid HTML).
+     */
+    public function lead_auto_confirm_toggle(Request $request)
+    {
+        $request->validate(['mode' => 'required|in:accept_quote,accept,notify']);
+
+        $storeId  = Helpers::get_store_id();
+        $cfgTable = \Illuminate\Support\Facades\Schema::hasTable('storeConfigs') ? 'storeConfigs' : 'store_configs';
+
+        foreach (['lead_auto_confirm_request', 'lead_auto_accept'] as $column) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, $column)) {
+                \Illuminate\Support\Facades\DB::statement("ALTER TABLE `$cfgTable` ADD COLUMN `$column` TINYINT(1) NULL DEFAULT NULL");
+            }
+        }
+
+        $mode = $request->input('mode');
+
+        // 'notify' leaves the quote flag alone rather than clearing it: a store that turns
+        // auto-accept back on should find the rest of its choice as it left it.
+        \App\Models\StoreConfig::updateOrInsert(
+            ['store_id' => $storeId],
+            array_filter([
+                'lead_auto_accept'          => $mode === 'notify' ? 0 : 1,
+                'lead_auto_confirm_request' => $mode === 'accept_quote' ? 1 : ($mode === 'accept' ? 0 : null),
+            ], fn($v) => $v !== null)
+        );
+
+        Toastr::success([
+            'accept_quote' => 'New leads will be accepted and the customer quoted automatically.',
+            'accept'       => 'New leads will be accepted for you. You send the quote yourself.',
+            'notify'       => 'New leads will only be notified to you — nothing is accepted until you accept it.',
+        ][$mode]);
+
+        return back();
+    }
+
+    /**
+     * Accept a lead, then ask the patient to move it.
+     *
+     * The case this exists for: the clinic wants the patient but cannot see them at the hour they
+     * asked for. Accepting and quietly booking a different time is how somebody turns up on the
+     * wrong morning, so the booking is made exactly as requested and the new time goes to the
+     * patient as a question — the same request, page and token the appointment screen uses.
+     *
+     * Accepting runs through accept() rather than a copy of it: the lead charge, the wallet debit,
+     * the tie-up rules and the auto-confirm are all decided there, and a second implementation of
+     * that would be a second set of rules about money.
+     */
+    public function accept_propose(Request $request, $serviceRequestId)
+    {
+        $request->validate([
+            'appointment_date' => 'required|date',
+            'appointment_time' => 'required',
+            'note'             => 'nullable|string|max:500',
+        ]);
+
+        $storeId = Helpers::get_store_id();
+
+        $already = AcceptedServiceRequest::where('service_request_id', $serviceRequestId)
+            ->where('vendor_id', $storeId)->exists();
+
+        if (!$already) {
+            $this->accept($request, $serviceRequestId);
+
+            if (!AcceptedServiceRequest::where('service_request_id', $serviceRequestId)->where('vendor_id', $storeId)->exists()) {
+                // accept() has already said why — an expired lead, a wallet that cannot cover the
+                // charge, another vendor holding it. Nothing to propose against.
+                return back();
+            }
+        }
+
+        $appointment = \App\Services\LeadAppointmentService::provision((int) $serviceRequestId, (int) $storeId);
+
+        if (!$appointment) {
+            Toastr::warning('Lead accepted, but there is no appointment to move — it has no doctor or no date on it.');
+            return back();
+        }
+
+        \App\Models\AppointmentRescheduleRequest::ensureSchema();
+
+        $patient = $appointment->patient;
+        if (!$patient || blank($patient->phone)) {
+            Toastr::warning('Lead accepted. The patient has no phone number on file, so the request could not be sent.');
+            return back();
+        }
+
+        $req = \App\Models\AppointmentRescheduleRequest::create([
+            'store_id'       => $storeId,
+            'appointment_id' => $appointment->id,
+            'patient_id'     => $appointment->patient_id,
+            'from_date'      => $appointment->appointment_date,
+            'from_time'      => $appointment->appointment_time,
+            'to_date'        => $request->appointment_date,
+            'to_time'        => $request->appointment_time,
+            'note'           => $request->input('note'),
+            'token'          => \App\Models\AppointmentRescheduleRequest::mintToken(),
+            'status'         => 'pending',
+            'sent_to'        => mb_substr((string) $patient->phone, 0, 32),
+            'requested_by'   => auth('vendor_employee')->id() ?? auth('vendor')->id(),
+            'expires_at'     => \Carbon\Carbon::parse($request->appointment_date . ' ' . $request->appointment_time),
+        ]);
+
+        $result = \App\Services\HmisWhatsAppShare::appointmentReschedule(
+            $req,
+            route('appointment-reschedule', ['token' => $req->token])
+        );
+
+        if ($result['success']) {
+            $req->forceFill(['sent_at' => now()])->save();
+
+            \App\Models\HospitalActivityLog::record(
+                $storeId, 'appointment', (int) $appointment->id, 'reschedule_requested',
+                "Lead #{$serviceRequestId} accepted and patient asked to move to {$req->proposedLabel()}",
+                ['patient_id' => $appointment->patient_id, 'request_id' => $req->id, 'lead_id' => (int) $serviceRequestId]
+            );
+
+            Toastr::success('Accepted, and the patient has been asked to confirm ' . $req->proposedLabel()
+                . '. Their original booking stands until they do.');
+        } else {
+            Toastr::error('Lead accepted, but the request could not be sent: ' . $result['message']);
+        }
+
+        return back();
+    }
+
     public function send_confirmation_notification(Request $request)
     {
 
@@ -2026,7 +2159,10 @@ class ServiceController extends Controller
                 'accepted_service_requests.assigned_type',
                 'accepted_service_requests.id as acc_id',
                 'accepted_service_requests.assigned_to',
-                'accepted_service_requests.accepted_by_staff'
+                'accepted_service_requests.accepted_by_staff',
+                // Set only by the customer's own confirm endpoints, so it is what tells a booking
+                // the patient agreed to from one the clinic confirmed on their behalf.
+                'accepted_service_requests.tieup'
             );
         } elseif ($type == 'Accepted') {
             $query->join('accepted_service_requests', 'accepted_service_requests.service_request_id', 'service_requests.id')
@@ -2041,7 +2177,8 @@ class ServiceController extends Controller
                     'accepted_service_requests.current_status',
                     'accepted_service_requests.id as acc_id',
                     'accepted_service_requests.assigned_to',
-                    'accepted_service_requests.accepted_by_staff'
+                    'accepted_service_requests.accepted_by_staff',
+                    'accepted_service_requests.tieup'
                 );
         } elseif ($type == 'Cancelled') {
             $query->join('cancelled_service_requests', 'service_requests.id', '=', 'cancelled_service_requests.service_request_id')
@@ -2117,7 +2254,10 @@ class ServiceController extends Controller
                 'accepted_service_requests.assigned_type',
                 'accepted_service_requests.id as acc_id',
                 'accepted_service_requests.assigned_to',
-                'accepted_service_requests.accepted_by_staff'
+                'accepted_service_requests.accepted_by_staff',
+                // Set only by the customer's own confirm endpoints, so it is what tells a booking
+                // the patient agreed to from one the clinic confirmed on their behalf.
+                'accepted_service_requests.tieup'
             );
         } else {
 
@@ -2136,7 +2276,10 @@ class ServiceController extends Controller
                 'accepted_service_requests.current_status',
                 'accepted_service_requests.id as acc_id',
                 'accepted_service_requests.assigned_to',
-                'accepted_service_requests.accepted_by_staff'
+                'accepted_service_requests.accepted_by_staff',
+                // Set only by the customer's own confirm endpoints, so it is what tells a booking
+                // the patient agreed to from one the clinic confirmed on their behalf.
+                'accepted_service_requests.tieup'
             );
         }
         // prx($query->get());

@@ -14,6 +14,8 @@ class OpdVisit extends Model
         'height', 'spo2', 'pulse_rate', 'respiratory_rate', 'notes', 'recorded_by', 'status',
         'consultation_receipt_id', 'consultation_visit_no',
         'cancelled_at', 'cancel_reason', 'cancelled_by',
+        // Care stopped because the patient never came back — see ensureDiscontinueColumns().
+        'discontinued_at', 'discontinue_reason',
         // Label → value rows captured for this visit (dental intake). Overrides the patient's
         // standing values when the bill is built — see DentalIntakeController::mergedFor().
         'custom_info',
@@ -22,6 +24,7 @@ class OpdVisit extends Model
     protected $casts = [
         'visit_date'       => 'date',
         'cancelled_at'     => 'datetime',
+        'discontinued_at'  => 'datetime',
         'bp_systolic'      => 'integer',
         'bp_diastolic'     => 'integer',
         'temperature'      => 'float',
@@ -41,9 +44,50 @@ class OpdVisit extends Model
 
     const STATUS_CANCELLED = 'cancelled';
 
+    /**
+     * The state a planned treatment lands in when the course is given up on.
+     *
+     * Kept apart from 'missed', which is about one sitting the patient did not attend. This one
+     * says the course itself stopped — nobody is waiting for them any more.
+     */
+    const PLAN_DISCONTINUED = 'discontinued';
+
     public function getIsCancelledAttribute(): bool
     {
         return $this->status === self::STATUS_CANCELLED;
+    }
+
+    /**
+     * Care on this visit was given up on because the patient stopped coming.
+     *
+     * Deliberately NOT a value in `status`: the visit happened, it was billed, and it still counts
+     * in every register and report. Only what was still outstanding on it was closed off, which is
+     * a fact about the plan rather than about the consultation.
+     */
+    public function getIsDiscontinuedAttribute(): bool
+    {
+        return !empty($this->discontinued_at);
+    }
+
+    /**
+     * Columns for the discontinue sweep, added to installs that predate it.
+     *
+     * Nullable and unindexed on purpose: the sweep reads visits by store and date, which the
+     * register already indexes, and this pair is only ever read back on the visit it belongs to.
+     */
+    public static function ensureDiscontinueColumns(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('opd_visits', 'discontinued_at')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `opd_visits`
+                ADD COLUMN `discontinued_at` TIMESTAMP NULL,
+                ADD COLUMN `discontinue_reason` VARCHAR(255) NULL");
+        }
     }
 
     /**

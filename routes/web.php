@@ -64,6 +64,17 @@ Route::post('whatsapp/webhook', [App\Http\Controllers\WhatsAppWebhookController:
 Route::get('health-record/{token}', [App\Http\Controllers\PatientRecordController::class, 'show'])
     ->name('patient-record')
     ->middleware('throttle:30,1');
+
+// A patient answering "can we move your appointment?". Public for the same reason and on the same
+// terms as the record link above — the token is the credential, and it can only ever confirm or
+// decline the one time the hospital proposed. Declared up here so the catch-all product route at
+// the foot of this file cannot swallow it.
+Route::get('appointment/reschedule/{token}', [App\Http\Controllers\AppointmentRescheduleController::class, 'show'])
+    ->name('appointment-reschedule')
+    ->middleware('throttle:30,1');
+Route::post('appointment/reschedule/{token}', [App\Http\Controllers\AppointmentRescheduleController::class, 'respond'])
+    ->name('appointment-reschedule.respond')
+    ->middleware('throttle:10,1');
 // Route::get('/print-receipt', function () {
 //     try {
 //         // Printer IP and port

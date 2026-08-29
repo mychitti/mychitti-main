@@ -1,4 +1,34 @@
+{{-- Moves the hospital has asked for and not heard back on, keyed by the booking they belong to.
+
+     The WhatsApp link is not the only way a patient should be able to answer this: a template can
+     be unapproved, a message can be missed, a number can be wrong — and none of that is the
+     patient's problem. They are logged in, looking at the booking in question, so the question
+     belongs here too. Read once for the page rather than per card. --}}
+@php
+    $fvMoves = collect();
+    try {
+        if (\Illuminate\Support\Facades\Schema::hasTable('appointment_reschedule_requests')
+            && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'service_request_id')) {
+
+            $fvApptByRequest = \App\Models\Appointment::whereIn('service_request_id', collect($items)->pluck('service_request_id')->filter())
+                ->pluck('service_request_id', 'id');
+
+            if ($fvApptByRequest->isNotEmpty()) {
+                $fvMoves = \App\Models\AppointmentRescheduleRequest::whereIn('appointment_id', $fvApptByRequest->keys())
+                    ->where('status', 'pending')
+                    ->orderBy('id')
+                    ->get()
+                    ->reject(fn($m) => $m->is_lapsed)
+                    ->keyBy(fn($m) => $fvApptByRequest[$m->appointment_id]);
+            }
+        }
+    } catch (\Throwable $e) {
+        $fvMoves = collect();
+    }
+@endphp
+
 @foreach ($items as $key => $serRun)
+    @php $fvMove = $fvMoves[$serRun->service_request_id] ?? null; @endphp
     <div class="service-accordion-item mb-4">
         <div class="service-card-header" data-bs-toggle="collapse"
             data-bs-target="#runCollapse{{ $serRun->service_request_id }}"
@@ -35,6 +65,14 @@
                                 {{ $serRun->current_status }}
                             @endif
                         </span>
+                        {{-- Confirmed, and still waiting on the patient for something. Flagged up
+                             here as well as in the panel below, because the header is what shows
+                             when the card is collapsed. --}}
+                        @if ($fvMove)
+                            <span class="status-pill" style="background:#fef3c7; color:#92400e;">
+                                Reschedule requested
+                            </span>
+                        @endif
                         <div class="collapse-toggle-icon"><i class="fas fa-chevron-down"></i></div>
                     </div>
                 </div>
@@ -45,6 +83,53 @@
             class="collapse {{ !$key ? 'show' : '' }}"
             data-bs-parent=".running-bookings-container">
             <div class="service-card-body">
+                {{-- The one thing on this card that needs an answer, so it sits above everything
+                     else on it. The booking stays on its original date until Confirm is pressed —
+                     said plainly, because a patient who reads this and does nothing must not end
+                     up at the clinic on the wrong day. --}}
+                @if ($fvMove)
+                    <div class="mb-4" style="background:#fffbeb; border:1px solid #fcd34d; border-radius:12px; padding:16px;">
+                        <h6 style="margin:0 0 6px; font-weight:700; color:#92400e;">
+                            {{ ucfirst($serRun->store_name ?? 'The hospital') }} has asked to move your appointment
+                        </h6>
+                        <div class="d-flex flex-wrap align-items-center" style="gap:14px; margin-bottom:10px;">
+                            <div>
+                                <div style="font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:#92400e;">Currently booked</div>
+                                <div style="font-weight:600; text-decoration:line-through; color:#78716c;">{{ $fvMove->currentLabel() }}</div>
+                            </div>
+                            <div>
+                                <div style="font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:#92400e;">New time proposed</div>
+                                <div style="font-weight:700; color:#166534;">{{ $fvMove->proposedLabel() }}</div>
+                            </div>
+                        </div>
+
+                        @if (filled($fvMove->note))
+                            <p style="font-size:13px; color:#57534e; margin-bottom:10px;">{{ $fvMove->note }}</p>
+                        @endif
+
+                        {{-- The same endpoint the WhatsApp link posts to, and the same two answers.
+                             Nothing here decides anything the token page would not. --}}
+                        <form method="POST" action="{{ route('appointment-reschedule.respond', ['token' => $fvMove->token]) }}">
+                            @csrf
+                            <input type="text" name="note" class="form-control mb-2" maxlength="500"
+                                   placeholder="If it doesn't suit — when would? (optional)"
+                                   style="font-size:13px; max-width:420px;">
+                            <div class="d-flex flex-wrap" style="gap:8px;">
+                                <button type="submit" name="answer" value="accept" class="btn btn-success btn-sm">
+                                    Yes, {{ $fvMove->proposedLabel() }} works
+                                </button>
+                                <button type="submit" name="answer" value="decline" class="btn btn-outline-secondary btn-sm">
+                                    No, that time doesn't suit me
+                                </button>
+                            </div>
+                        </form>
+
+                        <p style="font-size:12px; color:#78716c; margin:10px 0 0;">
+                            Your appointment on {{ $fvMove->currentLabel() }} stands until you confirm.
+                        </p>
+                    </div>
+                @endif
+
                 <div class="row g-4">
                     <div class="col-lg-6">
                         <div class="detail-card">

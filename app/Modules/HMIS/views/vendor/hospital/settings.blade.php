@@ -12,6 +12,49 @@
     .opt-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: #1f2937; }
     .opt-name.off { color: #9aa5b1; text-decoration: line-through; font-weight: 500; }
     .opt-empty { color: #94a3b8; font-size: 12px; padding: 10px 2px; }
+
+    /* ── Settings tabs ── */
+    .hs-tabbar {
+        display: flex; flex-wrap: wrap; gap: 2px;
+        border-bottom: 1px solid #e2e8f0; margin-bottom: 18px;
+    }
+    .hs-tab {
+        padding: 9px 14px; font-size: 12.5px; font-weight: 600; color: #64748b !important;
+        border-bottom: 2px solid transparent; text-decoration: none !important; white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .hs-tab:hover { color: #0f172a !important; background: #f8fafc; }
+    .hs-tab.active { color: #2563eb !important; border-bottom-color: #2563eb; }
+    .hs-tab i { font-size: 15px; }
+    /* A tab whose pane holds a field the server rejected. Marked rather than switched to, so a
+       second error somewhere else is still findable after the first is fixed. */
+    .hs-tab.has-error { color: #dc2626 !important; }
+    .hs-tab.has-error::after {
+        content: ''; width: 5px; height: 5px; border-radius: 50%; background: #dc2626;
+    }
+
+    /* Hidden, not removed: these panes are inside the settings form, and a pane that is not in
+       the DOM does not post its fields — switching tabs would silently blank every setting on
+       every other tab.
+
+       The first pane is marked active in the markup rather than by the script, so the page paints
+       one tab straight away instead of flashing all nine while the footer scripts load. */
+    .hs-pane { display: none; }
+    .hs-pane.active { display: block; }
+
+    /* Settings read as prose with a few short answers in them, and a form field stretched across
+       an ultrawide monitor is neither. Capped here rather than per card so every pane lines up on
+       the same left edge; the two that genuinely need the width say so. */
+    .hs-pane { max-width: 900px; }
+    .hs-pane[data-hs-pane="opTypes"],
+    .hs-pane[data-hs-pane="departments"] { max-width: none; }
+    /* Checkbox settings carry a paragraph explaining what they do, which wants a shorter measure
+       than a form row does. */
+    .hs-pane .card-body > label small { max-width: 62ch; }
+
+    @media (max-width: 575px) {
+        .hs-tab { padding: 8px 10px; font-size: 12px; }
+    }
 </style>
 @endpush
 
@@ -24,19 +67,61 @@
         </h1>
     </div>
 
+    {{-- One page, nine unrelated decisions. Tabs rather than a column of cards because nobody
+         comes here to read all of it — they come to change one thing, and a stack that scrolls
+         past eight cards they did not want is how the ninth never gets found.
+
+         The bar is written once, from this list, so a new settings card means an entry here and a
+         pane below rather than markup in three places. --}}
+    @php
+        $hsTabs = [
+            'ids'          => ['label' => 'Patient IDs',       'icon' => 'tio-label'],
+            'opd'          => ['label' => 'OP & Prescriptions','icon' => 'tio-receipt'],
+            'clinical'     => ['label' => 'Clinical Recording','icon' => 'tio-heart-outlined'],
+            'labwork'      => ['label' => 'Lab Work',          'icon' => 'tio-lab'],
+            'discontinue'  => ['label' => 'Abandoned Care',    'icon' => 'tio-time'],
+            'opTypes'      => ['label' => 'OP Types',          'icon' => 'tio-card'],
+            'departments'  => ['label' => 'Departments',       'icon' => 'tio-city'],
+            'report'       => ['label' => 'Daily Report',      'icon' => 'tio-chart-bar-4'],
+            'audit'        => ['label' => 'Access & Audit',    'icon' => 'tio-lock-outlined'],
+        ];
+    @endphp
+
+    {{-- Settings hidden behind a tab bar that never switches would be settings nobody can reach,
+         so with scripting off the bar goes and every pane is simply shown, which is the page
+         exactly as it was before the tabs. --}}
+    <noscript>
+        <style>
+            .hs-tabbar { display: none; }
+            .hs-pane { display: block !important; }
+        </style>
+    </noscript>
+
+    <div class="hs-tabbar">
+        @foreach($hsTabs as $hsKey => $hsTab)
+            <a href="#{{ $hsKey }}" class="hs-tab {{ $loop->first ? 'active' : '' }}" data-hs-tab="{{ $hsKey }}">
+                <i class="{{ $hsTab['icon'] }}"></i> {{ $hsTab['label'] }}
+            </a>
+        @endforeach
+    </div>
+
     <form action="{{ route('vendor.hospital.settings.save') }}" method="POST">
         @csrf
         <div class="row">
-            <div class="col-lg-4">
+            <div class="col-12">
 
                 {{-- MUID Format --}}
+                <div class="hs-pane active" data-hs-pane="ids">
                 <div class="card mb-3">
                     <div class="card-header py-2">
                         <h6 class="mb-0"><i class="tio-label mr-1"></i> MUID Format</h6>
                     </div>
                     <div class="card-body">
 
-                        <div class="form-group">
+                        {{-- Three short fields that describe one identifier, so they sit on one
+                             line rather than three full-width boxes a monitor wide. --}}
+                        <div class="form-row">
+                        <div class="form-group col-md-4">
                             <label class="input-label">Prefix <span class="text-danger">*</span></label>
                             <input type="text" name="prefix" class="form-control @error('prefix') is-invalid @enderror"
                                    value="{{ old('prefix', $prefix) }}" maxlength="10"
@@ -46,7 +131,7 @@
                             @error('prefix')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group col-md-4">
                             <label class="input-label">Zero-padding digits <span class="text-danger">*</span></label>
                             <input type="number" name="padding" class="form-control @error('padding') is-invalid @enderror"
                                    value="{{ old('padding', $padding) }}" min="1" max="10"
@@ -55,13 +140,14 @@
                             @error('padding')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
-                        <div class="form-group mb-0">
+                        <div class="form-group col-md-4 mb-0">
                             <label class="input-label">Minimum serial number <span class="text-danger">*</span></label>
                             <input type="number" name="serial" class="form-control @error('serial') is-invalid @enderror"
                                    value="{{ old('serial', $serial) }}" min="1"
                                    oninput="updatePreview()" id="serialInput">
                             <small class="text-muted">New patients will start from this number (if current count is lower).</small>
                             @error('serial')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                         </div>
 
                     </div>
@@ -74,9 +160,12 @@
                     </div>
                 </div>
 
+                </div>{{-- /pane ids --}}
+
                 {{-- Clinical Recording — what this hospital actually charts. A dental or
                      physiotherapy practice never takes a BP, and an always-on vitals card is a
                      row of dashes on every screen it appears on. --}}
+                <div class="hs-pane" data-hs-pane="clinical">
                 <div class="card mb-3">
                     <div class="card-header py-2">
                         <h6 class="mb-0"><i class="tio-heart-outlined mr-1"></i> Clinical Recording</h6>
@@ -115,10 +204,13 @@
                     </div>
                 </div>
 
+                </div>{{-- /pane clinical --}}
+
                 {{-- Daily report — a summary of the day on WhatsApp, off unless asked for.
                      Sent from the platform's number rather than the hospital's: this is MyChitti
                      reporting to its customer, not the hospital messaging a patient, so it works
                      whether or not they have connected WhatsApp themselves. --}}
+                <div class="hs-pane" data-hs-pane="report">
                 <div class="card mb-3">
                     <div class="card-header py-2">
                         <h6 class="mb-0"><i class="tio-chart-bar-4 mr-1"></i> Daily Report on WhatsApp</h6>
@@ -190,6 +282,9 @@
                     </div>
                 </div>
 
+                </div>{{-- /pane report --}}
+
+                <div class="hs-pane" data-hs-pane="labwork">
                 {{-- Lab Work — on by default for the specialities that actually send work out,
                      available to everyone else on request. The measurement boxes behind the tab
                      come from the hospital category chosen above, so the card names which set
@@ -236,9 +331,70 @@
                     </div>
                 </div>
 
+                </div>{{-- /pane labwork --}}
+
+                <div class="hs-pane" data-hs-pane="discontinue">
+                {{-- Discontinuing care nobody came back for. On everywhere at the platform's 30
+                     days unless a hospital says otherwise, so what it closes is spelled out in
+                     full and the box is ticked when they arrive: this runs unattended, and
+                     somebody reading this card should never be surprised by it later. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-time mr-1"></i> Discontinue Abandoned Care</h6>
+                    </div>
+                    <div class="card-body">
+                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
+                            <input type="checkbox" name="discontinue_enabled" value="1" class="mr-2 mt-1" id="discontinueOn"
+                                   {{ old('discontinue_enabled', $discontinue_days ? 1 : 0) ? 'checked' : '' }}
+                                   onchange="document.getElementById('discontinueDaysWrap').style.display = this.checked ? '' : 'none';">
+                            <span>
+                                <span style="font-weight:600;">Close outstanding care when a patient stops coming</span>
+                                <small class="text-muted d-block" style="font-size:12px;">
+                                    Runs once a night. A patient who has not been in for the number of days
+                                    below, and has no future appointment booked, has whatever is still open
+                                    on their visits marked <b>Discontinued</b>: planned treatments still
+                                    waiting to be done, lab work still out, and follow-up appointments whose
+                                    date has passed with nobody attending.
+                                </small>
+                                <small class="text-muted d-block mt-2" style="font-size:11.5px;">
+                                    Nothing is deleted and no bill, receipt or completed treatment is
+                                    touched. Every close is written to the activity log, and a job or a
+                                    treatment can be moved back to any stage if the patient returns.
+                                </small>
+                                <small class="d-block mt-1" style="font-size:11.5px;">
+                                    <span class="text-muted">On by default at</span>
+                                    <span class="text-dark" style="font-weight:600;">{{ \App\Services\OpdDiscontinue::DEFAULT_DAYS }} days</span><span class="text-muted">.
+                                    Change the number to suit your speciality, or untick to leave your
+                                    records open indefinitely — a practice working to six-month recalls
+                                    should switch this off.</span>
+                                </small>
+                            </span>
+                        </label>
+
+                        <div class="form-row mt-3" id="discontinueDaysWrap" style="display:{{ old('discontinue_enabled', $discontinue_days ? 1 : 0) ? '' : 'none' }};">
+                            <div class="form-group col-md-4 mb-0">
+                                <label class="input-label" style="font-size:12px;">Days without a visit</label>
+                                <input type="number" name="discontinue_days" class="form-control form-control-sm"
+                                       min="7" max="365"
+                                       value="{{ old('discontinue_days', $discontinue_days ?: \App\Services\OpdDiscontinue::DEFAULT_DAYS) }}">
+                                <small class="text-muted" style="font-size:11px;">
+                                    Between 7 and 365. Counted from the patient's most recent visit, not from
+                                    the visit being closed.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </div>
+
+                </div>{{-- /pane discontinue --}}
+
                 {{-- Records Access & Audit — off unless a hospital asks for it. Switching it on
                      is what starts writing the trail, not just what reveals the tab, so a clinic
                      that will never read it never accumulates the rows. --}}
+                <div class="hs-pane" data-hs-pane="audit">
                 <div class="card mb-3">
                     <div class="card-header py-2">
                         <h6 class="mb-0"><i class="tio-lock-outlined mr-1"></i> Records Access &amp; Audit</h6>
@@ -265,16 +421,19 @@
                     </div>
                 </div>
 
-            </div>
+                </div>{{-- /pane audit --}}
 
-            <div class="col-lg-8">
                 {{-- OP Consultation Validity --}}
+                <div class="hs-pane" data-hs-pane="opd">
                 <div class="card mb-3">
                     <div class="card-header py-2">
                         <h6 class="mb-0"><i class="tio-receipt mr-1"></i> OP Consultation Validity</h6>
                     </div>
                     <div class="card-body">
-                        <div class="form-group">
+                        {{-- Two halves of one rule — how many visits, for how long — so they are
+                             read together rather than stacked a screen apart. --}}
+                        <div class="form-row">
+                        <div class="form-group col-md-4">
                             <label class="input-label">Consultations per paid OP <span class="text-danger">*</span></label>
                             <input type="number" name="opd_consultation_count"
                                    class="form-control @error('opd_consultation_count') is-invalid @enderror"
@@ -282,13 +441,14 @@
                             <small class="text-muted">How many consultations one paid OP receipt covers (e.g. 2).</small>
                             @error('opd_consultation_count')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
-                        <div class="form-group mb-0">
+                        <div class="form-group col-md-4 mb-0">
                             <label class="input-label">Validity (days) <span class="text-danger">*</span></label>
                             <input type="number" name="opd_consultation_validity_days"
                                    class="form-control @error('opd_consultation_validity_days') is-invalid @enderror"
                                    value="{{ old('opd_consultation_validity_days', $opd_consultation_validity_days) }}" min="1" max="365">
                             <small class="text-muted">Days a paid OP stays valid for follow-up visits (e.g. 7 = 1 week).</small>
                             @error('opd_consultation_validity_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                         </div>
 
                         {{-- Prescription languages — which ones the doctor is offered when writing
@@ -325,13 +485,16 @@
                         <button type="submit" class="btn btn--primary">Save Settings</button>
                     </div>
                 </div>
+                </div>{{-- /pane opd --}}
 
             </div>
         </div>
     </form>
 
     {{-- OP Types — how an OPD visit is paid for. Its own card with its own small forms, because
-         the settings form above posts as one block and a nested form is not valid HTML. --}}
+         the settings form above posts as one block and a nested form is not valid HTML. That is
+         also why this pane sits outside the form rather than inside it. --}}
+    <div class="hs-pane" data-hs-pane="opTypes">
     <div class="card mb-3" id="opTypes">
         <div class="card-header py-2 d-flex justify-content-between align-items-center">
             <h6 class="mb-0"><i class="tio-card mr-1"></i> OP Types &mdash; Insurance, Government Schemes</h6>
@@ -398,9 +561,16 @@
         </div>
     </div>
 
+    </div>{{-- /pane opTypes --}}
+
     {{-- Department letterheads. A lab, pharmacy or scan centre frequently sits at its own
          address under its own GSTIN and its own registrations, so each keeps a separate
-         identity block; anything left blank falls back to the hospital's own details. --}}
+         identity block; anything left blank falls back to the hospital's own details.
+
+         Its own Bootstrap tabs inside this pane are left exactly as they were: the page-level
+         tabs below are hand-rolled and only ever touch [data-hs-pane], so the two do not
+         fight over the same click. --}}
+    <div class="hs-pane" data-hs-pane="departments">
     <div class="card mb-3">
         <div class="card-header py-2">
             <h6 class="mb-0"><i class="tio-city mr-1"></i> Department Details &mdash; Address, GSTIN &amp; Licences</h6>
@@ -498,8 +668,81 @@
             </div>
         </div>
     </div>
+    </div>{{-- /pane departments --}}
 </div>
 @endsection
+
+@push('script_2')
+<script>
+/**
+ * The settings tabs, and remembering which one you were on.
+ *
+ * Hand-rolled rather than Bootstrap's: half these panes live inside the settings form and half
+ * sit outside it, so they are not siblings in one .tab-content and Bootstrap's own deactivation
+ * would leave two panes showing at once. This only ever touches [data-hs-pane], which is why the
+ * Bootstrap tabs inside the Departments pane keep working untouched.
+ *
+ * Which tab comes back on a refresh, in order of precedence:
+ *   1. a tab whose pane holds a field the server rejected — the error is the reason you are back
+ *      on this page at all, and it is worth more than where you were standing
+ *   2. the URL hash, so a deep link like /hospital/settings#opTypes still lands on OP Types
+ *   3. what was last opened, from localStorage — this is what survives Save, since the redirect
+ *      back carries no fragment and the server never sees one
+ */
+(function () {
+    const KEY   = 'hmisSettingsTab';
+    const tabs  = Array.from(document.querySelectorAll('[data-hs-tab]'));
+    const panes = Array.from(document.querySelectorAll('[data-hs-pane]'));
+    if (!tabs.length || !panes.length) return;
+
+    const paneOf = key => panes.find(p => p.dataset.hsPane === key);
+    const exists = key => Boolean(key && paneOf(key));
+
+    function show(key, remember) {
+        if (!exists(key)) return false;
+
+        tabs.forEach(t => t.classList.toggle('active', t.dataset.hsTab === key));
+        panes.forEach(p => p.classList.toggle('active', p.dataset.hsPane === key));
+
+        if (remember) {
+            try { localStorage.setItem(KEY, key); } catch (e) { /* private window — the hash still carries it */ }
+            // replaceState, not the hash itself: assigning location.hash scrolls the pane under
+            // the fixed header, and every tab switch would push another history entry.
+            if (window.history && history.replaceState) {
+                history.replaceState(null, '', '#' + key);
+            }
+        }
+
+        return true;
+    }
+
+    tabs.forEach(tab => tab.addEventListener('click', function (e) {
+        e.preventDefault();
+        show(this.dataset.hsTab, true);
+    }));
+
+    // Panes carrying a rejected field, marked in the bar so a second error stays findable.
+    const failed = panes.filter(p => p.querySelector('.is-invalid, .invalid-feedback'));
+    failed.forEach(p => {
+        const tab = tabs.find(t => t.dataset.hsTab === p.dataset.hsPane);
+        if (tab) tab.classList.add('has-error');
+    });
+
+    let stored = null;
+    try { stored = localStorage.getItem(KEY); } catch (e) { /* nothing remembered, fall through */ }
+
+    // A hand-typed or truncated fragment can be an invalid percent sequence, and an unguarded
+    // decode throwing here would take the whole restore with it.
+    let hash = (location.hash || '').replace('#', '');
+    try { hash = decodeURIComponent(hash); } catch (e) { /* use it raw */ }
+
+    show(failed.length ? failed[0].dataset.hsPane : null, false)
+        || show(hash, true)
+        || show(stored, false)
+        || show(tabs[0].dataset.hsTab, false);
+})();
+</script>
+@endpush
 
 @push('script_2')
 <script>

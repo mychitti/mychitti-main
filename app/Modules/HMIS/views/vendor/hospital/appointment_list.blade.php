@@ -294,6 +294,24 @@
                     ->first();
             }
 
+            // Moves this hospital has put to patients and not heard back on. Fetched once for the
+            // whole page — the ?? keeps it out of the per-card query budget — and needed because
+            // accepting a hospital lead marks it Confirmed, which is true of the appointment and
+            // says nothing about the request sitting unanswered on top of it.
+            $hPendingMoves = $hPendingMoves ?? (
+                \Illuminate\Support\Facades\Schema::hasTable('appointment_reschedule_requests')
+                    ? \App\Models\AppointmentRescheduleRequest::where('store_id', $hStoreId)
+                        ->where('status', 'pending')
+                        ->orderBy('id')
+                        ->get()
+                        ->keyBy('appointment_id')
+                    : collect()
+            );
+            $hMove = $hAppointment ? ($hPendingMoves[$hAppointment->id] ?? null) : null;
+            if ($hMove && $hMove->is_lapsed) {
+                $hMove = null;
+            }
+
             // Load full HMIS patient registration for accepted/confirmed appointments
             $hPatientRecord = null;
             $hPatientHistory = null;
@@ -318,9 +336,32 @@
                         @if(isset($lead->additional_status) && $lead->additional_status === 'missed') Missed
                         @elseif($isCancelled) Cancelled
                         @elseif($isCompleted) Completed
+                        {{-- "Confirmed" is written by two different hands. The customer's own
+                             confirm endpoints set it when a patient accepts the store's quote, and
+                             they also set tieup — that is a patient's word. accept() sets the same
+                             value the moment a hospital lead with a doctor on it is taken, with no
+                             patient involved at all, and leaves tieup alone. Reading them as one
+                             word puts "Confirmed" on a booking nobody has agreed to. --}}
+                        @elseif($lead->current_status === 'Confirmed' && empty($lead->tieup)) Booked
+                        @elseif($lead->current_status === 'Confirmed') Confirmed by patient
                         @elseif($lead->current_status) {{ $lead->current_status }}
+                        {{-- Accepted, but nothing quoted to the patient yet — the state a lead
+                             lands in when it was accepted by hand, or auto-accepted with the
+                             "quote automatically" switch off. Named before assigned_status is
+                             consulted, because that column defaults to 'Unassigned' on every row
+                             and would otherwise label this card with a fact about staff rota. --}}
+                        @elseif($isAcceptedReq) Accepted — not quoted
                         @elseif($lead->assigned_status) {{ $lead->assigned_status }}
                         @else New
+                        @endif
+
+                        {{-- Confirmed says the clinic has taken the booking; it says nothing about
+                             a move the patient has yet to answer. Both facts, on the line people
+                             actually scan. --}}
+                        @if($hMove)
+                            <span class="badge ml-1" style="font-weight:600; font-size:9.5px; color:#92400e; background:#fef3c7;">
+                                MOVE PROPOSED
+                            </span>
                         @endif
                     </span>
                     <span class="ml-auto text-muted" style="font-size:11px; font-weight:400;">#{{ $lead->id }}</span>
@@ -376,8 +417,8 @@
                                 </a>
                             @endif --}}
                             @if($isAcceptedReq && !$canViewDetails)
-                                <a href="#" class="dropdown-item" data-toggle="modal"
-                                    data-target="#exampleModal33-{{ $lead->id }}" onclick="event.stopPropagation()">
+                                <a href="javascript:void(0)" class="dropdown-item"
+                                    onclick="event.stopPropagation(); $('#exampleModal33-{{ $lead->id }}').modal('show');">
                                     <i class="fas fa-user"></i> Patient Details
                                 </a>
                             @endif
@@ -454,6 +495,33 @@
                     @endif
                 </div>
 
+                {{-- A move put to the patient and not answered yet. Said on the card because the
+                     status above reads "Confirmed" — which is the truth about the appointment and
+                     nothing at all about whether the patient has agreed to move it. The date shown
+                     on this card is still the one they are expected on. --}}
+                @if($hMove)
+                    <div class="px-3 pb-2">
+                        <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:7px 10px; font-size:11.5px; color:#92400e;">
+                            <b>Move proposed — waiting for the patient</b>
+                            <div>{{ $hMove->proposedLabel() }}</div>
+                            <div class="text-muted" style="font-size:10.5px;">
+                                @if($hMove->sent_at)
+                                    Asked {{ $hMove->sent_at->diffForHumans() }}
+                                @else
+                                    Not sent yet — the WhatsApp send failed
+                                @endif
+                                @if($hMove->views)
+                                    · opened {{ $hMove->views }}×
+                                @endif
+                            </div>
+                            @if($hAppointment)
+                                <a href="{{ route('vendor.appointment.show', $hAppointment->id) }}"
+                                   onclick="event.stopPropagation()" style="font-size:11px;">Resend or withdraw</a>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Action buttons --}}
                 <div class="appt-card__actions">
                     @if(isset($lead->additional_status) && $lead->additional_status === 'missed')
@@ -473,6 +541,24 @@
                         @php addStatus($statusCounts, 'completed'); @endphp
 
                     @elseif($lead->current_status === 'Confirmed' || $lead->assigned_status === 'Assigned' || $lead->assigned_status === 'Unassigned')
+                        {{-- Accepted with no quote sent. The branch below this one carries the
+                             confirmation form, but assigned_status defaults to 'Unassigned' on
+                             every acceptance row, so this branch always catches first and the
+                             action was unreachable from the card — it lived only inside the
+                             details modal. Offered here as well, opening that same form. --}}
+                        {{-- Opened by hand rather than with data-toggle. The whole card is
+                             clickable, so every button on it stops the click bubbling — and
+                             Bootstrap's own opener is a delegated handler on `document`, which a
+                             stopped event never reaches. data-toggle plus stopPropagation is a
+                             button that does nothing at all. --}}
+                        @if(!$lead->current_status && $isAcceptedReq && hasPermission('leads_manage', 'send_confirmation_request'))
+                            <a href="javascript:void(0)" class="btn btn-sm btn--primary"
+                               onclick="event.stopPropagation(); $('#exampleModal33-{{ $lead->id }}').modal('show');"
+                               title="Quote the patient and ask them to confirm">
+                                <i class="tio-money"></i> Send Quote
+                            </a>
+                        @endif
+
                         @if($hPatientRecord)
                             <a href="#" class="btn btn-sm btn-outline-info"
                                 onclick="event.stopPropagation(); $('#patientModal-{{ $lead->id }}').modal('show');">
@@ -503,8 +589,8 @@
                         @php addStatus($statusCounts, $lead->assigned_status === 'Unassigned' ? 'unassigned' : 'alotted'); @endphp
 
                     @elseif($isAcceptedReq)
-                        <a class="btn btn-sm btn--primary w-100" data-toggle="modal"
-                            data-target="#exampleModal33-{{ $lead->id }}" onclick="event.stopPropagation()">
+                        <a href="javascript:void(0)" class="btn btn-sm btn--primary w-100"
+                            onclick="event.stopPropagation(); $('#exampleModal33-{{ $lead->id }}').modal('show');">
                             Confirm Appointment
                         </a>
                         @php addStatus($statusCounts, 'accepted'); @endphp
@@ -515,6 +601,17 @@
                                 class="btn btn-accept btn-sm w-100" onclick="event.stopPropagation()">
                                 <i class="fas fa-check"></i> Accept Appointment
                             </a>
+                            {{-- The other half of accepting: the clinic wants the patient, but not
+                                 at the hour they asked for. Taking the lead and quietly booking a
+                                 different time is how somebody arrives on the wrong morning, so
+                                 this accepts and puts the new time TO them — the booking stays on
+                                 their requested slot until they agree to move it. --}}
+                            @if($lead->preferred_doctor_id && $lead->preferred_date)
+                                <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary w-100 mt-1"
+                                   onclick="event.stopPropagation(); $('#proposeModal-{{ $lead->id }}').modal('show');">
+                                    <i class="tio-calendar-note"></i> Accept &amp; suggest another time
+                                </a>
+                            @endif
                         @elseif($lead->current_status)
                             <span class="badge badge-{{ $class }} px-3 py-1">{{ $lead->current_status }}</span>
                         @else
@@ -526,6 +623,53 @@
 
             </div>
         </div>
+
+        {{-- Accept, and ask the patient to move. Only on leads still waiting to be accepted;
+             once accepted the same thing is done from the appointment's own Reschedule card. --}}
+        @if(!$isAcceptedReq && !$isCancelled && !$isCompleted && $lead->preferred_doctor_id && $lead->preferred_date)
+        <div class="modal fade" id="proposeModal-{{ $lead->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <form method="post" action="{{ route('vendor.service.accept-propose', [$lead->id]) }}">
+                        @csrf
+                        <div class="modal-header py-2">
+                            <h5 class="modal-title" style="font-size:15px;">Suggest another time</h5>
+                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted mb-3" style="font-size:12.5px;">
+                                The patient asked for
+                                <b>{{ $lead->preferred_date ? \Carbon\Carbon::parse($lead->preferred_date)->format('D j M Y') : '—' }}</b>.
+                                Accepting takes the lead and books that slot as requested — then we ask
+                                them to move to the time below. Their original booking stands until
+                                they confirm.
+                            </p>
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label class="input-label">New date <span class="text-danger">*</span></label>
+                                    <input type="date" name="appointment_date" class="form-control"
+                                           min="{{ date('Y-m-d') }}" required>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label class="input-label">New time <span class="text-danger">*</span></label>
+                                    <input type="time" name="appointment_time" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="form-group mb-0">
+                                <label class="input-label">Message to the patient</label>
+                                <input type="text" name="note" class="form-control" maxlength="500"
+                                       placeholder="e.g. Dr Ramani is in theatre that morning">
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2">
+                            <button type="button" class="btn btn-light btn-sm" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn--primary btn-sm">Accept &amp; send request</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endif
 
         {{-- Assign modal --}}
         <div class="modal fade" id="assignModal{{ $key }}" tabindex="-1" role="dialog" aria-hidden="true">

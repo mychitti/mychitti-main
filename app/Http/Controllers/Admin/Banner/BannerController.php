@@ -50,6 +50,16 @@ class BannerController extends BaseController
         if (request('zone_id')) {
             $filters['zone_id'] = request('zone_id');
         }
+        if (request('type')) {
+            $filters['type'] = request('type');
+        }
+        // Which store a store-wise banner points at. The target id lives in `data` for every
+        // type — an item banner keeps an item id there, a category banner a category id — so the
+        // type is pinned as well, or store #12 would also match the banner for item #12.
+        if (request('store_id')) {
+            $filters['type'] = 'store_wise';
+            $filters['data'] = request('store_id');
+        }
 
         $banners = $this->bannerRepo->getListWhere(
             filters: $filters,
@@ -57,11 +67,9 @@ class BannerController extends BaseController
             searchValue: request()->search,
             dataLimit: config('default_pagination')
         );
-        $totalBannerCount = \App\Models\Banner::where('module_id', Config::get('module.current_module_id'))
-            ->where('created_by', 'admin')
-            ->when(request('platform'), fn($q) => $q->where('platform', request('platform')))
-            ->when(request('zone_id'), fn($q) => $q->where('zone_id', request('zone_id')))
-            ->count();
+        // Counted through the same filter set the list is built from, so the badge cannot disagree
+        // with the rows underneath it.
+        $totalBannerCount = \App\Models\Banner::where($filters)->count();
         $language = getWebConfig('language');
         $defaultLang = str_replace('_', '-', app()->getLocale());
         $zones = $this->zoneRepo->getList();
@@ -69,7 +77,16 @@ class BannerController extends BaseController
         $users = User::where('status', 1)->get();
         $filterPlatform = request('platform', '');
         $filterZoneId   = request('zone_id', '');
-        return view(BannerViewPath::INDEX[VIEW], compact('banners', 'totalBannerCount', 'language', 'defaultLang', 'zones', 'categories', 'users', 'filterPlatform', 'filterZoneId'));
+        $filterType     = request('type', '');
+        $filterStoreId  = request('store_id', '');
+        // Named so the filter can show which store is selected without a second ajax round trip
+        // to resolve the id the select2 was given.
+        $filterStore    = $filterStoreId ? \App\Models\Store::find($filterStoreId) : null;
+
+        return view(BannerViewPath::INDEX[VIEW], compact(
+            'banners', 'totalBannerCount', 'language', 'defaultLang', 'zones', 'categories', 'users',
+            'filterPlatform', 'filterZoneId', 'filterType', 'filterStoreId', 'filterStore'
+        ));
     }
 
     public function vendorApprovals(Request $request): View

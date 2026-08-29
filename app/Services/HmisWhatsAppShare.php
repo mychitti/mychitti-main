@@ -85,6 +85,10 @@ class HmisWhatsAppShare
         'lab_work_vendor_job'     => null,
         'lab_work_handover'       => null,
         'lab_work_handover_otp'   => null,
+        // Listed here for the same reason as the rest: this is what marks a preset as a hospital
+        // one, and the suggested list only offers hospital presets to stores running the module.
+        // Left out, a laundry would be offered a template about moving a patient's appointment.
+        'appointment_reschedule'  => null,
     ];
 
     /**
@@ -157,6 +161,14 @@ class HmisWhatsAppShare
             'label'    => 'Feedback request',
             'template' => 'visit_feedback',
             'context'  => 'feedback',
+        ],
+        // Asks the patient to agree to a new time, with the link they answer on. Not a reminder
+        // and not a confirmation: nothing has moved when this goes out, which is the whole point,
+        // so its wording has to be a question rather than a notice.
+        'appointment_reschedule' => [
+            'label'    => 'Reschedule request',
+            'template' => 'appointment_reschedule',
+            'context'  => 'reschedule request',
         ],
         'lab' => [
             'label'    => 'Lab report',
@@ -781,6 +793,32 @@ class HmisWhatsAppShare
             self::storeName((int) $appointment->store_id),
             $when,
             self::doctorName($appointment->doctorProfile) ?: 'your doctor',
+        ], false);
+    }
+
+    /**
+     * Ask the patient to agree to a new appointment time.
+     *
+     * The link is passed as an ordinary parameter rather than through shareUrl(), because it is
+     * not a record share: it opens a page with two buttons on it, it carries its own token on the
+     * request row, and it dies the moment the patient answers. Nothing about the appointment has
+     * changed at this point — the message is a question, and the answer is what moves it.
+     */
+    public static function appointmentReschedule(\App\Models\AppointmentRescheduleRequest $req, string $url, ?string $phone = null): array
+    {
+        $req->loadMissing('patient', 'appointment.doctorProfile.employee');
+
+        if (!$req->patient) {
+            return self::fail('This appointment has no patient on it.');
+        }
+
+        return self::dispatch('appointment_reschedule', (int) $req->store_id, $req->patient, $phone, (int) $req->id, [
+            self::name($req->patient),
+            self::storeName((int) $req->store_id),
+            $req->currentLabel(),
+            $req->proposedLabel(),
+            self::doctorName($req->appointment?->doctorProfile) ?: 'your doctor',
+            $url,
         ], false);
     }
 

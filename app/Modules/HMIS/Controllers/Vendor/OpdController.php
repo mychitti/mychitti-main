@@ -532,6 +532,11 @@ class OpdController extends Controller
         $labWorks         = collect();
         $labVendors       = collect();
         $labWorkHandovers = collect();
+        // Initialised with the rest of them: it is passed to compact() unconditionally, so a
+        // hospital with lab work switched off was raising "Undefined variable $labTechnicians"
+        // there — which Laravel turns into an exception, taking the whole consultation screen
+        // down for exactly the hospitals that never asked for the feature.
+        $labTechnicians   = collect();
 
         if ($labWorkEnabled) {
             \App\Models\OpdLabWork::ensureSchema();

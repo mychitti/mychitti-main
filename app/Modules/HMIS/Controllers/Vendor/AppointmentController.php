@@ -5,6 +5,7 @@ namespace App\Modules\HMIS\Controllers\Vendor;
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\AppointmentRescheduleRequest;
 use App\Models\AppointmentToken;
 use App\Models\DoctorProfile;
 use App\Models\DoctorSlot;
@@ -200,10 +201,19 @@ class AppointmentController extends Controller
 
         $doctors = DoctorProfile::where('store_id', $store_id)->with('employee')->get();
 
+        // Every time this appointment has been put to the patient, newest first — the open one to
+        // act on, and the answered ones because "we asked and they said no" is the context behind
+        // an appointment still sitting on its original date.
+        AppointmentRescheduleRequest::ensureSchema();
+        $rescheduleRequests = AppointmentRescheduleRequest::where('appointment_id', $appointment->id)
+            ->orderByDesc('id')
+            ->get();
+
         return view('hmis::vendor.appointment.show', [
-            'appointment'  => $appointment,
-            'nextStatuses' => Appointment::STATUS_TRANSITIONS[$appointment->status] ?? [],
-            'doctors'      => $doctors,
+            'appointment'        => $appointment,
+            'nextStatuses'       => Appointment::STATUS_TRANSITIONS[$appointment->status] ?? [],
+            'doctors'            => $doctors,
+            'rescheduleRequests' => $rescheduleRequests,
         ]);
     }
 
@@ -245,12 +255,23 @@ class AppointmentController extends Controller
         return back();
     }
 
+    /**
+     * Move the appointment, or ask the patient whether it may be moved.
+     *
+     * Two modes on one form because they answer the same question at different times of day. At
+     * the counter, with the patient in front of you, moving it now and telling them is right. A
+     * doctor called away next Tuesday is the other case entirely — twenty appointments quietly
+     * changing under twenty people, half of whom arrive at the old time regardless. There the
+     * appointment must not move until each patient has said yes, which is what mode=request does.
+     */
     public function reschedule(Request $request, $id)
     {
         $request->validate([
             'appointment_date' => 'required|date',
             'appointment_time' => 'required',
             'slot_id'          => 'nullable|integer|exists:doctor_slots,id',
+            'mode'             => 'nullable|in:now,request',
+            'note'             => 'nullable|string|max:500',
         ]);
 
         $store_id    = Helpers::get_store_id();
@@ -261,56 +282,163 @@ class AppointmentController extends Controller
             return back();
         }
 
-        if ($request->slot_id) {
-            $booked = Appointment::where('slot_id', $request->slot_id)
-                ->where('appointment_date', $request->appointment_date)
-                ->whereNotIn('status', ['cancelled', 'no_show'])
-                ->count();
-
-            $slot = DoctorSlot::findOrFail($request->slot_id);
-            if ($booked >= $slot->max_patients) {
-                Toastr::error('Selected slot is fully booked.');
-                return back();
-            }
+        if (\App\Services\AppointmentReschedule::slotFull($request->slot_id ? (int) $request->slot_id : null, $request->appointment_date)) {
+            Toastr::error('Selected slot is fully booked.');
+            return back();
         }
 
-        DB::beginTransaction();
+        if ($request->input('mode') === 'request') {
+            return $this->sendRescheduleRequest($request, $old);
+        }
+
         try {
-            $old->status        = 'cancelled';
-            $old->cancel_reason = 'Rescheduled';
-            $old->save();
-
-            $new = Appointment::create([
-                'store_id'          => $store_id,
-                'patient_id'        => $old->patient_id,
-                'doctor_profile_id' => $old->doctor_profile_id,
-                'slot_id'           => $request->slot_id,
-                'appointment_date'  => $request->appointment_date,
-                'appointment_time'  => $request->appointment_time,
-                'booking_type'      => $old->booking_type,
-                'status'            => 'scheduled',
-                'reason'            => $old->reason,
-                'rescheduled_from'  => $old->id,
-                'booked_by'         => auth('vendor_employee')->id() ?? auth('vendor')->id(),
-            ]);
-
-            $this->generateToken($old->doctor_profile_id, $request->appointment_date, $new->id);
-
-            DB::commit();
-
-            \App\Models\HospitalActivityLog::record(
-                $store_id, 'appointment', $new->id, 'rescheduled',
-                "Appointment #{$old->id} rescheduled to {$request->appointment_date}. New appointment #{$new->id}",
-                ['old_appointment_id' => $old->id, 'from_date' => $old->appointment_date, 'to_date' => $request->appointment_date]
+            $new = \App\Services\AppointmentReschedule::apply(
+                $old,
+                $request->appointment_date,
+                $request->appointment_time,
+                $request->slot_id ? (int) $request->slot_id : null,
+                'the front desk',
+                auth('vendor_employee')->id() ?? auth('vendor')->id()
             );
+
+            // A pending request is a question about an appointment that has now moved anyway, so
+            // the link the patient is holding is answered by events. Closed here rather than left
+            // to expire, or tapping Confirm tomorrow would move the appointment a second time.
+            $this->closePendingRequests($old, 'withdrawn');
 
             Toastr::success('Appointment rescheduled successfully');
             return redirect()->route('vendor.appointment.show', $new->id);
         } catch (\Exception $e) {
-            DB::rollBack();
             Toastr::error('Reschedule failed: ' . $e->getMessage());
             return back();
         }
+    }
+
+    /**
+     * Put the new time to the patient and leave the appointment alone.
+     *
+     * The row is written before the message goes out and kept even if the send fails: staff can
+     * see it sitting there unsent and press Resend, which is a great deal better than a silent
+     * failure that leaves them believing a patient was asked.
+     */
+    protected function sendRescheduleRequest(Request $request, Appointment $old)
+    {
+        AppointmentRescheduleRequest::ensureSchema();
+
+        $old->loadMissing('patient');
+
+        if (!$old->patient) {
+            Toastr::error('This appointment has no patient record, so there is nobody to ask.');
+            return back();
+        }
+        if (blank($old->patient->phone)) {
+            Toastr::error('This patient has no phone number on file — reschedule it here and tell them yourself.');
+            return back();
+        }
+
+        // One open question at a time. A patient holding two links, each proposing a different
+        // Tuesday, can accept both — and the second one would move an appointment that the first
+        // had already replaced.
+        $this->closePendingRequests($old, 'withdrawn');
+
+        $req = AppointmentRescheduleRequest::create([
+            'store_id'       => (int) $old->store_id,
+            'appointment_id' => (int) $old->id,
+            'patient_id'     => (int) $old->patient_id,
+            'from_date'      => $old->appointment_date,
+            'from_time'      => $old->appointment_time,
+            'to_date'        => $request->appointment_date,
+            'to_time'        => $request->appointment_time,
+            'slot_id'        => $request->slot_id ? (int) $request->slot_id : null,
+            'note'           => $request->input('note'),
+            'token'          => AppointmentRescheduleRequest::mintToken(),
+            'status'         => 'pending',
+            'sent_to'        => mb_substr((string) $old->patient->phone, 0, 32),
+            'requested_by'   => auth('vendor_employee')->id() ?? auth('vendor')->id(),
+            // The proposed time is its own deadline: an answer that arrives after it has passed
+            // cannot be acted on, whatever it says.
+            'expires_at'     => AppointmentRescheduleRequest::when($request->appointment_date, $request->appointment_time)
+                ? \Carbon\Carbon::parse($request->appointment_date . ' ' . $request->appointment_time)
+                : null,
+        ]);
+
+        $result = HmisWhatsAppShare::appointmentReschedule($req, route('appointment-reschedule', ['token' => $req->token]));
+
+        if ($result['success']) {
+            $req->forceFill(['sent_at' => now()])->save();
+
+            \App\Models\HospitalActivityLog::record(
+                (int) $old->store_id, 'appointment', (int) $old->id, 'reschedule_requested',
+                "Asked patient #{$old->patient_id} to move appointment #{$old->id} from {$req->currentLabel()} to {$req->proposedLabel()}",
+                ['patient_id' => $old->patient_id, 'to_date' => $req->to_date, 'request_id' => $req->id]
+            );
+
+            Toastr::success('Reschedule request sent. The appointment stays as it is until the patient confirms.');
+        } else {
+            Toastr::error($result['message']);
+        }
+
+        return back();
+    }
+
+    /** Close whatever is still open on an appointment, so only one question is ever live. */
+    protected function closePendingRequests(Appointment $appointment, string $status): void
+    {
+        AppointmentRescheduleRequest::ensureSchema();
+
+        AppointmentRescheduleRequest::where('appointment_id', $appointment->id)
+            ->where('status', 'pending')
+            ->update(['status' => $status, 'updated_at' => now()]);
+    }
+
+    /** Take back a request the hospital no longer needs — the doctor is free after all. */
+    public function rescheduleWithdraw($id)
+    {
+        AppointmentRescheduleRequest::ensureSchema();
+
+        $req = AppointmentRescheduleRequest::where('store_id', Helpers::get_store_id())->findOrFail($id);
+
+        if ($req->status !== 'pending') {
+            Toastr::error('That request has already been answered.');
+            return back();
+        }
+
+        $req->forceFill(['status' => 'withdrawn'])->save();
+
+        \App\Models\HospitalActivityLog::record(
+            (int) $req->store_id, 'appointment', (int) $req->appointment_id, 'reschedule_withdrawn',
+            "Reschedule request for appointment #{$req->appointment_id} withdrawn",
+            ['patient_id' => $req->patient_id, 'request_id' => $req->id]
+        );
+
+        Toastr::success('Request withdrawn. The patient\'s link no longer works.');
+        return back();
+    }
+
+    /** Send the same question again — the first message was missed, or the send failed. */
+    public function rescheduleResend($id)
+    {
+        AppointmentRescheduleRequest::ensureSchema();
+
+        $req = AppointmentRescheduleRequest::with('patient', 'appointment.doctorProfile.employee')
+            ->where('store_id', Helpers::get_store_id())
+            ->findOrFail($id);
+
+        if (!$req->is_open) {
+            Toastr::error('That request is closed — send a new one instead.');
+            return back();
+        }
+
+        $result = HmisWhatsAppShare::appointmentReschedule($req, route('appointment-reschedule', ['token' => $req->token]));
+
+        if ($result['success']) {
+            $req->forceFill(['sent_at' => now()])->save();
+            Toastr::success('Reschedule request sent again.');
+        } else {
+            Toastr::error($result['message']);
+        }
+
+        return back();
     }
 
     /**

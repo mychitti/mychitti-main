@@ -204,10 +204,101 @@
                             <label class="input-label">Time <span class="text-danger">*</span></label>
                             <input type="time" name="appointment_time" id="rescheduleTime" class="form-control" required>
                         </div>
-                        <button type="submit" class="btn btn-warning w-100">
-                            <i class="tio-refresh"></i> Reschedule
+
+                        {{-- Only read on the request path, where it becomes the line the patient
+                             sees under the two times. On an immediate move there is nobody to
+                             explain it to yet. --}}
+                        <div class="form-group">
+                            <label class="input-label">Message to the patient</label>
+                            <input type="text" name="note" class="form-control" maxlength="500"
+                                   placeholder="e.g. Dr Rao is away that morning">
+                            <small class="text-muted">Shown on the confirmation page. Optional.</small>
+                        </div>
+
+                        <button type="submit" name="mode" value="now" class="btn btn-warning w-100 mb-2">
+                            <i class="tio-refresh"></i> Reschedule now
                         </button>
+
+                        {{-- The same form, the other way round: nothing moves until the patient
+                             agrees. Which one to use is a question about where the patient is —
+                             at the counter, or at home three days before a clinic is cancelled. --}}
+                        <button type="submit" name="mode" value="request" class="btn btn-outline-primary w-100"
+                                @if(blank($appointment->patient?->phone)) disabled title="This patient has no phone number on file" @endif>
+                            <i class="tio-whatsapp"></i> Ask patient to confirm
+                        </button>
+                        <small class="text-muted d-block mt-1" style="font-size:11.5px;">
+                            Sends a WhatsApp request. The appointment stays where it is until they tap Confirm.
+                        </small>
                     </form>
+                </div>
+            </div>
+            @endif
+
+            {{-- Reschedule requests put to this patient. The open one is the actionable thing; the
+                 answered ones are why an appointment is still sitting on its original date. --}}
+            @if(($rescheduleRequests ?? collect())->count())
+            <div class="card mb-3">
+                <div class="card-header"><h5 class="card-title mb-0">Reschedule Requests</h5></div>
+                <div class="card-body py-2">
+                    @foreach($rescheduleRequests as $rr)
+                        @php $rrColour = $rr->stateColour(); @endphp
+                        <div class="{{ $loop->last ? '' : 'border-bottom' }} py-2">
+                            <div class="d-flex align-items-start justify-content-between" style="gap:8px;">
+                                <div style="min-width:0;">
+                                    <div style="font-size:12.5px; font-weight:600; color:#0f172a;">
+                                        {{ $rr->proposedLabel() }}
+                                    </div>
+                                    <div class="text-muted" style="font-size:11.5px;">
+                                        from {{ $rr->currentLabel() }}
+                                    </div>
+                                </div>
+                                <span class="badge" style="font-weight:600; color:{{ $rrColour[0] }}; background:{{ $rrColour[1] }};">
+                                    {{ $rr->stateLabel() }}
+                                </span>
+                            </div>
+
+                            <div class="text-muted mt-1" style="font-size:11px;">
+                                @if($rr->sent_at)
+                                    Sent {{ $rr->sent_at->diffForHumans() }}
+                                @else
+                                    <span class="text-danger">Not sent — the WhatsApp send failed</span>
+                                @endif
+
+                                @if($rr->views)
+                                    · opened {{ $rr->views }}×
+                                @endif
+
+                                @if($rr->responded_at)
+                                    · answered {{ $rr->responded_at->diffForHumans() }}
+                                @endif
+                            </div>
+
+                            @if(filled($rr->response_note))
+                                <div class="mt-1" style="font-size:11.5px; color:#991b1b;">
+                                    Patient said: {{ $rr->response_note }}
+                                </div>
+                            @endif
+
+                            @if($rr->new_appointment_id)
+                                <a href="{{ route('vendor.appointment.show', $rr->new_appointment_id) }}"
+                                   style="font-size:11.5px;">Open the new appointment #{{ $rr->new_appointment_id }}</a>
+                            @endif
+
+                            @if($rr->is_open)
+                                <div class="mt-1 d-flex" style="gap:12px;">
+                                    <form method="POST" action="{{ route('vendor.appointment.reschedule.resend', $rr->id) }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-link btn-sm p-0" style="font-size:11.5px;">Send again</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('vendor.appointment.reschedule.withdraw', $rr->id) }}"
+                                          onsubmit="return confirm('Withdraw this request? The patient\'s link will stop working.');">
+                                        @csrf
+                                        <button type="submit" class="btn btn-link btn-sm p-0 text-danger" style="font-size:11.5px;">Withdraw</button>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
             </div>
             @endif

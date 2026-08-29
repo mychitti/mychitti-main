@@ -9,6 +9,7 @@ use App\Jobs\ProcessSingleVendorAccount;
 use App\Jobs\PunchInReminder;
 use App\Jobs\Scheduled\CancelStaleOrdersJob;
 use App\Jobs\Scheduled\DatabaseBackupJob;
+use App\Jobs\Scheduled\DiscontinueStaleOpdCareJob;
 use App\Jobs\Scheduled\EmployeeAttendanceMarkJob;
 use App\Jobs\Scheduled\MonthlyMaintenanceReminderJob;
 use App\Jobs\Scheduled\PruneSharedPdfsJob;
@@ -39,6 +40,7 @@ class Kernel extends ConsoleKernel
      */
     protected $commands = [
         \App\Console\Commands\DeductPlatformFee::class,
+        \App\Console\Commands\DiscontinueStaleOpdCare::class,
         \App\Console\Commands\BillWhatsAppSubscriptions::class,
         \App\Console\Commands\BackfillVariationStockCommand::class,
         \App\Console\Commands\BackfillInventoryCogs::class,
@@ -108,6 +110,15 @@ class Kernel extends ConsoleKernel
         $schedule->job(new SendDailyHospitalReportJob)->hourly()
             ->timezone($tz)
             ->name('hmis-daily-report')
+            ->withoutOverlapping();
+
+        // Care nobody came back for — planned treatments, lab work and unattended follow-ups —
+        // closed off after the hospital's own interval of silence. Early morning, so a clinic
+        // opening for the day sees a register that has already been tidied rather than rows
+        // vanishing from under them at lunchtime.
+        $schedule->job(new DiscontinueStaleOpdCareJob)->dailyAt('02:30')
+            ->timezone($tz)
+            ->name('hmis-discontinue-stale-care')
             ->withoutOverlapping();
 
         // Feedback requests and follow-up reminders the vendor asked to delay.

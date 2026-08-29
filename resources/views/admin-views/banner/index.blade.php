@@ -206,13 +206,43 @@
                                     @endforeach
                                 </select>
 </div>
+                                {{-- Banner type. "Default" is one of these rather than a filter of
+                                     its own — it is a value of the same column, and a separate
+                                     switch beside the dropdown would be two controls arguing over
+                                     one field. --}}
+                                <select name="type" id="filter-type" class="form-control form-control-sm" style="width:auto; min-width:140px;">
+                                    <option value="">{{ translate('messages.all') }} {{ translate('messages.banner_type') }}</option>
+                                    @foreach([
+                                        'default'       => translate('messages.default'),
+                                        'store_wise'    => translate('messages.store_wise'),
+                                        'item_wise'     => translate('messages.item_wise'),
+                                        'module_wise'   => translate('messages.module_wise'),
+                                        'category_wise' => translate('messages.category_wise'),
+                                        'self'          => 'Self Banner',
+                                    ] as $typeKey => $typeLabel)
+                                        <option value="{{ $typeKey }}" {{ (string) $filterType === $typeKey ? 'selected' : '' }}>{{ $typeLabel }}</option>
+                                    @endforeach
+                                </select>
+
+                                {{-- Store. Only store-wise banners point at one, so choosing a store
+                                     narrows the type as well — the controller pins it. Pre-loaded
+                                     with the selected store so the box shows a name, not an id. --}}
+                                <div style="width:auto; max-width:220px; min-width:150px;">
+                                    <select name="store_id" id="filter-store" class="form-control form-control-sm">
+                                        <option value="">{{ translate('messages.all') }} {{ translate('messages.store') }}</option>
+                                        @if($filterStore)
+                                            <option value="{{ $filterStore->id }}" selected>{{ $filterStore->name }}</option>
+                                        @endif
+                                    </select>
+                                </div>
+
                                 {{-- Search --}}
                                 <div class="input-group input--group" style="width:220px; flex-shrink:0;">
                                     <input id="datatableSearch" type="search" value="{{ request()->get('search') ?? '' }}" name="search" class="form-control" placeholder="{{translate('messages.search_by_title')}}" aria-label="{{translate('messages.search_here')}}">
                                     <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
                                 </div>
 
-                                @if(request()->get('search') || request()->get('platform') || request()->get('zone_id'))
+                                @if(request()->get('search') || request()->get('platform') || request()->get('zone_id') || request()->get('type') || request()->get('store_id'))
                                     <a href="{{ route('admin.banner.add-new') }}" class="btn btn-outline-secondary btn-sm" style="white-space:nowrap;">
                                         <i class="tio-refresh"></i> Reset
                                     </a>
@@ -490,6 +520,28 @@
                 }
             });
 
+            // The store filter in the toolbar. Same endpoint as the form's store picker, but
+            // unscoped by zone — the filter is asked "show me this store's banners", and the
+            // zone dropdown beside it is a separate question the admin may not have answered.
+            $('#filter-store').select2({
+                placeholder: '{{ translate('messages.all') }} {{ translate('messages.store') }}',
+                allowClear: true,
+                width: '100%',
+                ajax: {
+                    @if (Str::contains(request()->getHost(), 'staging.mychitti.net'))
+                    url: '{{url('/')}}/admin/store/get-stores',
+                    @else
+                    url: '{{url('/')}}/store/get-stores',
+                    @endif
+                    data: function (params) {
+                        return { q: params.term, page: params.page, module_id: module_id };
+                    },
+                    processResults: function (data) {
+                        return { results: data };
+                    }
+                }
+            });
+
         });
 
         $('#banner_form').on('submit', function (e) {
@@ -529,7 +581,7 @@
 
 
 
-        $('#filter-platform, #filter-zone').on('change', function() {
+        $('#filter-platform, #filter-zone, #filter-type, #filter-store').on('change', function() {
         $(this).closest('form').submit();
     });
 

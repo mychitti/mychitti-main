@@ -68,6 +68,7 @@ class OpdLabWork extends Model
      */
     const STATUSES = [
         'impression', 'sent', 'in_progress', 'trial', 'ready', 'received', 'fitted', 'remake', 'cancelled',
+        'discontinued',
     ];
 
     /**
@@ -78,8 +79,15 @@ class OpdLabWork extends Model
      */
     const NOTIFY_STATUSES = ['trial', 'ready', 'received', 'fitted', 'remake'];
 
-    /** Stages that close a job out of the open-work count. */
-    const CLOSED_STATUSES = ['fitted', 'cancelled'];
+    /**
+     * Stages that close a job out of the open-work count.
+     *
+     * Discontinued is not the same as cancelled and is kept apart from it deliberately: cancelled
+     * is a decision somebody made about the work, discontinued is what happens when the patient
+     * simply stops coming. A clinic reading its own register months later needs to tell those two
+     * apart — one is a job it called off, the other is a patient it lost.
+     */
+    const CLOSED_STATUSES = ['fitted', 'cancelled', 'discontinued'];
 
     /** Colour for each stage: [text, background]. Shared across every speciality. */
     const STATUS_COLOURS = [
@@ -92,6 +100,7 @@ class OpdLabWork extends Model
         'fitted'      => ['#3730a3', '#e0e7ff'],
         'remake'      => ['#991b1b', '#fee2e2'],
         'cancelled'   => ['#6b7280', '#f3f4f6'],
+        'discontinued'=> ['#7c3aed', '#f3e8ff'],
     ];
 
     /**
@@ -126,6 +135,7 @@ class OpdLabWork extends Model
                 'fitted'      => 'Fitted & delivered',
                 'remake'      => 'Sent for remake',
                 'cancelled'   => 'Cancelled',
+                'discontinued' => 'Discontinued — patient stopped coming',
             ],
             'fields' => [
                 'arch'      => ['label' => 'Arch',             'type' => 'select', 'options' => ['Upper', 'Lower', 'Both']],
@@ -160,6 +170,7 @@ class OpdLabWork extends Model
                 'fitted'      => 'Fitted & delivered',
                 'remake'      => 'Sent for rework',
                 'cancelled'   => 'Cancelled',
+                'discontinued' => 'Discontinued — patient stopped coming',
             ],
             'fields' => [
                 'side'           => ['label' => 'Side',               'type' => 'select', 'options' => ['Left', 'Right', 'Bilateral']],
@@ -192,6 +203,7 @@ class OpdLabWork extends Model
                 'fitted'      => 'Collected by patient',
                 'remake'      => 'Sent for remake',
                 'cancelled'   => 'Cancelled',
+                'discontinued' => 'Discontinued — patient stopped coming',
             ],
             'fields' => [
                 'r_sph'   => ['label' => 'R Sph',  'type' => 'text'],
@@ -229,6 +241,7 @@ class OpdLabWork extends Model
                 'fitted'      => 'Fitted & delivered',
                 'remake'      => 'Sent for remake',
                 'cancelled'   => 'Cancelled',
+                'discontinued' => 'Discontinued — patient stopped coming',
             ],
             'fields' => [
                 'side'       => ['label' => 'Side',        'type' => 'select', 'options' => ['Left', 'Right', 'Bilateral']],
@@ -259,6 +272,7 @@ class OpdLabWork extends Model
                 'fitted'      => 'Fitted & delivered',
                 'remake'      => 'Sent for remake',
                 'cancelled'   => 'Cancelled',
+                'discontinued' => 'Discontinued — patient stopped coming',
             ],
             'fields' => [
                 'material'     => ['label' => 'Material',     'type' => 'text'],

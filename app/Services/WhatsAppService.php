@@ -184,6 +184,7 @@ class WhatsAppService
         'medicine_instructions',
         'followup_reminder',
         'visit_feedback',
+        'appointment_reschedule',
         'lab_report_ready',
         'radiology_report_ready',
         'patient_document',
@@ -332,6 +333,14 @@ class WhatsAppService
             'default' => 'visit_feedback',
             'params'  => ['Patient name', 'Hospital name', 'Visit date'],
             'blurb'   => 'Asks the patient how their visit went, after the delay you set.',
+        ],
+        'appointment_reschedule' => [
+            'label'   => 'Reschedule request',
+            'group'   => 'Hospital',
+            'module'  => 'hospital_manage',
+            'default' => 'appointment_reschedule',
+            'params'  => ['Patient name', 'Hospital name', 'Current appointment', 'Proposed appointment', 'Doctor name', 'Confirm link'],
+            'blurb'   => 'Asks the patient to agree to a new appointment time. Nothing moves until they confirm on the link.',
         ],
         'lab' => [
             'label'   => 'Lab report ready',
@@ -1748,6 +1757,7 @@ class WhatsAppService
         self::ensurePatientDocumentPreset();
         self::ensureRebookPreset();
         self::ensureVisitRegisteredPreset();
+        self::ensureRescheduleRequestPreset();
 
         if (DB::table('business_settings')->where('key', 'wa_preset_hmis_seeded')->exists()) {
             return;
@@ -2036,6 +2046,44 @@ class WhatsAppService
             'body'          => "Hi {{1}}, your OPD visit at {{2}} is registered for {{3}}. Your token number is {{4}} and you will be seen by {{5}}. Open {{6}} for your visit details. Please arrive 10 minutes early and show this message at reception.",
             'footer'        => 'Reply to this message if you need to reschedule',
             'example'       => 'Ramesh | Krishna Hospital | 25 July 2026 | 7 | Dr. Firoz | https://mychitti.net/health-record/abc123',
+            'btn_text'      => null,
+            'btn_url'       => null,
+            'active'        => 1,
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+    }
+
+    /**
+     * Preset behind the reschedule request — the hospital asking a patient to move.
+     *
+     * A question, not a notice, and the body has to say so: the appointment does not change until
+     * the patient taps Confirm, so a patient who reads this and does nothing must be left in no
+     * doubt that their original time still stands.
+     *
+     * UTILITY: it is about a booking the patient already made with this clinic.
+     *
+     * Above ensureHmisPresets()' seeded-once guard, for the reason the three presets beside it
+     * are — anything added to the $presets array below that guard reaches new installs only, and
+     * every hospital already running would be offered a message the code sends but they cannot
+     * create.
+     */
+    protected static function ensureRescheduleRequestPreset(): void
+    {
+        if (DB::table('wa_template_presets')->where('name', 'appointment_reschedule')->exists()) {
+            return;
+        }
+
+        DB::table('wa_template_presets')->insert([
+            'title'         => 'Reschedule Request (Hospital)',
+            'name'          => 'appointment_reschedule',
+            'category'      => 'UTILITY',
+            'language'      => 'en_US',
+            'header'        => null,
+            'header_format' => null,
+            'body'          => "Hi {{1}}, {{2}} would like to move your appointment from {{3}} to {{4}} with {{5}}. Please open {{6}} to confirm the new time or tell us it does not suit you. Your original appointment stands until you confirm.",
+            'footer'        => 'Sorry for the inconvenience',
+            'example'       => 'Ramesh | Krishna Hospital | Mon 1 Sep 2026 at 10:00 AM | Wed 3 Sep 2026 at 04:30 PM | Dr. Anita Rao | https://mychitti.net/appointment/reschedule/abc123',
             'btn_text'      => null,
             'btn_url'       => null,
             'active'        => 1,

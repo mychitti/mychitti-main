@@ -161,6 +161,7 @@ class HospitalDashboardController extends Controller
         $rx_print_clinical               = hmis_rx_print_clinical($store_id);
         $security_tab_enabled            = hmis_security_tab_enabled($store_id);
         $lab_work_enabled                = hmis_lab_work_enabled($store_id);
+        $discontinue_days                = hmis_discontinue_days($store_id);
         $daily_report                    = hmis_daily_report_settings($store_id);
         $daily_report_metrics            = \App\Services\DailyHospitalReport::METRICS;
         // The report goes to the number on the store record — shown here so a hospital can see
@@ -209,7 +210,7 @@ class HospitalDashboardController extends Controller
             'prefix', 'padding', 'serial', 'previewMuid',
             'opd_consultation_count', 'opd_consultation_validity_days', 'rxLanguages',
             'vitals_enabled', 'rx_print_clinical', 'security_tab_enabled',
-            'lab_work_enabled', 'lab_work_profile', 'lab_work_auto',
+            'lab_work_enabled', 'lab_work_profile', 'lab_work_auto', 'discontinue_days',
             'departments', 'states',
             'opTypeDefaults', 'opTypesOwn', 'opTypesHidden',
             'daily_report', 'daily_report_metrics', 'daily_report_phone'
@@ -230,6 +231,10 @@ class HospitalDashboardController extends Controller
             'rx_print_clinical'              => 'nullable|boolean',
             'security_tab_enabled'           => 'nullable|boolean',
             'lab_work_enabled'               => 'nullable|boolean',
+            'discontinue_enabled'            => 'nullable|boolean',
+            // Capped at a year: past that the sweep is not closing abandoned care, it is tidying
+            // history, and a recall interval that long belongs in the appointment book instead.
+            'discontinue_days'               => 'nullable|integer|min:7|max:365',
             'daily_report_enabled'           => 'nullable|boolean',
             'daily_report_metrics'           => 'nullable|array',
             'daily_report_metrics.*'         => 'string|in:' . implode(',', array_keys(\App\Services\DailyHospitalReport::METRICS)),
@@ -287,6 +292,13 @@ class HospitalDashboardController extends Controller
                 ADD COLUMN `opd_consultation_count` INT NULL,
                 ADD COLUMN `opd_consultation_validity_days` INT NULL");
         }
+        // After how many days without a visit a course of treatment is given up on. NULL means
+        // never, which is what every hospital gets until it chooses a number — a sweep that closes
+        // clinical records is not something to switch on for people by default.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_discontinue_days')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_discontinue_days` INT NULL DEFAULT NULL");
+        }
+        \App\Models\OpdVisit::ensureDiscontinueColumns();
 
         \App\Models\StoreConfig::updateOrInsert(
             ['store_id' => $store_id],
@@ -300,6 +312,12 @@ class HospitalDashboardController extends Controller
                 'hmis_rx_print_clinical'         => $request->boolean('rx_print_clinical') ? 1 : 0,
                 'hmis_security_tab_enabled'      => $request->boolean('security_tab_enabled') ? 1 : 0,
                 'hmis_lab_work_enabled'          => $request->boolean('lab_work_enabled') ? 1 : 0,
+                // Nought, not null: null means "never said" and would hand the hospital straight
+                // back to the platform default it just switched off. A stored 0 is the refusal,
+                // and it stays a refusal whatever the default becomes later.
+                'hmis_discontinue_days'          => $request->boolean('discontinue_enabled')
+                    ? (int) ($request->input('discontinue_days') ?: \App\Services\OpdDiscontinue::DEFAULT_DAYS)
+                    : 0,
                 // English is always kept: it is the fallback the printed sheet falls back to for
                 // anything without a translation, so it can never be switched off.
                 'rx_languages'                   => json_encode(

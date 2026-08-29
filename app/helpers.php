@@ -5474,6 +5474,84 @@ if (!function_exists('_remindLeadWalletRecharge')) {
         }
     }
 }
+if (!function_exists('lead_auto_accept_enabled')) {
+    /**
+     * Whether holding the leads add-on also means leads are accepted without anyone looking.
+     *
+     * These were one thing and are now two, because they are two: the add-on is sold as "tell me
+     * on WhatsApp when a lead arrives", and accepting is a commitment that debits the wallet for
+     * the lead charge. A store that wants the alert and wants to decide for itself was, until
+     * this switch, obliged to pause the add-on and lose the alert as well.
+     *
+     * Unset means accept, which is how every store behaved before the switch existed. Turning it
+     * off changes nothing else: _autoAcceptLeadForStore() returns false, and its caller sends the
+     * ordinary new-lead WhatsApp notification exactly as it does for any store that cannot
+     * auto-accept today.
+     */
+    function lead_auto_accept_enabled($store_id = null): bool
+    {
+        static $cache = [];
+
+        $store_id = (int) ($store_id ?: \App\CentralLogics\Helpers::get_store_id());
+        if (!$store_id) {
+            return true;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        try {
+            $table = \Illuminate\Support\Facades\Schema::hasTable('storeConfigs') ? 'storeConfigs' : 'store_configs';
+            if (!\Illuminate\Support\Facades\Schema::hasColumn($table, 'lead_auto_accept')) {
+                return $cache[$store_id] = true;
+            }
+            $value = \Illuminate\Support\Facades\DB::table($table)->where('store_id', $store_id)->value('lead_auto_accept');
+        } catch (\Throwable $e) {
+            return $cache[$store_id] = true;
+        }
+
+        return $cache[$store_id] = ($value === null || (int) $value === 1);
+    }
+}
+
+if (!function_exists('lead_auto_confirm_enabled')) {
+    /**
+     * Whether auto-accepting a lead should also put the priced confirmation request to the
+     * customer, or stop at accepting it.
+     *
+     * The two were one action until a store asked for them apart, and they are genuinely separate
+     * decisions: accepting is "this lead is mine", the confirmation request is "here is what I
+     * charge, do you want it" — a quote, sent to a customer, at a price read out of settings. A
+     * clinic that prices per case does not want that going out on its behalf while it sleeps.
+     *
+     * Unset means send it, which is how every store behaved before this switch existed.
+     */
+    function lead_auto_confirm_enabled($store_id = null): bool
+    {
+        static $cache = [];
+
+        $store_id = (int) ($store_id ?: \App\CentralLogics\Helpers::get_store_id());
+        if (!$store_id) {
+            return true;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        try {
+            $table = \Illuminate\Support\Facades\Schema::hasTable('storeConfigs') ? 'storeConfigs' : 'store_configs';
+            if (!\Illuminate\Support\Facades\Schema::hasColumn($table, 'lead_auto_confirm_request')) {
+                return $cache[$store_id] = true;
+            }
+            $value = \Illuminate\Support\Facades\DB::table($table)->where('store_id', $store_id)->value('lead_auto_confirm_request');
+        } catch (\Throwable $e) {
+            return $cache[$store_id] = true;
+        }
+
+        return $cache[$store_id] = ($value === null || (int) $value === 1);
+    }
+}
+
 if (!function_exists('_autoAcceptLeadForStore')) {
     /**
      * Auto-accept a lead for a store that holds an active WhatsApp "leads" add-on.
@@ -5492,6 +5570,14 @@ if (!function_exists('_autoAcceptLeadForStore')) {
             $L('called');
             if (!\App\Services\WhatsAppService::storeHasFeature($storeId, 'leads')) {
                 $L('skip — store does not have active "leads" add-on');
+                return false;
+            }
+            // The store holds the add-on for the alert, not for the accepting. Returning false
+            // here is the same answer an unaffordable lead gives, so the caller falls straight
+            // through to the ordinary new-lead WhatsApp notification — which is the whole of what
+            // this store asked to be paying for.
+            if (!lead_auto_accept_enabled($storeId)) {
+                $L('skip — store turned auto-accept off');
                 return false;
             }
             $store = \App\Models\Store::withoutGlobalScopes()->find($storeId);
@@ -5575,7 +5661,12 @@ if (!function_exists('_autoAcceptLeadForStore')) {
             $cfgTable  = \Illuminate\Support\Facades\Schema::hasTable('storeConfigs') ? 'storeConfigs' : 'store_configs';
             $visiting  = \Illuminate\Support\Facades\DB::table($cfgTable)->where('store_id', $storeId)->value('lead_visiting_charge');
 
-            \Illuminate\Support\Facades\DB::transaction(function () use ($needsCharge, $charge, $vendorId, $isDedicated, $storeId, $serviceRequestId, $leadinfo, $visiting) {
+            // Whether accepting also quotes the customer a price. Off, the lead lands as plainly
+            // accepted and the card offers the same Send Confirmation Request form a manually
+            // accepted lead gets — the store decides the figure, when it is ready to.
+            $autoConfirm = lead_auto_confirm_enabled($storeId);
+
+            \Illuminate\Support\Facades\DB::transaction(function () use ($needsCharge, $charge, $vendorId, $isDedicated, $storeId, $serviceRequestId, $leadinfo, $visiting, $autoConfirm) {
                 if ($needsCharge) {
                     $wallet = \App\Models\StoreWallet::where('vendor_id', $vendorId)->lockForUpdate()->first();
                     $wallet->decrement('total_earning', $charge);
@@ -5596,8 +5687,11 @@ if (!function_exists('_autoAcceptLeadForStore')) {
                 $acc->vendor_id = $storeId;
                 $acc->service_request_id = $serviceRequestId;
                 $acc->qty = $leadinfo->qty;
-                $acc->current_status = 'Confirmation Request Sent';
-                $acc->quoted_price = $visiting;
+                // No status and no price when the quote is not going out: that is exactly the row
+                // a manually accepted lead writes, so the lead card shows the Send Confirmation
+                // Request form rather than a state nothing else in the app understands.
+                $acc->current_status = $autoConfirm ? 'Confirmation Request Sent' : null;
+                $acc->quoted_price = $autoConfirm ? $visiting : null;
                 $acc->created_at = now();
                 $acc->save();
 
@@ -5610,10 +5704,13 @@ if (!function_exists('_autoAcceptLeadForStore')) {
                 $sr->accepted_by = implode(',', $by);
                 $sr->save();
 
-                \Illuminate\Support\Facades\DB::table('lead_statuses')->insert([
+                $statuses = [
                     ['service_request_id' => $serviceRequestId, 'status' => 'Requested Accepted', 'created_at' => now()],
-                    ['service_request_id' => $serviceRequestId, 'status' => 'Confirmation Request Sent', 'created_at' => now()],
-                ]);
+                ];
+                if ($autoConfirm) {
+                    $statuses[] = ['service_request_id' => $serviceRequestId, 'status' => 'Confirmation Request Sent', 'created_at' => now()];
+                }
+                \Illuminate\Support\Facades\DB::table('lead_statuses')->insert($statuses);
             });
 
             // --- Comms (after commit) ---
@@ -5623,8 +5720,10 @@ if (!function_exists('_autoAcceptLeadForStore')) {
             \App\Services\WhatsAppService::sendLeadAcceptedNotification($storeId, $leadinfo->item_name,
                 $user->f_name ?? null, $visiting, $user->phone ?? null);
 
-            // 2) Confirmation request to the customer (same push the manual flow sends).
-            if ($user) {
+            // 2) Confirmation request to the customer (same push the manual flow sends). Skipped
+            // where the store asked to quote by hand — the lead is theirs either way, and nothing
+            // has been said to the customer about price.
+            if ($user && $autoConfirm) {
                 $data = [
                     'title'       => 'Service Confirmation',
                     'description' => 'You have recieved a confirmation request from ' . $store->name . ' for rs.' . $visiting . ' .',
@@ -8514,5 +8613,47 @@ if (!function_exists('hmis_lab_work_enabled')) {
         return $cache[$store_id] = \App\Models\OpdLabWork::isAutoCategory(
             \App\Models\OpdLabWork::categoryFor((int) $store_id)
         );
+    }
+}
+
+if (!function_exists('hmis_discontinue_days')) {
+    /**
+     * How long a hospital waits before it gives up on a course of treatment, in days.
+     *
+     * Tri-state, and the three states are the whole point. Unset means the hospital never had an
+     * opinion and gets the platform's 30 days — abandoned care should be closed everywhere, not
+     * only where somebody went looking for a setting. A stored 0 is an explicit refusal and turns
+     * the sweep off for good, which is what a practice with six-month recall intervals needs.
+     * Anything else is the hospital's own number.
+     *
+     * Returns null when the sweep should not run at all.
+     */
+    function hmis_discontinue_days($store_id = null): ?int
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        if (!$store_id) {
+            return null;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        try {
+            $value = \App\Models\StoreConfig::where('store_id', $store_id)->value('hmis_discontinue_days');
+        } catch (\Throwable $e) {
+            // The column is added the first time a hospital saves its settings; until then every
+            // store is simply on the platform default.
+            $value = null;
+        }
+
+        if ($value === null) {
+            return $cache[$store_id] = \App\Services\OpdDiscontinue::DEFAULT_DAYS;
+        }
+
+        $days = (int) $value;
+
+        return $cache[$store_id] = $days > 0 ? $days : null;
     }
 }

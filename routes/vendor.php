@@ -777,6 +777,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
         Route::post('service/review-status', 'ServiceController@review_status')->name('service.review-status');
         Route::get('service/lead-settings', 'ServiceController@lead_settings')->name('service.lead-settings');
         Route::post('service/lead-settings', 'ServiceController@lead_settings_update')->name('service.lead-settings.update');
+        // Whether an auto-accepted lead also quotes the customer. Separate endpoint because the
+        // control lives in the add-on card, which sits outside the settings form.
+        Route::post('service/lead-auto-confirm', 'ServiceController@lead_auto_confirm_toggle')->name('service.lead-auto-confirm');
         // Repeat purchase cycles for services billed by name (stocked items are set on the item form).
         Route::post('service/repeat-rules', 'ServiceController@repeat_rules_save')->name('service.repeat-rules.save');
         Route::get('service/repeat-rules/{id}/delete', 'ServiceController@repeat_rule_delete')->name('service.repeat-rules.delete');
@@ -790,6 +793,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('report', 'ServiceController@report')->name('report')->middleware('permission:leads_manage,report');
             Route::get('report/{id}', 'ServiceController@staff_report')->name('report.staff')->middleware('permission:leads_manage,report');
             Route::get('accept/{id}', 'ServiceController@accept')->name('accept')->middleware('permission:leads_manage,accept');
+            // Accept the lead and put a different time to the patient in one go. Same permission
+            // as accepting, because that is what it does first and what it costs.
+            Route::post('accept-propose/{id}', 'ServiceController@accept_propose')->name('accept-propose')->middleware('permission:leads_manage,accept');
             // Route::get('list/{tab}', 'ServiceController@lead_list')->name('list');
             Route::get('send-confirmation-notification', 'ServiceController@send_confirmation_notification')->name('send-confirmation-notification');
             Route::post('save-assignment', 'ServiceController@save_assignment')->name('save-assignment')->middleware('permission:leads_manage,alot');

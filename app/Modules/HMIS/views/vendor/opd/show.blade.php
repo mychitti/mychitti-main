@@ -583,6 +583,14 @@
         border-color: #60a5fa;
         color: #1e40af;
     }
+    /* Given up on because the patient stopped coming. Violet rather than another red: it is not a
+       failure like a missed sitting, it is a course that quietly ended, and the two are counted
+       separately. */
+    .tx-state-discontinued {
+        background: #f3e8ff;
+        border-color: #c084fc;
+        color: #6b21a8;
+    }
     /* Net, due and how much of the plan has been collected: one statement under the table it
        totals, rather than a figure repeated beside every chip. */
     .tx-money-lbl {
@@ -1708,6 +1716,15 @@
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabPastRx')">
             <i class="tio-history"></i> Past Rx
         </button>
+        {{-- Every other visit this patient has made, in the main run rather than off to the side:
+             "when were they last in, and what for" is asked in the middle of a consultation, not
+             as reference reading afterwards. --}}
+        <button class="consult-tab-btn" onclick="switchTab(this, 'tabTimeline')">
+            <i class="tio-calendar-note"></i> Visit History
+            @if($pastVisits->count())
+                <span class="count-badge ml-1">{{ $pastVisits->count() }}</span>
+            @endif
+        </button>
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabTests')">
             <i class="tio-dashboard-outlined"></i> Tests
         </button>
@@ -1749,9 +1766,6 @@
         <div class="consult-tabs-aside">
             <button class="consult-tab-btn" onclick="switchTab(this, 'tabSaraAI')" id="btnSaraTab">
                 <i class="tio-star"></i> Sara AI <span class="new-indicator ml-1">New</span>
-            </button>
-            <button class="consult-tab-btn" onclick="switchTab(this, 'tabTimeline')">
-                <i class="tio-calendar-note"></i> Timeline
             </button>
         </div>
     </div>
@@ -1997,6 +2011,7 @@
                         'in_progress' => 'In progress',
                         'completed'   => 'Completed',
                         'missed'      => 'Not done',
+                        'discontinued'=> 'Discontinued',
                     ];
                     $rxCurrency = \App\CentralLogics\Helpers::currency_symbol() ?: '₹';
 
@@ -2028,7 +2043,12 @@
                     foreach ($planTerms as $term) {
                         $row   = $txPlan[$term] ?? [];
                         $state = $row['status'] ?? 'pending';
-                        $state = ($visit->is_completed && $state !== 'completed') ? 'missed' : $state;
+                        // Discontinued survives a closed OP. "Not done" is what outstanding work on
+                        // a finished consultation looks like; a course somebody gave up on already
+                        // says why it stopped, and repainting it would lose that.
+                        $state = ($visit->is_completed && !in_array($state, ['completed', 'discontinued'], true))
+                            ? 'missed'
+                            : $state;
 
                         $when   = $txWhen($row);
                         // Booked as a real follow-up, or just a date pencilled onto the plan.
@@ -2220,6 +2240,21 @@
                                     @endif
                                 </div>
 
+                                {{-- Said once, in the patient's own record, rather than leaving somebody
+                                     to work out why half the plan went violet overnight. The rule that
+                                     closed it is named, because the next question is always "who
+                                     decided that" and the answer is a setting, not a person. --}}
+                                @if($visit->is_discontinued)
+                                    <div class="alert py-2 px-3 mt-2 mb-0"
+                                         style="font-size:12px; background:#f3e8ff; border:1px solid #c084fc; color:#6b21a8;">
+                                        <b>Care discontinued</b>
+                                        {{ optional($visit->discontinued_at)->format('d M Y') }} —
+                                        {{ $visit->discontinue_reason ?: 'the patient stopped attending' }}.
+                                        Anything still open was closed off. Set a treatment back to any
+                                        stage, or move a lab work job on, if they come back.
+                                    </div>
+                                @endif
+
                                 {{-- The detail behind the chips: what is scheduled and where it has got
                                      to. What any of it costs is neither asked nor answered here. --}}
                                 <div class="tx-table-wrap" id="txTableWrap" @if(!count($txRows)) style="display:none" @endif>
@@ -2228,7 +2263,7 @@
                                         {{-- How many sit in each state, which doubles as the colour key
                                              for the chips above. --}}
                                         <div class="tx-counts" id="txCounts">
-                                            @foreach(['completed', 'in_progress', 'upcoming', 'pending', 'missed'] as $state)
+                                            @foreach(['completed', 'in_progress', 'upcoming', 'pending', 'missed', 'discontinued'] as $state)
                                                 @if(!empty($txStateCounts[$state]))
                                                     <span><i class="tx-dot tx-state-{{ $state }}"></i>{{ $txStateCounts[$state] }} {{ strtolower($txStateLabels[$state]) }}</span>
                                                 @endif
@@ -3022,15 +3057,92 @@
                 </div>
             </div>
 
-            {{-- TAB: TIMELINE --}}
+            {{-- TAB: VISIT HISTORY — every other visit this patient has made.
+
+                 A timeline rather than a table: the question asked of a history is almost never
+                 "compare these columns", it is "what has been going on with this person", and the
+                 answer reads top to bottom. What was added to the old story view is the part that
+                 made it reference-only — how each visit ended (cancelled, billed, given up on),
+                 how far its treatment plan actually got, and a way to open it. --}}
             <div class="tab-pane" id="tabTimeline">
-                <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Consultation Timeline &amp; Visited History</h4>
+                @php
+                    $vhFirst = $pastVisits->last();
+                    $vhLast  = $pastVisits->first();
+                @endphp
+
+                <div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:10px;">
+                    <div>
+                        <h4 class="mb-0 font-weight-bold" style="color:#0f172a">Visit History</h4>
+                        <small class="text-muted">
+                            @if($pastVisits->count())
+                                {{ $pastVisits->count() }} previous {{ \Illuminate\Support\Str::plural('visit', $pastVisits->count()) }}
+                                · first {{ $vhFirst?->visit_date?->format('d M Y') }}
+                                · last {{ $vhLast?->visit_date?->format('d M Y') }}
+                                @if($vhLast?->visit_date)
+                                    ({{ $vhLast->visit_date->diffForHumans() }})
+                                @endif
+                            @else
+                                This is the patient's first recorded visit.
+                            @endif
+                        </small>
+                    </div>
+
+                    {{-- Only worth the space once the list is long enough to scroll past. --}}
+                    @if($pastVisits->count() > 4)
+                        <input type="search" id="vhSearch" class="form-control form-control-sm" style="max-width:240px; font-size:12px;"
+                               placeholder="Filter by date, complaint, doctor…" oninput="vhFilter(this.value)">
+                    @endif
+                </div>
+
                 <div class="timeline-story text-dark" style="font-size:12px;">
                     @forelse($pastVisits as $pv)
-                        <div style="border-left: 2px solid #cbd5e1; padding-left: 15px; padding-bottom: 20px; position:relative;">
-                            <div style="position:absolute; left:-6px; top:2px; width:10px; height:10px; border-radius:50%; background:#2563eb;"></div>
-                            <strong style="font-size:13px">{{ $pv->visit_date?->format('d M Y') }}</strong>
-                            <span class="badge badge-soft-info ml-1">{{ \App\Models\OpdVisit::VISIT_TYPES[$pv->visit_type] ?? $pv->visit_type }}</span>
+                        @php
+                            // Where the plan for that visit actually got to. Read here rather than
+                            // in the controller because it is JSON on the row already loaded.
+                            $vhPlan  = $pv->treatment_plan_map;
+                            $vhDone  = collect($vhPlan)->filter(fn($r) => ($r['status'] ?? '') === 'completed')->count();
+                            $vhDot   = $pv->is_cancelled ? '#94a3b8' : ($pv->is_completed ? '#16a34a' : '#2563eb');
+                            $vhTerms = strtolower(implode(' ', array_filter([
+                                $pv->visit_date?->format('d M Y'),
+                                $pv->chief_complaint,
+                                $pv->diagnosis,
+                                $pv->treatment,
+                                trim(($pv->doctorProfile?->employee?->f_name ?? '') . ' ' . ($pv->doctorProfile?->employee?->l_name ?? '')),
+                                \App\Models\OpdVisit::VISIT_TYPES[$pv->visit_type] ?? $pv->visit_type,
+                            ])));
+                        @endphp
+                        <div class="vh-item" data-search="{{ $vhTerms }}"
+                             style="border-left: 2px solid #cbd5e1; padding-left: 15px; padding-bottom: 20px; position:relative;">
+                            <div style="position:absolute; left:-6px; top:2px; width:10px; height:10px; border-radius:50%; background:{{ $vhDot }};"></div>
+
+                            <div class="d-flex align-items-start justify-content-between flex-wrap" style="gap:8px;">
+                                <div style="min-width:0;">
+                                    <strong style="font-size:13px">{{ $pv->visit_date?->format('d M Y') }}</strong>
+                                    <span class="badge badge-soft-info ml-1">{{ \App\Models\OpdVisit::VISIT_TYPES[$pv->visit_type] ?? $pv->visit_type }}</span>
+                                    @if($pv->token_number)
+                                        <span class="text-muted ml-1" style="font-size:11px;">Token #{{ $pv->token_number }}</span>
+                                    @endif
+
+                                    {{-- How the visit ended. Three different things, and a clinic
+                                         reading a history needs to tell them apart: called off
+                                         before it happened, seen and billed, or simply never
+                                         followed up on. --}}
+                                    @if($pv->is_cancelled)
+                                        <span class="badge ml-1" style="color:#6b7280; background:#f3f4f6; font-weight:600;">Cancelled</span>
+                                    @elseif($pv->is_completed)
+                                        <span class="badge ml-1" style="color:#166534; background:#dcfce7; font-weight:600;">Billed</span>
+                                    @endif
+
+                                    @if($pv->is_discontinued)
+                                        <span class="badge ml-1" style="color:#6b21a8; background:#f3e8ff; font-weight:600;"
+                                              title="{{ $pv->discontinue_reason }}">Care discontinued</span>
+                                    @endif
+                                </div>
+
+                                <a href="{{ route('vendor.opd.show', $pv->id) }}" class="btn btn-link btn-sm p-0"
+                                   style="font-size:11.5px;">Open visit</a>
+                            </div>
+
                             <p class="mb-1 mt-1 text-muted">Consulted by: <strong>Dr. {{ $pv->doctorProfile?->employee?->f_name }} {{ $pv->doctorProfile?->employee?->l_name }}</strong></p>
                             @if($pv->chief_complaint)
                                 <p class="mb-1"><strong>CC:</strong> {{ $pv->chief_complaint }}</p>
@@ -3049,6 +3161,11 @@
                                     @foreach($pv->treatment_list as $term)
                                         <span class="tx-badge">{{ $term }}</span>
                                     @endforeach
+                                    @if(count($vhPlan))
+                                        <span class="text-muted ml-1" style="font-size:11px;">
+                                            ({{ $vhDone }} of {{ count($vhPlan) }} done)
+                                        </span>
+                                    @endif
                                 </p>
                             @endif
                             @if($pv->notes)
@@ -3064,6 +3181,10 @@
                             No past OPD visits recorded.
                         </div>
                     @endforelse
+
+                    <div class="text-center text-muted py-4" id="vhNoMatch" style="display:none; font-size:12px;">
+                        No visit matches that.
+                    </div>
                 </div>
             </div>
 
@@ -4232,7 +4353,12 @@
                     'sara': 'tabSaraAI',
                     'sara_ai': 'tabSaraAI',
                     'saraai': 'tabSaraAI',
-                    'timeline': 'tabTimeline'
+                    // 'timeline' is kept: the tab was called that until it grew into the visit
+                    // history, and links to it exist in the wild.
+                    'timeline': 'tabTimeline',
+                    'history': 'tabTimeline',
+                    'visits': 'tabTimeline',
+                    'visit_history': 'tabTimeline'
                 };
                 targetTabId = map[tabParam.toLowerCase()] || ('tab' + tabParam.charAt(0).toUpperCase() + tabParam.slice(1));
             }
@@ -4243,6 +4369,22 @@
             }
         }
     });
+
+    // Visit History filter. Everything the row can be searched by is baked into data-search when
+    // the page renders, so this is one string compare per visit and no request.
+    function vhFilter(term) {
+        term = (term || '').trim().toLowerCase();
+
+        let shown = 0;
+        document.querySelectorAll('.vh-item').forEach(function (row) {
+            const hit = !term || (row.dataset.search || '').indexOf(term) !== -1;
+            row.style.display = hit ? '' : 'none';
+            if (hit) shown++;
+        });
+
+        const empty = document.getElementById('vhNoMatch');
+        if (empty) empty.style.display = shown ? 'none' : '';
+    }
 
     function switchTab(btn, tabId) {
         if (typeof btn === 'string' && !tabId) {
@@ -4288,7 +4430,7 @@
                 'tabMode': 'mode',
                 'tabSecurity': 'security',
                 'tabSaraAI': 'sara_ai',
-                'tabTimeline': 'timeline'
+                'tabTimeline': 'history'
             };
             const shortName = shortNameMap[tabId] || tabId.replace(/^tab/, '').replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
             url.searchParams.set('tab', shortName);
@@ -5233,6 +5375,7 @@
     // Red is not a status anyone picks: it is outstanding work on a closed OP.
     function txState(row) {
         const state = row.status || 'pending';
+        if (state === 'discontinued') return state;
         return (visitClosed && state !== 'completed') ? 'missed' : state;
     }
 
@@ -5258,7 +5401,7 @@
 
         box.innerHTML = '';
         // Fixed order, so the row does not reshuffle as statuses change under the doctor.
-        ['completed', 'in_progress', 'upcoming', 'pending', 'missed'].forEach(state => {
+        ['completed', 'in_progress', 'upcoming', 'pending', 'missed', 'discontinued'].forEach(state => {
             if (!counts[state]) return;
             const span = document.createElement('span');
             const dot  = document.createElement('i');
@@ -5430,6 +5573,10 @@
                     '<option value="upcoming">Upcoming</option>' +
                     '<option value="in_progress">In progress</option>' +
                     '<option value="completed">Completed</option>' +
+                    // Offered by hand as well as set by the nightly sweep: a receptionist who
+                    // knows the patient has moved away should not have to wait a month for the
+                    // calendar to work it out.
+                    '<option value="discontinued">Discontinued</option>' +
                 '</select>' +
             '</div></div>' +
             '<div class="tx-plan-row">' +
