@@ -86,9 +86,11 @@ class OpdConsultationReceiptController extends Controller
 
         $active = OpdConsultationReceipt::where('store_id', $store_id)
             ->where('patient_id', $visit->patient_id)
-            ->where('doctor_profile_id', $visit->doctor_profile_id)
-            ->whereColumn('consultations_used', '<', 'allowed_consultations')
             ->whereDate('valid_until', '>=', now()->toDateString())
+            ->where(function($q) use ($visit) {
+                $q->where('doctor_profile_id', $visit->doctor_profile_id)
+                  ->orWhereNull('doctor_profile_id');
+            })
             ->orderByDesc('id')
             ->first();
 

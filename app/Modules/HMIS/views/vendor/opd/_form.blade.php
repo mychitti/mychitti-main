@@ -1,4 +1,4 @@
-﻿{{-- Patient & Doctor (read-only on edit, selectable on create) --}}
+{{-- Patient & Doctor (read-only on edit, selectable on create) --}}
 @if($visit)
 {{-- edit: locked --}}
 <div class="card mb-3" style="background:linear-gradient(90deg,#eff6ff,#f0fdf4); border:1px solid #bfdbfe;">
@@ -111,6 +111,12 @@
                         @endforeach
                     </select>
                     @error('op_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+            </div>
+            <div class="col-12 d-none" id="opValidityAlertWrap">
+                <div class="alert alert-soft-success py-2 px-3 mb-0 small d-flex align-items-center" style="border: 1px solid #bbf7d0; background-color: #f0fdf4;">
+                    <i class="tio-checkmark-circle text-success mr-2" style="font-size:1.2rem;"></i>
+                    <span id="opValidityText"></span>
                 </div>
             </div>
         </div>
@@ -521,6 +527,38 @@ $(function () {
     $('#quickPatientModal input').on('keydown', function (e) {
         if (e.key === 'Enter') $('#quickPatientSaveBtn').click();
     });
+
+    function checkPatientOpValidity() {
+        var pId = $('#patientSelect').val();
+        var dId = $('#doctorSelect').val();
+        if (!pId || pId === 'add_new') {
+            $('#opValidityAlertWrap').addClass('d-none');
+            return;
+        }
+        $.ajax({
+            url: "{{ route('vendor.opd.check-patient-validity') }}",
+            type: "GET",
+            data: { patient_id: pId, doctor_profile_id: dId || '' },
+            success: function(res) {
+                if (res.active) {
+                    var visitsInfo = res.consultations_used ? ' (' + res.consultations_used + ' visit(s) recorded)' : '';
+                    $('#opValidityText').html('<strong>Active OP Receipt Valid until ' + res.valid_until + '</strong>' + visitsInfo + ' — <strong>Next Visit / Follow-Up (No Consultation Fee)</strong>');
+                    $('#opValidityAlertWrap').removeClass('d-none');
+                    if ($('#visitTypeSelect').length) {
+                        $('#visitTypeSelect').val('followup').trigger('change').trigger('change.select2');
+                    }
+                } else {
+                    $('#opValidityAlertWrap').addClass('d-none');
+                }
+            },
+            error: function() {
+                $('#opValidityAlertWrap').addClass('d-none');
+            }
+        });
+    }
+
+    $(document).on('change select2:select', '#patientSelect, #doctorSelect', checkPatientOpValidity);
+    setTimeout(checkPatientOpValidity, 300);
 });
 </script>
 @endpush

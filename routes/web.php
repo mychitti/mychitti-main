@@ -343,6 +343,7 @@ Route::group(['middleware' => ['frontuser']], function () {
     Route::post('{city}/store/{slug}/admission', [FrontSchoolAdmissionController::class, 'submit'])->name('front.school.admission.store');
     Route::get('appointment/slots', [FrontAppointmentController::class, 'slots'])->name('front.appointment.slots');
     Route::get('appointment/doctors', [FrontAppointmentController::class, 'doctors'])->name('front.appointment.doctors');
+    Route::post('customer/appointment/reschedule', [FrontAppointmentController::class, 'userReschedule'])->name('customer.appointment.reschedule');
     Route::get('gallery/{slug?}', [FrontController::class, 'store_gallery'])->name('store.gallery');
     // Route::get('category/{slug}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be first
     Route::post('check-cart', [CartController::class, 'check_cart'])->name('check-cart');

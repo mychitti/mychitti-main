@@ -10,6 +10,7 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::get('create/{id?}',       [OpdController::class, 'create'])->name('create')->middleware('permission:opd_register,add');
     Route::post('store',             [OpdController::class, 'store'])->name('store')->middleware('permission:opd_register,add');
 
+    Route::get('check-patient-validity',            [OpdController::class, 'checkPatientValidity'])->name('check-patient-validity');
     Route::get('{id}/consultation-receipt',        [OpdConsultationReceiptController::class, 'receipt'])->name('consultation-receipt')->middleware('permission:opd_register,view');
     Route::post('{id}/consultation-receipt/store', [OpdConsultationReceiptController::class, 'store'])->name('consultation-receipt.store')->middleware('permission:opd_register,add');
     Route::get('{id}/consultation-receipt/pdf',    [OpdConsultationReceiptController::class, 'pdf'])->name('consultation-receipt.pdf')->middleware('permission:opd_register,view');
@@ -50,6 +51,7 @@ Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
     Route::put('{id}/update',        [OpdController::class, 'update'])->name('update')->middleware('permission:opd_register,edit');
     Route::patch('{id}/quick-update',[OpdController::class, 'quickUpdate'])->name('quick-update')->middleware('permission:opd_register,edit');
     Route::post('{id}/next-visit',   [OpdController::class, 'nextVisit'])->name('next-visit')->middleware('permission:opd_register,edit');
+    Route::post('{id}/reschedule',   [OpdController::class, 'rescheduleVisit'])->name('reschedule')->middleware('permission:opd_register,edit');
     Route::post('{id}/cancel',       [OpdController::class, 'cancel'])->name('cancel')->middleware('permission:opd_register,cancel');
     Route::delete('{id}',            [OpdController::class, 'destroy'])->name('destroy')->middleware('permission:opd_register,delete');
 

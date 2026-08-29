@@ -4549,6 +4549,93 @@ if (!function_exists('_serviceRunning')) {
             }
         }
 
+        // Include walk-in OPD visits matching user_id or phone number
+        if ($uid && !$service_id) {
+            try {
+                $userObj = DB::table('users')->where('id', $uid)->first();
+                $userPhone = $userObj?->phone;
+
+                $patientIds = DB::table('patients')
+                    ->where(function($q) use ($uid, $userPhone) {
+                        $q->where('user_id', $uid);
+                        if ($userPhone) {
+                            $cleanPhone = preg_replace('/[^0-9]/', '', $userPhone);
+                            $shortPhone = strlen($cleanPhone) >= 10 ? substr($cleanPhone, -10) : $cleanPhone;
+                            $q->orWhere('phone', $userPhone)
+                              ->orWhere('phone', 'like', '%' . $shortPhone);
+                        }
+                    })
+                    ->pluck('id')
+                    ->toArray();
+
+                if (!empty($patientIds)) {
+                    $opdVisits = DB::table('opd_visits')
+                        ->whereIn('patient_id', $patientIds)
+                        ->where('status', '!=', 'cancelled')
+                        ->orderBy('visit_date', 'desc')
+                        ->get();
+
+                    $existingSrIds = collect($items ?? [])->pluck('service_request_id')->filter()->toArray();
+
+                    foreach ($opdVisits as $ov) {
+                        if ($ov->service_request_id && in_array($ov->service_request_id, $existingSrIds)) {
+                            continue;
+                        }
+
+                        $store = DB::table('stores')->where('id', $ov->store_id)->first();
+                        $docName = 'Doctor';
+                        if ($ov->doctor_profile_id) {
+                            $dp = DB::table('doctor_profiles')->where('id', $ov->doctor_profile_id)->first();
+                            if ($dp && $dp->emp_id) {
+                                $emp = DB::table('vendor_employees')->where('id', $dp->emp_id)->first();
+                                if ($emp) {
+                                    $docName = 'Dr. ' . trim(($emp->f_name ?? '') . ' ' . ($emp->l_name ?? ''));
+                                }
+                            }
+                        }
+
+                        $synth = new \stdClass();
+                        $synth->id                      = 0;
+                        $synth->service_request_id      = $ov->service_request_id ?: ('opd_' . $ov->id);
+                        $synth->opd_visit_id            = $ov->id;
+                        $synth->created_at              = $ov->visit_date . ($ov->visit_time ? ' ' . $ov->visit_time : ' 10:00:00');
+                        $synth->current_status          = $ov->consultation_receipt_id ? 'Completed' : 'Waiting (OPD)';
+                        $synth->cancelled_by            = null;
+                        $synth->item_name               = 'OPD Visit #' . $ov->token_number . ' (' . $docName . ')';
+                        $synth->item_image              = null;
+                        $synth->store_name              = $store?->name ?? 'Hospital';
+                        $synth->store_id                = $ov->store_id;
+                        $synth->store_address           = $store?->address ?? '';
+                        $synth->store_slug              = $store?->slug ?? '';
+                        $synth->store_logo              = $store?->logo ?? '';
+                        $synth->store_phone             = $store?->phone ?? '';
+                        $synth->gatepass_id             = null;
+                        $synth->store_business_type     = 'hospital';
+                        $synth->gatepass_exists         = 0;
+                        $synth->quotation_exists        = 0;
+                        $synth->assigned_status         = 'Assigned';
+                        $synth->assigned_type           = 'employee';
+                        $synth->assigned_to             = null;
+                        $synth->quoted_price            = 0;
+                        $synth->staff_name              = $docName;
+                        $synth->staff_role              = 'Doctor';
+                        $synth->staff_image             = null;
+                        $synth->staff_contact           = '';
+
+                        $targetCollection = method_exists($confirmationReq, 'getCollection')
+                            ? $confirmationReq->getCollection()
+                            : $confirmationReq;
+
+                        $hasAlready = $targetCollection->contains(fn($i) => ($i->service_request_id ?? '') == $synth->service_request_id);
+                        if (!$hasAlready) {
+                            $targetCollection->prepend($synth);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('OPD visit inclusion in _serviceRunning failed: ' . $e->getMessage());
+            }
+        }
 
         return $confirmationReq;
     }

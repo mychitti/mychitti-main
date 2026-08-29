@@ -153,7 +153,7 @@
                                 </div>
                             </div>
                         </div>
-                        @if ($serRun->assigned_to)
+                        @if (!empty($serRun->assigned_to))
                             <div class="detail-card mt-3">
                                 <div class="detail-card-header"><i class="fas fa-user-tie me-2"></i><span>Assigned Staff</span></div>
                                 <div class="detail-card-content">
@@ -209,10 +209,58 @@
                         </div>
                     @endif
                     <div class="cta-buttons-section mt-4">
-                        <div class="d-flex gap-2 action_outer_{{ $serRun->id }}">
+                        <div class="d-flex align-items-center gap-2 flex-wrap action_outer_{{ $serRun->id }}">
                             @include('front-views.partials.dashboard._service-actions-element', ['acceptedReq' => $serRun])
+
+                            @if ($isHospitalStore || str_contains(strtolower($serRun->current_status ?? ''), 'appointment') || str_contains(strtolower($serRun->item_name ?? ''), 'consult'))
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1"
+                                        data-bs-toggle="modal" data-bs-target="#userRescheduleModal{{ $serRun->service_request_id }}">
+                                    <i class="far fa-clock me-1"></i> Reschedule Appointment
+                                </button>
+                            @endif
                         </div>
                     </div>
+
+                    @if ($isHospitalStore || str_contains(strtolower($serRun->current_status ?? ''), 'appointment') || str_contains(strtolower($serRun->item_name ?? ''), 'consult'))
+                        <div class="modal fade" id="userRescheduleModal{{ $serRun->service_request_id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="border-radius:14px; border:none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                                    <div class="modal-header" style="background:#f8fafc; border-bottom:1px solid #e2e8f0; border-radius:14px 14px 0 0;">
+                                        <h5 class="modal-title font-bold text-dark fs-6" style="margin:0;">
+                                            <i class="far fa-calendar-alt text-primary me-2"></i> Reschedule Appointment (#{{ $serRun->service_request_id }})
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form action="{{ route('customer.appointment.reschedule') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="service_request_id" value="{{ $serRun->service_request_id }}">
+                                        @if (isset($serRun->opd_visit_id))
+                                            <input type="hidden" name="opd_visit_id" value="{{ $serRun->opd_visit_id }}">
+                                        @endif
+                                        <div class="modal-body p-4">
+                                            <p class="text-muted small mb-3">Service: <strong>{{ $serRun->item_name }}</strong> at {{ ucfirst($serRun->store_name ?? 'Hospital') }}</p>
+                                            <div class="mb-3 text-start">
+                                                <label class="form-label font-medium small text-secondary">New Preferred Date <span class="text-danger">*</span></label>
+                                                <input type="date" name="appointment_date" class="form-control" min="{{ now()->toDateString() }}" required style="border-radius:8px;">
+                                            </div>
+                                            <div class="mb-3 text-start">
+                                                <label class="form-label font-medium small text-secondary">New Preferred Time</label>
+                                                <input type="time" name="appointment_time" class="form-control" value="10:00" style="border-radius:8px;">
+                                            </div>
+                                            <div class="mb-3 text-start">
+                                                <label class="form-label font-medium small text-secondary">Reason for Rescheduling (Optional)</label>
+                                                <textarea name="reason" class="form-control" rows="2" placeholder="e.g. Schedule clash / personal request" style="border-radius:8px;"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer" style="background:#f8fafc; border-top:1px solid #e2e8f0; border-radius:0 0 14px 14px;">
+                                            <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-paper-plane me-1"></i> Submit Reschedule</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     @if (!$isHospitalStore)
                         <div class="actions-section mt-4">
                             <div class="row g-3">

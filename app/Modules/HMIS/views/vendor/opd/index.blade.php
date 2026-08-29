@@ -1,4 +1,4 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', $myScope ? 'My OPD Appointments' : 'OPD Register')
 
 @push('css_or_js')
@@ -472,50 +472,91 @@
                                                 class="btn btn-hmis-action-view">
                                                 <i class="tio-visible"></i> View
                                             </a>
-                                            {{-- Receipt and Bill are hidden on a cancelled visit: collecting a fee for a
-                                                 consultation that did not happen is the mistake this is meant to prevent. --}}
-                                            @if (!$visit->is_cancelled && _canViewOpdReceipt())
-                                                <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}"
-                                                    class="btn btn-hmis-action-receipt" title="OP Consultation Receipt">
-                                                    <i class="tio-receipt"></i> Receipt
-                                                </a>
-                                            @endif
-                                            @if (!$visit->is_cancelled && hasPermission('opd_register', 'generate_bill'))
-                                                <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}"
-                                                    class="btn btn-hmis-action-receipt" title="Generate Bill">
-                                                    <i class="tio-receipt-outlined"></i> Bill
-                                                </a>
-                                            @endif
-                                            @if ($canCancel || $canDelete)
-                                                <div class="dropdown">
-                                                    <button type="button" class="btn btn-hmis-action-more" data-toggle="dropdown"
-                                                        aria-haspopup="true" aria-expanded="false" title="More">
-                                                        <i class="tio-more-vertical"></i>
-                                                    </button>
-                                                    <div class="dropdown-menu dropdown-menu-right opd-action-menu">
-                                                        @if ($canCancel)
-                                                            <button type="button" class="dropdown-item text-danger"
-                                                                onclick="opdOpenCancel({{ $visit->id }}, '{{ $visit->token_number }}', @js($visit->patient?->name ?? 'this patient'))">
-                                                                <i class="tio-clear-circle mr-2"></i> Cancel visit
+                                            <div class="dropdown">
+                                                <button type="button" class="btn btn-hmis-action-more" data-toggle="dropdown"
+                                                    aria-haspopup="true" aria-expanded="false" title="More Actions">
+                                                    <i class="tio-more-vertical"></i>
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-right opd-action-menu">
+                                                    @if (!$visit->is_cancelled && _canViewOpdReceipt())
+                                                        <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}"
+                                                            class="dropdown-item" target="_blank">
+                                                            <i class="tio-receipt mr-2 text-info"></i> OP Receipt
+                                                        </a>
+                                                    @endif
+                                                    @if (!$visit->is_cancelled && hasPermission('opd_register', 'generate_bill'))
+                                                        <a href="{{ route('vendor.hospital-bill.create-opd', $visit->id) }}"
+                                                            class="dropdown-item">
+                                                            <i class="tio-receipt-outlined mr-2 text-primary"></i> Generate Bill
+                                                        </a>
+                                                    @endif
+                                                    @if (!$visit->is_cancelled && hasPermission('opd_register', 'edit'))
+                                                        <button type="button" class="dropdown-item text-info" data-toggle="modal" data-target="#rescheduleOpdModal{{ $visit->id }}">
+                                                            <i class="tio-time mr-2"></i> Reschedule visit
+                                                        </button>
+                                                    @endif
+                                                    @if ($canCancel)
+                                                        <button type="button" class="dropdown-item text-danger"
+                                                            onclick="opdOpenCancel({{ $visit->id }}, '{{ $visit->token_number }}', @js($visit->patient?->name ?? 'this patient'))">
+                                                            <i class="tio-clear-circle mr-2"></i> Cancel visit
+                                                        </button>
+                                                    @endif
+                                                    @if ($canDelete)
+                                                        {{-- The register's filters ride on the action URL so the redirect
+                                                             afterwards lands back on the same date range and search. --}}
+                                                        <form method="POST" action="{{ route('vendor.opd.destroy', ['id' => $visit->id] + request()->query()) }}"
+                                                            onsubmit="return confirm('Delete this visit outright? This cannot be undone. If anything has been recorded against it, cancel it instead.')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="tio-delete mr-2"></i> Delete visit
                                                             </button>
-                                                        @endif
-                                                        @if ($canDelete)
-                                                            {{-- The register's filters ride on the action URL so the redirect
-                                                                 afterwards lands back on the same date range and search. --}}
-                                                            <form method="POST" action="{{ route('vendor.opd.destroy', ['id' => $visit->id] + request()->query()) }}"
-                                                                onsubmit="return confirm('Delete this visit outright? This cannot be undone. If anything has been recorded against it, cancel it instead.')">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="dropdown-item text-danger">
-                                                                    <i class="tio-delete mr-2"></i> Delete visit
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                    </div>
+                                                        </form>
+                                                    @endif
                                                 </div>
-                                            @endif
+                                            </div>
                                         </div>
                                         @endif
+                                    {{-- Reschedule Modal for this visit --}}
+                                    @if (!$visit->is_cancelled && hasPermission('opd_register', 'edit'))
+                                    <div class="modal fade" id="rescheduleOpdModal{{ $visit->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered" role="document">
+                                            <div class="modal-content" style="border-radius:12px;">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" style="font-family:'Outfit',sans-serif;font-weight:700;">
+                                                        <i class="tio-time text-info mr-1"></i> Reschedule OPD Visit #{{ $visit->token_number }}
+                                                    </h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                                </div>
+                                                <form action="{{ route('vendor.opd.reschedule', $visit->id) }}" method="POST">
+                                                    @csrf
+                                                    <div class="modal-body text-left">
+                                                        <p class="small text-muted mb-3">Patient: <strong>{{ $visit->patient?->name }}</strong> ({{ $visit->patient?->patient_uid }})</p>
+                                                        <div class="form-group">
+                                                            <label class="input-label font-weight-bold">New Visit Date <span class="text-danger">*</span></label>
+                                                            <input type="date" name="visit_date" class="form-control" value="{{ $visit->visit_date?->format('Y-m-d') }}" min="{{ now()->toDateString() }}" required>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label class="input-label font-weight-bold">New Visit Time</label>
+                                                            <input type="time" name="visit_time" class="form-control" value="{{ $visit->visit_time ? \Carbon\Carbon::parse($visit->visit_time)->format('H:i') : '' }}">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label class="input-label font-weight-bold">Reason / Note (Optional)</label>
+                                                            <textarea name="reason" class="form-control" rows="2" placeholder="e.g. Patient requested time change"></textarea>
+                                                        </div>
+                                                        <div class="alert alert-soft-info py-2 px-3 small mb-0">
+                                                            <i class="tio-info-outlined"></i> Rescheduling will send a WhatsApp/SMS notification to the patient automatically.
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-info"><i class="tio-send"></i> Reschedule &amp; Notify Patient</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
                                     </td>
                                 </tr>
                             @empty

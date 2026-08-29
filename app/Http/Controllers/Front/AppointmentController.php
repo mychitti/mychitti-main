@@ -268,4 +268,171 @@ class AppointmentController extends Controller
 
         return $tokenNumber;
     }
+
+    public function userReschedule(Request $request)
+    {
+        if (!auth('web')->check()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Please login to reschedule.'], 401);
+            }
+            return redirect()->route('user-login');
+        }
+
+        $request->validate([
+            'service_request_id' => 'required',
+            'opd_visit_id'       => 'nullable|integer',
+            'appointment_date'   => 'required|date|after_or_equal:today',
+            'appointment_time'   => 'nullable|string',
+            'reason'             => 'nullable|string|max:500',
+        ]);
+
+        $user = auth('web')->user();
+
+        // 1. Check if an explicit opd_visit_id was passed or service_request_id starts with "opd_"
+        $opdVisitId = $request->opd_visit_id;
+        if (!$opdVisitId && is_string($request->service_request_id) && str_starts_with($request->service_request_id, 'opd_')) {
+            $opdVisitId = (int) str_replace('opd_', '', $request->service_request_id);
+        }
+
+        if ($opdVisitId) {
+            $patientIds = Patient::where(function($q) use ($user) {
+                $q->where('user_id', $user->id);
+                if ($user->phone) {
+                    $cleanPhone = preg_replace('/[^0-9]/', '', $user->phone);
+                    $shortPhone = strlen($cleanPhone) >= 10 ? substr($cleanPhone, -10) : $cleanPhone;
+                    $q->orWhere('phone', $user->phone)
+                      ->orWhere('phone', 'like', '%' . $shortPhone);
+                }
+            })->pluck('id')->toArray();
+
+            $visit = \App\Models\OpdVisit::whereIn('patient_id', $patientIds)
+                ->where('id', $opdVisitId)
+                ->first();
+
+            if ($visit) {
+                if ($visit->is_cancelled) {
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => 'Cannot reschedule a cancelled visit.'], 422);
+                    }
+                    \Brian2694\Toastr\Facades\Toastr::error('Cannot reschedule a cancelled visit.');
+                    return back();
+                }
+
+                $newDate = \Carbon\Carbon::parse($request->appointment_date)->format('Y-m-d');
+                $newTime = $request->appointment_time ?: $visit->visit_time;
+
+                // Recalculate token if date changes
+                $tokenNumber = $visit->token_number;
+                if ($newDate !== $visit->visit_date?->format('Y-m-d')) {
+                    $lastToken = \App\Models\OpdVisit::where('store_id', $visit->store_id)
+                        ->whereDate('visit_date', $newDate)
+                        ->max('token_number');
+                    $tokenNumber = ($lastToken ?? 0) + 1;
+                }
+
+                $visit->visit_date   = $newDate;
+                if ($newTime) $visit->visit_time = $newTime;
+                $visit->token_number = $tokenNumber;
+                if ($request->filled('reason')) {
+                    $visit->notes = trim(($visit->notes ? $visit->notes . "\n" : '') . 'Patient Rescheduled: ' . $request->reason);
+                }
+                $visit->save();
+
+                // If linked to an appointment, reschedule it as well
+                if ($visit->appointment_id) {
+                    $appt = Appointment::find($visit->appointment_id);
+                    if ($appt && !in_array($appt->status, ['completed', 'cancelled'])) {
+                        try {
+                            \App\Services\AppointmentReschedule::apply(
+                                $appt,
+                                $newDate,
+                                $newTime ?: '10:00',
+                                $appt->slot_id,
+                                'the patient',
+                                null
+                            );
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::warning('Patient reschedule appointment sync failed: ' . $e->getMessage());
+                        }
+                    }
+                }
+
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => true, 'message' => 'OPD Visit rescheduled successfully!']);
+                }
+
+                \Brian2694\Toastr\Facades\Toastr::success('OPD Visit rescheduled successfully!');
+                return back();
+            }
+        }
+
+        // 2. Fallback to ServiceRequest appointment lookup
+        $srId = (int) $request->service_request_id;
+        $sr = \App\Models\ServiceRequest::where('id', $srId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$sr) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Booking not found.'], 404);
+            }
+            \Brian2694\Toastr\Facades\Toastr::error('Booking not found.');
+            return back();
+        }
+
+        $appt = Appointment::where('service_request_id', $sr->id)
+            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->first();
+
+        if (!$appt) {
+            $patientIds = Patient::where('user_id', $user->id)->pluck('id');
+            $appt = Appointment::whereIn('patient_id', $patientIds)
+                ->whereNotIn('status', ['cancelled', 'completed'])
+                ->latest()
+                ->first();
+        }
+
+        if ($appt) {
+            try {
+                $newTime = $request->appointment_time ?: ($appt->appointment_time ?: '10:00');
+                $new = \App\Services\AppointmentReschedule::apply(
+                    $appt,
+                    $request->appointment_date,
+                    $newTime,
+                    $appt->slot_id,
+                    'the patient',
+                    null
+                );
+
+                // Update linked OPD visit if exists
+                $opdVisit = \App\Models\OpdVisit::where('appointment_id', $appt->id)->first();
+                if ($opdVisit && $opdVisit->is_editable) {
+                    $opdVisit->visit_date = $request->appointment_date;
+                    if ($request->appointment_time) $opdVisit->visit_time = $request->appointment_time;
+                    $opdVisit->appointment_id = $new->id;
+                    $opdVisit->save();
+                }
+
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => true, 'message' => 'Appointment rescheduled successfully!']);
+                }
+
+                \Brian2694\Toastr\Facades\Toastr::success('Appointment rescheduled successfully!');
+                return back();
+            } catch (\Exception $e) {
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Reschedule failed: ' . $e->getMessage()], 422);
+                }
+                \Brian2694\Toastr\Facades\Toastr::error('Reschedule failed: ' . $e->getMessage());
+                return back();
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => 'No active appointment found for this booking.'], 404);
+        }
+
+        \Brian2694\Toastr\Facades\Toastr::error('No active appointment found for this booking.');
+        return back();
+    }
 }

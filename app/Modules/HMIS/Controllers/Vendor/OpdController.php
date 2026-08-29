@@ -11,6 +11,7 @@ use App\Models\OpdVisit;
 use App\Models\Patient;
 use App\Models\Prescription; 
 use App\Models\ServiceRequest;
+use App\Models\StoreConfig;
 use App\Models\User;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
@@ -104,9 +105,21 @@ class OpdController extends Controller
         $this->ensureClinicalSchema();
         $preset = request('date_range') ?? 'today';
         $custom = request('custom_date_range') ?? null;
-        $range = Helpers::calculatePresetDates($preset, $custom);
-        $formatted_from = $from  = $range['start'];
-        $formatted_to = $to = $range['end'];
+
+        if ($preset === 'upcoming') {
+            $formatted_from = $from = now()->startOfDay();
+            $formatted_to   = $to   = now()->addDays(90)->endOfDay();
+        } else if ($preset === 'this_month') {
+            $formatted_from = $from = now()->startOfMonth()->startOfDay();
+            $formatted_to   = $to   = now()->endOfMonth()->endOfDay();
+        } else if ($preset === 'this_week') {
+            $formatted_from = $from = now()->startOfWeek()->startOfDay();
+            $formatted_to   = $to   = now()->endOfWeek()->endOfDay();
+        } else {
+            $range = Helpers::calculatePresetDates($preset, $custom);
+            $formatted_from = $from = $range['start'];
+            $formatted_to   = $to   = $range['end'];
+        }
 
         $store_id = Helpers::get_store_id();
         $search   = $request->search;
@@ -274,6 +287,55 @@ class OpdController extends Controller
         return view('hmis::vendor.opd.create', compact('patients', 'doctors', 'nextToken', 'prefillPatient', 'prefillBooking', 'complaintOptions', 'complaintGroups', 'opTypes'));
     }
 
+    public function checkPatientValidity(Request $request)
+    {
+        $store_id = Helpers::get_store_id();
+        $patientId = $request->patient_id;
+
+        if (!$patientId) {
+            return response()->json(['active' => false]);
+        }
+
+        $config = \App\Models\StoreConfig::where('store_id', $store_id)->first();
+        $validityDays = (int) ($config?->opd_consultation_validity_days ?? 15);
+        if ($validityDays <= 0) $validityDays = 15;
+
+        // 1. Check for active formal OP consultation receipt
+        $receipt = \App\Models\OpdConsultationReceipt::where('patient_id', $patientId)
+            ->whereDate('valid_until', '>=', now()->toDateString())
+            ->orderByDesc('id')
+            ->first();
+
+        if ($receipt) {
+            return response()->json([
+                'active' => true,
+                'valid_until' => \Carbon\Carbon::parse($receipt->valid_until)->format('d M Y'),
+                'consultations_used' => $receipt->consultations_used,
+                'allowed_consultations' => $receipt->allowed_consultations,
+            ]);
+        }
+
+        // 2. Check for recent OPD visit within validity days (e.g. 15 days)
+        $cutoffDate = now()->subDays($validityDays)->toDateString();
+        $latestVisit = OpdVisit::where('patient_id', $patientId)
+            ->where('status', '!=', OpdVisit::STATUS_CANCELLED)
+            ->whereDate('visit_date', '>=', $cutoffDate)
+            ->orderByDesc('visit_date')
+            ->first();
+
+        if ($latestVisit) {
+            $validUntil = \Carbon\Carbon::parse($latestVisit->visit_date)->addDays($validityDays)->format('d M Y');
+            return response()->json([
+                'active' => true,
+                'valid_until' => $validUntil,
+                'consultations_used' => 1,
+                'allowed_consultations' => 1,
+            ]);
+        }
+
+        return response()->json(['active' => false]);
+    }
+
     public function store(Request $request)
     {
         // create/store can be reached straight from a link without the register having been
@@ -313,6 +375,38 @@ class OpdController extends Controller
             $doctorProfileId = $request->doctor_profile_id;
             $visitDate       = $request->visit_date;
             $visitType       = $request->visit_type;
+        }
+
+        if ($patientId) {
+            $patientObj = Patient::find($patientId);
+            if ($patientObj && !$patientObj->user_id && $patientObj->phone) {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $patientObj->phone);
+                $shortPhone = strlen($cleanPhone) >= 10 ? substr($cleanPhone, -10) : $cleanPhone;
+                $matchedUser = User::where('phone', $patientObj->phone)
+                    ->orWhere('phone', 'like', '%' . $shortPhone)
+                    ->first();
+                if ($matchedUser) {
+                    $patientObj->user_id = $matchedUser->id;
+                    $patientObj->save();
+                }
+            }
+
+            $config = \App\Models\StoreConfig::where('store_id', $store_id)->first();
+            $validityDays = (int) ($config?->opd_consultation_validity_days ?? 15);
+            if ($validityDays <= 0) $validityDays = 15;
+
+            $hasActiveReceipt = \App\Models\OpdConsultationReceipt::where('patient_id', $patientId)
+                ->whereDate('valid_until', '>=', now()->toDateString())
+                ->exists();
+
+            $hasRecentVisit = OpdVisit::where('patient_id', $patientId)
+                ->where('status', '!=', OpdVisit::STATUS_CANCELLED)
+                ->whereDate('visit_date', '>=', now()->subDays($validityDays)->toDateString())
+                ->exists();
+
+            if ($hasActiveReceipt || $hasRecentVisit) {
+                $visitType = 'followup';
+            }
         }
 
         $request->validate([
@@ -784,6 +878,91 @@ class OpdController extends Controller
         }
 
         return Redirect::route('vendor.opd.show', $visit->id);
+    }
+
+    public function rescheduleVisit(Request $request, $id)
+    {
+        $request->validate([
+            'visit_date' => 'required|date',
+            'visit_time' => 'nullable|string',
+            'reason'     => 'nullable|string|max:500',
+        ]);
+
+        $store_id = Helpers::get_store_id();
+        $visit = OpdVisit::where('store_id', $store_id)->findOrFail($id);
+
+        if ($visit->is_cancelled) {
+            Toastr::error('Cannot reschedule a cancelled visit.');
+            return back();
+        }
+
+        $oldDate = $visit->visit_date?->format('d M Y') ?? $visit->visit_date;
+        $newDate = \Carbon\Carbon::parse($request->visit_date)->format('Y-m-d');
+        $newTime = $request->visit_time ?: $visit->visit_time;
+
+        // Recalculate token for new visit date if date changes
+        $tokenNumber = $visit->token_number;
+        if ($newDate !== $visit->visit_date?->format('Y-m-d')) {
+            $lastToken = OpdVisit::where('store_id', $store_id)
+                ->whereDate('visit_date', $newDate)
+                ->max('token_number');
+            $tokenNumber = ($lastToken ?? 0) + 1;
+        }
+
+        $visit->visit_date   = $newDate;
+        $visit->visit_time   = $newTime;
+        $visit->token_number = $tokenNumber;
+        if ($request->filled('reason')) {
+            $visit->notes = trim(($visit->notes ? $visit->notes . "\n" : '') . 'Rescheduled: ' . $request->reason);
+        }
+        $visit->save();
+
+        // Also reschedule associated Appointment if linked
+        if ($visit->appointment_id) {
+            $appt = \App\Models\Appointment::find($visit->appointment_id);
+            if ($appt && !in_array($appt->status, ['completed', 'cancelled'])) {
+                try {
+                    \App\Services\AppointmentReschedule::apply(
+                        $appt,
+                        $newDate,
+                        $newTime ?: '10:00',
+                        $appt->slot_id,
+                        'the front desk',
+                        auth('vendor_employee')->id() ?? auth('vendor')->id()
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Rescheduling linked appointment failed: ' . $e->getMessage());
+                }
+            }
+        }
+
+        // Send WhatsApp/SMS notification to Patient
+        $patient = $visit->patient;
+        if ($patient && $patient->phone) {
+            try {
+                $docName = $visit->doctorProfile?->employee ? ('Dr. ' . $visit->doctorProfile->employee->f_name . ' ' . $visit->doctorProfile->employee->l_name) : 'your doctor';
+                $storeData = Helpers::get_store_data();
+                $storeName = $storeData?->name ?? 'Hospital';
+                $formattedNewDate = \Carbon\Carbon::parse($newDate)->format('d M Y');
+                $formattedNewTime = $newTime ? \Carbon\Carbon::parse($newTime)->format('h:i A') : '';
+
+                $msg = "Dear {$patient->name}, your OPD consultation at {$storeName} with {$docName} has been rescheduled to {$formattedNewDate}" . ($formattedNewTime ? " at {$formattedNewTime}" : "") . ". Token: #{$tokenNumber}. Thank you.";
+
+                \App\Services\WhatsAppService::sendDirectSmsOrWhatsapp((int) $store_id, $patient->phone, $msg);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Reschedule patient notification failed: ' . $e->getMessage());
+            }
+        }
+
+        // Record activity log
+        \App\Models\HospitalActivityLog::record(
+            (int) $store_id, 'opd_visit', (int) $visit->id, 'rescheduled',
+            "OPD visit #{$visit->id} rescheduled from {$oldDate} to {$newDate}",
+            ['visit_id' => $visit->id, 'patient_id' => $visit->patient_id, 'old_date' => $oldDate, 'new_date' => $newDate]
+        );
+
+        Toastr::success('OPD Visit rescheduled successfully and notification sent to patient!');
+        return back();
     }
 
     /**

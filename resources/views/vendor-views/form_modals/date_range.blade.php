@@ -14,15 +14,16 @@
                   </div>
                   <div class="preset-grid">
                       @php
-                          $presets = [
-                              'today' => 'Today',
-                              'yesterday' => 'Yesterday',
-                              'this_week' => 'This Week',
-                              'last_week' => 'Last Week',
-                              'this_month' => 'This Month',
-                              'last_month' => 'Last Month',
-                              'last_3_month' => 'Last 3 Months',
-                          ];
+                           $presets = [
+                               'today' => 'Today',
+                               'upcoming' => 'Upcoming',
+                               'yesterday' => 'Yesterday',
+                               'this_week' => 'This Week',
+                               'last_week' => 'Last Week',
+                               'this_month' => 'This Month',
+                               'last_month' => 'Last Month',
+                               'last_3_month' => 'Last 3 Months',
+                           ];
                       @endphp
 
                       @foreach ($presets as $value => $label)

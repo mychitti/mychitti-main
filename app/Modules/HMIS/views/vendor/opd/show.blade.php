@@ -1659,9 +1659,55 @@
                             <i class="tio-receipt-outlined"></i> Generate Bill
                         </a>
                     @endif
+
+                    @if (!$visit->is_cancelled && hasPermission('opd_register', 'edit'))
+                        <button type="button" class="kf-action text-info border-info" data-toggle="modal" data-target="#rescheduleOpdModal">
+                            <i class="tio-time"></i> Reschedule Visit
+                        </button>
+                    @endif
                 </div>
             </div>
         </div>
+
+        @if (!$visit->is_cancelled && hasPermission('opd_register', 'edit'))
+        <div class="modal fade" id="rescheduleOpdModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content" style="border-radius:12px;">
+                    <div class="modal-header">
+                        <h5 class="modal-title" style="font-family:'Outfit',sans-serif;font-weight:700;">
+                            <i class="tio-time text-info mr-1"></i> Reschedule OPD Visit #{{ $visit->token_number }}
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <form action="{{ route('vendor.opd.reschedule', $visit->id) }}" method="POST">
+                        @csrf
+                        <div class="modal-body text-left">
+                            <p class="small text-muted mb-3">Patient: <strong>{{ $visit->patient?->name }}</strong> ({{ $visit->patient?->patient_uid }})</p>
+                            <div class="form-group">
+                                <label class="input-label font-weight-bold">New Visit Date <span class="text-danger">*</span></label>
+                                <input type="date" name="visit_date" class="form-control" value="{{ $visit->visit_date?->format('Y-m-d') }}" min="{{ now()->toDateString() }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="input-label font-weight-bold">New Visit Time</label>
+                                <input type="time" name="visit_time" class="form-control" value="{{ $visit->visit_time ? \Carbon\Carbon::parse($visit->visit_time)->format('H:i') : '' }}">
+                            </div>
+                            <div class="form-group">
+                                <label class="input-label font-weight-bold">Reason / Note (Optional)</label>
+                                <textarea name="reason" class="form-control" rows="2" placeholder="e.g. Patient requested time change"></textarea>
+                            </div>
+                            <div class="alert alert-soft-info py-2 px-3 small mb-0">
+                                <i class="tio-info-outlined"></i> Rescheduling will send a WhatsApp/SMS notification to the patient automatically.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-info"><i class="tio-send"></i> Reschedule &amp; Notify Patient</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endif
 
         @if($showVitals)
         <div class="patient-vitals-row">
