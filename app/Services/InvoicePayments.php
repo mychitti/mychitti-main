@@ -147,14 +147,29 @@ class InvoicePayments
             // invoice is being viewed/rendered again — the transient cause may have cleared.
             self::regenerateMissingPdfs($type, $invoiceId);
 
-            return DB::table('invoice_payments')
-                ->where('invoice_type', $type)
-                ->where('invoice_id', $invoiceId)
-                ->orderBy('id')
-                ->get();
+            return self::receiptsRaw($type, $invoiceId);
         } catch (\Throwable $e) {
             return collect();
         }
+    }
+
+    /**
+     * The same rows, with no lazy retry attached.
+     *
+     * This exists because the retry rebuilds receipts, and rebuilding a receipt needs the list of
+     * receipts to print the running total on it. Reading that list through receiptsFor() made the
+     * two call each other with nothing to stop them: the retry only clears once a pdf name is
+     * written, and it is written after the build returns, which it never did. Every bill carrying
+     * a payment whose PDF had not been built yet hung the request that touched it — the save that
+     * took the payment, and every later view of that bill.
+     */
+    protected static function receiptsRaw(string $type, int $invoiceId)
+    {
+        return DB::table('invoice_payments')
+            ->where('invoice_type', self::normalizeType($type))
+            ->where('invoice_id', $invoiceId)
+            ->orderBy('id')
+            ->get();
     }
 
     /**
@@ -228,6 +243,17 @@ class InvoicePayments
 
         $payment = DB::table('invoice_payments')->find($paymentId);
 
+        // The receipt first, and only then the bill. The bill's payment history links each row to
+        // its receipt PDF, so building it the other way round printed a bill whose newest payment
+        // had nothing to link to — and left the row's pdf column null until something else
+        // happened to re-render the bill.
+        $pdf = self::buildReceiptPdf($payment, $invoice, $type);
+        if ($pdf) {
+            DB::table('invoice_payments')->where('id', $paymentId)
+                ->update(['pdf' => $pdf['name'], 'updated_at' => now()]);
+            $payment->pdf = $pdf['name'];
+        }
+
         // The bill itself now carries a payment history, so it has to be re-rendered — otherwise
         // the PDF the customer downloads still claims the whole amount is outstanding.
         try {
@@ -235,13 +261,6 @@ class InvoicePayments
             $invoice->update(['pdf' => $data['pdf']]);
         } catch (\Throwable $e) {
             Log::warning('Bill PDF rebuild after payment failed: ' . $e->getMessage());
-        }
-
-        $pdf = self::buildReceiptPdf($payment, $invoice, $type);
-        if ($pdf) {
-            DB::table('invoice_payments')->where('id', $paymentId)
-                ->update(['pdf' => $pdf['name'], 'updated_at' => now()]);
-            $payment->pdf = $pdf['name'];
         }
 
         $wa = self::sendReceipt($payment, $invoice, $type, $pdf['url'] ?? null);
@@ -413,7 +432,9 @@ class InvoicePayments
         try {
             $store    = DB::table('stores')->where('id', $payment->store_id)->first();
             $customer = self::billTo($invoice);
-            $receipts = self::receiptsFor($type, (int) $invoice->id);
+            // Raw, never receiptsFor(): that carries the retry that calls this method, and a
+            // receipt being built is exactly the row the retry is looking for.
+            $receipts = self::receiptsRaw($type, (int) $invoice->id);
 
             $html = view('invoice_template.payment_receipt', [
                 'payment'  => $payment,
@@ -462,6 +483,16 @@ class InvoicePayments
      */
     protected static function regenerateMissingPdfs(string $type, int $invoiceId): void
     {
+        // One rebuild pass per request, whatever calls it. The retry runs from receiptsFor(), which
+        // is read by the bill template, the receipt template and record() alike — so a single save
+        // can reach it several times over, and the second pass would rebuild receipts the first
+        // pass is still in the middle of building.
+        static $running = false;
+        if ($running) {
+            return;
+        }
+        $running = true;
+
         try {
             $missing = DB::table('invoice_payments')
                 ->where('invoice_type', $type)
@@ -492,6 +523,8 @@ class InvoicePayments
         } catch (\Throwable $e) {
             // Never let a retry break the page that triggered it.
             Log::warning('regenerateMissingPdfs failed: ' . $e->getMessage());
+        } finally {
+            $running = false;
         }
     }
 
