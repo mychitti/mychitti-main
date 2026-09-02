@@ -22,6 +22,74 @@ use Illuminate\Support\Facades\Schema;
 
 class HospitalBillController extends Controller
 {
+    /**
+     * Reading a hospital bill, kept apart from the billing module's own `billing,view`.
+     *
+     * A ward clerk who raises bills against patients has no business browsing the store's whole
+     * invoice book, and a bookkeeper with billing,view should not need an HMIS role to open one.
+     * So this permission opens patient bills and nothing else — see view() for the enforcement.
+     */
+    const FEATURES = [
+        'hospital_bill' => ['Hospital Bill', ['view']],
+    ];
+
+    public static function ensurePermission(): void
+    {
+        if (!Schema::hasTable('features') || !Schema::hasTable('feature_permissions')) {
+            return;
+        }
+
+        foreach (self::FEATURES as $name => [$display, $actions]) {
+            $fid = DB::table('features')->where('name', $name)->value('id');
+            if (!$fid) {
+                $fid = DB::table('features')->insertGetId([
+                    'name' => $name, 'display_name' => $display, 'master_module' => 'hospital_manage',
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            foreach ($actions as $a) {
+                if (!DB::table('feature_permissions')->where('feature_id', $fid)->where('action', $a)->exists()) {
+                    DB::table('feature_permissions')->insert(['feature_id' => $fid, 'action' => $a, 'free' => 0]);
+                }
+            }
+        }
+    }
+
+    /**
+     * One raised hospital bill, on the same template the billing module uses.
+     *
+     * Scoped twice on purpose: to this store, and to bills raised against a patient. Without the
+     * second check this would be `billing,view` under another name, handing every HMIS role the
+     * store's supplier and customer invoices as well.
+     */
+    public function view($id)
+    {
+        $invoice = ManualInvoice::where('vendor_id', Helpers::get_store_id())->find($id);
+
+        if (!$invoice || $invoice->bill_to_type !== 'patient') {
+            abort(404, 'Hospital bill not found.');
+        }
+
+        return view('vendor-views.billing.view_invoice', compact('invoice'));
+    }
+
+    /**
+     * Link to a raised bill on whichever screen the viewer may open, or null when neither.
+     *
+     * The panels that use this are rendered for HMIS roles, so the hospital screen is tried first
+     * — a link that 403s is worse than no link.
+     */
+    public static function billUrl($invoiceId): ?string
+    {
+        if (hasPermission('hospital_bill', 'view')) {
+            return route('vendor.hospital-bill.view', $invoiceId);
+        }
+        if (hasPermission('billing', 'view')) {
+            return route('vendor.invoice.view-invoice', $invoiceId);
+        }
+        return null;
+    }
+
     public function searchInventory(Request $request)
     {
         $store_id = Helpers::get_store_id();
@@ -38,6 +106,9 @@ class HospitalBillController extends Controller
 
     public function createForIPD($admissionId)
     {
+        // So the permission exists to be granted before anyone opens the role editor.
+        self::ensurePermission();
+
         $store_id  = Helpers::get_store_id();
         $admission = IpdAdmission::where('store_id', $store_id)
             ->with(['patient', 'ward', 'bed', 'doctorProfile.employee'])
@@ -131,6 +202,9 @@ class HospitalBillController extends Controller
 
     public function createForOPD($visitId)
     {
+        // So the permission exists to be granted before anyone opens the role editor.
+        self::ensurePermission();
+
         $store_id = Helpers::get_store_id();
         $visit    = OpdVisit::where('store_id', $store_id)
             ->with(['patient', 'doctorProfile.employee'])
@@ -375,7 +449,7 @@ class HospitalBillController extends Controller
                         'mode'       => $pmt->payment_mode ?: 'Cash',
                         'status'     => $pmt->balance_after <= 0 ? 'Paid' : 'Partial',
                         'billed_by'  => 'Desk',
-                        'pdf_url'    => $pmt->pdf ? asset('storage/app/public/receipt/' . $pmt->pdf) : route('vendor.invoice.view-invoice', $inv->id),
+                        'pdf_url'    => $pmt->pdf ? asset('storage/app/public/receipt/' . $pmt->pdf) : self::billUrl($inv->id),
                     ];
                 }
             } else {
@@ -387,10 +461,13 @@ class HospitalBillController extends Controller
                     'amount'     => (float) $inv->total_amount,
                     'paid'       => $inv->payment_status === 'Paid' ? (float) $inv->total_amount : 0.0,
                     'due'        => $inv->payment_status === 'Paid' ? 0.0 : (float) $inv->total_amount,
-                    'mode'       => $inv->payment_method ?: 'Cash',
+                    // This branch is the no-payments-recorded case, so there is no payment mode to
+                    // report. The invoice carries payment_method from the moment it is raised, and
+                    // printing it here badged a wholly unpaid bill as "Cash".
+                    'mode'       => $inv->payment_status === 'Paid' ? ($inv->payment_method ?: 'Cash') : null,
                     'status'     => $inv->payment_status ?: 'Unpaid',
                     'billed_by'  => 'Desk',
-                    'pdf_url'    => route('vendor.invoice.view-invoice', $inv->id),
+                    'pdf_url'    => self::billUrl($inv->id),
                 ];
             }
         }
@@ -663,6 +740,28 @@ class HospitalBillController extends Controller
             }
         }
 
-        return redirect(route('vendor.invoice.view-invoice', $invoice->id));
+        // Whichever bill screen this role can actually open. Sending a biller to one they cannot
+        // ended a successful bill on "Access denied" and bounced them back to the blank form, with
+        // the bill and its receipt already saved and nothing on screen saying so.
+        if (hasPermission('hospital_bill', 'view')) {
+            return redirect(route('vendor.hospital-bill.view', $invoice->id));
+        }
+        if (hasPermission('billing', 'view')) {
+            return redirect(route('vendor.invoice.view-invoice', $invoice->id));
+        }
+
+        Toastr::success('Bill ' . $invoice->invoice_id . ' raised'
+            . ($paidAmt > 0 ? ' — ' . _price($paidAmt) . ' received.' : '.'));
+
+        // Back to whatever the bill was raised from, which they demonstrably can open.
+        $contextId = (int) $request->input('context_id');
+        if ($contextId && $request->input('context') === 'opd') {
+            return redirect(route('vendor.opd.show', $contextId));
+        }
+        if ($contextId && $request->input('context') === 'ipd') {
+            return redirect(route('vendor.ipd.show', $contextId));
+        }
+
+        return redirect(route('vendor.patient.show', $patient->id));
     }
 }

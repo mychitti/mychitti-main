@@ -323,18 +323,14 @@ class DentalIntakeController extends Controller
                 return redirect()->route('vendor.patient.show', $patient->id);
             }
 
-            $visitDate = now()->toDateString();
-            $nextToken = (OpdVisit::where('store_id', $storeId)
-                ->whereDate('visit_date', $visitDate)
-                ->max('token_number') ?? 0) + 1;
-
-            $visit = OpdVisit::create([
+            $visitDate  = now()->toDateString();
+            $attributes = [
                 'store_id'          => $storeId,
                 'patient_id'        => $patient->id,
                 'doctor_profile_id' => $doctorProfileId,
                 'visit_date'        => $visitDate,
                 'visit_time'        => now()->format('H:i'),
-                'token_number'      => $nextToken,
+                'token_number'      => OpdVisit::nextToken($storeId, $visitDate),
                 'visit_type'        => 'new',
                 // Stored as a comma-separated term list, the same shape the OPD screens use, and
                 // anything typed here joins the store's complaint list for next time.
@@ -344,7 +340,21 @@ class DentalIntakeController extends Controller
                 'custom_info'       => json_encode($rows),
                 'recorded_by'       => $userId,
                 'status'            => 'visited',
-            ]);
+            ];
+
+            // The token is the tail of today's queue, not something anybody typed, so a desk that
+            // got there first just means the next number along. Two tries, because the second read
+            // is taken after the collision and the third would be a queue nobody is standing in.
+            try {
+                $visit = OpdVisit::create($attributes);
+            } catch (\Throwable $e) {
+                if (!OpdVisit::isTokenCollision($e)) {
+                    throw $e;
+                }
+
+                $attributes['token_number'] = OpdVisit::nextToken($storeId, $visitDate);
+                $visit = OpdVisit::create($attributes);
+            }
 
             DB::commit();
 

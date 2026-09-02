@@ -42,6 +42,18 @@ Route::group(['prefix' => 'lab', 'as' => 'lab.'], function () {
 
     // Test History
     Route::get('history', [LabController::class, 'history'])->name('history')->middleware('permission:lab_history,view');
+    Route::get('history/export', [LabController::class, 'historyExport'])->name('history.export')->middleware('permission:lab_history,view');
+
+    // The lab's own day, in and out: a batch of orders raised from a list, an analyser's values
+    // read back against the samples that produced them. Exports are gated on view, imports on the
+    // permission that already governs doing the same thing by hand — ordering a test, entering a
+    // result — because a file should not be a way round a permission.
+    Route::get('worklist/export',   [LabController::class, 'worklistExport'])->name('worklist.export')->middleware('permission:lab_worklist,view');
+    Route::get('orders/template',   [LabController::class, 'ordersTemplate'])->name('orders.template')->middleware('permission:lab_order,view');
+    Route::post('orders/import',    [LabController::class, 'ordersImport'])->name('orders.import')->middleware('permission:lab_order,add');
+    Route::get('results/export',    [LabController::class, 'resultsExport'])->name('results.export')->middleware('permission:lab_result,view');
+    Route::get('results/template',  [LabController::class, 'resultsTemplate'])->name('results.template')->middleware('permission:lab_result,view');
+    Route::post('results/import',   [LabController::class, 'resultsImport'])->name('results.import')->middleware('permission:lab_result,edit');
 
     // Billing
     Route::get('billing',              [LabController::class, 'billing'])->name('billing')->middleware('permission:lab_billing,view');
@@ -50,6 +62,12 @@ Route::group(['prefix' => 'lab', 'as' => 'lab.'], function () {
 
     // Test Catalog (management)
     Route::get('catalog',              [LabController::class, 'catalog'])->name('catalog')->middleware('permission:lab_catalog,view');
+    // Bulk load and bulk read-back of the test catalog. Export and template are gated on view —
+    // reading out what you already have is not a change — while the import writes and is gated
+    // on add, the same permission as creating a test by hand.
+    Route::get('catalog/export',       [LabController::class, 'catalogExport'])->name('catalog.export')->middleware('permission:lab_catalog,view');
+    Route::get('catalog/template',     [LabController::class, 'catalogTemplate'])->name('catalog.template')->middleware('permission:lab_catalog,view');
+    Route::post('catalog/import',      [LabController::class, 'catalogImport'])->name('catalog.import')->middleware('permission:lab_catalog,add');
     Route::get('catalog/create',       [LabController::class, 'testForm'])->name('catalog.create')->middleware('permission:lab_catalog,add');
     Route::post('catalog/store',       [LabController::class, 'saveTest'])->name('catalog.store')->middleware('permission:lab_catalog,add');
     Route::get('catalog/{id}/edit',    [LabController::class, 'testForm'])->name('catalog.edit')->middleware('permission:lab_catalog,edit');

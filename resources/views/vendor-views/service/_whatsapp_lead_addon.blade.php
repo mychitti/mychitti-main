@@ -35,6 +35,7 @@
                 @if ($f['paid_active'])
                     <div class="text-muted mt-2" style="font-size:12px;">Paid until <b>{{ $f['active_until'] }}</b></div>
                     <div class="d-flex mt-2" style="gap:8px;">
+                        @if (hasPermission('whatsapp_billing', 'pay'))
                         <form method="post" action="{{ route('vendor.whatsapp.features.toggle') }}">
                             @csrf
                             <input type="hidden" name="feature" value="{{ $key }}">
@@ -42,11 +43,14 @@
                                 {{ $f['enabled'] ? 'Pause' : 'Resume' }}
                             </button>
                         </form>
+                        @endif
+                        @if (hasPermission('whatsapp_billing', 'pay'))
                         <form method="post" action="{{ route('vendor.whatsapp.features.subscribe') }}">
                             @csrf
                             <input type="hidden" name="feature" value="{{ $key }}">
                             <button class="btn btn-sm btn-outline-primary">Renew (+1 month)</button>
                         </form>
+                        @endif
                     </div>
                 @else
                     @if ($f['subscribed'])
@@ -54,6 +58,7 @@
                             Expired on <b>{{ $f['active_until'] }}</b> — you are not receiving these alerts.
                         </div>
                     @endif
+                    @if (hasPermission('whatsapp_billing', 'pay'))
                     <form method="post" action="{{ route('vendor.whatsapp.features.subscribe') }}" class="mt-2"
                           onsubmit="return confirm('Subscribe to {{ $f['meta']['label'] }} for {{ _price($f['meta']['price']) }} from your wallet?');">
                         @csrf
@@ -62,6 +67,7 @@
                             {{ $f['subscribed'] ? 'Reactivate' : 'Subscribe' }} — {{ _price($f['meta']['price']) }}/mo
                         </button>
                     </form>
+                    @endif
                 @endif
 
                 {{-- Monthly wallet deduction. Shown for any store that has ever subscribed,
@@ -82,6 +88,7 @@
                                 @endif
                             </div>
                         </div>
+                        @if (hasPermission('whatsapp_billing', 'pay'))
                         <form method="post" action="{{ route('vendor.whatsapp.features.auto-renew') }}"
                               onsubmit="return confirm('{{ $f['auto_renew']
                                     ? 'Turn off auto-renew? This add-on will stop when the current month ends.'
@@ -93,6 +100,7 @@
                                 {{ $f['auto_renew'] ? 'Turn off' : 'Turn on' }}
                             </button>
                         </form>
+                        @endif
                     </div>
                 @endif
             </div>

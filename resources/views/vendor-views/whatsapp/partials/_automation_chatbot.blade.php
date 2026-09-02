@@ -36,9 +36,9 @@
                             </div>
                             <div class="wc-sub mt-1">
                                 Incoming messages go straight to your team in the
-                                <a href="{{ route('vendor.whatsapp.inbox') }}">Inbox</a> — nothing is answered
+                                @if (hasAnyModulePermission(['whatsapp_inbox']))<a href="{{ route('vendor.whatsapp.inbox') }}">Inbox</a>@else<b>Inbox</b>@endif — nothing is answered
                                 automatically. Move to <b>AI Agent Starter</b> or <b>Pro</b> on
-                                <a href="{{ route('vendor.whatsapp.billing') }}">Plan &amp; Billing</a> to switch it on.
+                                @if (hasAnyModulePermission(['whatsapp_billing']))<a href="{{ route('vendor.whatsapp.billing') }}">Plan &amp; Billing</a>@else<b>Plan &amp; Billing</b>@endif to switch it on.
                             </div>
                         </div>
                     </div>
@@ -64,6 +64,7 @@
                         </div>
                     </div>
                 @else
+                    @if (hasPermission('whatsapp_automation', 'edit'))
                     <form action="{{ route('vendor.whatsapp.bot.shares') }}" method="post">
                         @csrf
                         @foreach ($shareItems as $key => $meta)
@@ -87,6 +88,7 @@
                             <i class="tio-save"></i> Save settings
                         </button>
                     </form>
+                    @endif
                 @endif
             </div>
         </div>

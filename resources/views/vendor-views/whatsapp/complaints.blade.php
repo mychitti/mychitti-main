@@ -51,6 +51,7 @@
             </div>
         </div>
 
+        @if (hasPermission('whatsapp_complaints', 'list'))
         <div class="wa-card">
             <div class="wa-card-h">
                 <ul class="nav wa-tabs" style="border:0;">
@@ -101,7 +102,7 @@
                                     </td>
                                     <td style="max-width:520px; white-space:normal;">{{ $c->issue }}</td>
                                     <td class="text-right text-nowrap">
-                                        @if ($c->status === 'open')
+                                        @if ($c->status === 'open' && hasPermission('whatsapp_complaints', 'status_change'))
                                             <form method="post" class="d-inline"
                                                   action="{{ route('vendor.whatsapp.complaints.resolve', $c->id) }}">
                                                 @csrf
@@ -109,6 +110,8 @@
                                                     {{ translate('Mark resolved') }}
                                                 </button>
                                             </form>
+                                        @elseif ($c->status === 'open')
+                                            <span class="wa-chip badge-soft-warning">{{ translate('Open') }}</span>
                                         @else
                                             <span class="wa-chip badge-soft-success">{{ translate('Resolved') }}</span>
                                         @endif
@@ -121,5 +124,17 @@
                 <div class="px-3 py-2">{!! $complaints->links() !!}</div>
             @endif
         </div>
+        @else
+            {{-- Reachable on `status_change` alone, which acts on rows this role cannot be shown. --}}
+            <div class="wa-card">
+                <div class="wa-card-b">
+                    <div class="wa-empty">
+                        <i class="tio-lock-outlined"></i>
+                        <div class="wa-empty-t">{{ translate('Nothing to show here') }}</div>
+                        <div class="wa-empty-s">{{ translate('Your role cannot view the complaints list.') }}</div>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 @endsection

@@ -459,8 +459,14 @@
 
                 {{-- Patient info --}}
                 <div class="appt-card__patient">
-                    @if($isAcceptedReq)
+                    {{-- Name is shown before acceptance as well. A clinic decides whether to take
+                         a booking by who it is for, and there is nothing private in the name that
+                         the request itself does not already carry. Phone number and the medical
+                         record stay behind acceptance. --}}
+                    @if($hPatientName && $hPatientName !== '—')
                         <div><i class="tio-user text-muted"></i>&nbsp;<strong>{{ $hPatientName }}</strong></div>
+                    @endif
+                    @if($isAcceptedReq)
                         @if($hPatientPhone && $hPatientPhone !== '—')
                             <div><i class="tio-call text-muted"></i>&nbsp;{{ $hPatientPhone }}</div>
                         @endif
@@ -490,7 +496,7 @@
                         @endif
                     @else
                         <div class="appt-card__patient-locked">
-                            <i class="tio-lock-outlined"></i> Accept to view patient details
+                            <i class="tio-lock-outlined"></i> Accept to view contact &amp; medical details
                         </div>
                     @endif
                 </div>

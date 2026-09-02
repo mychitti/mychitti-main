@@ -97,6 +97,87 @@ class OpdController extends Controller
         \App\Models\OpdClinicalTerm::ensureSchema();
         \App\Models\OpdTermCatalogue::ensureTable();
         \App\Models\OpdOpType::ensureSchema();
+
+        $this->ensureTokenIndex();
+    }
+
+    /**
+     * One token per hospital per day, enforced by the database.
+     *
+     * The registration form posts the number it was rendered with, so a double-clicked Save and
+     * two desks registering at the same moment both send a number that has already gone out. The
+     * check in store() catches what it can see; this index settles the gap between that check and
+     * the insert, which no amount of application code can close on its own.
+     *
+     * A register that already carries a duplicate is left alone and logged: renumbering a token a
+     * patient is holding a printed slip for is a decision for the hospital, not for a page load.
+     */
+    private function ensureTokenIndex(): void
+    {
+        if (!Schema::hasTable('opd_visits') || !Schema::hasColumn('opd_visits', 'token_number')) {
+            return;
+        }
+
+        try {
+            $exists = collect(DB::select("SHOW INDEX FROM `opd_visits`"))
+                ->contains(fn($i) => $i->Key_name === OpdVisit::TOKEN_INDEX);
+
+            if ($exists) {
+                return;
+            }
+
+            // Looking for duplicates is a full pass over the register, and while the table is dirty
+            // that would happen on every page load. The verdict is held for an hour instead — once
+            // the offending rows are cleared, the index goes on at the first load after it lapses.
+            $blocked = \Illuminate\Support\Facades\Cache::remember('opd_token_index_blocked', 3600, function () {
+                $duplicate = DB::table('opd_visits')
+                    ->selectRaw('store_id, visit_date, token_number')
+                    ->whereNotNull('token_number')
+                    ->groupBy('store_id', 'visit_date', 'token_number')
+                    ->havingRaw('COUNT(*) > 1')
+                    ->limit(1)
+                    ->first();
+
+                if ($duplicate) {
+                    \Illuminate\Support\Facades\Log::warning(
+                        'OPD token unique index not added — opd_visits already carries duplicate (store, date, token) rows. '
+                        . 'Clear them and the index goes on at the next register load.',
+                        ['example' => (array) $duplicate]
+                    );
+                }
+
+                return $duplicate ? true : null;
+            });
+
+            if ($blocked) {
+                return;
+            }
+
+            DB::statement("ALTER TABLE `opd_visits`
+                ADD UNIQUE KEY `" . OpdVisit::TOKEN_INDEX . "` (`store_id`, `visit_date`, `token_number`)");
+        } catch (\Throwable $e) {
+            // Never let this stop the register from opening — the check in store() still stands.
+            \Illuminate\Support\Facades\Log::warning('OPD token unique index could not be added: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Hand a refused token back to the desk with the day's next free number already in the form.
+     *
+     * Everything else they typed comes back with it — a rejected token is a two-second correction,
+     * not a reason to retype a registration.
+     */
+    private function rejectToken(Request $request, $storeId, $visitDate, int $token, string $why)
+    {
+        $free    = OpdVisit::nextToken($storeId, $visitDate);
+        $message = 'Token ' . $token . ' ' . $why . ' for ' . $visitDate
+            . '. The next free token is ' . $free . ' — check the form and save again.';
+
+        Toastr::error($message);
+
+        return back()
+            ->withInput(array_merge($request->except('token_number'), ['token_number' => $free]))
+            ->withErrors(['token_number' => $message]);
     }
 
     public function index(Request $request)
@@ -147,7 +228,12 @@ class OpdController extends Controller
             ->with(['patient', 'doctorProfile.employee'])
             ->orderByRaw("status = 'cancelled'")                // cancelled sink below everything
             ->orderByRaw('consultation_receipt_id IS NOT NULL') // fresh appointments first, completed (receipt generated) last
-            ->orderBy('token_number')
+            // Newest registration first. Token numbers restart every morning, so ordering on them
+            // interleaved the whole range — on "This year" every day's token 1 sorted together at
+            // the top. id breaks ties, because a batch of visits registered in the same second
+            // shares a created_at and would otherwise come back in no fixed order.
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->paginate(20);
 
         $doctors = $myScope ? collect() : DoctorProfile::where('store_id', $store_id)
@@ -217,9 +303,7 @@ class OpdController extends Controller
         $patients = Patient::where('store_id', $store_id)->where('status', 1)->orderBy('name')->get();
         $doctors  = DoctorProfile::where('store_id', $store_id)->with('employee')->get();
 
-        $nextToken = (OpdVisit::where('store_id', $store_id)
-            ->whereDate('visit_date', now()->toDateString())
-            ->max('token_number') ?? 0) + 1;
+        $nextToken = OpdVisit::nextToken($store_id, now()->toDateString());
 
         $prefillPatient = $request->patient_id
             ? Patient::where('store_id', $store_id)->find($request->patient_id)
@@ -425,6 +509,23 @@ class OpdController extends Controller
             'notes'            => 'nullable|string',
         ]);
 
+        // Settled before anything is provisioned downstream, so a refused token cannot leave an
+        // appointment behind for a visit that was never registered.
+        //
+        // The form posts the token it was rendered with, which stops being the truth the moment
+        // anyone else registers a patient — a double-clicked Save sends the same number twice, and
+        // a form left open all morning sends one that went out hours ago. Both are refused.
+        $nextToken   = OpdVisit::nextToken($store_id, $visitDate);
+        $tokenNumber = $request->filled('token_number') ? (int) $request->token_number : $nextToken;
+
+        if ($tokenNumber < 1) {
+            $tokenNumber = $nextToken;
+        }
+
+        if (OpdVisit::tokenTaken($store_id, $visitDate, $tokenNumber)) {
+            return $this->rejectToken($request, $store_id, $visitDate, $tokenNumber, 'has already been issued');
+        }
+
         // Link the visit to the appointment provisioned when the lead was confirmed, so the
         // appointment, its token and the OPD record stay one chain instead of three orphans.
         $appointmentId = $request->appointment_id ?: null;
@@ -436,11 +537,7 @@ class OpdController extends Controller
             }
         }
 
-        $nextToken = (OpdVisit::where('store_id', $store_id)
-            ->whereDate('visit_date', $visitDate)
-            ->max('token_number') ?? 0) + 1;
-
-        $visit = OpdVisit::create([
+        $attributes = [
             'store_id'            => $store_id,
             'patient_id'          => $patientId,
             'doctor_profile_id'   => $doctorProfileId,
@@ -450,7 +547,7 @@ class OpdController extends Controller
             // A booked visit is registered when the patient reaches the desk, so "now" is the
             // honest answer there too — the booked slot time lives on the appointment, not here.
             'visit_time'          => $request->visit_time ?: now()->format('H:i'),
-            'token_number'        => $request->token_number ?? $nextToken,
+            'token_number'        => $tokenNumber,
             'chief_complaint'     => \App\Models\OpdClinicalTerm::absorb($store_id, \App\Models\OpdClinicalTerm::TYPE_COMPLAINT, $request->chief_complaint),
             'op_type'             => $request->op_type ?: null,
             'bp_systolic'         => $request->bp_systolic,
@@ -464,7 +561,19 @@ class OpdController extends Controller
             'notes'               => $request->notes,
             'recorded_by'         => auth('vendor_employee')->id() ?? auth('vendor')->id(),
             'status'              => 'visited',
-        ]);
+        ];
+
+        try {
+            $visit = OpdVisit::create($attributes);
+        } catch (\Throwable $e) {
+            // Another desk took the number between the check above and this insert. Nothing was
+            // written, so the desk gets the same correction as the ordinary duplicate.
+            if (!OpdVisit::isTokenCollision($e)) {
+                throw $e;
+            }
+
+            return $this->rejectToken($request, $store_id, $visitDate, $tokenNumber, 'was taken by another desk just now');
+        }
 
         // The patient's slip — token, doctor and a link to the visit. auto() is a no-op unless the
         // hospital has switched "Visit registered" on, and it dedupes on (store, kind, visit) so
@@ -489,7 +598,7 @@ class OpdController extends Controller
 
         \App\Models\HospitalActivityLog::record(
             $store_id, 'opd_visit', (int) $visit->id, 'created',
-            "OPD visit recorded for patient #{$patientId} with doctor #{$doctorProfileId} on {$visitDate} (token #{$nextToken})",
+            "OPD visit recorded for patient #{$patientId} with doctor #{$doctorProfileId} on {$visitDate} (token #{$visit->token_number})",
             ['patient_id' => $patientId, 'doctor_profile_id' => $doctorProfileId, 'visit_date' => $visitDate]
         );
 
@@ -903,10 +1012,7 @@ class OpdController extends Controller
         // Recalculate token for new visit date if date changes
         $tokenNumber = $visit->token_number;
         if ($newDate !== $visit->visit_date?->format('Y-m-d')) {
-            $lastToken = OpdVisit::where('store_id', $store_id)
-                ->whereDate('visit_date', $newDate)
-                ->max('token_number');
-            $tokenNumber = ($lastToken ?? 0) + 1;
+            $tokenNumber = OpdVisit::nextToken($store_id, $newDate);
         }
 
         $visit->visit_date   = $newDate;
@@ -915,7 +1021,19 @@ class OpdController extends Controller
         if ($request->filled('reason')) {
             $visit->notes = trim(($visit->notes ? $visit->notes . "\n" : '') . 'Rescheduled: ' . $request->reason);
         }
-        $visit->save();
+
+        // Nobody typed this number — it is the tail of the new day's queue. If a registration got
+        // there first, the answer is simply the next one along, not an error for the front desk.
+        try {
+            $visit->save();
+        } catch (\Throwable $e) {
+            if (!OpdVisit::isTokenCollision($e)) {
+                throw $e;
+            }
+
+            $visit->token_number = $tokenNumber = OpdVisit::nextToken($store_id, $newDate);
+            $visit->save();
+        }
 
         // Also reschedule associated Appointment if linked
         if ($visit->appointment_id) {
@@ -1076,10 +1194,13 @@ class OpdController extends Controller
             'treatment.*'     => 'string|max:150',
             'willing_treatment'   => 'nullable|array',
             'willing_treatment.*' => 'string|max:150',
+            'willing_notes'       => 'nullable|array',
+            'willing_notes.*'     => 'nullable|string|max:500',
             'treatment_plan'             => 'nullable|array',
             'treatment_plan.*.status'    => 'required|in:pending,upcoming,in_progress,completed',
             'treatment_plan.*.date'      => 'nullable|date',
             'treatment_plan.*.time'      => 'nullable|date_format:H:i',
+            'treatment_plan.*.note'      => 'nullable|string|max:500',
             'treatment_plan.*.amount'    => 'nullable|numeric|min:0|max:99999999',
             'treatment_plan.*.discount'  => 'nullable|numeric|min:0|max:99999999',
             'treatment_plan.*.paid'      => 'nullable|boolean',
@@ -1156,6 +1277,31 @@ class OpdController extends Controller
             }
         }
 
+        // What the patient actually said when they agreed — "upper left only", "wants it in two
+        // sittings", "after the exams". Held on the plan row rather than appended to the term,
+        // because the term is the key Billing, the schedule and the advised list are all looked
+        // up by: a note welded into it would stop matching the treatment it belongs to.
+        if ($request->has('willing_notes')) {
+            $keep = collect($visit->treatment_list)->merge($visit->willing_treatment_list)->unique()->values()->all();
+            $plan = collect($visit->treatment_plan_map);
+
+            foreach ($request->input('willing_notes', []) as $term => $note) {
+                if (!in_array($term, $keep, true)) {
+                    continue;
+                }
+
+                $row  = (array) ($plan[$term] ?? []);
+                $note = trim((string) $note);
+                // Cleared rather than blanked, so an emptied box leaves no note behind.
+                $row['note'] = $note !== '' ? $note : null;
+                $plan[$term] = $row;
+            }
+
+            $plan = $plan->only($keep);
+            $visit->treatment_plan   = $plan->isEmpty() ? null : json_encode($plan->all());
+            $saved['treatment_plan'] = $plan->all();
+        }
+
         // Vitals, edited in place on the Details tab. Sent only when that card is saved, and a
         // box left empty means "not recorded" rather than "leave as it was" — so an emptied
         // field clears the column instead of keeping a reading the nurse just deleted.
@@ -1211,6 +1357,12 @@ class OpdController extends Controller
                         ? (bool) $row['paid']
                         : (bool) ($existing['paid'] ?? false),
                     'appointment_id' => $appointmentId,
+                    // Editable from the Willing Treatment editor and from the schedule menu, so
+                    // an absent key means "leave alone" here too — only a sent one rewrites it,
+                    // and a sent-but-empty one clears it.
+                    'note'           => array_key_exists('note', $row)
+                        ? (trim((string) $row['note']) ?: null)
+                        : ($existing['note'] ?? null),
                 ];
 
                 // Whatever this hospital charged for the treatment becomes what it is offered

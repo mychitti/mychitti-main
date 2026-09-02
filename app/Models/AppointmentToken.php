@@ -13,15 +13,23 @@ class AppointmentToken extends Model
     ];
 
     /**
-     * Next queue number for a doctor on a given day.
+     * Next queue number for the store on a given day. The queue is shared across every
+     * doctor in the store, so two patients seeing different doctors never hold the same
+     * token. doctor_profile_id is still recorded, but only as metadata.
      */
     public static function issue(int $doctorProfileId, string $date, int $appointmentId): int
     {
-        $last = static::where('doctor_profile_id', $doctorProfileId)
-            ->where('token_date', $date)
-            ->max('token_number');
+        $storeId = Appointment::where('id', $appointmentId)->value('store_id');
 
-        $tokenNumber = ($last ?? 0) + 1;
+        $query = static::where('token_date', $date);
+
+        // Without a store we cannot scope the queue, so fall back to the day's global max —
+        // a higher number is harmless, a duplicate is not.
+        if ($storeId) {
+            $query->whereHas('appointment', fn ($q) => $q->where('store_id', $storeId));
+        }
+
+        $tokenNumber = ($query->max('token_number') ?? 0) + 1;
 
         static::create([
             'appointment_id'    => $appointmentId,

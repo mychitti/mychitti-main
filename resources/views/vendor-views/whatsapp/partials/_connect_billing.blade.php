@@ -154,12 +154,14 @@
                     <div class="wb-sub mt-1">
                         + {{ $pricing['gst'] }}% GST — <b style="color:var(--wb-ink-2);">{{ _price($pricing['setup_total']) }}</b> to pay
                     </div>
+                    @if (hasPermission('whatsapp_billing', 'pay'))
                     <form action="{{ route('vendor.whatsapp.billing.subscribe') }}" method="post" class="mb-0 mt-3">
                         @csrf
                         <button type="submit" class="btn btn--primary" style="font-weight:650;font-size:13px;">
                             <i class="tio-shopping-cart"></i> Pay {{ _price($pricing['setup_total']) }} now
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
         @endif
@@ -232,6 +234,7 @@
                                         <i class="tio-lock-outlined"></i> Available after the onboarding fee
                                     </div>
                                 @else
+                                    @if (hasPermission('whatsapp_billing', 'pay'))
                                     <form action="{{ $planAction }}" method="post"
                                           class="mb-0 mt-3 wb-mandate-form"
                                           data-label="WhatsApp {{ $plan['label'] }}">
@@ -251,6 +254,7 @@
                                         </button>
                                         <div class="wb-mandate-status wb-sub mt-2" style="display:none;"></div>
                                     </form>
+                                    @endif
                                 @endif
                             </div>
                         </div>
@@ -311,6 +315,7 @@
                             </span>
                             <span>
                                 @if ($subscription && $subscription->status !== 'cancelled')
+                                    @if (hasPermission('whatsapp_billing', 'pay'))
                                     <form action="{{ route('vendor.whatsapp.billing.account-manager') }}" method="post" class="d-inline mb-0">
                                         @csrf
                                         <input type="hidden" name="enable" value="{{ $subscription->account_manager ? 0 : 1 }}">
@@ -318,6 +323,7 @@
                                             {{ $subscription->account_manager ? 'Remove' : 'Add' }}
                                         </button>
                                     </form>
+                                    @endif
                                 @else
                                     <span class="wb-sub">Not available</span>
                                 @endif
@@ -331,6 +337,7 @@
                         @endif
 
                         @if ($subscription && $subscription->status !== 'cancelled' && $subscription->status !== 'templates_only')
+                            @if (hasPermission('whatsapp_billing', 'pay'))
                             <form action="{{ route('vendor.whatsapp.billing.cancel') }}" method="post" class="mt-3 mb-0"
                                   onsubmit="return confirm('Stop auto-renewal? WhatsApp stays active until the end of the period you have paid for.');">
                                 @csrf
@@ -342,6 +349,7 @@
                                         ? \Carbon\Carbon::parse($subscription->current_period_end)->format('d M Y') : 'the end of the paid period' }}.
                                 </span>
                             </form>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -368,6 +376,7 @@
                             <b>{{ _price($pricing['template_total']) }}</b>
                             ({{ _price($pricing['template_slot']) }} + {{ $pricing['gst'] }}% GST), yours to keep.
                         </p>
+                        @if (hasPermission('whatsapp_billing', 'pay'))
                         <form action="{{ route('vendor.whatsapp.billing.template-slot') }}" method="post"
                               class="wb-buy mb-0" id="wb-tpl-form"
                               data-unit="{{ $pricing['template_total'] }}"
@@ -381,6 +390,7 @@
                                 — <span id="wb-tpl-total">{{ _price($pricing['template_total']) }}</span>
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -414,7 +424,7 @@
                                 </div>
                                 <div class="wb-sub mt-2" style="max-width:320px;margin:0 auto;">
                                     Incoming messages go straight to your team in the
-                                    <a href="{{ route('vendor.whatsapp.inbox') }}">Inbox</a>. Move to
+                                    @if (hasAnyModulePermission(['whatsapp_inbox']))<a href="{{ route('vendor.whatsapp.inbox') }}">Inbox</a>@else<b>Inbox</b>@endif. Move to
                                     <b>AI Agent Starter</b> or <b>Pro</b> above to switch a chatbot on.
                                 </div>
                             </div>
@@ -444,6 +454,7 @@
                                         <span>Top-up <b>{{ number_format(max(0, $t['topup'] - $t['topup_used'])) }}</b></span>
                                     </div>
 
+                                    @if (hasPermission('whatsapp_billing', 'pay'))
                                     <form action="{{ route('vendor.whatsapp.billing.tokens') }}" method="post" class="wb-buy mb-0">
                                         @csrf
                                         <input type="hidden" name="direction" value="{{ $dir }}">
@@ -452,6 +463,7 @@
                                             <i class="tio-add-circle"></i> Top up × 1M — {{ _price($meta['rate']) }}
                                         </button>
                                     </form>
+                                    @endif
                                 </div>
                             @endforeach
 

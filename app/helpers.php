@@ -3361,9 +3361,14 @@ function _offeredModule($submoduleKey)
 function fetchInvoices($model, $invoiceType, $paymentStatus, $operator = null, $date = null, $statusLabel = null, $startOfMonth = null, $endOfMonth = null, $search = null)
 {
     // prx($startOfMonth);
+    // Anything not settled belongs in the Unpaid bucket. 'Partially Paid' was briefly written onto
+    // part-paid bills, and matching the column exactly dropped those rows out of every filter on
+    // the billing screen — the bill simply vanished once a payment was taken against it.
+    $statuses = $paymentStatus === 'Unpaid' ? ['Unpaid', 'Partially Paid'] : [$paymentStatus];
+
     $query = $model::with(['websiteUser', 'storeCustomer'])
         ->where('vendor_id', Helpers::get_store_id())
-        ->where('payment_status', $paymentStatus);
+        ->whereIn('payment_status', $statuses);
     // ->where('invoice_id', 'SER_2'); 
 
     if ($search) {
@@ -4963,6 +4968,10 @@ if (!function_exists('permission_action_label')) {
             'case' => 'Surgical Details', 'checklist' => 'Checklists', 'med' => 'Pre-Op Medicines',
             'consent' => 'Consent', 'clearance' => 'Clearances', 'anaesthesia' => 'Anaesthesia Eval',
             'blood' => 'Blood Bank',
+            // WhatsApp. This map is platform-wide, so these avoid 'send' — Radiology already owns
+            // that one as "Send Report", and a shared name would mislabel one module or the other.
+            'reply' => 'Reply', 'forward' => 'Forward',
+            'broadcast' => 'Send Broadcast', 'send_note' => 'Send Note',
         ];
 
         return $labels[$action] ?? ucfirst(str_replace('_', ' ', $action));

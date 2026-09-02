@@ -12,6 +12,10 @@
                     <input class="fi" type="date" name="date" value="{{ request('date') }}" style="width:150px">
                     <input class="fi" name="search" value="{{ request('search') }}" placeholder="Patient / sample" style="width:170px">
                     <button class="btn btn-outline btn-sm">Filter</button>
+                    {{-- Exports what the filter is showing, not the whole register: the figures a
+                         lab is asked for are always "this month", "this doctor", "this patient". --}}
+                    <a href="{{ route('vendor.lab.history.export', request()->only('date', 'search')) }}"
+                       class="btn btn-outline btn-sm">⬇ Export</a>
                 </form>
             </div>
             <div class="tbl-hd" style="{{ $cols }}"><div>Sample ID</div><div>Patient</div><div>Tests</div><div>Result</div><div>Date</div><div>Status</div><div>Report</div></div>

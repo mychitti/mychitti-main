@@ -172,7 +172,13 @@
             </div>
         </div>
         @endif
-        @if(vendorPlanHasModule('billing'))
+        {{-- Not behind vendorPlanHasModule(): basic billing is free for every store. The billing
+             route group carries no planwise guard, and list / view / add_basic / edit / delete /
+             pay / settings are all flagged free on feature_permissions. Gating this checkbox on
+             the Advanced Billing subscription meant an owner could raise invoices themselves but
+             had no way to let a receptionist do it. Granting a paid row (add_advanced,
+             reminder_update) from here still buys nothing — hasPermission() re-checks the plan for
+             anything not marked free. --}}
         <div class="check-item">
             <div class="form-group form-check form--check">
                 <input type="checkbox" name="modules[]" value="billing"
@@ -180,7 +186,6 @@
                 <label class="form-check-label  " for="billing">Billing</label>
             </div>
         </div>
-        @endif
         @if (vendorPlanHasModule('hospital_manage'))
         <div class="check-item">
             <div class="form-group form-check form--check">
@@ -212,6 +217,15 @@
                 <input type="checkbox" name="modules[]" value="my_business"
                     class="form-check-input granular_permission_check" id="my_business">
                 <label class="form-check-label input-label " for="my_business">My Business</label>
+            </div>
+        </div>
+        {{-- Not behind vendorPlanHasModule(): WhatsApp is open to every store and bills through
+             its own plan, like My Business above. --}}
+        <div class="check-item">
+            <div class="form-group form-check form--check">
+                <input type="checkbox" name="modules[]" value="whatsapp"
+                    class="form-check-input granular_permission_check" id="whatsapp">
+                <label class="form-check-label input-label " for="whatsapp">WhatsApp</label>
             </div>
         </div>
 
@@ -293,7 +307,7 @@
                                         data-action="{{ $action }}" data-module="{{ $moduleName }}">
                                     <label class="form-check-label ml-1"
                                         for="col_{{ $moduleName }}_{{ $action }}">
-                                        {{ ucfirst($action) }}
+                                        {{ permission_action_label($action) }}
                                     </label>
                                 </div>
                             </th>

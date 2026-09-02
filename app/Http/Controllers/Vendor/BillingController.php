@@ -180,10 +180,14 @@ class BillingController extends Controller
         if ($search) {
           $query->where('invoice_id', 'like', "%{$search}%");
         } else {
+          // 'Partially Paid' was briefly written onto part-paid bills; anything not settled is
+          // outstanding, so it belongs in these two buckets rather than in neither.
+          $outstanding = ['Unpaid', 'Partially Paid'];
+
           if ($status === 'overdue') {
-            $query->where('payment_status', 'Unpaid')->where('created_at', '<', $today)->whereBetween('created_at', [$from, $to]);
+            $query->whereIn('payment_status', $outstanding)->where('created_at', '<', $today)->whereBetween('created_at', [$from, $to]);
           } elseif ($status === 'pending') {
-            $query->where('payment_status', 'Unpaid')->where('created_at', '>=', $today)->whereBetween('created_at', [$from, $to]);
+            $query->whereIn('payment_status', $outstanding)->where('created_at', '>=', $today)->whereBetween('created_at', [$from, $to]);
           } elseif ($status === 'credit') {
             $query->where('payment_status', 'Paid')->whereBetween('created_at', [$from, $to]);
           } else {

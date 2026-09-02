@@ -20,17 +20,21 @@
             <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
                 @if ($connected)
                     <span class="wa-chip badge-soft-success">Sending from your own number</span>
-                    <a href="{{ route('vendor.whatsapp.bulk') }}" class="btn btn-sm btn--primary">
-                        <i class="tio-send"></i> Send a message
-                    </a>
+                    @if (hasPermission('whatsapp_bulk', 'list'))
+                        <a href="{{ route('vendor.whatsapp.bulk') }}" class="btn btn-sm btn--primary">
+                            <i class="tio-send"></i> Send a message
+                        </a>
+                    @endif
                 @else
                     {{-- Not a capability, an unfinished setup: there is no sending at all until the
                          vendor connects their own number. The MyChitti number is ours, and only
                          ever carries our alerts TO them. --}}
                     <span class="wa-chip badge-soft-secondary">Number not connected</span>
-                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">
-                        <i class="tio-add-circle-outlined"></i> Connect number
-                    </a>
+                    @if (hasPermission('whatsapp_connection', 'list'))
+                        <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">
+                            <i class="tio-add-circle-outlined"></i> Connect number
+                        </a>
+                    @endif
                 @endif
             </div>
         </div>
@@ -48,7 +52,9 @@
                             send bills, reminders and campaigns under your own business name.
                         </div>
                     </div>
-                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary text-nowrap">Get started</a>
+                    @if (hasPermission('whatsapp_connection', 'list'))
+                        <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary text-nowrap">Get started</a>
+                    @endif
                 </div>
             </div>
         @endif

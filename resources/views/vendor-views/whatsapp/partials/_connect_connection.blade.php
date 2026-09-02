@@ -59,17 +59,25 @@
                             </div>
 
                             <div class="d-flex flex-wrap align-items-center mt-3" style="gap:8px;">
-                                <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-outline-primary btn-sm">
-                                    <i class="tio-receipt"></i> Message templates
-                                </a>
-                                <a href="{{ route('vendor.whatsapp.connect', ['tab' => 'billing']) }}" class="btn btn-outline-secondary btn-sm">
-                                    <i class="tio-wallet"></i> Plan &amp; billing
-                                </a>
-                                <form method="post" action="{{ route('vendor.whatsapp.disconnect') }}" class="mb-0 ml-auto"
-                                      onsubmit="return confirm('Disconnect WhatsApp? You will not be able to send anything to your customers until you connect a number again.')">
-                                    @csrf
-                                    <button class="btn btn-outline-danger btn-sm">Disconnect all numbers</button>
-                                </form>
+                                @if (hasAnyModulePermission(['whatsapp_templates']))
+                                    <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-outline-primary btn-sm">
+                                        <i class="tio-receipt"></i> Message templates
+                                    </a>
+                                @endif
+                                @if (hasAnyModulePermission(['whatsapp_billing']))
+                                    <a href="{{ route('vendor.whatsapp.connect', ['tab' => 'billing']) }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="tio-wallet"></i> Plan &amp; billing
+                                    </a>
+                                @endif
+                                {{-- Cutting the store off from its own customers is the single most
+                                     destructive thing on this screen, so it has its own permission. --}}
+                                @if (hasPermission('whatsapp_connection', 'delete'))
+                                    <form method="post" action="{{ route('vendor.whatsapp.disconnect') }}" class="mb-0 ml-auto"
+                                          onsubmit="return confirm('Disconnect WhatsApp? You will not be able to send anything to your customers until you connect a number again.')">
+                                        @csrf
+                                        <button class="btn btn-outline-danger btn-sm">Disconnect all numbers</button>
+                                    </form>
+                                @endif
                             </div>
                         @else
                             <p>Connect your business WhatsApp number to send invoices, reminders and updates to your customers directly from your own number.</p>
@@ -123,6 +131,7 @@
                                     </ol>
                                 </div>
 
+                                @if (hasPermission('whatsapp_connection', 'edit'))
                                 <form action="{{ route('vendor.whatsapp.connect.setup-fee') }}" method="post" class="mb-0">
                                     @csrf
                                     <button type="submit" class="btn btn-success btn-lg">
@@ -133,6 +142,11 @@
                                         The monthly plan is authorised separately — nothing recurring is set up by this step.
                                     </small>
                                 </form>
+                                @else
+                                    <div class="alert alert-info mb-0" style="font-size:13px;">
+                                        Onboarding has not been paid for yet. Ask the store owner to complete it.
+                                    </div>
+                                @endif
                             @else
                                 {{-- The fee is settled but the number isn't linked yet — say so, or
                                      the vendor has no way to tell the payment landed. --}}
@@ -148,10 +162,16 @@
                                         </span>
                                     </div>
                                 </div>
-                                <button id="wa-connect-btn" class="btn btn-success btn-lg">
-                                    <i class="tio-chat"></i> Connect WhatsApp
-                                </button>
-                                <div id="wa-status" class="mt-3 text-muted" style="display:none;"></div>
+                                @if (hasPermission('whatsapp_connection', 'edit'))
+                                    <button id="wa-connect-btn" class="btn btn-success btn-lg">
+                                        <i class="tio-chat"></i> Connect WhatsApp
+                                    </button>
+                                    <div id="wa-status" class="mt-3 text-muted" style="display:none;"></div>
+                                @else
+                                    <div class="alert alert-info mb-0" style="font-size:13px;">
+                                        The number is not linked yet. Ask the store owner to finish connecting it.
+                                    </div>
+                                @endif
                             @endif
                             <hr>
                             <small class="text-muted d-block">

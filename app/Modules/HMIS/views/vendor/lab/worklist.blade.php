@@ -24,6 +24,18 @@
                                     @endforeach
                                 </select>
                             </form>
+                            {{-- A lab's day arrives and leaves as files: a camp list of two hundred
+                                 people to order in one go, an analyser's values to read back against
+                                 the samples that produced them. Both live here, beside the button
+                                 that does the same job one patient at a time. --}}
+                            @if (hasPermission('lab_worklist', 'view'))
+                                <a href="{{ route('vendor.lab.worklist.export', request()->only('department', 'status', 'priority')) }}"
+                                   class="btn btn-outline btn-sm">⬇ Export</a>
+                            @endif
+                            @if (hasPermission('lab_order', 'add') || hasPermission('lab_result', 'edit'))
+                                <a href="javascript:void(0)" class="btn btn-outline btn-sm"
+                                   onclick="$('#labIoModal').modal('show')">⬆ Import</a>
+                            @endif
                             @if (hasPermission('lab_order', 'view'))<a href="{{ route('vendor.lab.order') }}" class="btn btn-primary btn-sm">+ Order Test</a>@endif
                         </div>
                     </div>
@@ -153,6 +165,79 @@
 
 @if (hasPermission('lab_worklist', 'edit'))
     @include('hmis::vendor.handover._modal', ['hoSubjectType' => 'lab_order'])
+@endif
+
+{{-- Two imports behind one button. They are opposite ends of the same day — orders in at the
+     start, values back at the end — and a lab looking for "import" should not have to know which
+     of two menu items it wants. --}}
+@if (hasPermission('lab_order', 'add') || hasPermission('lab_result', 'edit'))
+<div class="modal fade" id="labIoModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" style="font-size:15px;">Import into the laboratory</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                @if (session('lab_import_skipped'))
+                    <div class="alert alert-warning py-2 px-3" style="font-size:12px;">
+                        <b>Rows that needed attention</b>
+                        <ul class="mb-0 pl-3">
+                            @foreach (session('lab_import_skipped') as $line)
+                                <li>{{ $line }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @if (hasPermission('lab_order', 'add'))
+                <form method="post" action="{{ route('vendor.lab.orders.import') }}" enctype="multipart/form-data"
+                      class="border rounded p-3 mb-3">
+                    @csrf
+                    <h6 style="font-size:13.5px; font-weight:700;">Orders — raise a batch</h6>
+                    <p class="text-muted mb-2" style="font-size:12px;">
+                        One row per patient. A health camp or checkup list becomes one order each, with its own
+                        sample ID, landing in this worklist as Pending.
+                        <b>Patients are matched on UID and never created</b> — register anyone new first.
+                    </p>
+                    <div class="text-muted mb-2" style="font-size:11px;">
+                        Columns: {{ implode(' · ', \App\Modules\HMIS\Controllers\Vendor\LabController::ORDER_COLUMNS) }}
+                        — tests by code or name, comma-separated for several.
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                        <input type="file" name="file" class="form-control-file" accept=".xlsx,.xls,.csv" required style="font-size:12px;">
+                        <button type="submit" class="btn btn-primary btn-sm">Import orders</button>
+                        <a href="{{ route('vendor.lab.orders.template') }}" class="btn btn-outline btn-sm">Sample file</a>
+                    </div>
+                </form>
+                @endif
+
+                @if (hasPermission('lab_result', 'edit'))
+                <form method="post" action="{{ route('vendor.lab.results.import') }}" enctype="multipart/form-data"
+                      class="border rounded p-3">
+                    @csrf
+                    <h6 style="font-size:13.5px; font-weight:700;">Results — read values back</h6>
+                    <p class="text-muted mb-2" style="font-size:12px;">
+                        For samples already on this worklist. Each value is flagged against your own reference
+                        ranges as it comes in, criticals included — exactly as if it had been typed on the
+                        Result Entry screen. <b>Nothing is verified:</b> reports still need checking before they go out.
+                    </p>
+                    <div class="text-muted mb-2" style="font-size:11px;">
+                        Columns: {{ implode(' · ', \App\Modules\HMIS\Controllers\Vendor\LabController::RESULT_COLUMNS) }}
+                        — sample ID is the LAB-0000 number on the row.
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                        <input type="file" name="file" class="form-control-file" accept=".xlsx,.xls,.csv" required style="font-size:12px;">
+                        <button type="submit" class="btn btn-primary btn-sm">Import results</button>
+                        <a href="{{ route('vendor.lab.results.template') }}" class="btn btn-outline btn-sm">Sample file</a>
+                        <a href="{{ route('vendor.lab.results.export') }}" class="btn btn-outline btn-sm">Export pending sheet</a>
+                    </div>
+                </form>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
 @endif
 @endsection
 

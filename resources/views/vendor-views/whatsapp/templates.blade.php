@@ -35,7 +35,9 @@
                     </span>
                 @endif
                 <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-secondary"><i class="tio-refresh"></i> Refresh</a>
+@if (hasPermission('whatsapp_connection', 'list'))
                 <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn-outline-primary"><i class="tio-chat"></i> Connection</a>
+@endif
             </div>
         </div>
 
@@ -45,7 +47,9 @@
                     <i class="tio-receipt-outlined"></i>
                     <div class="wa-empty-t">Templates need a connected number</div>
                     <div class="wa-empty-s mb-3">Templates are approved against your own WhatsApp Business Account.</div>
+@if (hasPermission('whatsapp_connection', 'list'))
                     <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">Connect WhatsApp</a>
+@endif
                 </div>
             </div>
         @else
@@ -75,25 +79,29 @@
             {{-- Four distinct jobs — reviewing what exists, picking a ready-made one, writing a
                  new one, and clearing out old ones. Tabs keep each one whole. --}}
             <ul class="nav wa-tabs mb-3" role="tablist" style="background:#fff;border:1px solid var(--wa-line);border-radius:14px;">
-                <li class="nav-item">
-                    <a class="nav-link active" data-toggle="tab" href="#tplList" role="tab">
-                        <i class="tio-folder-outlined"></i> Your templates
-                        <span class="wa-chip badge-soft-secondary ml-1">{{ count($templates) }}</span>
-                    </a>
-                </li>
-                @if ($presets->isNotEmpty())
+                @if (hasPermission('whatsapp_templates', 'list'))
+                    <li class="nav-item">
+                        <a class="nav-link active" data-toggle="tab" href="#tplList" role="tab">
+                            <i class="tio-folder-outlined"></i> Your templates
+                            <span class="wa-chip badge-soft-secondary ml-1">{{ count($templates) }}</span>
+                        </a>
+                    </li>
+                @endif
+                @if ($presets->isNotEmpty() && hasPermission('whatsapp_templates', 'add'))
                     <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#tplPresets" role="tab">
                             <i class="tio-star-outlined"></i> Suggested
                         </a>
                     </li>
                 @endif
-                <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#tplCreate" role="tab">
-                        <i class="tio-add-circle-outlined"></i> Create new
-                    </a>
-                </li>
-                @if (!empty($trashed))
+                @if (hasPermission('whatsapp_templates', 'add'))
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#tplCreate" role="tab">
+                            <i class="tio-add-circle-outlined"></i> Create new
+                        </a>
+                    </li>
+                @endif
+                @if (!empty($trashed) && (hasPermission('whatsapp_templates', 'edit') || hasPermission('whatsapp_templates', 'delete')))
                     <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#tplTrash" role="tab">
                             <i class="tio-delete-outlined"></i> Trash
@@ -104,6 +112,7 @@
             </ul>
 
             <div class="tab-content">
+            @if (hasPermission('whatsapp_templates', 'list'))
             <div class="tab-pane fade show active" id="tplList" role="tabpanel">
                     <div class="wa-card">
                         @if ($templateError)
@@ -172,7 +181,7 @@
                                                             data-components="{{ json_encode($tpl['components'] ?? []) }}">
                                                         <i class="tio-visible-outlined"></i>
                                                     </button>
-                                                    @if ($editable)
+                                                    @if ($editable && hasPermission('whatsapp_templates', 'edit'))
                                                         <button type="button" class="btn btn-sm btn-outline-primary wa-tpl-edit"
                                                                 data-id="{{ $tpl['id'] ?? '' }}" data-name="{{ $tpl['name'] ?? '' }}"
                                                                 data-category="{{ $tpl['category'] ?? '' }}" data-body="{{ $bodyText }}"
@@ -181,6 +190,7 @@
                                                             <i class="tio-edit"></i>
                                                         </button>
                                                     @endif
+@if (hasPermission('whatsapp_templates', 'edit') || hasPermission('whatsapp_templates', 'delete'))
                                                     {{-- Two very different outcomes hide behind one
                                                          icon, so the choice is made explicitly. --}}
                                                     <button type="button" class="btn btn-sm btn-outline-danger wa-tpl-delete"
@@ -189,6 +199,7 @@
                                                             title="Delete">
                                                         <i class="tio-delete"></i>
                                                     </button>
+@endif
                                                 </td>
                                             </tr>
                                         @empty
@@ -207,9 +218,10 @@
                             </div>
                     </div>
             </div>
+            @endif
 
             {{-- ── Trash ─────────────────────────────────────────────── --}}
-            @if (!empty($trashed))
+            @if (!empty($trashed) && (hasPermission('whatsapp_templates', 'edit') || hasPermission('whatsapp_templates', 'delete')))
                     <div class="tab-pane fade" id="tplTrash" role="tabpanel">
                         <div class="wa-card">
                                 <div class="wa-card-b">
@@ -229,6 +241,7 @@
                                                             <small class="text-muted d-block">{{ $tpl['language'] ?? '' }} · {{ $tpl['category'] ?? '' }}</small>
                                                         </td>
                                                         <td class="text-right text-nowrap">
+@if (hasPermission('whatsapp_templates', 'edit'))
                                                             <form action="{{ route('vendor.whatsapp.templates.restore') }}" method="post" class="d-inline">
                                                                 @csrf
                                                                 <input type="hidden" name="name" value="{{ $tpl['name'] ?? '' }}">
@@ -237,6 +250,8 @@
                                                                     <i class="tio-refresh"></i> Restore
                                                                 </button>
                                                             </form>
+@endif
+@if (hasPermission('whatsapp_templates', 'delete'))
                                                             <form action="{{ route('vendor.whatsapp.templates.delete') }}" method="post" class="d-inline"
                                                                   onsubmit="return confirm('Permanently delete “{{ $tpl['name'] ?? '' }}” from Meta? This cannot be undone — recreating it means a fresh review.');">
                                                                 @csrf
@@ -246,6 +261,7 @@
                                                                     <i class="tio-delete"></i> Delete permanently
                                                                 </button>
                                                             </form>
+@endif
                                                         </td>
                                                     </tr>
                                                 @endforeach
@@ -258,7 +274,7 @@
             @endif
 
             {{-- ── Suggested presets ─────────────────────────────────── --}}
-            @if ($presets->isNotEmpty())
+            @if ($presets->isNotEmpty() && hasPermission('whatsapp_templates', 'add'))
                     <div class="tab-pane fade" id="tplPresets" role="tabpanel">
                         <div class="wa-card">
                             <div class="wa-card-h">Ready-made templates</div>
@@ -315,11 +331,13 @@
                                         @endif
 
                                         @if (!$preset->waba_status)
+                                            @if (hasPermission('whatsapp_templates', 'add'))
                                             <form action="{{ route('vendor.whatsapp.templates.use-preset') }}" method="post" class="mb-0 mt-2">
                                                 @csrf
                                                 <input type="hidden" name="preset_id" value="{{ $preset->id }}">
                                                 <button type="submit" class="btn btn-sm btn--primary btn-block">Use this template</button>
                                             </form>
+                                            @endif
                                         @elseif (!in_array($preset->waba_status, ['APPROVED', 'PENDING']))
                                             {{-- Meta refuses a second template of the same name while the refused
                                                  one still exists, so "use it again" is not offered — deleting the
@@ -339,6 +357,7 @@
                                             <small class="d-block mt-1 text-info" style="font-size:11px;">
                                                 <i class="tio-flash"></i> Once approved, reminders are sent automatically for your scheduled appointments.
                                             </small>
+                                            @if (hasPermission('whatsapp_templates', 'edit'))
                                             <form action="{{ route('vendor.whatsapp.templates.reminder-schedule') }}" method="post"
                                                   class="d-flex align-items-center flex-wrap mt-2" style="gap:6px;">
                                                 @csrf
@@ -352,6 +371,7 @@
                                                     Set 0 to turn off. Max 168 (7 days).
                                                 </small>
                                             </form>
+                                            @endif
                                         @endif
                                     </div>
                                     </div>
@@ -364,7 +384,8 @@
 
             {{-- ── Create ────────────────────────────────────────────── --}}
             @php $quotaFull = $quota['used'] >= $quota['allowance']; @endphp
-            <div class="tab-pane fade" id="tplCreate" role="tabpanel">
+            @if (hasPermission('whatsapp_templates', 'add'))
+            <div class="tab-pane fade {{ hasPermission('whatsapp_templates', 'list') ? '' : 'show active' }}" id="tplCreate" role="tabpanel">
                 <div class="row">
                 <div class="col-lg-8">
                     <div class="wa-card">
@@ -378,12 +399,14 @@
                                     {{ $quota['included'] }} come with your plan.
                                     To add another, either delete a template you no longer use, or buy an extra
                                     slot for {{ _price($quota['slot_fee']) }} one-time.
+@if (hasPermission('whatsapp_billing', 'pay'))
                                     <form action="{{ route('vendor.whatsapp.billing.template-slot') }}" method="post" class="mb-0 mt-2">
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn--primary">
                                             <i class="tio-add"></i> Buy a slot for {{ _price($quota['slot_fee']) }}
                                         </button>
                                     </form>
+@endif
                                 </div>
                             @else
                                 <div class="alert alert-info" style="font-size:13px;">
@@ -398,6 +421,7 @@
                                 </div>
                             @endif
 
+                            @if (hasPermission('whatsapp_templates', 'add'))
                             <form action="{{ route('vendor.whatsapp.templates.create') }}" method="post"
                                   enctype="multipart/form-data" @if ($quotaFull) style="opacity:.55;pointer-events:none;" aria-hidden="true" @endif>
                                 @csrf
@@ -491,7 +515,9 @@
                                         </button>
                                         <small class="text-muted d-block mt-1">
                                             One tap and the customer's answer lands in your
+@if (hasPermission('whatsapp_inbox', 'list'))
                                             <a href="{{ route('vendor.whatsapp.inbox') }}" target="_blank">Inbox</a>
+@endif
                                             as a reply — no typing, and it opens the 24-hour window so you can message
                                             them freely.
                                         </small>
@@ -542,6 +568,7 @@
                                 </button>
                                 </fieldset>
                             </form>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -565,7 +592,22 @@
                 </div>
                 </div>
             </div>
+            @endif
             </div>
+
+            @if (!hasPermission('whatsapp_templates', 'list') && !hasPermission('whatsapp_templates', 'add'))
+                {{-- Reachable on `edit` or `delete` alone, which only act on rows this role cannot
+                     be shown. Say so rather than rendering an empty page. --}}
+                <div class="wa-card">
+                    <div class="wa-card-b">
+                        <div class="wa-empty">
+                            <i class="tio-lock-outlined"></i>
+                            <div class="wa-empty-t">Nothing to show here</div>
+                            <div class="wa-empty-s">Your role cannot view the template list. Ask the owner for it.</div>
+                        </div>
+                    </div>
+                </div>
+            @endif
         @endif
     </div>
 
@@ -594,6 +636,7 @@
                                 </div>
                             </div>
                         </div>
+                        @if (hasPermission('whatsapp_templates', 'edit'))
                         <form action="{{ route('vendor.whatsapp.templates.trash') }}" method="post" class="mt-3 mb-0">
                             @csrf
                             <input type="hidden" name="name" class="wa-del-name">
@@ -602,6 +645,7 @@
                                 <i class="tio-delete-outlined"></i> Move to trash
                             </button>
                         </form>
+                        @endif
                     </div>
 
                     <div class="border rounded p-3">
@@ -615,6 +659,7 @@
                                 </div>
                             </div>
                         </div>
+                        @if (hasPermission('whatsapp_templates', 'delete'))
                         <form action="{{ route('vendor.whatsapp.templates.delete') }}" method="post" class="mt-2 mb-0"
                               onsubmit="return confirm('Permanently delete this template from Meta? This cannot be undone.');">
                             @csrf
@@ -624,6 +669,7 @@
                                 <i class="tio-delete"></i> Delete permanently
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -659,6 +705,7 @@
     <div class="modal fade" id="waTplEditModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
+                @if (hasPermission('whatsapp_templates', 'edit'))
                 <form action="{{ route('vendor.whatsapp.templates.update') }}" method="post">
                     @csrf
                     <input type="hidden" name="tpl_id" id="waeId">
@@ -746,6 +793,7 @@
                         <button type="submit" class="btn btn--primary">Save & Re-submit</button>
                     </div>
                 </form>
+                @endif
             </div>
         </div>
     </div>

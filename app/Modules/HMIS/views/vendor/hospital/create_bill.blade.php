@@ -131,6 +131,50 @@
         box-shadow: none;
         cursor: not-allowed;
     }
+
+    /* Receipts & payment history. The card sits in the third-width sidebar column, where an
+       eleven-column table had nowhere to go but sideways — the row was cut off after Particulars
+       on a phone and after Date on a desktop. One block per receipt instead, so it wraps rather
+       than scrolls at every width. */
+    .rcpt-item {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e7eaf3;
+        font-size: 12.5px;
+    }
+    .rcpt-item:last-child { border-bottom: 0; }
+    .rcpt-ref {
+        font-weight: 700;
+        font-size: 13px;
+        color: #1e2022;
+        word-break: break-all;
+    }
+    .rcpt-sub {
+        color: #8c98a4;
+        font-size: 11.5px;
+        margin-bottom: 6px;
+    }
+    .rcpt-figures {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        font-weight: 600;
+    }
+    .rcpt-lbl {
+        color: #8c98a4;
+        font-weight: 400;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+    }
+    .rcpt-foot {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 7px;
+        font-size: 11.5px;
+    }
 </style>
 <div class="content container-fluid">
     <div class="page-header d-flex justify-content-between align-items-center">
@@ -182,8 +226,14 @@
                                     ₹{{ number_format($eb->due, 2) }}
                                 </td>
                                 <td class="text-right">
-                                    <a href="{{ route('vendor.invoice.view-invoice', $eb->id) }}"
-                                       class="btn btn-sm btn--primary" style="font-size:11.5px;">Open bill</a>
+                                    {{-- Whichever bill screen this role may open; nothing when neither. --}}
+                                    @php $billUrl = \App\Modules\HMIS\Controllers\Vendor\HospitalBillController::billUrl($eb->id); @endphp
+                                    @if ($billUrl)
+                                        <a href="{{ $billUrl }}"
+                                           class="btn btn-sm btn--primary" style="font-size:11.5px;">Open bill</a>
+                                    @else
+                                        <span class="text-muted" style="font-size:11.5px;">—</span>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -325,62 +375,60 @@
                     </div>
                     <div class="card-body p-0">
             @if(!empty($existingReceipts) && count($existingReceipts) > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table mb-0" style="font-size:13px;">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Type</th>
-                                <th>Receipt / Ref #</th>
-                                <th>Date</th>
-                                <th>Particulars</th>
-                                <th class="text-right">Total (₹)</th>
-                                <th class="text-right">Paid (₹)</th>
-                                <th class="text-right">Due (₹)</th>
-                                <th>Mode</th>
-                                <th>Status</th>
-                                <th>Billed By</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($existingReceipts as $rec)
-                                <tr>
-                                    <td>
-                                        <span class="badge badge-soft-info">{{ $rec['type'] }}</span>
-                                    </td>
-                                    <td><strong>{{ $rec['receipt_no'] }}</strong></td>
-                                    <td>{{ $rec['date'] }}</td>
-                                    <td>{{ $rec['item_name'] }}</td>
-                                    <td class="text-right">₹{{ number_format($rec['amount'], 2) }}</td>
-                                    <td class="text-right text-success font-weight-bold">₹{{ number_format($rec['paid'], 2) }}</td>
-                                    <td class="text-right text-{{ $rec['due'] > 0 ? 'danger' : 'muted' }}">₹{{ number_format($rec['due'], 2) }}</td>
-                                    <td><span class="badge badge-soft-secondary">{{ $rec['mode'] }}</span></td>
-                                    <td>
-                                        <span class="badge badge-soft-{{ $rec['due'] <= 0 ? 'success' : 'warning' }}">
-                                            {{ $rec['due'] <= 0 ? 'Paid' : 'Partially Paid' }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $rec['billed_by'] }}</td>
-                                    <td class="text-center">
-                                        @if(!empty($rec['pdf_url']))
-                                            <a href="{{ $rec['pdf_url'] }}" target="_blank" class="btn btn-xs btn-outline-primary" title="View / Print Receipt">
-                                                <i class="tio-print"></i> View Receipt
-                                            </a>
-                                        @else
-                                            <span class="text-muted">—</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                        @else
-                            <div class="text-center text-muted py-4" style="font-size:13px;">
-                                <i class="tio-receipt-outlined style-2 opacity-50" style="font-size:28px;"></i>
-                                <p class="mt-2 mb-0">No previous receipts found for this patient.</p>
+                <div class="rcpt-list">
+                    @foreach($existingReceipts as $rec)
+                        @php
+                            // The status the controller worked out, not one re-guessed from the
+                            // balance. A bill with nothing paid against it has a due, and reading
+                            // "there is a due, so it must be part paid" is how a wholly unpaid
+                            // ₹13,000 bill came to be labelled Partially Paid on this screen.
+                            $rcptStatus = trim((string) ($rec['status'] ?? ''));
+                            if ($rcptStatus === '') {
+                                $rcptStatus = $rec['due'] > 0 ? 'Unpaid' : 'Paid';
+                            }
+                            $rcptTone = match (strtolower($rcptStatus)) {
+                                'paid'   => 'success',
+                                'unpaid' => 'danger',
+                                default  => 'warning',
+                            };
+                        @endphp
+                        <div class="rcpt-item">
+                            <div class="d-flex justify-content-between align-items-center mb-1" style="gap:6px;">
+                                <span class="badge badge-soft-info">{{ $rec['type'] }}</span>
+                                <span class="badge badge-soft-{{ $rcptTone }}">{{ $rcptStatus }}</span>
                             </div>
-                        @endif
+
+                            <div class="rcpt-ref">{{ $rec['receipt_no'] }}</div>
+                            <div class="rcpt-sub">{{ $rec['item_name'] }} &middot; {{ $rec['date'] }}</div>
+
+                            <div class="rcpt-figures">
+                                <span><span class="rcpt-lbl">Total</span> ₹{{ number_format($rec['amount'], 2) }}</span>
+                                <span class="text-success"><span class="rcpt-lbl">Paid</span> ₹{{ number_format($rec['paid'], 2) }}</span>
+                                <span class="{{ $rec['due'] > 0 ? 'text-danger' : 'text-muted' }}">
+                                    <span class="rcpt-lbl">Due</span> ₹{{ number_format($rec['due'], 2) }}
+                                </span>
+                            </div>
+
+                            <div class="rcpt-foot">
+                                <span class="text-muted">
+                                    @if(!empty($rec['mode'])){{ $rec['mode'] }} &middot; @endif{{ $rec['billed_by'] }}
+                                </span>
+                                @if(!empty($rec['pdf_url']))
+                                    <a href="{{ $rec['pdf_url'] }}" target="_blank"
+                                       class="btn btn-xs btn-outline-primary" title="View / Print">
+                                        <i class="tio-print"></i> View
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="text-center text-muted py-4" style="font-size:13px;">
+                    <i class="tio-receipt-outlined style-2 opacity-50" style="font-size:28px;"></i>
+                    <p class="mt-2 mb-0">No previous receipts found for this patient.</p>
+                </div>
+            @endif
                     </div>
                 </div>
 

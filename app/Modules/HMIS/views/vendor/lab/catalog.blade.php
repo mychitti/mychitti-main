@@ -37,10 +37,88 @@
                 use <strong>Parameters</strong> on a row to set its reference ranges.
             </span>
         </div>
-        <a href="{{ route('vendor.lab.worklist') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="tio-folder"></i> Test Worklist
-        </a>
+        <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
+            {{-- Bulk in, bulk out. Same column layout both ways, so a catalog can be exported,
+                 edited in a spreadsheet and put back — which is how a lab of two hundred tests
+                 actually maintains its prices. --}}
+            <a href="{{ route('vendor.lab.catalog.export') }}" class="btn btn-sm btn-outline-success">
+                <i class="tio-download"></i> Export
+            </a>
+            @if($canAdd)
+                <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#labImportModal">
+                    <i class="tio-upload"></i> Import
+                </button>
+            @endif
+            <a href="{{ route('vendor.lab.worklist') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="tio-folder"></i> Test Worklist
+            </a>
+        </div>
     </div>
+
+    @if($canAdd)
+    {{-- Import, with the file's shape stated on the same screen as the upload box. A template
+         download rather than a page of instructions: the file itself is the documentation. --}}
+    <div class="modal fade" id="labImportModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form method="post" action="{{ route('vendor.lab.catalog.import') }}" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-header py-2">
+                        <h5 class="modal-title" style="font-size:15px;">Import test catalog</h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted" style="font-size:12.5px;">
+                            One row per <strong>parameter</strong>, with the test's own columns repeated down its
+                            rows. Rows sharing a code are one test. A test that measures nothing — a fee line —
+                            is a single row with the parameter columns left blank.
+                        </p>
+
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm mb-0" style="font-size:11px;">
+                                <thead class="thead-light">
+                                    <tr>
+                                        @foreach(\App\Modules\HMIS\Controllers\Vendor\LabController::CATALOG_COLUMNS as $col)
+                                            <th class="border-0" style="white-space:nowrap;">{{ $col }}</th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="text-muted">
+                                        <td>Complete Blood Count</td><td>CBC</td><td>Haematology</td><td>EDTA Blood</td>
+                                        <td>250</td><td>Same day</td><td>Yes</td>
+                                        <td>Haemoglobin</td><td>g/dL</td><td>13</td><td>17</td><td>13 – 17 g/dL</td><td>7</td><td>20</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="input-label" style="font-size:12px;">Spreadsheet <span class="text-danger">*</span></label>
+                            <input type="file" name="file" class="form-control-file" accept=".xlsx,.xls,.csv" required>
+                            <small class="text-muted">.xlsx, .xls or .csv — up to 5 MB.</small>
+                        </div>
+
+                        <div class="alert alert-warning py-2 px-3 mb-0" style="font-size:12px;">
+                            A test already in your catalog with the same <strong>code</strong> (or name, where there is
+                            no code) is <strong>updated</strong>, not duplicated — and its parameters are replaced by
+                            what the file says. Nothing is deleted.
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2 d-flex justify-content-between">
+                        <a href="{{ route('vendor.lab.catalog.template') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="tio-download"></i> Sample template
+                        </a>
+                        <div>
+                            <button type="button" class="btn btn-light btn-sm" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn--primary btn-sm">Import</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <div class="row">
         {{-- ── Add a test ──────────────────────────────────────────── --}}

@@ -56,7 +56,7 @@
                         </div>
                     @endif
 
-                    @if (!empty($patient->phone))
+                    @if (!empty($patient->phone) && hasPermission('whatsapp_note', 'send_note'))
                         <div class="mt-2">
                             <button type="button" class="btn btn-sm btn-outline-primary"
                                 onclick="waNote(@json($patient->phone), @json($patient->name))">
@@ -747,11 +747,18 @@
                                         </span>
                                     </td>
                                     <td>
-                                        {{-- Route name prefix is invoice., though the URI reads billing/veiw-invoice --}}
-                                        <a href="{{ route('vendor.invoice.view-invoice', $inv->invoice_id) }}"
-                                           class="btn btn-xs btn-outline-primary">
-                                            <i class="tio-visible"></i> View
-                                        </a>
+                                        {{-- Whichever bill screen this role may open. hospital_bill,view
+                                             takes the numeric id; billing,view's URI reads
+                                             billing/veiw-invoice despite the invoice. route prefix. --}}
+                                        @php $billUrl = \App\Modules\HMIS\Controllers\Vendor\HospitalBillController::billUrl($inv->id); @endphp
+                                        @if ($billUrl)
+                                            <a href="{{ $billUrl }}"
+                                               class="btn btn-xs btn-outline-primary">
+                                                <i class="tio-visible"></i> View
+                                            </a>
+                                        @else
+                                            <span class="text-muted" style="font-size:12px;">—</span>
+                                        @endif
                                     </td>
                                 </tr>
                                 @empty
@@ -1042,7 +1049,9 @@ function deleteDoc(docId, btn) {
 
 {{-- Pushed with the scripts so jQuery and toastr are already loaded when it binds. --}}
 @push('script_2')
-    @include('vendor-views.whatsapp.partials._note_modal')
+    @if (hasPermission('whatsapp_note', 'send_note'))
+        @include('vendor-views.whatsapp.partials._note_modal')
+    @endif
 @endpush
 
 @endsection

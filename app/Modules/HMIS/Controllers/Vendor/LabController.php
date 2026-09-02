@@ -606,29 +606,14 @@ class LabController extends Controller
     }
 
     // Create empty result rows (one per test parameter) the first time an order is opened for entry.
+    /**
+     * Both of these moved to LabResults so the importers judge a value exactly as this screen
+     * does. Kept as wrappers rather than replaced at every call site: they are used throughout
+     * this controller, and the indirection costs nothing.
+     */
     private function materialiseResults(LabOrder $order): void
     {
-        foreach ($order->items as $item) {
-            $existing = LabOrderResult::where('lab_order_item_id', $item->id)->count();
-            if ($existing > 0) {
-                continue;
-            }
-            $params = LabTestParameter::where('lab_test_id', $item->lab_test_id)->orderBy('sort_order')->get();
-            foreach ($params as $p) {
-                LabOrderResult::create([
-                    'lab_order_id'    => $order->id,
-                    'lab_order_item_id' => $item->id,
-                    'parameter_name'  => $p->name,
-                    'unit'            => $p->unit,
-                    'normal_low'      => $p->normal_low,
-                    'normal_high'     => $p->normal_high,
-                    'ref_range_text'  => $p->ref_range_text,
-                    'critical_low'    => $p->critical_low,
-                    'critical_high'   => $p->critical_high,
-                    'sort_order'      => $p->sort_order,
-                ]);
-            }
-        }
+        \App\Services\LabResults::materialise($order);
     }
 
     public function saveResults(Request $request, $id)
@@ -686,24 +671,7 @@ class LabController extends Controller
 
     private function evaluate($value, LabOrderResult $res): array
     {
-        if (!is_numeric($value)) {
-            return [null, false];
-        }
-        $v = (float) $value;
-        $flag = 'N';
-        if ($res->normal_low !== null && $v < (float) $res->normal_low) {
-            $flag = 'L';
-        } elseif ($res->normal_high !== null && $v > (float) $res->normal_high) {
-            $flag = 'H';
-        }
-        $critical = false;
-        if ($res->critical_low !== null && $v < (float) $res->critical_low) {
-            $critical = true;
-        }
-        if ($res->critical_high !== null && $v > (float) $res->critical_high) {
-            $critical = true;
-        }
-        return [$flag, $critical];
+        return \App\Services\LabResults::evaluate($value, $res);
     }
 
     // ── TAB 3: Reports ────────────────────────────────────────────────────
@@ -1242,5 +1210,347 @@ class LabController extends Controller
         $test->delete();
         Toastr::success('Test removed.');
         return back();
+    }
+
+    /* ── Catalog import / export ──────────────────────────────────────────
+       A lab arrives with its catalog already written down somewhere — two hundred tests, their
+       parameters, units and reference ranges — and typing that in twice is the reason a lab module
+       goes unused. Export and import share one column layout on purpose: what comes out can be
+       edited and put straight back in.                                                          */
+
+    /** The catalog as it stands, in the shape the importer reads back. */
+    public function catalogExport()
+    {
+        $this->boot();
+
+        $tests = LabTest::where('store_id', $this->storeId())
+            ->with('parameters')
+            ->orderBy('department')->orderBy('name')
+            ->get();
+
+        $rows = [];
+        foreach ($tests as $test) {
+            $head = [
+                $test->name, $test->code, $test->department, $test->sample_type,
+                $test->price, $test->tat_text, $test->is_active ? 'Yes' : 'No',
+            ];
+
+            // A test with no parameters is still a row — it is a priced line on a bill even when
+            // it measures nothing, and leaving it out would make the export an incomplete catalog.
+            if ($test->parameters->isEmpty()) {
+                $rows[] = array_merge($head, ['', '', '', '', '', '', '']);
+                continue;
+            }
+
+            foreach ($test->parameters as $p) {
+                $rows[] = array_merge($head, [
+                    $p->name, $p->unit, $p->normal_low, $p->normal_high,
+                    $p->ref_range_text, $p->critical_low, $p->critical_high,
+                ]);
+            }
+        }
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($rows, self::CATALOG_COLUMNS),
+            'lab_test_catalog_' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /** The same columns with two worked examples in them, for a lab starting from nothing. */
+    public function catalogTemplate()
+    {
+        $this->boot();
+
+        $sample = [
+            ['Complete Blood Count', 'CBC', 'Haematology', 'EDTA Blood', 250, 'Same day', 'Yes',
+                'Haemoglobin', 'g/dL', 13, 17, '13 – 17 g/dL', 7, 20],
+            ['Complete Blood Count', 'CBC', 'Haematology', 'EDTA Blood', 250, 'Same day', 'Yes',
+                'Total WBC', 'cells/µL', 4000, 11000, '4,000 – 11,000', 2000, 30000],
+            ['Fasting Glucose', 'GLUF', 'Biochemistry', 'Fluoride Plasma', 120, '2 hours', 'Yes',
+                'Glucose (Fasting)', 'mg/dL', 70, 100, '70 – 100 mg/dL', 50, 400],
+        ];
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($sample, self::CATALOG_COLUMNS),
+            'lab_test_catalog_template.xlsx'
+        );
+    }
+
+    public function catalogImport(Request $request)
+    {
+        $this->boot();
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:5120',
+        ], [
+            'file.mimes' => 'Upload the catalog as .xlsx, .xls or .csv.',
+        ]);
+
+        $import = new \App\Imports\LabTestImport($this->storeId());
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Lab catalog import failed: ' . $e->getMessage());
+            Toastr::error('That file could not be read. Start from the sample template and keep the column order.');
+            return back();
+        }
+
+        if (!$import->created && !$import->updated) {
+            Toastr::warning('Nothing was imported — no test rows were found in that file.');
+            return back();
+        }
+
+        Toastr::success(
+            $import->created . ' test(s) added, ' . $import->updated . ' updated, '
+            . $import->parameters . ' parameter(s) written.'
+            . ($import->skipped ? ' ' . count($import->skipped) . ' row(s) skipped.' : '')
+        );
+
+        return back();
+    }
+
+    /** The test register — what was ordered, for whom, and where it got to. */
+    public function historyExport(Request $request)
+    {
+        $this->boot();
+
+        $orders = LabOrder::where('store_id', $this->storeId())
+            ->with(['patient', 'items', 'doctorProfile.employee'])
+            ->when($request->date, fn($q) => $q->whereDate('created_at', $request->date))
+            ->when($request->search, fn($q) => $q->where('order_no', 'like', "%{$request->search}%")
+                ->orWhereHas('patient', fn($p) => $p->where('name', 'like', "%{$request->search}%")))
+            ->latest()
+            ->get();
+
+        $rows = $orders->map(fn($o) => [
+            $o->order_no,
+            $o->created_at?->format('d M Y h:i A'),
+            $o->patient?->name,
+            $o->patient?->patient_uid,
+            $o->department,
+            $o->items->pluck('test_name')->implode(', '),
+            $o->doctorProfile
+                ? 'Dr. ' . trim(($o->doctorProfile->employee->f_name ?? '') . ' ' . ($o->doctorProfile->employee->l_name ?? ''))
+                : $o->referred_by,
+            ucfirst((string) $o->priority),
+            ucfirst(str_replace('_', ' ', (string) $o->status)),
+            $o->is_outsourced ? ($o->external_lab_name ?: 'Outsourced') : 'In-house',
+            $o->collected_at?->format('d M Y h:i A'),
+            $o->reported_at?->format('d M Y h:i A'),
+            $o->total_amount,
+        ])->toArray();
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($rows, [
+                'Order No', 'Ordered On', 'Patient', 'UID', 'Department', 'Test(s)', 'Ordered By',
+                'Priority', 'Status', 'Where', 'Sample Collected', 'Reported', 'Amount',
+            ]),
+            'lab_test_history_' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /**
+     * One column layout for the catalog, used by the export, the template and the importer's
+     * documentation alike — three places that must never disagree about what column 9 is.
+     */
+    const CATALOG_COLUMNS = [
+        'Test Name', 'Code', 'Department', 'Sample Type', 'Price', 'TAT', 'Active',
+        'Parameter', 'Unit', 'Normal Low', 'Normal High', 'Reference Range', 'Critical Low', 'Critical High',
+    ];
+
+    const ORDER_COLUMNS  = ['Patient UID', 'Test Code(s)', 'Department', 'Priority', 'Referred By', 'Clinical Notes'];
+    const RESULT_COLUMNS = ['Sample ID', 'Parameter', 'Value'];
+
+    /* ── Orders and results, in and out ───────────────────────────────────
+       A lab's day arrives and leaves as files: a camp list of two hundred people to be ordered in
+       one go, and an analyser's values to be read back against the samples it ran. Both are shaped
+       so what comes out can be edited and put back in.                                          */
+
+    /** Today's worklist, or whatever the filters are showing, as a spreadsheet. */
+    public function worklistExport(Request $request)
+    {
+        $this->boot();
+
+        $orders = LabOrder::where('store_id', $this->storeId())
+            ->with(['patient', 'items', 'doctorProfile.employee'])
+            ->when($request->department, fn($q) => $q->where('department', $request->department))
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->priority, fn($q) => $q->where('priority', $request->priority))
+            ->when($request->date, fn($q) => $q->whereDate('created_at', $request->date))
+            ->latest()
+            ->get();
+
+        $rows = $orders->map(fn($o) => [
+            $o->order_no,
+            $o->created_at?->format('d M Y h:i A'),
+            $o->patient?->name,
+            $o->patient?->patient_uid,
+            $o->department,
+            $o->items->pluck('test_name')->implode(', '),
+            $o->doctorProfile
+                ? 'Dr. ' . trim(($o->doctorProfile->employee->f_name ?? '') . ' ' . ($o->doctorProfile->employee->l_name ?? ''))
+                : $o->referred_by,
+            ucfirst((string) $o->priority),
+            ucfirst(str_replace('_', ' ', (string) $o->status)),
+            $o->sample_type,
+            $o->is_outsourced ? ($o->external_lab_name ?: 'Outsourced') : 'In-house',
+            $o->total_amount,
+        ])->toArray();
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($rows, [
+                'Sample ID', 'Ordered On', 'Patient', 'UID', 'Department', 'Test(s)', 'Ordered By',
+                'Priority', 'Status', 'Sample Type', 'Where', 'Amount',
+            ]),
+            'lab_worklist_' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /**
+     * Every parameter waiting on a value, as the sheet an analyser's output is pasted into.
+     *
+     * Exported with the values already in it, so the same file is both "what still needs doing"
+     * and a correction sheet for what has been entered.
+     */
+    public function resultsExport(Request $request)
+    {
+        $this->boot();
+
+        $orders = LabOrder::where('store_id', $this->storeId())
+            ->whereIn('status', $request->status ? [$request->status] : ['ordered', 'in_progress', 'resulted'])
+            ->when($request->date, fn($q) => $q->whereDate('created_at', $request->date))
+            ->with(['patient', 'items'])
+            ->latest()
+            ->get();
+
+        $rows = [];
+        foreach ($orders as $order) {
+            \App\Services\LabResults::materialise($order);
+
+            foreach (LabOrderResult::where('lab_order_id', $order->id)->orderBy('sort_order')->get() as $res) {
+                $rows[] = [
+                    $order->order_no,
+                    $res->parameter_name,
+                    $res->result_value,
+                    $res->unit,
+                    $res->ref_range_text ?: trim((string) $res->normal_low . ' – ' . (string) $res->normal_high, ' –'),
+                    $res->result_flag,
+                    $order->patient?->name,
+                ];
+            }
+        }
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($rows, [
+                'Sample ID', 'Parameter', 'Value', 'Unit', 'Reference Range', 'Flag', 'Patient',
+            ]),
+            'lab_results_' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    public function ordersTemplate()
+    {
+        $this->boot();
+
+        $test = LabTest::where('store_id', $this->storeId())->orderBy('name')->first();
+        $uid  = Patient::where('store_id', $this->storeId())->value('patient_uid');
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport([
+                [$uid ?: 'P-00001', $test->code ?: $test->name ?? 'CBC', 'OPD', 'routine', 'Dr. Ramani', 'Fever, 3 days'],
+                [$uid ?: 'P-00002', ($test->code ?: 'CBC') . ', GLUF', 'OPD', 'urgent', 'Camp', ''],
+            ], self::ORDER_COLUMNS),
+            'lab_orders_template.xlsx'
+        );
+    }
+
+    public function ordersImport(Request $request)
+    {
+        $this->boot();
+
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv,txt|max:5120']);
+
+        [$actorId, $actorType] = $this->actor();
+        $import = new \App\Imports\LabOrderImport($this->storeId(), $actorId, $actorType);
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Lab order import failed: ' . $e->getMessage());
+            Toastr::error('That file could not be read. Start from the sample template and keep the column order.');
+            return back();
+        }
+
+        if (!$import->created) {
+            Toastr::error('No orders were raised. ' . ($import->skipped[0] ?? 'No usable rows were found.'));
+            return back()->with('lab_import_skipped', $import->skipped);
+        }
+
+        Toastr::success($import->created . ' order(s) raised covering ' . $import->tests . ' test(s).'
+            . ($import->skipped ? ' ' . count($import->skipped) . ' row(s) need attention.' : ''));
+
+        return back()->with('lab_import_skipped', $import->skipped);
+    }
+
+    public function resultsTemplate()
+    {
+        $this->boot();
+
+        // Built from a real pending sample where there is one, so the template is a file the lab
+        // could actually fill in and import rather than an illustration.
+        $order = LabOrder::where('store_id', $this->storeId())
+            ->whereIn('status', ['ordered', 'in_progress'])
+            ->with('items')
+            ->latest()
+            ->first();
+
+        $rows = [];
+        if ($order) {
+            \App\Services\LabResults::materialise($order);
+            foreach (LabOrderResult::where('lab_order_id', $order->id)->orderBy('sort_order')->get() as $res) {
+                $rows[] = [$order->order_no, $res->parameter_name, ''];
+            }
+        }
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AttendanceExport($rows ?: [['LAB-0001', 'Haemoglobin', '13.4']], self::RESULT_COLUMNS),
+            'lab_results_template.xlsx'
+        );
+    }
+
+    public function resultsImport(Request $request)
+    {
+        $this->boot();
+
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv,txt|max:5120']);
+
+        $import = new \App\Imports\LabResultImport($this->storeId());
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Lab result import failed: ' . $e->getMessage());
+            Toastr::error('That file could not be read. Start from the sample template and keep the column order.');
+            return back();
+        }
+
+        if (!$import->updated) {
+            Toastr::error('No results were written. ' . ($import->skipped[0] ?? 'No usable rows were found.'));
+            return back()->with('lab_import_skipped', $import->skipped);
+        }
+
+        $message = $import->updated . ' result(s) written across ' . count($import->touched) . ' sample(s).'
+            . ($import->skipped ? ' ' . count($import->skipped) . ' row(s) need attention.' : '');
+
+        // Criticals are the one outcome that must not sit inside a success message: they need a
+        // doctor told, and the Critical Values tab is where that happens.
+        if ($import->critical) {
+            Toastr::warning($message . ' ' . $import->critical . ' value(s) are CRITICAL — check the Critical Values tab.');
+        } else {
+            Toastr::success($message . ' Nothing is verified — check each report before sending it.');
+        }
+
+        return back()->with('lab_import_skipped', $import->skipped);
     }
 }

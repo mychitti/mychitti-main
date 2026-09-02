@@ -46,11 +46,13 @@
                     </a>
                 </li>
             @endif
-            <li class="nav-item">
-                <a class="nav-link {{ $tab === 'billing' ? 'active' : '' }}" data-toggle="tab" href="#waBilling" role="tab">
-                    <i class="tio-wallet"></i> {{ translate('Plan & Billing') }}
-                </a>
-            </li>
+            @if (hasAnyModulePermission(['whatsapp_billing']))
+                <li class="nav-item">
+                    <a class="nav-link {{ $tab === 'billing' ? 'active' : '' }}" data-toggle="tab" href="#waBilling" role="tab">
+                        <i class="tio-wallet"></i> {{ translate('Plan & Billing') }}
+                    </a>
+                </li>
+            @endif
         </ul>
 
         <div class="tab-content">
@@ -64,9 +66,11 @@
                 </div>
             @endif
 
-            <div class="tab-pane fade {{ $tab === 'billing' ? 'show active' : '' }}" id="waBilling" role="tabpanel">
-                @include('vendor-views.whatsapp.partials._connect_billing')
-            </div>
+            @if (hasAnyModulePermission(['whatsapp_billing']))
+                <div class="tab-pane fade {{ $tab === 'billing' ? 'show active' : '' }}" id="waBilling" role="tabpanel">
+                    @include('vendor-views.whatsapp.partials._connect_billing')
+                </div>
+            @endif
         </div>
     </div>
 @endsection

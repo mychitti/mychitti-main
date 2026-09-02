@@ -32,21 +32,23 @@
                 <span class="wa-sub">Every automatic message this store tried to send, and what came of it — including the ones that were skipped.</span>
             </div>
             <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-                <a href="{{ route('vendor.notification-settings', 'send') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="tio-settings"></i> Message settings
-                </a>
+                @if (hasAnyModulePermission(['whatsapp_automation']))
+                    <a href="{{ route('vendor.notification-settings', 'send') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="tio-settings"></i> Message settings
+                    </a>
+                @endif
             </div>
         </div>
 
         @if (!$store['connected'])
             <div class="alert alert-warning" style="font-size:13px;">
                 Your own WhatsApp number isn't connected, so nothing can send at all.
-                <a href="{{ route('vendor.whatsapp.connect') }}">Connect it under WhatsApp → Connection</a>.
+                @if (hasAnyModulePermission(['whatsapp_connection']))<a href="{{ route('vendor.whatsapp.connect') }}">Connect it under WhatsApp → Connection</a>.@else Ask the owner to connect it.@endif
             </div>
         @elseif (!$store['subscription'])
             <div class="alert alert-warning" style="font-size:13px;">
                 Your WhatsApp subscription isn't active, so nothing is sending.
-                <a href="{{ route('vendor.whatsapp.billing') }}">Activate it under Plan &amp; Billing</a>.
+                @if (hasAnyModulePermission(['whatsapp_billing']))<a href="{{ route('vendor.whatsapp.billing') }}">Activate it under Plan &amp; Billing</a>.@else Ask the owner to activate the plan.@endif
             </div>
         @endif
 

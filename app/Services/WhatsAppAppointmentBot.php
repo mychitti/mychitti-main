@@ -750,16 +750,7 @@ class WhatsAppAppointmentBot
 
     protected static function generateToken(int $doctorProfileId, string $date, int $appointmentId): void
     {
-        $last = AppointmentToken::where('doctor_profile_id', $doctorProfileId)
-            ->where('token_date', $date)
-            ->max('token_number');
-
-        AppointmentToken::create([
-            'appointment_id'    => $appointmentId,
-            'token_number'      => ($last ?? 0) + 1,
-            'token_date'        => $date,
-            'doctor_profile_id' => $doctorProfileId,
-        ]);
+        AppointmentToken::issue($doctorProfileId, $date, $appointmentId);
     }
 
     protected static function failure(string $why): array

@@ -415,19 +415,7 @@ class AppointmentController extends Controller
 
     private function generateToken(int $doctorProfileId, string $date, int $appointmentId): int
     {
-        $last        = AppointmentToken::where('doctor_profile_id', $doctorProfileId)
-            ->where('token_date', $date)
-            ->max('token_number');
-        $tokenNumber = ($last ?? 0) + 1;
-
-        AppointmentToken::create([
-            'appointment_id'    => $appointmentId,
-            'token_number'      => $tokenNumber,
-            'token_date'        => $date,
-            'doctor_profile_id' => $doctorProfileId,
-        ]);
-
-        return $tokenNumber;
+        return AppointmentToken::issue($doctorProfileId, $date, $appointmentId);
     }
 
     // GET /hospital/doctors?store_id=&item_id=

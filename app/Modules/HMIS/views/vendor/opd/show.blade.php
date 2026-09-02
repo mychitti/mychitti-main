@@ -5,7 +5,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
     /* ── Layout Integrations ── */
-    main.main { 
+    main.main {
         background-color: #f8fafc;
         font-family: 'Inter', sans-serif;
     }
@@ -711,28 +711,53 @@
     }
     .tx-booked:hover { background: #dbeafe; color: #1e3a8a; text-decoration: none; }
     .tx-booked.is-stale { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+    /* Sentence case and its own size: this is the one thing in the menu that acts rather than
+       records, so it reads as a sentence the doctor agrees to, not as another field caption. */
     .tx-plan-book {
         display: flex;
         align-items: flex-start;
-        gap: 6px;
-        margin: 0 0 8px;
-        padding: 7px 8px;
+        gap: 9px;
+        margin: 0 0 10px;
+        padding: 9px 10px;
         border: 1px solid #e2e8f0;
         border-radius: 7px;
-        background: #f8fafc;
-        font-size: 11.5px;
-        font-weight: 700;
+        background: #fbfcfe;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: none;
+        letter-spacing: 0;
+        line-height: 1.35;
         color: #334155;
         cursor: pointer;
+        transition: background .12s ease, border-color .12s ease;
     }
-    .tx-plan-book input { width: 14px; height: 14px; margin-top: 1px; }
+    .tx-plan-book:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    /* Ticked, the box carries the same blue as the booking it is about to make — so a menu
+       glanced at mid-consultation says whether a follow-up is riding on Save. */
+    .tx-plan-book.is-on {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+    }
+    .tx-plan-book input {
+        width: 15px;
+        height: 15px;
+        margin: 1px 0 0;
+        flex: 0 0 auto;
+        accent-color: #0D47A1;
+        cursor: pointer;
+    }
     .tx-plan-book .tx-plan-book-note {
         display: block;
-        font-size: 10px;
-        font-weight: 600;
+        font-size: 10.5px;
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: 0;
+        line-height: 1.4;
         color: #94a3b8;
-        margin-top: 1px;
+        margin-top: 3px;
     }
+    .tx-plan-book.is-on .tx-plan-book-note { color: #64748b; }
     .tx-plan-menu .tx-plan-booked {
         display: block;
         margin-bottom: 8px;
@@ -828,25 +853,79 @@
         color: #334155;
     }
     .tx-plan-paid input { width: 14px; height: 14px; }
-    .tx-plan-menu { min-width: 250px; padding: 10px; }
+    /* Both classes are on the element, and .tx-status-menu is declared after this — so at one
+       class each it would win every property the two share. Named at two so the plan menu's own
+       box actually applies; without it the padding below silently stays the status list's 4px
+       and leaves a white gutter around the title and action bands. */
+    .tx-status-menu.tx-plan-menu {
+        min-width: 356px;
+        /* Opened near the right edge of a laptop screen the menu would otherwise run off it,
+           taking the Save button with it. */
+        max-width: calc(100vw - 24px);
+        /* The title and the actions carry their own padding so both can sit as full-width
+           bands against the menu's edges. */
+        padding: 0;
+    }
     .tx-plan-menu .tx-plan-title {
-        font-size: 12px;
+        font-size: 12.5px;
         font-weight: 800;
         color: #0f172a;
-        margin-bottom: 8px;
+        margin: 0;
+        padding: 9px 12px;
+        background: #f8fafc;
+        border-bottom: 1px solid #eef2f7;
+        border-radius: 8px 8px 0 0;
     }
-    .tx-plan-menu label {
-        font-size: 10px;
-        font-weight: 700;
+    .tx-plan-menu .tx-plan-body { padding: 11px 12px 2px; }
+    /* Scoped to the rows on purpose. The book box below is a <label> too, and an unscoped
+       rule here styled it as a field caption — which is why it read as grey uppercase
+       9-point type rather than the choice it actually is. */
+    .tx-plan-menu .tx-plan-row label {
+        /* About as small as a caption can go and still be read at arm's length across a
+           consulting desk. Lightened and unbolded rather than shrunk further: past this size
+           the way to make a caption quieter is less weight and less contrast, not fewer pixels. */
+        font-size: 8px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: .3px;
-        color: #94a3b8;
+        letter-spacing: .6px;
+        color: #b2bac7;
         margin-bottom: 2px;
         display: block;
     }
-    .tx-plan-menu .form-control { font-size: 12px; height: 30px; }
-    .tx-plan-row { display: flex; gap: 8px; margin-bottom: 8px; }
-    .tx-plan-row > div { flex: 1; }
+    .tx-plan-menu .form-control {
+        font-size: 12px;
+        height: 32px;
+        padding: 4px 8px;
+        border-color: #e2e8f0;
+        border-radius: 6px;
+    }
+    .tx-plan-menu .form-control:focus {
+        border-color: #0D47A1;
+        box-shadow: 0 0 0 2px rgba(13, 71, 161, .10);
+    }
+    /* A shrinkable basis plus wrap: the three fields share one line where there is room and
+       drop to two, then one, where there is not — rather than crushing the date input past
+       the point its picker icon still fits. */
+    .tx-plan-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 9px;
+    }
+    .tx-plan-row > div { flex: 1 1 96px; min-width: 0; }
+    /* A date shows "dd-mm-yyyy" beside an icon and a status shows "In progress"; a time is
+       narrower than either, so it gives the line back to them. */
+    .tx-plan-row > div.tx-w-date { flex-grow: 1.35; }
+    .tx-plan-row > div.tx-w-status { flex-grow: 1.2; }
+    .tx-plan-menu .tx-plan-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        background: #f8fafc;
+        border-top: 1px solid #eef2f7;
+        border-radius: 0 0 8px 8px;
+    }
     .tx-status-menu {
         position: absolute;
         z-index: 1080;
@@ -874,6 +953,46 @@
     }
     .tx-status-menu button:hover { background: #f1f5f9; }
     .tx-status-menu button.is-current { color: #0D47A1; }
+    /* The rule above flattens every button in the menu — transparent, borderless, full width.
+       That is right for the status list, which is a stack of plain rows, and wrong for the plan
+       menu, whose footer holds real buttons. Restated here rather than by narrowing that rule,
+       which the status list still relies on, and at two classes so it outranks it. */
+    .tx-plan-menu .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        gap: 0;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.5;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        text-align: center;
+    }
+    .tx-plan-menu .btn-primary {
+        background: #0D47A1;
+        border-color: #0D47A1;
+        color: #ffffff;
+    }
+    .tx-plan-menu .btn-primary:hover { background: #0b3a82; border-color: #0b3a82; }
+    .tx-plan-menu .btn-light {
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+        color: #334155;
+    }
+    .tx-plan-menu .btn-light:hover { background: #e2e8f0; }
+    /* Not an action of the same weight as Save — it hands the sitting to another tab — so it
+       stays a link, but a legible one rather than the muted grey the rule above gave it. */
+    .tx-plan-menu .btn-link {
+        background: transparent;
+        border-color: transparent;
+        color: #0D47A1;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+    .tx-plan-menu .btn-link:hover { color: #0b3a82; }
     .wt-badge {
         display: inline-block;
         padding: 3px 8px;
@@ -884,6 +1003,43 @@
         background: #ecfdf5;
         border: 1px solid #a7f3d0;
         color: #047857;
+    }
+    /* The patient's own words, riding on the chip and in the plan table. Lighter and upright —
+       <em> would italicise it, and a note read at a glance should not lean — so the treatment
+       still reads first: the note qualifies it, it does not rename it. */
+    .tx-note {
+        font-style: normal;
+        font-weight: 500;
+        opacity: .75;
+        margin-left: 4px;
+    }
+    .tx-note-line {
+        font-size: 10.5px;
+        font-weight: 500;
+        color: #64748b;
+        margin-top: 2px;
+    }
+    /* One note box per agreed treatment, stacked under the picker. */
+    .wt-notes { margin-bottom: 8px; }
+    .wt-note-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+    .wt-note-term {
+        flex: 0 0 auto;
+        min-width: 120px;
+        max-width: 40%;
+        font-size: 11px;
+        font-weight: 700;
+        color: #047857;
+        overflow-wrap: anywhere;
+    }
+    .wt-note-input { flex: 1 1 auto; font-size: 11.5px; }
+    @media (max-width: 575px) {
+        .wt-note-row { flex-direction: column; align-items: stretch; gap: 3px; }
+        .wt-note-term { max-width: 100%; }
     }
     /* Tappable suggestion chips. Deliberately quieter than the saved badges above — these are
        offers, and they must not read as something already recorded on the visit. */
@@ -2105,6 +2261,7 @@
                         $txRows[] = [
                             'term'     => $term,
                             'state'    => $state,
+                            'note'     => trim((string) ($row['note'] ?? '')),
                             'when'     => $when,
                             'appt'     => $appt,
                             'tip'      => implode(' · ', array_filter([
@@ -2216,8 +2373,8 @@
                                     @else
                                         @forelse($txRows as $r)
                                             <span class="tx-badge tx-chip tx-state-{{ $r['state'] }}" data-term="{{ $r['term'] }}"
-                                                  onclick="openTxPlanMenu(this)" title="{{ $r['tip'] }} — click to change">
-                                                {{ $r['term'] }}
+                                                  onclick="openTxPlanMenu(this)" title="{{ implode(' — ', array_filter([$r['tip'], $r['note']])) }} — click to change">
+                                                {{ $r['term'] }}@if($r['note'])<em class="tx-note">— {{ $r['note'] }}</em>@endif
                                             </span>
                                         @empty
                                             <span class="text-muted small">Not recorded yet.</span>
@@ -2277,8 +2434,8 @@
                                              green and lose the status colour. --}}
                                         @foreach($txRows as $r)
                                             <span class="tx-badge tx-chip tx-state-{{ $r['state'] }}" data-term="{{ $r['term'] }}"
-                                                  onclick="openTxPlanMenu(this)" title="{{ $r['tip'] }} — click to change">
-                                                {{ $r['term'] }}
+                                                  onclick="openTxPlanMenu(this)" title="{{ implode(' — ', array_filter([$r['tip'], $r['note']])) }} — click to change">
+                                                {{ $r['term'] }}@if($r['note'])<em class="tx-note">— {{ $r['note'] }}</em>@endif
                                             </span>
                                         @endforeach
                                     @else
@@ -2332,7 +2489,10 @@
                                             <tbody id="txTableBody">
                                                 @foreach($txRows as $r)
                                                     <tr>
-                                                        <td class="tx-table-term">{{ $r['term'] }}</td>
+                                                        <td class="tx-table-term">
+                                                            {{ $r['term'] }}
+                                                            @if($r['note'])<div class="tx-note-line">{{ $r['note'] }}</div>@endif
+                                                        </td>
                                                         <td><span class="tx-pill tx-state-{{ $r['state'] }}">{{ $txStateLabels[$r['state']] }}</span></td>
                                                         <td>
                                                             @if($r['when'])
@@ -2375,6 +2535,11 @@
                                         </select>
                                         <small class="text-muted">Ticked off the advised list. Leave empty if they agreed to all of it.</small>
                                     </div>
+                                    {{-- A note per agreed treatment: free text, in the patient's terms
+                                         rather than the doctor's. Kept beside the treatment it belongs
+                                         to instead of in one shared box, so it stays readable when the
+                                         patient agrees to three things and qualifies only one. --}}
+                                    <div id="wtNotes" class="wt-notes" style="display:none"></div>
                                     <div class="mt-2 d-flex gap-2">
                                         <button class="btn btn-sm btn-primary" onclick="saveDxTx(this)">Save</button>
                                         <button class="btn btn-sm btn-outline-secondary" onclick="toggleTermEdit('wt')">Cancel</button>
@@ -3805,7 +3970,7 @@
                                                     </div>
                                                 </div>
                                             </div>
- 
+
 
 
                                             {{-- Last, after everything it submits. Sitting up beside the stage
@@ -4176,8 +4341,8 @@
         scope.querySelectorAll('[data-lw-block]').forEach(block => {
             block.style.display = block.dataset.lwBlock === select.value ? '' : 'none';
         });
-    } 
- 
+    }
+
     // Picking a lab or a technician prefills the phone box beside it.
     //
     // The record's number is only written into an untouched box. A number typed by hand is a
@@ -4800,7 +4965,8 @@
         queueAutosave('dxtx', () => ({
             diagnosis: selectedTerms('dxSelect'),
             treatment: selectedTerms('txSelect'),
-            willing_treatment: selectedTerms('wtSelect')
+            willing_treatment: selectedTerms('wtSelect'),
+            willing_notes: willingNotes()
         }), (data) => {
             if (data && data.treatment_plan) txPlan = data.treatment_plan;
             renderTerms('dxBadges', selectedTerms('dxSelect'), 'dx-badge');
@@ -5207,7 +5373,10 @@
             width: '100%',
             placeholder: 'Tick what the patient agreed to…',
             containerCssClass: 'wt-select2'
-        }).on('change', autosaveDxTx);
+        }).on('change', function () {
+            renderWtNotes();
+            autosaveDxTx();
+        });
         jQuery('#txSelect').select2({
             tags: true,
             width: '100%',
@@ -5251,6 +5420,61 @@
         // Namespaced so select2 redraws without firing the change handler that
         // would queue a second autosave on top of the one already going out.
         if (window.jQuery && jQuery.fn.select2) jQuery(wt).trigger('change.select2');
+
+        renderWtNotes();
+    }
+
+    /**
+     * One free-text box per treatment the patient agreed to, holding what they said about it.
+     *
+     * Only ever redrawn when the willing selection itself changes — never from an autosave
+     * callback, which would pull the caret out of a box the doctor is still typing in.
+     */
+    function renderWtNotes() {
+        const box = document.getElementById('wtNotes');
+        if (!box) return;
+
+        const terms = selectedTerms('wtSelect');
+
+        // Anything already typed but not yet saved wins over txPlan, so a redraw triggered by
+        // ticking a second treatment does not roll the first one's note back to its saved value.
+        const typed = willingNotes();
+
+        box.innerHTML = '';
+        box.style.display = terms.length ? '' : 'none';
+
+        terms.forEach(term => {
+            const row   = document.createElement('div');
+            const label = document.createElement('span');
+            const input = document.createElement('input');
+
+            row.className   = 'wt-note-row';
+            label.className = 'wt-note-term';
+            label.textContent = term;
+
+            input.type        = 'text';
+            input.className   = 'form-control form-control-sm wt-note-input';
+            input.maxLength   = 500;
+            input.placeholder = 'Note (optional)';
+            input.dataset.term = term;
+            input.value = Object.prototype.hasOwnProperty.call(typed, term)
+                ? typed[term]
+                : ((txPlan[term] || {}).note || '');
+            input.oninput = autosaveDxTx;
+
+            row.appendChild(label);
+            row.appendChild(input);
+            box.appendChild(row);
+        });
+    }
+
+    /** The note boxes as a term => text map, ready to send. */
+    function willingNotes() {
+        const out = {};
+        document.querySelectorAll('#wtNotes .wt-note-input').forEach(el => {
+            out[el.dataset.term] = el.value.trim();
+        });
+        return out;
     }
 
     /** Select a term on a picker, creating the option when it is one the list has never seen. */
@@ -5481,8 +5705,16 @@
             const state  = txState(row);
             const when   = txWhen(row);
 
-            const tr = document.createElement('tr');
-            tr.appendChild(txCell(term, 'tx-table-term'));
+            const tr     = document.createElement('tr');
+            const tdTerm = txCell(term, 'tx-table-term');
+            const note   = ((row.note || '') + '').trim();
+            if (note) {
+                const line = document.createElement('div');
+                line.className = 'tx-note-line';
+                line.textContent = note;
+                tdTerm.appendChild(line);
+            }
+            tr.appendChild(tdTerm);
 
             const tdState = document.createElement('td');
             const pill    = document.createElement('span');
@@ -5548,11 +5780,19 @@
                     txBookingHeld(row) ? 'booked' : ''
                 ].filter(Boolean).join(' · ');
 
+                const note = ((row.note || '') + '').trim();
+
                 const span = document.createElement('span');
                 span.className = 'tx-badge tx-chip tx-state-' + state;
                 span.dataset.term = term;
-                span.title = tip + ' — click to change';
+                span.title = [tip, note].filter(Boolean).join(' — ') + ' — click to change';
                 span.textContent = term;
+                if (note) {
+                    const em = document.createElement('em');
+                    em.className = 'tx-note';
+                    em.textContent = '— ' + note;
+                    span.appendChild(em);
+                }
                 span.onclick = () => openTxPlanMenu(span);
                 box.appendChild(span);
             });
@@ -5610,27 +5850,44 @@
                       (appt.token ? ' · token #' + appt.token : '') + ' — open</a>'
                 : '');
 
+        // Inline rather than a class. Something outside this file outweighs the stylesheet
+        // rule for these four captions, and an attribute style is the one place in the cascade
+        // that cannot be argued with. Declared once here so the four stay identical.
+        const lbl = ' style="font-size:10px !important;font-weight:600;text-transform:uppercase;' +
+                    'letter-spacing:.6px;color:#b2bac7;margin-bottom:2px;display:block;line-height:1.4"';
+
         menu.innerHTML =
             '<div class="tx-plan-title">' + term + '</div>' +
-            '<div class="tx-plan-row"><div>' +
-                '<label>Status</label>' +
-                '<select class="form-control form-control-sm" id="txPlanStatus">' +
-                    '<option value="pending">Pending</option>' +
-                    '<option value="upcoming">Upcoming</option>' +
-                    '<option value="in_progress">In progress</option>' +
-                    '<option value="completed">Completed</option>' +
-                    // Offered by hand as well as set by the nightly sweep: a receptionist who
-                    // knows the patient has moved away should not have to wait a month for the
-                    // calendar to work it out.
-                    '<option value="discontinued">Discontinued</option>' +
-                '</select>' +
-            '</div></div>' +
+            '<div class="tx-plan-body">' +
+            // Where the sitting stands and when it is: one line, because they are read together
+            // and none of the three needs a row to itself. They wrap rather than squeeze when the
+            // menu is pinned against a narrow screen.
             '<div class="tx-plan-row">' +
-                '<div><label>Date</label><input type="date" class="form-control form-control-sm" id="txPlanDate"></div>' +
-                '<div><label>Time</label><input type="time" class="form-control form-control-sm" id="txPlanTime"></div>' +
+                '<div class="tx-w-status"><label' + lbl + '>Status</label>' +
+                    '<select class="form-control form-control-sm" id="txPlanStatus">' +
+                        '<option value="pending">Pending</option>' +
+                        '<option value="upcoming">Upcoming</option>' +
+                        '<option value="in_progress">In progress</option>' +
+                        '<option value="completed">Completed</option>' +
+                        // Offered by hand as well as set by the nightly sweep: a receptionist who
+                        // knows the patient has moved away should not have to wait a month for the
+                        // calendar to work it out.
+                        '<option value="discontinued">Discontinued</option>' +
+                    '</select>' +
+                '</div>' +
+                '<div class="tx-w-date"><label' + lbl + '>Date</label><input type="date" class="form-control form-control-sm" id="txPlanDate"></div>' +
+                '<div><label' + lbl + '>Time</label><input type="time" class="form-control form-control-sm" id="txPlanTime"></div>' +
             '</div>' +
+            // The same note the Willing Treatment editor writes, editable from here too — the
+            // qualification usually surfaces while the sitting is being scheduled, not before.
+            '<div class="tx-plan-row"><div>' +
+                '<label' + lbl + '>Note</label>' +
+                '<input type="text" class="form-control form-control-sm" id="txPlanNote" maxlength="500" ' +
+                    'placeholder="What the patient agreed to">' +
+            '</div></div>' +
             bookBox +
-            '<div class="d-flex align-items-center" style="gap:6px">' +
+            '</div>' +
+            '<div class="tx-plan-actions">' +
                 '<button type="button" class="btn btn-sm btn-primary" id="txPlanSave">Save</button>' +
                 '<button type="button" class="btn btn-sm btn-light" id="txPlanCancel">Cancel</button>' +
                 (window.nvPrefillTreatment
@@ -5644,6 +5901,7 @@
         menu.querySelector('#txPlanStatus').value = row.status || 'pending';
         menu.querySelector('#txPlanDate').value   = row.date || '';
         menu.querySelector('#txPlanTime').value   = row.time || '';
+        menu.querySelector('#txPlanNote').value   = row.note || '';
 
         const box = el.getBoundingClientRect();
         menu.style.top  = (box.bottom + window.scrollY + 4) + 'px';
@@ -5653,9 +5911,14 @@
         // Booking a date is what "upcoming" means, so ticking the box says so on the status too
         // rather than leaving a booked sitting in Pending.
         const bookInput = menu.querySelector('#txPlanBook');
+        const bookLabel = menu.querySelector('.tx-plan-book');
+        const paintBook = () => bookLabel.classList.toggle('is-on', bookInput.checked);
+
+        paintBook();
         bookInput.addEventListener('change', function () {
             const status = menu.querySelector('#txPlanStatus');
             if (this.checked && status.value === 'pending') status.value = 'upcoming';
+            paintBook();
         });
 
         const multi = menu.querySelector('#txPlanMulti');
@@ -5689,6 +5952,7 @@
                 status:   menu.querySelector('#txPlanStatus').value,
                 date:     date,
                 time:     time,
+                note:     menu.querySelector('#txPlanNote').value.trim(),
                 book:     wantsBooking ? 1 : 0
             });
         };
@@ -5713,6 +5977,7 @@
             if (data.treatment_appointments) txAppointments = data.treatment_appointments;
             closeTxStatusMenu();
             renderTxBadges(txTerms);
+            syncWtNoteInput(term);
             setSaveState('saved');
 
             // Anything the booking could not do — slot full, no time given — comes back beside a
@@ -5722,6 +5987,20 @@
             if (row.status !== before) notifyTreatmentStatus(term, row.status, row);
         })
         .catch(() => alert('Could not save that treatment.'));
+    }
+
+    /**
+     * The Willing Treatment editor holds its own box for the same note. Left as it was, its next
+     * autosave would send the value it was rendered with and quietly undo what the plan menu just
+     * saved — so it is brought into step here. Never while the caret is in it: that box is then
+     * the newer of the two, and rewriting it would fight the doctor's typing.
+     */
+    function syncWtNoteInput(term) {
+        document.querySelectorAll('#wtNotes .wt-note-input').forEach(el => {
+            if (el.dataset.term === term && el !== document.activeElement) {
+                el.value = (txPlan[term] || {}).note || '';
+            }
+        });
     }
 
     // Only when the status itself moved — editing an amount is not news for the patient. The
@@ -5785,7 +6064,12 @@
         fetch(opdQuickUpdateUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ diagnosis: diagnosis, treatment: treatment, willing_treatment: willing })
+            body: JSON.stringify({
+                diagnosis: diagnosis,
+                treatment: treatment,
+                willing_treatment: willing,
+                willing_notes: willingNotes()
+            })
         })
         .then(r => r.json())
         .then(data => {

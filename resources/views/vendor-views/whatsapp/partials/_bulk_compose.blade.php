@@ -34,9 +34,11 @@
                                     — but you have no approved message templates yet. WhatsApp only allows
                                     business-initiated messages using a template Meta has approved.
                                 </p>
-                                <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="tio-receipt"></i> Create a Template
-                                </a>
+                                @if (hasPermission('whatsapp_templates', 'add'))
+                                    <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="tio-receipt"></i> Create a Template
+                                    </a>
+                                @endif
                             @else
                                 <div class="form-group">
                                     <label class="font-weight-bold" style="font-size:13px;">Template</label>
@@ -183,12 +185,20 @@
                                 <div id="wb-summary" class="border rounded p-2 mb-3" style="display:none;font-size:12px;"></div>
 
                                 <div class="d-flex align-items-center" style="gap:12px;">
+                                    {{-- Choosing an audience is reading; sending to it is not. A role
+                                         without broadcast can price a send but never press it. --}}
+                                    @if (hasPermission('whatsapp_bulk', 'broadcast'))
                                     <button id="wb-send" class="btn btn--primary" disabled>Send</button>
                                     {{-- The send runs on the server, so it outlives this page — which
                                          is exactly why it needs a way to be called off from here. --}}
                                     <span id="wb-stop-wrap" style="display:none;">
                                         <button id="wb-stop" class="btn btn-outline-danger btn-sm" type="button">Stop</button>
                                     </span>
+                                    @else
+                                        <span class="wa-chip badge-soft-secondary">
+                                            <i class="tio-lock-outlined"></i> You cannot send broadcasts
+                                        </span>
+                                    @endif
                                     <div id="wb-progress" class="flex-grow-1" style="display:none;">
                                         <div class="progress" style="height:6px;">
                                             <div id="wb-progress-bar" class="progress-bar bg-success" style="width:0%;"></div>
@@ -213,9 +223,11 @@
                                 <li>MyChitti users never expose their number to you — results come back masked.</li>
                                 <li>Keeping unwanted messages down protects your number's quality rating.</li>
                             </ul>
-                            <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-primary btn-block mt-3">
-                                <i class="tio-receipt"></i> Manage templates
-                            </a>
+                            @if (hasAnyModulePermission(['whatsapp_templates']))
+                                <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn-outline-primary btn-block mt-3">
+                                    <i class="tio-receipt"></i> Manage templates
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </div>

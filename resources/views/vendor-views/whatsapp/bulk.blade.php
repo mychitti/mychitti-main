@@ -33,9 +33,11 @@
                     <p class="wa-sub mb-3">
                         {{ translate('Link your WhatsApp Business number before sending a bulk message.') }}
                     </p>
-                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn--primary">
-                        <i class="tio-add-circle mr-1"></i> {{ translate('Connect a number') }}
-                    </a>
+                    @if (hasAnyModulePermission(['whatsapp_connection']))
+                        <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn--primary">
+                            <i class="tio-add-circle mr-1"></i> {{ translate('Connect a number') }}
+                        </a>
+                    @endif
                 </div>
             </div>
         @else
@@ -46,17 +48,21 @@
                         <i class="tio-send"></i> {{ translate('Send a message') }}
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ $tab === 'audience' ? 'active' : '' }}" data-toggle="tab" href="#waAudience" role="tab">
-                        <i class="tio-user-big-outlined"></i> {{ translate('Your customers') }}
-                        <span class="wa-chip badge-soft-secondary ml-1">{{ number_format($customerStats['with_phone']) }}</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ $tab === 'history' ? 'active' : '' }}" data-toggle="tab" href="#waHistory" role="tab">
-                        <i class="tio-history"></i> {{ translate('History') }}
-                    </a>
-                </li>
+                @if (hasPermission('whatsapp_bulk', 'list') || hasPermission('whatsapp_bulk', 'import'))
+                    <li class="nav-item">
+                        <a class="nav-link {{ $tab === 'audience' ? 'active' : '' }}" data-toggle="tab" href="#waAudience" role="tab">
+                            <i class="tio-user-big-outlined"></i> {{ translate('Your customers') }}
+                            <span class="wa-chip badge-soft-secondary ml-1">{{ number_format($customerStats['with_phone']) }}</span>
+                        </a>
+                    </li>
+                @endif
+                @if (hasPermission('whatsapp_bulk', 'list') || hasPermission('whatsapp_bulk', 'export'))
+                    <li class="nav-item">
+                        <a class="nav-link {{ $tab === 'history' ? 'active' : '' }}" data-toggle="tab" href="#waHistory" role="tab">
+                            <i class="tio-history"></i> {{ translate('History') }}
+                        </a>
+                    </li>
+                @endif
             </ul>
 
             <div class="tab-content">
@@ -64,13 +70,17 @@
                     @include('vendor-views.whatsapp.partials._bulk_compose')
                 </div>
 
-                <div class="tab-pane fade {{ $tab === 'audience' ? 'show active' : '' }}" id="waAudience" role="tabpanel">
-                    @include('vendor-views.whatsapp.partials._bulk_audience')
-                </div>
+                @if (hasPermission('whatsapp_bulk', 'list') || hasPermission('whatsapp_bulk', 'import'))
+                    <div class="tab-pane fade {{ $tab === 'audience' ? 'show active' : '' }}" id="waAudience" role="tabpanel">
+                        @include('vendor-views.whatsapp.partials._bulk_audience')
+                    </div>
+                @endif
 
-                <div class="tab-pane fade {{ $tab === 'history' ? 'show active' : '' }}" id="waHistory" role="tabpanel">
-                    @include('vendor-views.whatsapp.partials._bulk_history')
-                </div>
+                @if (hasPermission('whatsapp_bulk', 'list') || hasPermission('whatsapp_bulk', 'export'))
+                    <div class="tab-pane fade {{ $tab === 'history' ? 'show active' : '' }}" id="waHistory" role="tabpanel">
+                        @include('vendor-views.whatsapp.partials._bulk_history')
+                    </div>
+                @endif
             </div>
         @endif
     </div>

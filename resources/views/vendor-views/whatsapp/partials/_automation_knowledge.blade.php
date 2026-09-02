@@ -87,6 +87,7 @@
                                             </div>
                                             {{-- The toggle is the important control here, so it reads as
                                                  a state you can flip rather than a badge. --}}
+                                            @if (hasPermission('whatsapp_automation', 'edit'))
                                             <form action="{{ route('vendor.whatsapp.knowledge.toggle') }}" method="post" class="mb-0">
                                                 @csrf
                                                 <input type="hidden" name="id" value="{{ $doc->id }}">
@@ -96,6 +97,7 @@
                                                     {{ $doc->active ? 'In use' : 'Paused' }}
                                                 </button>
                                             </form>
+                                            @endif
                                         </div>
 
                                         <div class="kn-doc-body p-2 rounded" style="background:var(--wa-bg);">{{ \Illuminate\Support\Str::limit($doc->content, 260) }}</div>
@@ -106,12 +108,14 @@
                                                     data-title="{{ $doc->title }}" data-content="{{ $doc->content }}">
                                                 <i class="tio-edit"></i> Edit
                                             </button>
+                                            @if (hasPermission('whatsapp_automation', 'edit'))
                                             <form action="{{ route('vendor.whatsapp.knowledge.delete') }}" method="post" class="mb-0 ml-auto"
                                                   onsubmit="return confirm('Delete “{{ $doc->title }}”? The auto-reply will stop using it immediately.');">
                                                 @csrf
                                                 <input type="hidden" name="id" value="{{ $doc->id }}">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger"><i class="tio-delete"></i></button>
                                             </form>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -134,6 +138,7 @@
                                         Delete one you no longer need before adding another.
                                     </div>
                                 @endif
+                                @if (hasPermission('whatsapp_automation', 'edit'))
                                 <form action="{{ route('vendor.whatsapp.knowledge.store') }}" method="post">
                                     @csrf
                                     <fieldset @if ($docsFull) disabled @endif style="border:0;padding:0;margin:0;min-width:0;">
@@ -162,6 +167,7 @@
                                         </button>
                                     </fieldset>
                                 </form>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -194,6 +200,7 @@
     <div class="modal fade" id="knEditModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
+                @if (hasPermission('whatsapp_automation', 'edit'))
                 <form action="{{ route('vendor.whatsapp.knowledge.update') }}" method="post">
                     @csrf
                     <input type="hidden" name="id" id="knId">
@@ -224,5 +231,6 @@
                         <button type="submit" class="btn btn--primary">Save changes</button>
                     </div>
                 </form>
+                @endif
             </div>
         </div>

@@ -27,9 +27,11 @@
                 <a href="{{ route('vendor.whatsapp.bulk.history') }}" class="btn btn-sm btn-outline-secondary">
                     <i class="tio-back-ui"></i> All sends
                 </a>
-                <a href="{{ route('vendor.whatsapp.bulk.history.export', $run->run_id) }}" class="btn btn-sm btn--primary">
-                    <i class="tio-download"></i> Download CSV
-                </a>
+                @if (hasPermission('whatsapp_bulk', 'export'))
+                    <a href="{{ route('vendor.whatsapp.bulk.history.export', $run->run_id) }}" class="btn btn-sm btn--primary">
+                        <i class="tio-download"></i> Download CSV
+                    </a>
+                @endif
             </div>
         </div>
 

@@ -93,6 +93,8 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
         // 'redirect.subdomain' => \App\Http\Middleware\RedirectToCorrectSubdomain::class,
         'fix-urls' => \App\Http\Middleware\FixVendorEmployeeUrls::class,
         'permission' => \App\Http\Middleware\Permission::class,
+        // Any action on the feature, for the screen it lives on — see FeaturePermission.
+        'feature' => \App\Http\Middleware\FeaturePermission::class,
         'ai.internal' => \App\Http\Middleware\AiInternalApiKeyMiddleware::class,
         'module.resolve' => \App\Http\Middleware\ResolveModuleControllers::class,
         'module.resolve.views' => \App\Http\Middleware\ResolveModuleViews::class,

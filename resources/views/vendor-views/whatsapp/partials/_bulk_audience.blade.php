@@ -12,6 +12,7 @@
                                     ones <b>Send a message</b> can reach.
                                 </p>
 
+                                @if (hasPermission('whatsapp_bulk', 'import'))
                                 <form method="post" action="{{ route('vendor.whatsapp.customers.import') }}" enctype="multipart/form-data">
                                     @csrf
                                     <label class="wa-eyebrow d-block mb-1">Upload a spreadsheet</label>
@@ -35,6 +36,7 @@
                                         Duplicates (same phone) are skipped automatically.
                                     </div>
                                 </form>
+                                @endif
                             </div>
                         </div>
                     </div>

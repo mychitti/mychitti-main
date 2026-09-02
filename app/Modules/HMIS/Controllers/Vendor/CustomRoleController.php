@@ -63,5 +63,11 @@ class CustomRoleController extends BaseCustomRoleController
         } catch (\Throwable $e) {
             Log::error('Failed to seed BasicPharmacy permissions: ' . $e->getMessage());
         }
+
+        try {
+            HospitalBillController::ensurePermission();
+        } catch (\Throwable $e) {
+            Log::error('Failed to seed HospitalBill permissions: ' . $e->getMessage());
+        }
     }
 }

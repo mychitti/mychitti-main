@@ -18,7 +18,7 @@
         @if (!$connected)
             <div class="alert alert-warning">
                 {{ translate('Connect your WhatsApp number first — until then there are no templates to choose from.') }}
-                <a href="{{ route('vendor.whatsapp.connect') }}">{{ translate('Connect WhatsApp') }}</a>
+                @if (hasAnyModulePermission(['whatsapp_connection']))<a href="{{ route('vendor.whatsapp.connect') }}">{{ translate('Connect WhatsApp') }}</a>@else<b>{{ translate('Connect WhatsApp') }}</b>@endif
             </div>
         @elseif ($listError)
             <div class="alert alert-danger" style="font-size:13px;">
@@ -110,6 +110,7 @@
                         </div>
                     @endif
 
+                    @if (hasPermission('whatsapp_automation', 'edit'))
                     <form method="post" action="{{ route('vendor.whatsapp.template-roles.save') }}" class="form-row align-items-end">
                         @csrf
                         <input type="hidden" name="role" value="{{ $role['key'] }}">
@@ -130,7 +131,7 @@
                                 <small class="form-text text-danger" style="font-size:11px;">
                                     {{ translate('None of your approved templates take exactly') }} {{ $role['need'] }}
                                     {{ translate('value(s), so none can be used here.') }}
-                                    <a href="{{ route('vendor.whatsapp.templates') }}">{{ translate('Create one') }}</a>.
+                                    @if (hasPermission('whatsapp_templates', 'add'))<a href="{{ route('vendor.whatsapp.templates') }}">{{ translate('Create one') }}</a>.@endif
                                 </small>
                             @endif
                         </div>
@@ -140,6 +141,7 @@
                             </button>
                         </div>
                     </form>
+                    @endif
 
                     @if (!empty($role['rejected']))
                         <details class="mt-1">

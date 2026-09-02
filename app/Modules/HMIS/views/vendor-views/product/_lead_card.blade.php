@@ -198,39 +198,28 @@
             {{-- Divider --}}
             <div class="lc-divider"></div>
 
-            {{-- Client row --}}
+            {{-- Client row. The name is shown before acceptance too; the phone number below it
+                 still is not — the contact detail is what accepting buys. --}}
             <div class="lc-client">
-                @if ($isAcceptedReq && $user_details)
-                    @php
-                        $av = strtoupper(substr($user_details->f_name, 0, 1) . substr($user_details->l_name, 0, 1));
-                    @endphp
-                    <div class="lc-avatar">{{ $av }}</div>
+                @if ($user_details)
+                    <div class="lc-avatar">{{ strtoupper(substr($user_details->f_name, 0, 1) . substr($user_details->l_name, 0, 1)) }}</div>
                     <div style="flex:1;min-width:0;">
-                        <div class="lc-client-name">
-                            {{ $user_details->f_name . ' ' . $user_details->l_name }}</div>
-                    </div>
-                    <div class="lc-date">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        {{ $fmtDate }}
+                        <div class="lc-client-name">{{ trim($user_details->f_name . ' ' . $user_details->l_name) }}</div>
                     </div>
                 @else
                     <div class="lc-avatar unknown" style="font-size:14px;">?</div>
                     <div style="flex:1;min-width:0;">
                         <div class="lc-client-unknown">Client not revealed</div>
                     </div>
-                    <div class="lc-date">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                        {{ $fmtDate }}
-                    </div>
                 @endif
+                <div class="lc-date">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    {{ $fmtDate }}
+                </div>
             </div>
 
             {{-- Phone actions --}}
@@ -255,6 +244,16 @@
                         </svg>
                         Call
                     </a>
+                </div>
+            @elseif (!$isAcceptedReq && $user_details && $user_details->phone)
+                <div class="lc-phone-locked"
+                    style="display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px dashed #e4e4e7;border-radius:7px;font-size:11.5px;color:#a1a1aa;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0110 0v4" />
+                    </svg>
+                    Accept lead to reveal phone number
                 </div>
             @endif
 

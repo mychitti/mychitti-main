@@ -43,10 +43,12 @@
                 <a href="{{ route('vendor.whatsapp.campaigns') }}" class="btn btn-sm btn-outline-secondary">
                     <i class="tio-back-ui"></i> All campaigns
                 </a>
-                <a href="{{ route('vendor.whatsapp.campaigns.export', $campaign->id) }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="tio-download-to"></i> Export CSV
-                </a>
-                @if (in_array($campaign->status, ['draft', 'paused']))
+                @if (hasPermission('whatsapp_campaigns', 'export'))
+                    <a href="{{ route('vendor.whatsapp.campaigns.export', $campaign->id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="tio-download-to"></i> Export CSV
+                    </a>
+                @endif
+                @if (in_array($campaign->status, ['draft', 'paused']) && hasPermission('whatsapp_campaigns', 'status_change'))
                     <form action="{{ route('vendor.whatsapp.campaigns.start', $campaign->id) }}" method="post" class="d-inline">
                         @csrf
                         <button class="btn btn-sm btn--primary">
@@ -54,7 +56,7 @@
                         </button>
                     </form>
                 @endif
-                @if ($campaign->status === 'running')
+                @if ($campaign->status === 'running' && hasPermission('whatsapp_campaigns', 'status_change'))
                     <form action="{{ route('vendor.whatsapp.campaigns.run-now', $campaign->id) }}" method="post" class="d-inline">
                         @csrf
                         <button class="btn btn-sm btn-outline-primary"><i class="tio-flash"></i> Send due batch now</button>
@@ -64,7 +66,7 @@
                         <button class="btn btn-sm btn-outline-warning"><i class="tio-pause"></i> Pause</button>
                     </form>
                 @endif
-                @if (!in_array($campaign->status, ['cancelled', 'completed']))
+                @if (!in_array($campaign->status, ['cancelled', 'completed']) && hasPermission('whatsapp_campaigns', 'status_change'))
                     <form action="{{ route('vendor.whatsapp.campaigns.cancel', $campaign->id) }}" method="post" class="d-inline"
                           onsubmit="return confirm('Stop this campaign for good? Tracking is kept.');">
                         @csrf
@@ -77,7 +79,7 @@
         @if ($campaign->status === 'running' && !$active)
             <div class="alert alert-warning" style="font-size:13px;">
                 Your subscription isn’t active, so sending is paused at the gateway.
-                <a href="{{ route('vendor.whatsapp.billing') }}">Activate your plan</a> to let the series continue.
+                @if (hasAnyModulePermission(['whatsapp_billing']))<a href="{{ route('vendor.whatsapp.billing') }}">Activate your plan</a> to let the series continue.@else Ask the owner to activate the plan to let the series continue.@endif
             </div>
         @endif
 

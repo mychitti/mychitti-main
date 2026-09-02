@@ -57,6 +57,46 @@ class OpdVisit extends Model
         return $this->status === self::STATUS_CANCELLED;
     }
 
+    /** Name of the unique index behind the token series — see OpdController::ensureTokenIndex(). */
+    const TOKEN_INDEX = 'opd_store_date_token';
+
+    /**
+     * The next free token for a hospital's day.
+     *
+     * One series per store per date, shared by every doctor: a token is the patient's place in the
+     * day's queue, not their place in one doctor's list. max() + 1 rather than count() + 1 because
+     * a cancelled visit keeps its token, and reissuing that number would put it on two slips.
+     */
+    public static function nextToken($storeId, $visitDate): int
+    {
+        return (int) (static::where('store_id', $storeId)
+            ->whereDate('visit_date', $visitDate)
+            ->max('token_number') ?? 0) + 1;
+    }
+
+    /** Whether that number is already on the day's register. A cancelled visit still holds its. */
+    public static function tokenTaken($storeId, $visitDate, int $token, $ignoreId = null): bool
+    {
+        return static::where('store_id', $storeId)
+            ->whereDate('visit_date', $visitDate)
+            ->where('token_number', $token)
+            ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
+            ->exists();
+    }
+
+    /**
+     * A write that lost the race for a token.
+     *
+     * Matched on the index name rather than the SQLSTATE alone, so an unrelated unique violation
+     * on this table is never quietly reported to the desk as a token clash.
+     */
+    public static function isTokenCollision(\Throwable $e): bool
+    {
+        return $e instanceof \Illuminate\Database\QueryException
+            && (string) ($e->errorInfo[0] ?? '') === '23000'
+            && stripos($e->getMessage(), self::TOKEN_INDEX) !== false;
+    }
+
     /**
      * Care on this visit was given up on because the patient stopped coming.
      *

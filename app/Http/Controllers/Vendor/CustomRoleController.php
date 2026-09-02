@@ -19,6 +19,10 @@ class CustomRoleController extends Controller
 {
     public function create(Request $request)
     {
+        // The add-role form renders the permission grid straight from the features table, so the
+        // WhatsApp rows have to exist before it is drawn — not one page load later.
+        \App\Services\WhatsAppPermissions::ensure();
+
         $key = explode(' ', $request['search']);
         $rl = EmployeeRole::where('store_id', Helpers::get_store_id())->orderBy('name')
             ->when(
@@ -128,6 +132,10 @@ class CustomRoleController extends Controller
 
     public function edit($id)
     {
+        // The WhatsApp rows carried a NULL master_module and so never appeared in this grid at all.
+        // Seeded here as well as from the sidebar so the section is complete the first time an
+        // owner opens a role, not one page load later.
+        \App\Services\WhatsAppPermissions::ensure();
 
         $accessibleModules = [];
 
@@ -140,6 +148,18 @@ class CustomRoleController extends Controller
                 $accessibleModules[$submodule->Key] = $submodule->name;
             }
         }
+
+        // Not a SubModule — WhatsApp is open to every store and bills through its own plan — but it
+        // still needs a checkbox here, because the grid only shows and saves permissions whose
+        // master_module the role has ticked.
+        $accessibleModules[\App\Services\WhatsAppPermissions::MODULE] = 'WhatsApp';
+
+        // Basic billing is free for every store: its route group carries no planwise guard, and
+        // list / view / add_basic / edit / delete / pay / settings are all flagged free. The
+        // SubModule above only covers the paid "Advanced Billing" tier, so without this a store
+        // that never bought it could raise invoices itself but had no way to delegate that to
+        // staff. Paid rows in the section stay enforced by hasPermission().
+        $accessibleModules['billing'] = $accessibleModules['billing'] ?? 'Billing';
         $role = EmployeeRole::withoutGlobalScope('translate')->with('permissions')->where('store_id', Helpers::get_store_id())->where(['id' => $id])->first(['id', 'name', 'modules']);
         return view('vendor-views.custom-role.edit', compact('role', 'accessibleModules'));
     }

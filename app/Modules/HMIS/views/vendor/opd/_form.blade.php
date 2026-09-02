@@ -83,9 +83,17 @@
             <div class="col-md-3">
                 <div class="form-group">
                     <label class="input-label">Token Number</label>
+                    {{-- On edit this showed 1 whatever the visit's real token was, and update()
+                         ignores what is posted anyway — so it reads back the issued number and
+                         stays locked. Rescheduling is what moves a visit, and its token with it. --}}
                     <input type="number" name="token_number" class="form-control @error('token_number') is-invalid @enderror"
-                        value="{{ old('token_number', $nextToken ?? 1) }}" min="1">
+                        value="{{ old('token_number', $visit?->token_number ?? $nextToken ?? 1) }}" min="1"
+                        {{ $visit ? 'readonly' : '' }}>
                     @error('token_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    @if (!$visit)
+                        <small class="text-muted">One series a day for the whole hospital. A number already
+                            issued is refused.</small>
+                    @endif
                 </div>
             </div>
             <div class="col-md-3">

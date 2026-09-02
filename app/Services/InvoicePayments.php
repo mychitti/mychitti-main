@@ -348,18 +348,19 @@ class InvoicePayments
             ? 'Cash and Online'
             : ($online > 0 ? 'Online' : 'Cash');
 
-        // The status follows the money, in both directions. This only ever runs just after a
-        // payment row was inserted, so there IS a payment — and an invoice with a payment against
-        // it and a balance still outstanding is Partially Paid, not Unpaid.
+        // Two states, and only two. A third value reads as neither to every query that filters on
+        // this column — the billing list's overdue/pending/credit buckets, the reminder cron, the
+        // receivables totals — so writing 'Partially Paid' here made a bill disappear from all of
+        // them the moment the first rupee was taken against it.
         //
-        // Previously only the settled branch wrote a status, which left every part payment showing
-        // as Unpaid wherever the caller had created the invoice that way — the hospital bill screen
-        // does exactly that, deliberately, so that this method stays the single source of truth.
+        // Being part paid is not a status on the invoice; it is the sum on invoice_payments being
+        // short of the total, and every screen that says "Part Paid" derives it from there.
+        // payment_date is still stamped on the first payment so the list has a date to show.
         if ($settled) {
             $invoice->payment_status = 'Paid';
             $invoice->payment_date   = date('Y-m-d');
         } else {
-            $invoice->payment_status = 'Partially Paid';
+            $invoice->payment_status = 'Unpaid';
             $invoice->payment_date   = $invoice->payment_date ?: date('Y-m-d');
         }
 

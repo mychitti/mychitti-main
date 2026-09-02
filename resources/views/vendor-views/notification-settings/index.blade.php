@@ -105,6 +105,7 @@
                                  worth little asked at the desk, and a follow-up reminder is worth
                                  little sent months ahead. --}}
                             @if ($key === 'hmis_feedback')
+                                @if (hasPermission('whatsapp_automation', 'edit'))
                                 <form action="{{ route('vendor.notification-settings.timing') }}" method="post"
                                       class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
                                     @csrf
@@ -118,8 +119,10 @@
                                         0 sends it immediately. Anything landing between 9pm and 8am waits for 10am.
                                     </small>
                                 </form>
+                                @endif
                             @endif
                             @if ($key === 'hmis_followup')
+                                @if (hasPermission('whatsapp_automation', 'edit'))
                                 <form action="{{ route('vendor.notification-settings.timing') }}" method="post"
                                       class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
                                     @csrf
@@ -134,6 +137,7 @@
                                         the confirmation goes out at booking so nobody is missed.
                                     </small>
                                 </form>
+                                @endif
                             @endif
 
                             {{-- The whole chain in one line: which template will actually go out,
@@ -164,6 +168,7 @@
                                     <summary class="text-muted" style="font-size:11px; cursor:pointer;">
                                         Template: <code>{{ $state['template'] }}</code>{{ $state['bound'] ? ' (yours)' : '' }}
                                     </summary>
+                                    @if (hasPermission('whatsapp_automation', 'edit'))
                                     <form action="{{ route('vendor.whatsapp.template-roles.save') }}" method="post"
                                           class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
                                         @csrf
@@ -181,6 +186,7 @@
                                             Only templates with exactly the values this message sends are accepted — you'll be told if one doesn't fit.
                                         </small>
                                     </form>
+                                    @endif
                                 </details>
                             @endif
                         </div>
@@ -189,6 +195,7 @@
                                 <span class="badge badge-soft-{{ $state['tone'] }} px-2 py-1" style="font-size:11px;"
                                       title="{{ $state['reason'] }}">{{ $state['chip'] }}</span>
                             @endif
+                            @if (hasPermission('whatsapp_automation', 'edit'))
                             <form action="{{ route('vendor.notification-settings.toggle') }}" method="post" class="mb-0">
                                 @csrf
                                 <input type="hidden" name="group" value="{{ $current['group'] }}">
@@ -201,6 +208,7 @@
                                     </span>
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </div>
                 @empty
@@ -220,6 +228,7 @@
                             <small class="text-muted d-block" style="font-size:12px;">
                                 Reminder to the patient before their scheduled appointment (needs your approved appointment_reminder template).
                             </small>
+                            @if (hasPermission('whatsapp_templates', 'edit'))
                             <form action="{{ route('vendor.whatsapp.templates.reminder-schedule') }}" method="post"
                                   class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
                                 @csrf
@@ -230,6 +239,7 @@
                                 <button type="submit" class="btn btn-sm btn-outline-primary py-0">Save</button>
                                 <small class="text-muted d-block w-100" style="font-size:11px;">Set 0 to turn off. Max 168 (7 days).</small>
                             </form>
+                            @endif
                         </div>
                         <span class="badge badge-{{ $apptReminder > 0 ? 'success' : 'secondary' }} px-3 py-2 flex-shrink-0">
                             {{ $apptReminder > 0 ? 'ON' : 'OFF' }}
@@ -245,6 +255,7 @@
                                 Counted from the day a service request is completed. Switch the message itself
                                 on with the "Service due again" toggle above.
                             </small>
+                            @if (hasPermission('whatsapp_automation', 'edit'))
                             <form action="{{ route('vendor.notification-settings.service-recall') }}" method="post"
                                   class="d-flex align-items-center flex-wrap mt-1 mb-0" style="gap:6px;">
                                 @csrf
@@ -257,6 +268,7 @@
                                     e.g. 180 for six months, 365 for a year. Leave blank or 0 to never chase.
                                 </small>
                             </form>
+                            @endif
                         </div>
                         <span class="badge badge-{{ (int) $serviceRecallDays > 0 ? 'success' : 'secondary' }} px-3 py-2 flex-shrink-0">
                             {{ (int) $serviceRecallDays > 0 ? 'ON' : 'OFF' }}

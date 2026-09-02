@@ -252,9 +252,11 @@
                 <h1 class="page-header-title mb-0"><i class="tio-chat"></i> WhatsApp Chats</h1>
                 <span class="wa-sub">Two-way conversations on your connected number.</span>
             </div>
-            <a href="{{ route('vendor.whatsapp.dashboard') }}" class="btn btn-sm btn-outline-primary">
-                <i class="tio-dashboard-outlined"></i> Dashboard
-            </a>
+            @if (hasPermission('whatsapp', 'dashboard'))
+                <a href="{{ route('vendor.whatsapp.dashboard') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="tio-dashboard-outlined"></i> Dashboard
+                </a>
+            @endif
         </div>
 
         @if (!$connected)
@@ -266,7 +268,9 @@
                         <div class="wa-empty-s mb-3">
                             Customer chats arrive on your own WhatsApp number. Connect one to read and reply here.
                         </div>
-                        <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">Connect WhatsApp</a>
+                        @if (hasAnyModulePermission(['whatsapp_connection']))
+                            <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">Connect WhatsApp</a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -278,7 +282,7 @@
                         <b>Incoming messages may not arrive.</b>
                         Your WhatsApp account could not be linked to our message receiver ({{ $subscribeError }}).
                         Disconnect and reconnect from the
-                        <a href="{{ route('vendor.whatsapp.connect') }}" class="alert-link">Connection</a> page to fix it.
+                        @if (hasAnyModulePermission(['whatsapp_connection']))<a href="{{ route('vendor.whatsapp.connect') }}" class="alert-link">Connection</a> page to fix it.@else<b>Connection</b> page — ask the owner to fix it.@endif
                     </div>
                 </div>
             @endif
@@ -339,16 +343,24 @@
                     <div class="wchat-window-note" id="wchatWindowNote" style="display:none;">
                         <i class="tio-time"></i> Last message from this customer was over 24 hours ago — WhatsApp may not
                         deliver free-text replies outside that window. If yours fails, send an approved template from the
-                        <a href="{{ route('vendor.whatsapp.connect') }}">bulk message</a> screen instead.
+                        @if (hasAnyModulePermission(['whatsapp_bulk']))<a href="{{ route('vendor.whatsapp.bulk') }}">bulk message</a> screen instead.@else<b>bulk message</b> screen instead.@endif
                     </div>
 
-                    <div class="wchat-input" id="wchatInput" style="display:none;">
-                        <textarea id="wchatText" rows="1" placeholder="Type a message"></textarea>
-                        <button type="button" class="wchat-send" id="wchatSend" title="Send"><i class="tio-send"></i></button>
-                    </div>
+                    @if (hasPermission('whatsapp_inbox', 'reply'))
+                        <div class="wchat-input" id="wchatInput" style="display:none;">
+                            <textarea id="wchatText" rows="1" placeholder="Type a message"></textarea>
+                            <button type="button" class="wchat-send" id="wchatSend" title="Send"><i class="tio-send"></i></button>
+                        </div>
+                    @else
+                        {{-- Read-only: this role may follow conversations but not answer them. --}}
+                        <div class="wchat-window-note">
+                            <i class="tio-lock-outlined"></i> You can read these chats but not reply to them.
+                        </div>
+                    @endif
                 </div>
             </div>
 
+            @if (hasPermission('whatsapp_inbox', 'forward'))
             <small class="wa-sub d-block mt-2">
                 <i class="tio-info-outined"></i> Hover any message to forward it to one or more staff members, or to any other number.
             </small>
@@ -380,7 +392,7 @@
                             <small class="text-muted" style="font-size:11.5px;">
                                 <i class="tio-info-outined"></i> Sent from your WhatsApp number using the
                                 <b>Forward to Staff</b> template. Submit and get it approved on the
-                                <a href="{{ route('vendor.whatsapp.templates') }}">Templates</a> page first. Until then it
+                                @if (hasAnyModulePermission(['whatsapp_templates']))<a href="{{ route('vendor.whatsapp.templates') }}">Templates</a>@else<b>Templates</b>@endif page first. Until then it
                                 falls back to free text, which only delivers if the recipient messaged your number in the last 24 hours.
                             </small>
                         </div>
@@ -391,6 +403,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         @endif
     </div>
 @endsection
@@ -406,6 +419,9 @@
     var FORWARD_URL = '{{ route('vendor.whatsapp.inbox.forward') }}';
     var DOWNLOAD_URL = '{{ route('vendor.whatsapp.inbox.media-download', '__ID__') }}';
     var CSRF        = '{{ csrf_token() }}';
+    // The bubble's forward arrow is drawn here, not in the markup, so the permission has to
+    // reach the JS as well — otherwise a read-only role still gets an arrow that 403s.
+    var CAN_FORWARD = @json(hasPermission('whatsapp_inbox', 'forward'));
 
     var threads = [];
     var activeKey = null;
@@ -630,7 +646,7 @@
 
             var kind = messageKind(m);
             html += '<div class="wbubble ' + dir + cont + (kind.cls ? ' ' + kind.cls : '') + '">'
-                + '<button type="button" class="wfwd" title="Forward to staff" data-body="' + esc(body) + '">↪</button>'
+                + (CAN_FORWARD ? '<button type="button" class="wfwd" title="Forward to staff" data-body="' + esc(body) + '">↪</button>' : '')
                 + (kind.tag ? '<span class="wtag">' + kind.tag + '</span>' : '')
                 + kind.html
                 + '<div class="wmeta">' + fmtTime(m.sent_at) + ticks(m) + '</div>'

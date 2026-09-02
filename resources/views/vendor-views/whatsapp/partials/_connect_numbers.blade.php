@@ -58,7 +58,7 @@
                                                 </div>
                                             </div>
                                             <div class="text-right mt-2 mt-sm-0">
-                                                @if (!$number->is_default)
+                                                @if (!$number->is_default && hasPermission('whatsapp_connection', 'edit'))
                                                     <form action="{{ route('vendor.whatsapp.numbers.default') }}" method="post" class="d-inline">
                                                         @csrf
                                                         <input type="hidden" name="number_id" value="{{ $number->id }}">
@@ -67,17 +67,20 @@
                                                         </button>
                                                     </form>
                                                 @endif
-                                                <form action="{{ route('vendor.whatsapp.disconnect') }}" method="post" class="d-inline"
-                                                    onsubmit="return confirm('{{ translate('Disconnect this number? Any message type set to use it will fall back to your default number.') }}');">
-                                                    @csrf
-                                                    <input type="hidden" name="number_id" value="{{ $number->id }}">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        {{ translate('Disconnect') }}
-                                                    </button>
-                                                </form>
+                                                @if (hasPermission('whatsapp_connection', 'delete'))
+                                                    <form action="{{ route('vendor.whatsapp.disconnect') }}" method="post" class="d-inline"
+                                                        onsubmit="return confirm('{{ translate('Disconnect this number? Any message type set to use it will fall back to your default number.') }}');">
+                                                        @csrf
+                                                        <input type="hidden" name="number_id" value="{{ $number->id }}">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            {{ translate('Disconnect') }}
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </div>
 
+                                        @if (hasPermission('whatsapp_connection', 'edit'))
                                         <form action="{{ route('vendor.whatsapp.numbers.label') }}" method="post" class="mt-3">
                                             @csrf
                                             <input type="hidden" name="number_id" value="{{ $number->id }}">
@@ -90,6 +93,7 @@
                                                 </div>
                                             </div>
                                         </form>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
@@ -109,6 +113,7 @@
 
                             @foreach ($purposes as $key => $meta)
                                 @php($bound = $bindings[$key]->wa_number_id ?? null)
+                                @if (hasPermission('whatsapp_connection', 'edit'))
                                 <form action="{{ route('vendor.whatsapp.numbers.bind') }}" method="post" class="mb-3">
                                     @csrf
                                     <input type="hidden" name="purpose" value="{{ $key }}">
@@ -130,6 +135,7 @@
                                         </div>
                                     </div>
                                 </form>
+                                @endif
                             @endforeach
                         </div>
                     </div>

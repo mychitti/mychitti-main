@@ -17,10 +17,12 @@
                 </span>
             </div>
             <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-                <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="tio-chat"></i> One-off message
-                </a>
-                @if ($connected)
+                @if (hasAnyModulePermission(['whatsapp_connection', 'whatsapp_billing']))
+                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="tio-chat"></i> One-off message
+                    </a>
+                @endif
+                @if ($connected && hasPermission('whatsapp_campaigns', 'add'))
                     <a href="{{ route('vendor.whatsapp.campaigns.create') }}" class="btn btn-sm btn--primary">
                         <i class="tio-add"></i> New campaign
                     </a>
@@ -36,14 +38,16 @@
                     <div class="wa-empty-s mb-3">
                         A series goes out from your own WhatsApp Business number, using your own approved templates.
                     </div>
-                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">Connect WhatsApp</a>
+                    @if (hasAnyModulePermission(['whatsapp_connection']))
+                        <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary">Connect WhatsApp</a>
+                    @endif
                 </div>
             </div>
         @else
             @if (!$active)
                 <div class="alert alert-warning" style="font-size:13px;">
                     Your WhatsApp subscription isn’t active, so nothing will send. You can still build a campaign —
-                    <a href="{{ route('vendor.whatsapp.billing') }}">activate your plan</a> to start it.
+                    @if (hasAnyModulePermission(['whatsapp_billing']))<a href="{{ route('vendor.whatsapp.billing') }}">activate your plan</a> to start it.@else ask the owner to activate your plan to start it.@endif
                 </div>
             @endif
 
@@ -82,6 +86,7 @@
                 </div>
             </div>
 
+            @if (hasPermission('whatsapp_campaigns', 'list'))
             <div class="wa-card">
                 <div class="wa-card-h">
                     Your campaigns
@@ -93,9 +98,11 @@
                             <i class="tio-send-outlined"></i>
                             <div class="wa-empty-t">No campaigns yet</div>
                             <div class="wa-empty-s mb-3">Build your first series — an offer, then two follow-ups.</div>
-                            <a href="{{ route('vendor.whatsapp.campaigns.create') }}" class="btn btn-sm btn--primary">
-                                Create a campaign
-                            </a>
+                            @if (hasPermission('whatsapp_campaigns', 'add'))
+                                <a href="{{ route('vendor.whatsapp.campaigns.create') }}" class="btn btn-sm btn--primary">
+                                    Create a campaign
+                                </a>
+                            @endif
                         </div>
                     @else
                         <div class="table-responsive">
@@ -158,7 +165,7 @@
                                             <td class="text-right text-nowrap">
                                                 <a href="{{ route('vendor.whatsapp.campaigns.show', $campaign->id) }}"
                                                    class="btn btn-sm btn-outline-secondary">Open</a>
-                                                @if (in_array($campaign->status, ['draft', 'paused']))
+                                                @if (in_array($campaign->status, ['draft', 'paused']) && hasPermission('whatsapp_campaigns', 'status_change'))
                                                     <form action="{{ route('vendor.whatsapp.campaigns.start', $campaign->id) }}"
                                                           method="post" class="d-inline">
                                                         @csrf
@@ -166,7 +173,7 @@
                                                             {{ $campaign->status === 'paused' ? 'Resume' : 'Start' }}
                                                         </button>
                                                     </form>
-                                                @elseif ($campaign->status === 'running')
+                                                @elseif ($campaign->status === 'running' && hasPermission('whatsapp_campaigns', 'status_change'))
                                                     <form action="{{ route('vendor.whatsapp.campaigns.pause', $campaign->id) }}"
                                                           method="post" class="d-inline">
                                                         @csrf
@@ -183,6 +190,21 @@
                     @endif
                 </div>
             </div>
+            @elseif (hasPermission('whatsapp_campaigns', 'add'))
+                {{-- Create-only: no sight of what anyone else has built, just the way in. --}}
+                <div class="wa-card">
+                    <div class="wa-card-b">
+                        <div class="wa-empty">
+                            <i class="tio-send-outlined"></i>
+                            <div class="wa-empty-t">Build a campaign</div>
+                            <div class="wa-empty-s mb-3">An offer, then two follow-ups to the people who didn't say no.</div>
+                            <a href="{{ route('vendor.whatsapp.campaigns.create') }}" class="btn btn-sm btn--primary">
+                                Create a campaign
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endif
         @endif
     </div>
 @endsection

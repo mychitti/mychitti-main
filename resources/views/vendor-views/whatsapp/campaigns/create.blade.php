@@ -33,7 +33,9 @@
                 <div class="wa-empty">
                     <i class="tio-send-outlined"></i>
                     <div class="wa-empty-t">Connect your WhatsApp number first</div>
-                    <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary mt-2">Connect WhatsApp</a>
+                    @if (hasAnyModulePermission(['whatsapp_connection']))
+                        <a href="{{ route('vendor.whatsapp.connect') }}" class="btn btn-sm btn--primary mt-2">Connect WhatsApp</a>
+                    @endif
                 </div>
             </div>
         @elseif (empty($templates))
@@ -45,7 +47,9 @@
                         A series needs at least one approved template. Give step 1 two quick-reply buttons —
                         “Interested” and “Not interested” — so the follow-ups have something to work with.
                     </div>
-                    <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn--primary">Create a template</a>
+                    @if (hasPermission('whatsapp_templates', 'add'))
+                        <a href="{{ route('vendor.whatsapp.templates') }}" class="btn btn-sm btn--primary">Create a template</a>
+                    @endif
                 </div>
             </div>
         @else
@@ -55,7 +59,7 @@
             @if (!$active)
                 <div class="alert alert-warning" style="font-size:13px;">
                     Your subscription isn’t active — you can save this campaign, but it won’t send until you
-                    <a href="{{ route('vendor.whatsapp.billing') }}">activate your plan</a>.
+                    @if (hasAnyModulePermission(['whatsapp_billing']))<a href="{{ route('vendor.whatsapp.billing') }}">activate your plan</a>.@else ask the owner to activate your plan.@endif
                 </div>
             @endif
 
@@ -199,7 +203,7 @@
                                     <div class="wa-note mt-3">
                                         Typed replies are matched against the word lists below. They can’t catch
                                         “nahi chahiye” or “maybe next month” — an
-                                        <a href="{{ route('vendor.whatsapp.billing') }}">AI Agent plan</a> reads those
+                                        @if (hasAnyModulePermission(['whatsapp_billing']))<a href="{{ route('vendor.whatsapp.billing') }}">AI Agent plan</a>@else AI Agent plan @endif reads those
                                         properly, in any language. Button taps work perfectly either way.
                                     </div>
                                 @endif

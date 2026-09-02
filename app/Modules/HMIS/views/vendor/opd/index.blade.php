@@ -388,6 +388,7 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
+                                <th>SI</th>
                                 <th>Token</th>
                                 <th>Patient</th>
                                 <th>Doctor</th>
@@ -401,6 +402,7 @@
                         <tbody>
                             @forelse($visits as $visit)
                                 <tr class="{{ $visit->is_cancelled ? 'row-cancelled' : '' }}">
+                                    <td class="text-muted">{{ $visits->firstItem() + $loop->index }}</td>
                                     <td>
                                         <span class="hmis-token-badge">
                                             {{ $visit->token_number }}
@@ -561,7 +563,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $showVitals ? 8 : 7 }}" class="text-center text-muted py-4">No OPD visits recorded for this date.</td>
+                                    <td colspan="{{ $showVitals ? 9 : 8 }}" class="text-center text-muted py-4">No OPD visits recorded for this date.</td>
                                 </tr>
                             @endforelse
                         </tbody>
