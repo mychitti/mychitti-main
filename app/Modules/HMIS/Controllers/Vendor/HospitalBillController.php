@@ -55,6 +55,7 @@ class HospitalBillController extends Controller
         }
     }
 
+
     /**
      * One raised hospital bill, on the same template the billing module uses.
      *
@@ -198,7 +199,7 @@ class HospitalBillController extends Controller
             'context', 'contextId', 'admission', 'customInfo', 'presetLabels', 'existingReceipts',
             'existingBills', 'alreadyPaid'
         ));
-    } 
+    }
 
     public function createForOPD($visitId)
     {
@@ -692,16 +693,16 @@ class HospitalBillController extends Controller
                 if ($invId) {
                     _updateInventoryStock($invId, $qty, null);
                 }
-            } 
+            }
 
             DB::commit();
         } catch (\Throwable $e) {
-            DB::rollBack(); 
+            DB::rollBack();
             return back()->withErrors(['error' => 'Could not create bill: ' . $e->getMessage()]);
         }
- 
+
         // Record payment & receipt AFTER DB commit so PDF build & WhatsApp API calls never lock the DB
-        if ($paidAmt > 0) { 
+        if ($paidAmt > 0) {
             try {
                 // This screen speaks the patient's language — UPI, Card, Net Banking, Cheque — while
                 // the payment ledger records only Cash, Online, or both, since that is the split the

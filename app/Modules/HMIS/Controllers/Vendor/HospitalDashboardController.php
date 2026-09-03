@@ -29,6 +29,13 @@ class HospitalDashboardController extends Controller
             $from   = $range['start']->toDateString();
             $to     = $range['end']->toDateString();
 
+            // OPD rows can be dated ahead, so the register reads 'this_month' / 'this_week' as the
+            // whole period rather than stopping at now. The OPD card and chart follow that same
+            // rule, otherwise the card counts fewer visits than the list it opens.
+            $opdRange = OpdVisit::resolveRange($preset, $custom);
+            $opdFrom  = $opdRange['start']->toDateString();
+            $opdTo    = $opdRange['end']->toDateString();
+
             $stats = [
                 'patients'               => Patient::where('store_id', $store_id)->count(),
                 'doctors'                => DoctorProfile::where('store_id', $store_id)->count(),
@@ -37,7 +44,7 @@ class HospitalDashboardController extends Controller
                 'beds_total'             => Bed::where('store_id', $store_id)->count(),
                 'beds_available'         => Bed::where('store_id', $store_id)->where('status', 'available')->count(),
                 'beds_occupied'          => Bed::where('store_id', $store_id)->where('status', 'occupied')->count(),
-                'opd_in_range'           => OpdVisit::where('store_id', $store_id)->notCancelled()->whereDate('visit_date', '>=', $from)->whereDate('visit_date', '<=', $to)->count(),
+                'opd_in_range'           => OpdVisit::where('store_id', $store_id)->notCancelled()->whereDate('visit_date', '>=', $opdFrom)->whereDate('visit_date', '<=', $opdTo)->count(),
                 'ipd_admitted'           => IpdAdmission::where('store_id', $store_id)->where('status', 'admitted')->count(),
                 'ipd_in_range'           => IpdAdmission::where('store_id', $store_id)->whereDate('admission_date', '>=', $from)->whereDate('admission_date', '<=', $to)->count(),
                 'prescriptions_in_range' => Prescription::where('store_id', $store_id)->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)->count(),
@@ -45,17 +52,17 @@ class HospitalDashboardController extends Controller
 
             $opdTrend = OpdVisit::where('store_id', $store_id)
                 ->notCancelled()
-                ->whereDate('visit_date', '>=', $from)
-                ->whereDate('visit_date', '<=', $to)
+                ->whereDate('visit_date', '>=', $opdFrom)
+                ->whereDate('visit_date', '<=', $opdTo)
                 ->select(DB::raw('DATE(visit_date) as day'), DB::raw('COUNT(*) as total'))
                 ->groupBy('day')->orderBy('day')
                 ->pluck('total', 'day');
 
             $opdLabels = [];
             $opdData   = [];
-            $current   = \Carbon\Carbon::parse($from);
-            $end       = \Carbon\Carbon::parse($to);
-            while ($current->lte($end)) {
+            $current   = \Carbon\Carbon::parse($opdFrom);
+            $opdEnd    = \Carbon\Carbon::parse($opdTo);
+            while ($current->lte($opdEnd)) {
                 $d = $current->toDateString();
                 $opdLabels[] = $current->format('d M');
                 $opdData[]   = $opdTrend[$d] ?? 0;
@@ -72,6 +79,7 @@ class HospitalDashboardController extends Controller
             $ipdLabels = [];
             $ipdData   = [];
             $current   = \Carbon\Carbon::parse($from);
+            $end       = \Carbon\Carbon::parse($to);
             while ($current->lte($end)) {
                 $d = $current->toDateString();
                 $ipdLabels[] = $current->format('d M');
@@ -105,7 +113,7 @@ class HospitalDashboardController extends Controller
             $recentOpdVisits = OpdVisit::where('store_id', $store_id)
                 ->notCancelled()
                 ->with(['patient', 'doctorProfile.employee'])
-                ->whereDate('visit_date', '>=', $from)->whereDate('visit_date', '<=', $to)
+                ->whereDate('visit_date', '>=', $opdFrom)->whereDate('visit_date', '<=', $opdTo)
                 ->orderByDesc('token_number')->limit(8)->get();
 
             return view('hmis::vendor.hospital.dashboard', compact(
@@ -119,7 +127,10 @@ class HospitalDashboardController extends Controller
 
             $preset = $request->get('date_range', 'today');
             $custom = $request->get('custom_date_range');
-            $range  = Helpers::calculatePresetDates($preset, $custom);
+            // Only OPD visits on this screen, so it follows the register's window rule — see
+            // OpdVisit::resolveRange. A doctor's "this month" used to stop at today and hide the
+            // visits already booked into their own diary for later in the month.
+            $range  = OpdVisit::resolveRange($preset, $custom);
             $from   = $range['start']->toDateString();
             $to     = $range['end']->toDateString();
 

@@ -2694,7 +2694,7 @@
                             @endif
                             {{-- Straight to the pharmacy counter. Only a finalized Rx can be
                                  dispensed (dispenseProcess requires it) — a draft won't be in the queue. --}}
-                            @if ($currentPrescription->is_finalized && hasPermission('pharmacy_dispense_queue', 'view'))
+                            @if ($currentPrescription->is_finalized && hasPermission('pharmacy_dispense_queue', 'dispense'))
                                 <a href="{{ route('vendor.prescription.dispense.show', $currentPrescription->id) }}"
                                    class="btn btn-sm btn-outline-primary" title="Dispense this prescription">
                                     <i class="tio-pill"></i> Dispense

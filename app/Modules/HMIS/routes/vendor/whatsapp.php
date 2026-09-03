@@ -23,13 +23,10 @@ Route::group(['prefix' => 'hmis-whatsapp', 'as' => 'hmis-whatsapp.'], function (
     Route::post('prescription/{id}/follow-up', [HmisWhatsAppController::class, 'prescriptionFollowUp'])
         ->name('prescription-followup')->middleware('permission:prescription,print');
 
-    // Appointments carry no per-feature permission anywhere in this module — the whole group is
-    // gated by planwise:hospital_manage and nothing finer. Naming a feature that does not exist
-    // in `features` would deny every staff role outright, so these two match their neighbours.
     Route::post('appointment/{id}/follow-up', [HmisWhatsAppController::class, 'appointmentFollowUp'])
-        ->name('appointment-followup');
+        ->name('appointment-followup')->middleware('permission:hmis_appointment,view');
     Route::post('appointment/{id}/feedback', [HmisWhatsAppController::class, 'appointmentFeedback'])
-        ->name('appointment-feedback');
+        ->name('appointment-feedback')->middleware('permission:hmis_appointment,view');
 
     Route::post('lab/{id}/report', [HmisWhatsAppController::class, 'labReport'])
         ->name('lab-report')->middleware('permission:lab_report,send');

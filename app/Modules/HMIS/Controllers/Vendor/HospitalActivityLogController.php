@@ -6,9 +6,47 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Models\HospitalActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class HospitalActivityLogController extends Controller
 {
+    /**
+     * The trail records who opened which patient, so it is not something every ward clerk should
+     * be able to read. It hangs off the existing hospital_manage feature as its own action rather
+     * than riding on `settings`, which is a write permission.
+     */
+    public static function ensurePermission(): void
+    {
+        try {
+            $seeded = DB::table('feature_permissions as fp')
+                ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                ->where('f.name', 'hospital_manage')
+                ->where('fp.action', 'activity_log')
+                ->exists();
+            if ($seeded) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            return; // permission tables not provisioned on this database yet
+        }
+
+        if (!Schema::hasTable('features') || !Schema::hasTable('feature_permissions')) {
+            return;
+        }
+
+        $featureId = DB::table('features')->where('name', 'hospital_manage')->value('id');
+        if (!$featureId) {
+            return;
+        }
+
+        DB::table('feature_permissions')->insert([
+            'feature_id' => $featureId,
+            'action'     => 'activity_log',
+            'free'       => 0,
+        ]);
+    }
+
     const CATEGORIES = [
         'appointments'  => ['appointment'],
         'prescriptions' => ['prescription'],

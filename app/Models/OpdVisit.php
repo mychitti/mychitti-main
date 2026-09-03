@@ -153,6 +153,32 @@ class OpdVisit extends Model
     }
 
     /**
+     * The date window the OPD register means by a preset.
+     *
+     * OPD is the one module whose rows can be dated ahead — a visit registered today for the 14th
+     * is a real row in the register — so "this month" and "this week" here run to the end of the
+     * period rather than stopping at now the way Helpers::calculatePresetDates does for backward
+     * looking reports. Shared with the hospital dashboard so a card and the list it opens count
+     * the same days; they drifted apart while each screen resolved the preset for itself.
+     */
+    public static function resolveRange(?string $preset, $custom = null): array
+    {
+        $preset = $preset ?: 'today';
+
+        if ($preset === 'upcoming') {
+            return ['start' => now()->startOfDay(), 'end' => now()->addDays(90)->endOfDay()];
+        }
+        if ($preset === 'this_month') {
+            return ['start' => now()->startOfMonth()->startOfDay(), 'end' => now()->endOfMonth()->endOfDay()];
+        }
+        if ($preset === 'this_week') {
+            return ['start' => now()->startOfWeek()->startOfDay(), 'end' => now()->endOfWeek()->endOfDay()];
+        }
+
+        return \App\CentralLogics\Helpers::calculatePresetDates($preset, $custom);
+    }
+
+    /**
      * Visits that actually happened — everything counted, charted or exported.
      *
      * Rows created before the status column was written carry NULL rather than 'visited', so

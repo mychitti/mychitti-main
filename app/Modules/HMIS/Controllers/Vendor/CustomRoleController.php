@@ -69,5 +69,23 @@ class CustomRoleController extends BaseCustomRoleController
         } catch (\Throwable $e) {
             Log::error('Failed to seed HospitalBill permissions: ' . $e->getMessage());
         }
+
+        try {
+            AppointmentController::ensurePermission();
+        } catch (\Throwable $e) {
+            Log::error('Failed to seed Appointment permissions: ' . $e->getMessage());
+        }
+
+        try {
+            HospitalActivityLogController::ensurePermission();
+        } catch (\Throwable $e) {
+            Log::error('Failed to seed HospitalActivityLog permissions: ' . $e->getMessage());
+        }
+
+        try {
+            \App\Http\Controllers\Front\FrontController::ensureHospitalFeatures();
+        } catch (\Throwable $e) {
+            Log::error('Failed to seed base HMIS permissions: ' . $e->getMessage());
+        }
     }
 }

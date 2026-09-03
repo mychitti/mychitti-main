@@ -9,7 +9,7 @@ Route::group(['prefix' => 'my-nurse-profile', 'as' => 'my-nurse-profile.'], func
 });
 
 Route::group(['prefix' => 'nurse', 'as' => 'nurse.'], function () {
-    Route::get('list',       [NurseController::class, 'index'])->name('list');
+    Route::get('list',       [NurseController::class, 'index'])->name('list')->middleware('permission:staff_nurse,list');
     Route::get('export',     [NurseController::class, 'export'])->name('export')->middleware('permission:staff_nurse,export');
     Route::get('create',     [NurseController::class, 'create'])->name('create')->middleware('permission:staff_nurse,add');
     Route::post('store',     [NurseController::class, 'store'])->name('store')->middleware('permission:staff_nurse,add');

@@ -1,3 +1,11 @@
+                {{-- Permission rows that arrived after the first HMIS release, seeded on the first
+                     panel page a store opens so the role grid has something to tick. Both are
+                     sentinel-guarded: one indexed lookup each once a store is provisioned. --}}
+                @php
+                    \App\Modules\HMIS\Controllers\Vendor\AppointmentController::ensurePermission();
+                    \App\Modules\HMIS\Controllers\Vendor\HospitalActivityLogController::ensurePermission();
+                @endphp
+
                 {{-- Hospital Management label --}}
                 <li class="nav-item">
                     <small class="nav-subtitle"

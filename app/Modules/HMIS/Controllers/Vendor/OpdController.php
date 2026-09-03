@@ -187,20 +187,12 @@ class OpdController extends Controller
         $preset = request('date_range') ?? 'today';
         $custom = request('custom_date_range') ?? null;
 
-        if ($preset === 'upcoming') {
-            $formatted_from = $from = now()->startOfDay();
-            $formatted_to   = $to   = now()->addDays(90)->endOfDay();
-        } else if ($preset === 'this_month') {
-            $formatted_from = $from = now()->startOfMonth()->startOfDay();
-            $formatted_to   = $to   = now()->endOfMonth()->endOfDay();
-        } else if ($preset === 'this_week') {
-            $formatted_from = $from = now()->startOfWeek()->startOfDay();
-            $formatted_to   = $to   = now()->endOfWeek()->endOfDay();
-        } else {
-            $range = Helpers::calculatePresetDates($preset, $custom);
-            $formatted_from = $from = $range['start'];
-            $formatted_to   = $to   = $range['end'];
-        }
+        // The window rule lives on the model so the hospital dashboard counts the same days this
+        // list shows — the two used to resolve 'this_month' differently and disagreed by the
+        // visits scheduled later in the month.
+        $range = OpdVisit::resolveRange($preset, $custom);
+        $formatted_from = $from = $range['start'];
+        $formatted_to   = $to   = $range['end'];
 
         $store_id = Helpers::get_store_id();
         $search   = $request->search;

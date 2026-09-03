@@ -5,12 +5,12 @@ use App\Modules\HMIS\Controllers\Vendor\OpdConsultationReceiptController;
 use App\Modules\HMIS\Controllers\Vendor\OpdLabWorkController;
 
 Route::group(['prefix' => 'opd', 'as' => 'opd.'], function () {
-    Route::get('',                   [OpdController::class, 'index'])->name('index');
+    Route::get('',                   [OpdController::class, 'index'])->name('index')->middleware('permission:opd_register,list');
     Route::get('export',             [OpdController::class, 'export'])->name('export')->middleware('permission:opd_register,export');
     Route::get('create/{id?}',       [OpdController::class, 'create'])->name('create')->middleware('permission:opd_register,add');
     Route::post('store',             [OpdController::class, 'store'])->name('store')->middleware('permission:opd_register,add');
 
-    Route::get('check-patient-validity',            [OpdController::class, 'checkPatientValidity'])->name('check-patient-validity');
+    Route::get('check-patient-validity',            [OpdController::class, 'checkPatientValidity'])->name('check-patient-validity')->middleware('permission:opd_register,add');
     Route::get('{id}/consultation-receipt',        [OpdConsultationReceiptController::class, 'receipt'])->name('consultation-receipt')->middleware('permission:opd_register,view');
     Route::post('{id}/consultation-receipt/store', [OpdConsultationReceiptController::class, 'store'])->name('consultation-receipt.store')->middleware('permission:opd_register,add');
     Route::get('{id}/consultation-receipt/pdf',    [OpdConsultationReceiptController::class, 'pdf'])->name('consultation-receipt.pdf')->middleware('permission:opd_register,view');

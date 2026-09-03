@@ -55,6 +55,7 @@ use Carbon\Carbon;
 use CURLFile;
 use Illuminate\Support\Facades\View as FacadesView;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class FrontController extends Controller
 {
@@ -304,8 +305,18 @@ class FrontController extends Controller
             echo $type . ' not found';
         }
     }
-    public function add_feature_actions(Request $request)
+    /**
+     * The base HMIS feature rows. Every other hospital feature self-heals from its own controller;
+     * these sixteen only ever came from the /add-feature-actions endpoint, which inserted blindly —
+     * a second visit duplicated all of them and their actions. Insert-if-missing now, and reachable
+     * from the role editor so a store provisioned before a row existed picks it up on its own.
+     */
+    public static function ensureHospitalFeatures(): void
     {
+        if (!Schema::hasTable('features') || !Schema::hasTable('feature_permissions')) {
+            return;
+        }
+
         $features = [
             ['name' => 'basic_staff_manage', 'display_name' => 'Staff Management', 'master_module' => null, 'actions' => ['list', 'add', 'edit', 'delete', 'role_manage']],
             ['name' => 'hospital_manage', 'display_name' => 'Hospital Management', 'master_module' => 'hospital_manage', 'actions' => ['dashboard', 'settings']],
@@ -327,21 +338,43 @@ class FrontController extends Controller
         ];
 
         foreach ($features as $feature) {
-            $featureId = DB::table('features')->insertGetId([
-                'name'          => $feature['name'],
-                'display_name'  => $feature['display_name'],
-                'master_module' => $feature['master_module'],
-            ]);
-
-            foreach ($feature['actions'] as $action) {
-                DB::table('feature_permissions')->insert([
-                    'feature_id' => $featureId,
-                    'action'     => $action,
-                    'free'       => 0,
+            $featureId = DB::table('features')->where('name', $feature['name'])->value('id');
+            if (!$featureId) {
+                $featureId = DB::table('features')->insertGetId([
+                    'name'          => $feature['name'],
+                    'display_name'  => $feature['display_name'],
+                    'master_module' => $feature['master_module'],
                 ]);
             }
+
+            foreach ($feature['actions'] as $action) {
+                $exists = DB::table('feature_permissions')
+                    ->where('feature_id', $featureId)
+                    ->where('action', $action)
+                    ->exists();
+                if (!$exists) {
+                    DB::table('feature_permissions')->insert([
+                        'feature_id' => $featureId,
+                        'action'     => $action,
+                        'free'       => 0,
+                    ]);
+                }
+            }
         }
-    }  
+
+        // Two features render as "Nursing Notes" on the role grid — this one governs the IPD
+        // patient chart, `nursing_note` (singular, seeded by NursingStationController) governs the
+        // nursing station. Named apart so a role can be granted one without guessing.
+        DB::table('features')->where('name', 'nursing_notes')
+            ->update(['display_name' => 'IPD Nursing Notes']);
+    }
+
+    public function add_feature_actions(Request $request)
+    {
+        self::ensureHospitalFeatures();
+
+        return response()->json(['status' => true, 'message' => 'Hospital feature permissions are up to date.']);
+    }
     public function registration_success(Request $request)
     {
         return view('front-views.store_reg_successfull');

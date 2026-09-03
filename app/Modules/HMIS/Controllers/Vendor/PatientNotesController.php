@@ -15,6 +15,8 @@ class PatientNotesController extends Controller
 {
     public function nursingNoteStore(Request $request, $admissionId)
     {
+        if (!auth('vendor')->check() && !hasPermission('nursing_notes', 'add')) abort(403);
+
         $request->validate([
             'note_type'   => 'required|in:' . implode(',', array_keys(NursingNote::TYPES)),
             'note'        => 'required|string',
@@ -40,6 +42,8 @@ class PatientNotesController extends Controller
 
     public function nursingNoteDestroy($admissionId, $noteId)
     {
+        if (!auth('vendor')->check() && !hasPermission('nursing_notes', 'delete')) abort(403);
+
         $store_id = Helpers::get_store_id();
         IpdAdmission::where('store_id', $store_id)->findOrFail($admissionId);
         NursingNote::where('ipd_admission_id', $admissionId)->findOrFail($noteId)->delete();
@@ -50,6 +54,8 @@ class PatientNotesController extends Controller
 
     public function dietStore(Request $request, $admissionId)
     {
+        if (!auth('vendor')->check() && !hasPermission('diet_chart', 'add')) abort(403);
+
         $request->validate([
             'date'         => 'required|date',
             'meal_type'    => 'required|in:' . implode(',', array_keys(DietChart::MEAL_TYPES)),
@@ -77,6 +83,8 @@ class PatientNotesController extends Controller
 
     public function dietDestroy($admissionId, $dietId)
     {
+        if (!auth('vendor')->check() && !hasPermission('diet_chart', 'delete')) abort(403);
+
         $store_id = Helpers::get_store_id();
         IpdAdmission::where('store_id', $store_id)->findOrFail($admissionId);
         DietChart::where('ipd_admission_id', $admissionId)->findOrFail($dietId)->delete();

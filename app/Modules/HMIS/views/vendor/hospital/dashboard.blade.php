@@ -110,26 +110,66 @@
             {{-- ── Quick Actions ─────────────────────────────────────────── --}}
             <div class="sec-title">Quick Actions</div>
             <div class="quick-actions">
-                <a class="qa" href="{{ route('vendor.patient.add') }}"><span class="qa-ic" style="background:#EFF6FF">👤</span><span><span class="qa-label d-block">Add Patient</span><span class="qa-sub">New registration</span></span></a>
-                <a class="qa" href="{{ route('vendor.opd.create') }}"><span class="qa-ic" style="background:#F0FDFA">🚶</span><span><span class="qa-label d-block">New OPD Visit</span><span class="qa-sub">Register token</span></span></a>
-                <a class="qa" href="{{ route('vendor.ipd.create') }}"><span class="qa-ic" style="background:#FFFBEB">🛏</span><span><span class="qa-label d-block">Admit Patient</span><span class="qa-sub">IPD admission</span></span></a>
-                <a class="qa" href="{{ route('vendor.prescription.list') }}"><span class="qa-ic" style="background:#FFF0F6">💊</span><span><span class="qa-label d-block">Prescriptions</span><span class="qa-sub">View / write Rx</span></span></a>
+                @if (hasPermission('patient', 'add'))
+                    <a class="qa" href="{{ route('vendor.patient.add') }}"><span class="qa-ic" style="background:#EFF6FF">👤</span><span><span class="qa-label d-block">Add Patient</span><span class="qa-sub">New registration</span></span></a>
+                @endif
+                @if (hasPermission('opd_register', 'add'))
+                    <a class="qa" href="{{ route('vendor.opd.create') }}"><span class="qa-ic" style="background:#F0FDFA">🚶</span><span><span class="qa-label d-block">New OPD Visit</span><span class="qa-sub">Register token</span></span></a>
+                @endif
+                @if (hasPermission('ipd_admission', 'add'))
+                    <a class="qa" href="{{ route('vendor.ipd.create') }}"><span class="qa-ic" style="background:#FFFBEB">🛏</span><span><span class="qa-label d-block">Admit Patient</span><span class="qa-sub">IPD admission</span></span></a>
+                @endif
+                @if (hasPermission('prescription', 'list'))
+                    <a class="qa" href="{{ route('vendor.prescription.list') }}"><span class="qa-ic" style="background:#FFF0F6">💊</span><span><span class="qa-label d-block">Prescriptions</span><span class="qa-sub">View / write Rx</span></span></a>
+                @endif
             </div>
 
             {{-- ── KPIs ──────────────────────────────────────────────────── --}}
-            <div class="sec-title">Today's Overview</div>
             @php
-                $kpis = [
-                    ['Total Patients', $stats['patients'], 'blue', '👥', route('vendor.patient.list'), 'Registered'],
-                    ['Doctors', $stats['doctors'], 'green', '🩺', route('vendor.doctor.list'), 'On record'],
-                    ['Nurses', $stats['nurses'], 'purple', '👩‍⚕️', route('vendor.nurse.list'), 'On record'],
-                    ['OPD Visits', $stats['opd_in_range'], 'teal', '🚶', route('vendor.opd.index'), 'This range'],
-                    ['IPD Admitted', $stats['ipd_admitted'], 'red', '🏥', route('vendor.ipd.index'), 'Currently in'],
-                    ['IPD Admissions', $stats['ipd_in_range'], 'amber', '📋', route('vendor.ipd.index'), 'This range'],
-                    ['Beds Available', $stats['beds_available'] . '/' . $stats['beds_total'], 'green', '🛏', route('vendor.ipd.bed-dashboard'), 'Free / total'],
-                    ['Prescriptions', $stats['prescriptions_in_range'], 'indigo', '📝', route('vendor.prescription.list'), 'This range'],
+                // The cards count whatever window the date picker is on, so the heading names that
+                // window instead of always claiming today. Anything not listed -- a custom range --
+                // falls back to the dates themselves.
+                $overviewLabels = [
+                    'today'        => "Today's Overview",
+                    'yesterday'    => "Yesterday's Overview",
+                    'this_week'    => "This Week's Overview",
+                    'last_week'    => "Last Week's Overview",
+                    'this_month'   => "This Month's Overview",
+                    'last_month'   => "Last Month's Overview",
+                    'last_3_month' => "Last 3 Months' Overview",
+                    'last_30_days' => "Last 30 Days' Overview",
+                    'quarter'      => "This Quarter's Overview",
+                    'this_year'    => "This Year's Overview",
+                    'last_year'    => "Last Year's Overview",
                 ];
+                $overviewTitle = $overviewLabels[$preset]
+                    ?? \Carbon\Carbon::parse($from)->format('d M') . ' – ' . \Carbon\Carbon::parse($to)->format('d M Y') . ' Overview';
+
+                // A card that counted a range opens its list on that same range, so the number on
+                // the card and the rows on the screen agree. Query params because that is what the
+                // OPD / IPD / prescription lists already read.
+                $rangeQuery = ['date_range' => $preset];
+                if ($preset === 'custom') {
+                    $rangeQuery['custom_date_range'] = request('custom_date_range');
+                }
+
+                // The cumulative cards keep a bare link: patients registered, doctors and nurses on
+                // record and beds free right now are not range figures, and the screens they open
+                // have no date filter to hand one to.
+                $kpis = [
+                    ['OPD Visits', $stats['opd_in_range'], 'teal', '🚶', route('vendor.opd.index', $rangeQuery), 'This range', 'opd_register', 'list'],
+                    ['Total Patients', $stats['patients'], 'blue', '👥', route('vendor.patient.list'), 'Registered', 'patient', 'list'],
+                    ['Doctors', $stats['doctors'], 'green', '🩺', route('vendor.doctor.list'), 'On record', 'staff_doctor', 'list'],
+                    ['Nurses', $stats['nurses'], 'purple', '👩‍⚕️', route('vendor.nurse.list'), 'On record', 'staff_nurse', 'list'],
+                    ['IPD Admitted', $stats['ipd_admitted'], 'red', '🏥', route('vendor.ipd.index', $rangeQuery), 'Currently in', 'ipd_admission', 'list'],
+                    ['IPD Admissions', $stats['ipd_in_range'], 'amber', '📋', route('vendor.ipd.index', $rangeQuery), 'This range', 'ipd_admission', 'list'],
+                    ['Beds Available', $stats['beds_available'] . '/' . $stats['beds_total'], 'green', '🛏', route('vendor.ipd.bed-dashboard'), 'Free / total', 'ipd_admission', 'list'],
+                    ['Prescriptions', $stats['prescriptions_in_range'], 'indigo', '📝', route('vendor.prescription.list', $rangeQuery), 'This range', 'prescription', 'list'],
+                ];
+
+                $kpis = array_values(array_filter($kpis, fn($k) => hasPermission($k[6], $k[7])));
             @endphp
+            <div class="sec-title">{{ $overviewTitle }}</div>
             @foreach (array_chunk($kpis, 4) as $row)
                 <div class="kpi-row">
                     @foreach ($row as $k)
@@ -152,7 +192,7 @@
                     <div class="hcard">
                         <div class="hcard-hd">
                             <h3>OPD Visits — Trend</h3>
-                            <a class="view-all" href="{{ route('vendor.opd.index') }}">View All</a>
+                            <a class="view-all" href="{{ route('vendor.opd.index', $rangeQuery) }}">View All</a>
                         </div>
                         @php $maxOpd = max(1, count($opdData) ? max($opdData) : 1); @endphp
                         @if (array_sum($opdData))
@@ -240,7 +280,7 @@
                     <div class="hcard">
                         <div class="hcard-hd">
                             <h3>IPD Admissions</h3>
-                            <a class="view-all" href="{{ route('vendor.ipd.index') }}">All</a>
+                            <a class="view-all" href="{{ route('vendor.ipd.index', $rangeQuery) }}">All</a>
                         </div>
                         <div class="adm-row hd"><div>Adm. No.</div><div>Patient</div><div>Ward/Bed</div><div>Day</div></div>
                         @forelse ($recentAdmissions as $adm)

@@ -402,7 +402,7 @@
                                         <a href="{{ route('vendor.prescription.show', $rx->id) }}"
                                            class="btn btn-xs btn-outline-secondary">View</a>
                                         {{-- Only a finalized Rx can be dispensed (dispenseProcess requires it). --}}
-                                        @if ($rx->is_finalized && hasPermission('pharmacy_dispense_queue', 'view'))
+                                        @if ($rx->is_finalized && hasPermission('pharmacy_dispense_queue', 'dispense'))
                                             <a href="{{ route('vendor.prescription.dispense.show', $rx->id) }}"
                                                class="btn btn-xs btn-outline-primary"
                                                title="Dispense this prescription">Dispense</a>

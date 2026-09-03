@@ -114,7 +114,7 @@
             </div>
 
             {{-- Status Update --}}
-            @if(count($nextStatuses) > 0)
+            @if(count($nextStatuses) > 0 && hasPermission('hmis_appointment', 'status_change'))
             <div class="card mb-3">
                 <div class="card-header"><h5 class="card-title mb-0">Update Status</h5></div>
                 <div class="card-body">
@@ -155,7 +155,7 @@
             </div>
 
             {{-- Reassign Doctor --}}
-            @if(!in_array($appointment->status, ['completed', 'cancelled']))
+            @if(!in_array($appointment->status, ['completed', 'cancelled']) && hasPermission('hmis_appointment', 'reassign'))
             <div class="card mb-3">
                 <div class="card-header"><h5 class="card-title mb-0">Reassign Doctor</h5></div>
                 <div class="card-body">
@@ -182,7 +182,7 @@
             @endif
 
             {{-- Reschedule --}}
-            @if(!in_array($appointment->status, ['completed', 'cancelled']))
+            @if(!in_array($appointment->status, ['completed', 'cancelled']) && hasPermission('hmis_appointment', 'reschedule'))
             <div class="card mb-3">
                 <div class="card-header"><h5 class="card-title mb-0">Reschedule</h5></div>
                 <div class="card-body">
@@ -236,7 +236,7 @@
 
             {{-- Reschedule requests put to this patient. The open one is the actionable thing; the
                  answered ones are why an appointment is still sitting on its original date. --}}
-            @if(($rescheduleRequests ?? collect())->count())
+            @if(($rescheduleRequests ?? collect())->count() && hasPermission('hmis_appointment', 'reschedule'))
             <div class="card mb-3">
                 <div class="card-header"><h5 class="card-title mb-0">Reschedule Requests</h5></div>
                 <div class="card-body py-2">
@@ -304,7 +304,7 @@
             @endif
 
             {{-- Next Visit (follow-up) — available even after completion --}}
-            @if(!in_array($appointment->status, ['cancelled', 'no_show']))
+            @if(!in_array($appointment->status, ['cancelled', 'no_show']) && hasPermission('hmis_appointment', 'add'))
             <div class="card mb-3">
                 <div class="card-header"><h5 class="card-title mb-0"><i class="tio-calendar-note"></i> Schedule Next Visit</h5></div>
                 <div class="card-body">

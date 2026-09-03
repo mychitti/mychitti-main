@@ -520,7 +520,7 @@
                                     · opened {{ $hMove->views }}×
                                 @endif
                             </div>
-                            @if($hAppointment)
+                            @if($hAppointment && hasPermission('hmis_appointment', 'view'))
                                 <a href="{{ route('vendor.appointment.show', $hAppointment->id) }}"
                                    onclick="event.stopPropagation()" style="font-size:11px;">Resend or withdraw</a>
                             @endif
@@ -571,7 +571,7 @@
                                 <i class="tio-user"></i> Patient
                             </a>
                         @endif
-                        @if($hAppointment)
+                        @if($hAppointment && hasPermission('hmis_appointment', 'view'))
                             <a href="{{ route('vendor.appointment.show', $hAppointment->id) }}"
                                 class="btn btn-sm btn-outline-primary"
                                 onclick="event.stopPropagation()"

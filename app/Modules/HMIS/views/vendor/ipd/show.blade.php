@@ -252,7 +252,7 @@
                     <span class="badge badge-soft-warning ml-1">{{ $consents->count() }}</span>
                 </h6>
                 <div class="d-flex align-items-center gap-2">
-                    @if (hasPermission('ipd_admission', 'consent'))
+                    @if (hasPermission('ipd_admission', 'consent') && hasPermission('consent_form', 'add'))
                         <a href="{{ route('vendor.consent.create', ['admission_id' => $admission->id]) }}"
                             class="btn btn-xs btn--primary" onclick="event.stopPropagation()">
                             <i class="tio-add"></i> Add Consent

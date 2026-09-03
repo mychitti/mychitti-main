@@ -11,9 +11,11 @@
                 Appointments
                 <span class="badge badge-soft-dark ml-2">{{ $appointments->total() }}</span>
             </h1>
-            <a href="{{ route('vendor.appointment.create') }}" class="btn btn--primary mb-2">
-                <i class="tio-add-circle"></i> Book Appointment
-            </a> 
+            @if (hasPermission('hmis_appointment', 'add'))
+                <a href="{{ route('vendor.appointment.create') }}" class="btn btn--primary mb-2">
+                    <i class="tio-add-circle"></i> Book Appointment
+                </a>
+            @endif
         </div>
     </div>
 
@@ -114,10 +116,12 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ route('vendor.appointment.show', $apt->id) }}"
-                                class="btn btn-sm btn-outline-primary">
-                                <i class="tio-visible"></i>
-                            </a>
+                            @if (hasPermission('hmis_appointment', 'view'))
+                                <a href="{{ route('vendor.appointment.show', $apt->id) }}"
+                                    class="btn btn-sm btn-outline-primary">
+                                    <i class="tio-visible"></i>
+                                </a>
+                            @endif
                         </td>
                     </tr>
                     @empty

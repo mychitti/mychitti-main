@@ -2,10 +2,10 @@
 
 use App\Modules\HMIS\Controllers\Vendor\PatientController;
 
-Route::get('patient/add', [PatientController::class, 'index'])->name('patient.add');
+Route::get('patient/add', [PatientController::class, 'index'])->name('patient.add')->middleware('permission:patient,add');
 Route::group(['prefix' => 'patient', 'as' => 'patient.'], function () {
-    Route::post('quick-save',                        [PatientController::class, 'quickSave'])->name('quick-save');
-    Route::get('list',                               [PatientController::class, 'list'])->name('list');
+    Route::post('quick-save',                        [PatientController::class, 'quickSave'])->name('quick-save')->middleware('permission:patient,add');
+    Route::get('list',                               [PatientController::class, 'list'])->name('list')->middleware('permission:patient,list');
     Route::get('export',                             [PatientController::class, 'export'])->name('export')->middleware('permission:patient,export');
     // Above {id} on purpose — a literal segment declared after the wildcard is never reached.
     Route::get('sent-documents',                     [PatientController::class, 'sentDocuments'])->name('sent-documents')->middleware('permission:patient_documents,list');

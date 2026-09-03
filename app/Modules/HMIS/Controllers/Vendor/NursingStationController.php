@@ -142,7 +142,7 @@ class NursingStationController extends Controller
         'nursing_vitals'   => ['Nursing Vitals', ['view', 'add']],
         'nursing_mar'      => ['Nursing Medication (MAR)', ['view', 'add', 'edit']],
         'nursing_fluid'    => ['Nursing Fluid Balance', ['view', 'add']],
-        'nursing_note'     => ['Nursing Notes', ['view', 'add']],
+        'nursing_note'     => ['Nursing Station Notes', ['view', 'add']],
         'nursing_task'     => ['Nursing Tasks', ['view', 'add', 'edit']],
         'nursing_handover' => ['Nursing Handover', ['view', 'edit']],
     ];
@@ -166,6 +166,13 @@ class NursingStationController extends Controller
                 }
             }
         }
+        // Renamed after the fact: this row and the IPD chart's `nursing_notes` both read
+        // "Nursing Notes" on the role grid, which made them impossible to tell apart. display_name
+        // is only written on insert, so existing stores need the update.
+        DB::table('features')->where('name', 'nursing_note')
+            ->where('display_name', 'Nursing Notes')
+            ->update(['display_name' => 'Nursing Station Notes']);
+
         $legacy = DB::table('features')->where('name', 'nursing_station')->value('id');
         if ($legacy) {
             $pids = DB::table('feature_permissions')->where('feature_id', $legacy)->pluck('id');

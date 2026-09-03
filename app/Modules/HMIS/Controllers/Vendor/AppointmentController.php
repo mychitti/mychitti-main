@@ -17,11 +17,111 @@ use Brian2694\Toastr\Facades\Toastr;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class AppointmentController extends Controller
 {
+    /**
+     * Appointments had no feature row of their own, so every screen and every write in this
+     * controller was open to any staff member who could reach the URL. One feature with the
+     * actions the screens actually perform — the reschedule flow (move, withdraw, resend) and
+     * the doctor reassignment are separate from plain editing because a receptionist is usually
+     * trusted with one and not the other.
+     */
+    const FEATURES = [
+        'hmis_appointment' => ['Appointment', ['list', 'add', 'view', 'status_change', 'reschedule', 'reassign']],
+    ];
+
+    public static function ensurePermission(): void
+    {
+        // Called from the hospital sidebar, so it runs on every panel page. One indexed lookup on
+        // the last action seeded is the whole cost once a store is provisioned.
+        try {
+            $seeded = DB::table('feature_permissions as fp')
+                ->join('features as f', 'fp.feature_id', '=', 'f.id')
+                ->where('f.name', 'hmis_appointment')
+                ->where('fp.action', 'reassign')
+                ->exists();
+            if ($seeded) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            return; // permission tables not provisioned on this database yet
+        }
+
+        if (!Schema::hasTable('features') || !Schema::hasTable('feature_permissions')) {
+            return;
+        }
+
+        foreach (self::FEATURES as $name => [$display, $actions]) {
+            $fid = DB::table('features')->where('name', $name)->value('id');
+            $isNew = false;
+            if (!$fid) {
+                $fid = DB::table('features')->insertGetId([
+                    'name' => $name, 'display_name' => $display, 'master_module' => 'hospital_manage',
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                $isNew = true;
+            }
+            foreach ($actions as $a) {
+                if (!DB::table('feature_permissions')->where('feature_id', $fid)->where('action', $a)->exists()) {
+                    DB::table('feature_permissions')->insert(['feature_id' => $fid, 'action' => $a, 'free' => 0]);
+                }
+            }
+            if ($isNew) {
+                self::backfillFromLeads($fid);
+            }
+        }
+    }
+
+    /**
+     * Until this feature existed the only link into these screens was the hospital appointment
+     * list, which is gated on leads_manage.list. Roles that hold it keep the access they already
+     * had; everyone else starts denied. Runs once, on the request that creates the feature.
+     */
+    private static function backfillFromLeads(int $featureId): void
+    {
+        if (!Schema::hasTable('role_feature_permissions')) {
+            return;
+        }
+
+        // Hospital stores only — a plumbing firm's roles have no business gaining hospital rows.
+        $roleIds = DB::table('role_feature_permissions as rfp')
+            ->join('feature_permissions as fp', 'rfp.feature_permission_id', '=', 'fp.id')
+            ->join('features as f', 'fp.feature_id', '=', 'f.id')
+            ->join('employee_roles as er', 'rfp.role_id', '=', 'er.id')
+            ->join('stores as st', 'er.store_id', '=', 'st.id')
+            ->whereRaw('LOWER(st.business_type) = ?', ['hospital'])
+            ->where('f.name', 'leads_manage')
+            ->where('fp.action', 'list')
+            ->pluck('rfp.role_id')
+            ->unique();
+
+        if ($roleIds->isEmpty()) {
+            return;
+        }
+
+        $permIds = DB::table('feature_permissions')->where('feature_id', $featureId)->pluck('id');
+
+        foreach ($roleIds as $roleId) {
+            foreach ($permIds as $permId) {
+                $exists = DB::table('role_feature_permissions')
+                    ->where('role_id', $roleId)
+                    ->where('feature_permission_id', $permId)
+                    ->exists();
+                if (!$exists) {
+                    DB::table('role_feature_permissions')->insert([
+                        'role_id' => $roleId,
+                        'feature_permission_id' => $permId,
+                    ]);
+                }
+            }
+        }
+    }
+
     public function index(Request $request)
     {
+        self::ensurePermission();
         $store_id = Helpers::get_store_id();
         $doctors  = DoctorProfile::where('store_id', $store_id)->with('employee')->get();
 
@@ -52,6 +152,8 @@ class AppointmentController extends Controller
 
     public function create()
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'add')) abort(403);
+
         return view('hmis::vendor.appointment.create');
     }
 
@@ -132,6 +234,8 @@ class AppointmentController extends Controller
 
     public function store(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'add')) abort(403);
+
         $request->validate([
             'patient_id'        => 'required|integer|exists:patients,id',
             'doctor_profile_id' => 'required|integer|exists:doctor_profiles,id',
@@ -194,6 +298,8 @@ class AppointmentController extends Controller
 
     public function show($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'view')) abort(403);
+
         $store_id    = Helpers::get_store_id();
         $appointment = Appointment::where('store_id', $store_id)
             ->with(['patient', 'doctorProfile.employee', 'slot', 'token', 'rescheduledFrom'])
@@ -219,6 +325,8 @@ class AppointmentController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'status_change')) abort(403);
+
         $request->validate([
             'status'        => 'required|in:' . implode(',', Appointment::STATUSES),
             'cancel_reason' => 'required_if:status,cancelled|nullable|string|max:500',
@@ -266,6 +374,8 @@ class AppointmentController extends Controller
      */
     public function reschedule(Request $request, $id)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'reschedule')) abort(403);
+
         $request->validate([
             'appointment_date' => 'required|date',
             'appointment_time' => 'required',
@@ -394,6 +504,8 @@ class AppointmentController extends Controller
     /** Take back a request the hospital no longer needs — the doctor is free after all. */
     public function rescheduleWithdraw($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'reschedule')) abort(403);
+
         AppointmentRescheduleRequest::ensureSchema();
 
         $req = AppointmentRescheduleRequest::where('store_id', Helpers::get_store_id())->findOrFail($id);
@@ -418,6 +530,8 @@ class AppointmentController extends Controller
     /** Send the same question again — the first message was missed, or the send failed. */
     public function rescheduleResend($id)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'reschedule')) abort(403);
+
         AppointmentRescheduleRequest::ensureSchema();
 
         $req = AppointmentRescheduleRequest::with('patient', 'appointment.doctorProfile.employee')
@@ -449,6 +563,8 @@ class AppointmentController extends Controller
      */
     public function nextVisit(Request $request, $id)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'add')) abort(403);
+
         $request->validate([
             'appointment_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required',
@@ -484,6 +600,8 @@ class AppointmentController extends Controller
 
     public function reassign(Request $request, $id)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'reassign')) abort(403);
+
         $request->validate([
             'doctor_profile_id' => 'required|integer|exists:doctor_profiles,id',
         ]);
@@ -589,6 +707,8 @@ class AppointmentController extends Controller
 
     public function storeFromLead(Request $request)
     {
+        if (!auth('vendor')->check() && !hasPermission('hmis_appointment', 'add')) abort(403);
+
         $request->validate(['service_request_id' => 'required|integer']);
 
         $store_id = Helpers::get_store_id();
