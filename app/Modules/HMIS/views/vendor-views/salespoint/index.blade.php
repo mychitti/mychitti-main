@@ -328,7 +328,7 @@
              display: inline-flex !important;
              align-items: center !important;
              justify-content: center !important;
-             border: 1.5px solid #dee2e6 !important;
+             border: 1.5px solid #c8d2e0 !important;
              color: #555 !important;
              background: white;
              transition: all 0.2s ease;
@@ -448,7 +448,7 @@
              font-size: 11px !important;
              font-weight: 500;
              transition: all 0.2s ease;
-             border: 1.5px solid #dee2e6 !important;
+             border: 1.5px solid #c8d2e0 !important;
              color: #555 !important;
              background: white;
              display: inline-block;

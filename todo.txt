@@ -67,3 +67,10 @@ Two things to still lock in so it doesn't come back:
 
 Cloudflare WAF — block /.env and /cgi-bin/ + Bot Fight Mode, so scanners stop eating workers and you don't hit the new ceiling of 20 during the next bot wave.
 Keep an eye on memory — at full 20-worker load this 1.7 GB box gets tight; if free -m available trends toward zero, resize the droplet rather than dropping workers back down.
+
+
+DOCUMENTATION :
+php artisan documentation:install
+
+MC vendorhub in admin :
+php artisan mcvendorhub:install

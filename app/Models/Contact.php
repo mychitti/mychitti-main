@@ -14,13 +14,22 @@ class Contact extends Model
         'message',
         'name',
         'email',
-        'seen'
+        'seen',
+        'brand'
     ];
 
     protected $casts = [
         'seen'       => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        
+
     ];
+
+    /**
+     * Enquiries belonging to one brand's Sales & Marketing desk.
+     */
+    public function scopeBrand($query, string $brand)
+    {
+        return $query->where('brand', $brand);
+    }
 }

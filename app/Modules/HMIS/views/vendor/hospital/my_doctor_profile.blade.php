@@ -243,7 +243,7 @@
 <style>
 .day-pill {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 40px; height: 36px; border: 2px solid #e7eaf3; border-radius: 6px;
+    width: 40px; height: 36px; border: 2px solid #c8d2e0; border-radius: 6px;
     cursor: pointer; font-size: 12px; font-weight: 600; color: #677788;
     background: #fff; margin: 2px; transition: all 0.15s; user-select: none;
 }

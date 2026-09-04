@@ -26,7 +26,7 @@
          width:520px; max-width:95vw; background:#fff; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.22);
          overflow:hidden; z-index:9999;">
         <div id="docsModalHandle" title="Drag to move"
-             style="background:#f8fafc; border-bottom:1px solid #e5e7eb;
+             style="background:#f8fafc; border-bottom:1px solid #c8d2e0;
              padding:10px 16px; display:flex; align-items:center; justify-content:space-between; cursor:grab; user-select:none;">
             <div style="display:flex; align-items:center; gap:8px;">
                 <span style="display:inline-grid; grid-template-columns:repeat(2,4px); gap:3px; opacity:.4; flex-shrink:0;">

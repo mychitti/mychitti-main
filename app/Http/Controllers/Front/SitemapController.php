@@ -24,7 +24,7 @@ class SitemapController extends Controller
         // otherwise these sitemap URLs don't match the real canonical URLs and just 301 away.
         $zones = DB::table('zones')->pluck('name', 'id')->map(fn($name) => _zoneCitySlug($name));
 
-        $stores = DB::table('stores')->where('status', 1)->get();
+        $stores = DB::table('stores')->where('status', 1)->where('show_in_mychitti', 1)->get();
         $items  = DB::table('items')->where('status', 1)->get();
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";

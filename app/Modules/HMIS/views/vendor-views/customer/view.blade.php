@@ -164,7 +164,7 @@
 
         .order-header {
             padding: 20px 30px;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid #c8d2e0;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -199,7 +199,7 @@
 
         .search-input {
             padding: 10px 15px 10px 15px;
-            border: 2px solid #e5e7eb;
+            border: 2px solid #c8d2e0;
             border-radius: 8px;
             font-size: 14px;
             width: 280px;
@@ -240,7 +240,7 @@
 
         .export-btn {
             background: white;
-            border: 2px solid #e5e7eb;
+            border: 2px solid #c8d2e0;
             padding: 10px 20px;
             border-radius: 8px;
             font-size: 14px;
@@ -259,7 +259,7 @@
 
         .customer-info-btn {
             background: white;
-            border: 2px solid #e5e7eb;
+            border: 2px solid #c8d2e0;
             padding: 10px 20px;
             border-radius: 8px;
             font-size: 14px;
@@ -302,7 +302,7 @@
             font-weight: 600;
             color: #374151;
             font-size: 14px;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid #c8d2e0;
             white-space: nowrap;
         }
 
@@ -510,7 +510,7 @@
             background-color: #f8f9fa;
             padding: 6px 12px;
             border-radius: 4px;
-            border: 1px solid #e9ecef;
+            border: 1px solid #c8d2e0;
             min-width: 120px;
             text-align: center;
         }
@@ -557,7 +557,7 @@
             background-color: #f8f9fa;
             padding: 8px 12px;
             border-radius: 4px;
-            border: 1px solid #e9ecef;
+            border: 1px solid #c8d2e0;
         }
 
         .submit-btn {

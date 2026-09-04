@@ -47,7 +47,7 @@
                   onsubmit="return confirm('Send this prescription as a PDF to {{ addslashes($rx->patient->name ?? 'the patient') }} on WhatsApp?')">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-outline-success" title="Attach the prescription PDF and send it to the patient on WhatsApp">
-                    <i class="tio-attachment"></i> Send as PDF
+                    <i class="tio-whatsapp"></i> Send PDF on WhatsApp
                 </button>
             </form>
             @endif
@@ -222,7 +222,7 @@
 /* ── Screen styles ────────────────────────────────────── */
 .rx-print-wrap {
     max-width: 800px; margin: 0 auto;
-    background: #fff; border: 1px solid #e5e7eb;
+    background: #fff; border: 1px solid #c8d2e0;
     border-radius: 10px; padding: 28px 32px;
     font-family: 'Times New Roman', Times, serif;
     color: #111;

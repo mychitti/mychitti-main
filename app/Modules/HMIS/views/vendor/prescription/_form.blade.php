@@ -323,7 +323,7 @@
     font-weight:700; font-size:18px;
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
-.med-row { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px; margin-bottom:8px; }
+.med-row { background:#f9fafb; border:1px solid #c8d2e0; border-radius:8px; padding:10px; margin-bottom:8px; }
 .med-row input, .med-row select { font-size:13px; }
 </style>
 

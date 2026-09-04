@@ -9,7 +9,7 @@
         .appt-card {
             background: #fff;
             border-radius: 14px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #c8d2e0;
             padding: 14px;
             height: 100%;
             display: flex;
@@ -112,7 +112,7 @@
 
         .stat-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
         .stat-chip {
-            background: #fff; border: 1px solid #e5e7eb;
+            background: #fff; border: 1px solid #c8d2e0;
             border-radius: 20px; padding: 4px 14px;
             font-size: 12px; font-weight: 600; color: #374151;
             display: flex; align-items: center; gap: 6px;
@@ -733,7 +733,7 @@
                         <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                     </div>
                     <div class="modal-body p-4">
-                        <div class="mb-3 p-3" style="background:#fff; border-radius:8px; border:1px solid #e5e7eb;">
+                        <div class="mb-3 p-3" style="background:#fff; border-radius:8px; border:1px solid #c8d2e0;">
                             <div class="d-flex align-items-center mb-3">
                                 <div style="width:44px; height:44px; background:var(--primary); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:18px; flex-shrink:0;" class="mr-3">
                                     {{ strtoupper(substr($hPatientName, 0, 1)) }}
@@ -819,7 +819,7 @@
         <div class="modal fade" id="patientModal-{{ $lead->id }}" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
                 <div class="modal-content">
-                    <div class="modal-header" style="background:linear-gradient(90deg,#eff6ff,#f0fdf4); border-bottom:1px solid #e5e7eb;">
+                    <div class="modal-header" style="background:linear-gradient(90deg,#eff6ff,#f0fdf4); border-bottom:1px solid #c8d2e0;">
                         <div>
                             <small class="text-muted d-block" style="font-size:11px;">Confirmed Appointment #{{ $lead->id }} &mdash; {{ $lead->item_name }}</small>
                             <h5 class="modal-title font-weight-bold mb-0">
@@ -1035,7 +1035,7 @@
                         @endif
 
                     </div>
-                    <div class="modal-footer" style="border-top:1px solid #e5e7eb;">
+                    <div class="modal-footer" style="border-top:1px solid #c8d2e0;">
                         <a href="{{ route('vendor.patient.show', $hPatientRecord->id) }}"
                             class="btn btn-outline-primary btn-sm">
                             <i class="tio-user"></i> Full Patient Profile

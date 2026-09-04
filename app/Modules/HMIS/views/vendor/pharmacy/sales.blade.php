@@ -4,19 +4,19 @@
 @push('css_or_js')
 <style>
     .ps-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
-    .ps-kpi { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; }
+    .ps-kpi { background:#fff; border:1px solid #c8d2e0; border-radius:12px; padding:14px 16px; }
     .ps-kpi .lbl { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; }
     .ps-kpi .val { font-size:22px; font-weight:800; color:#0f172a; margin-top:4px; line-height:1.2; }
     .ps-kpi .sub { font-size:11px; color:#64748b; margin-top:2px; }
 
     .ps-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; align-items:start; }
-    .ps-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; margin-bottom:16px; }
-    .ps-card-hd { padding:12px 16px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; }
+    .ps-card { background:#fff; border:1px solid #c8d2e0; border-radius:12px; overflow:hidden; margin-bottom:16px; }
+    .ps-card-hd { padding:12px 16px; border-bottom:1px solid #c8d2e0; display:flex; justify-content:space-between; align-items:center; }
     .ps-card-hd h3 { font-size:13px; font-weight:700; color:#0f172a; margin:0; }
 
     .ps-tbl { width:100%; border-collapse:collapse; }
-    .ps-tbl th { background:#f8fafc; color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:9px 16px; text-align:left; border-bottom:1px solid #e2e8f0; }
-    .ps-tbl td { padding:11px 16px; border-bottom:1px solid #f1f5f9; font-size:13px; vertical-align:middle; }
+    .ps-tbl th { background:#f8fafc; color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:9px 16px; text-align:left; border-bottom:1px solid #c8d2e0; }
+    .ps-tbl td { padding:11px 16px; border-bottom:1px solid #dfe6ee; font-size:13px; vertical-align:middle; }
     .ps-tbl tr:last-child td { border-bottom:none; }
     .ps-num { text-align:right; font-variant-numeric:tabular-nums; }
 
@@ -42,7 +42,7 @@
         /* Same restack as the other pharmacy tables: label/value pairs from data-label. */
         .ps-tbl, .ps-tbl tbody, .ps-tbl tr, .ps-tbl td { display:block; width:100%; }
         .ps-tbl thead { display:none; }
-        .ps-tbl tr { border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; margin:0 12px 10px; }
+        .ps-tbl tr { border:1px solid #c8d2e0; border-radius:10px; padding:10px 12px; margin:0 12px 10px; }
         .ps-tbl td { border:none !important; padding:4px 0 !important; display:flex; justify-content:space-between; gap:12px; text-align:right; }
         .ps-tbl td::before { content:attr(data-label); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#94a3b8; text-align:left; flex:0 0 auto; }
         .ps-tbl td[colspan]{ display:block; text-align:center; }

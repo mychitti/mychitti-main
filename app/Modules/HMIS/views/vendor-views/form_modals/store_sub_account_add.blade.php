@@ -12,7 +12,7 @@
         font-size: 20px;
         margin-bottom: 20px;
         padding-bottom: 10px;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 2px solid #c8d2e0;
     }
 
     .form-group {
@@ -32,7 +32,7 @@
     .form-group textarea {
         width: 100%;
         padding: 10px 12px;
-        border: 2px solid #e2e8f0;
+        border: 2px solid #c8d2e0;
         border-radius: 8px;
         font-size: 14px;
         transition: all 0.3s;

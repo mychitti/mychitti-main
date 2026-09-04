@@ -138,7 +138,7 @@
        than scrolls at every width. */
     .rcpt-item {
         padding: 10px 12px;
-        border-bottom: 1px solid #e7eaf3;
+        border-bottom: 1px solid #c8d2e0;
         font-size: 12.5px;
     }
     .rcpt-item:last-child { border-bottom: 0; }

@@ -310,6 +310,70 @@
             /* right: 10px; */
         }
 
+        .provider_card {
+            background: #fff;
+        }
+
+        .provider_card>a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .provider_card_actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .provider_action_btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: 0;
+            background: var(--bs-primary);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            padding: 6px 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .provider_action_btn:hover {
+            color: #fff;
+            opacity: 0.85;
+        }
+
+        .provider_icon_btn {
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            justify-content: center;
+            gap: 0;
+            font-size: 12px;
+        }
+
+        .provider_enq_btn {
+            background: var(--bs-primary);
+        }
+
+        .provider_call_btn {
+            background: #1a73e8;
+        }
+
+        .provider_wa_btn {
+            background: #25D366;
+        }
+
+        .provider_share_btn {
+            background: #6c5ce7;
+        }
+
         .table>:not(caption)>*>* {
             border-bottom-width: 0px !important;
         }
@@ -727,38 +791,76 @@
                                         Providers <span class="location_name_show"></span> ({{ count($stores) }})</h2>
 
                                     @foreach ($stores as $store)
-                                        <a href="{{ route('store.details', [_storeCity($store), $store->slug]) }}"
-                                            class="d-flex gap-2 position-relative align-items-center justify-content-start my-2 p-2 shadow-sm rounded">
-                                            <div class=" mx-2">
-                                                <img loading="lazy"
-                                                    style="height: 75px; width: 75px; object-fit:cover; font-size: 9px;"
-                                                    src="{{ asset('storage/app/public/store/') . '/' . $store->logo }}"
-                                                    class="border rounded" alt="{{ $store->name }}">
-                                            </div>
-                                            <div style=" width: 65%;">
+                                        @php
+                                            $storeUrl = route('store.details', [_storeCity($store), $store->slug]);
+                                            $storeWa = store_whatsapp_link($store->webpage_whatsapp ?? ($store->phone ?? null));
+                                        @endphp
+                                        <div class="provider_card my-2 p-2 shadow-sm rounded"
+                                            data-lead-store="{{ $store->id }}">
+                                            <a href="{{ $storeUrl }}"
+                                                class="d-flex gap-2 position-relative align-items-center justify-content-start">
+                                                <div class=" mx-2">
+                                                    <img loading="lazy"
+                                                        style="height: 75px; width: 75px; object-fit:cover; font-size: 9px;"
+                                                        src="{{ asset('storage/app/public/store/') . '/' . $store->logo }}"
+                                                        class="border rounded" alt="{{ $store->name }}">
+                                                </div>
+                                                <div style=" width: 65%;">
 
-                                                <h6 class="mb-2 d-flex align-items-center">
-                                                    <span class="two-line-ellipsis">{{ ucfirst($store->name) }}</span>
-                                                    {!! _verifiedStoreBadge($store) !!}
-                                                </h6>
-                                                <p class="address_elem text-dark one-line-ellipsis mb-1"
-                                                    style="font-size: 12px;"><i class="fas fa-map-marker-alt"></i>
-                                                    {{ $store->address }}</p>
-                                                @if ($store->rating_count)
-                                                    <div class="rating-container">
-                                                        <div class="stars-outer">
-                                                            <div class="stars-inner"
-                                                                style="width: {{ ($store->average_rating / 5) * 100 }}%">
+                                                    <h6 class="mb-2 d-flex align-items-center">
+                                                        <span class="two-line-ellipsis">{{ ucfirst($store->name) }}</span>
+                                                        {!! _verifiedStoreBadge($store) !!}
+                                                    </h6>
+                                                    <p class="address_elem text-dark one-line-ellipsis mb-1"
+                                                        style="font-size: 12px;"><i class="fas fa-map-marker-alt"></i>
+                                                        {{ $store->address }}</p>
+                                                    @if ($store->rating_count)
+                                                        <div class="rating-container">
+                                                            <div class="stars-outer">
+                                                                <div class="stars-inner"
+                                                                    style="width: {{ ($store->average_rating / 5) * 100 }}%">
+                                                                </div>
                                                             </div>
+                                                            <span
+                                                                class="rating-value">{{ number_format($store->average_rating, 1) }}
+                                                                ({{ $store->rating_count }} Reviews)
+                                                            </span>
                                                         </div>
-                                                        <span
-                                                            class="rating-value">{{ number_format($store->average_rating, 1) }}
-                                                            ({{ $store->rating_count }} Reviews)
-                                                        </span>
-                                                    </div>
+                                                    @endif
+                                                </div>
+                                            </a>
+
+                                            <div class="provider_card_actions">
+                                                @if (auth('web')->user())
+                                                    <button type="button" class="provider_action_btn provider_enq_btn"
+                                                        data-lead-action="enquiry"
+                                                        onclick="bookService({{ $item->id }}, this, {{ $store->id }})"><i
+                                                            class="fas fa-user-cog"></i> Enquiry Now</button>
+                                                @else
+                                                    <button type="button" class="provider_action_btn provider_enq_btn"
+                                                        data-lead-action="enquiry" data-bs-toggle="modal"
+                                                        data-bs-target="#loginModal"><i class="fas fa-user-cog"></i>
+                                                        Enquiry Now</button>
                                                 @endif
+                                                @if ($store->phone)
+                                                    <a href="tel:{{ $store->phone }}"
+                                                        class="provider_action_btn provider_icon_btn provider_call_btn"
+                                                        data-lead-action="call" title="Call Now"
+                                                        aria-label="Call Now"><i class="fas fa-phone-alt"></i></a>
+                                                @endif
+                                                @if ($storeWa)
+                                                    <a href="{{ $storeWa }}" target="_blank" rel="noopener"
+                                                        class="provider_action_btn provider_icon_btn provider_wa_btn"
+                                                        data-lead-action="whatsapp" title="WhatsApp"
+                                                        aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+                                                @endif
+                                                <button type="button"
+                                                    class="provider_action_btn provider_icon_btn provider_share_btn"
+                                                    data-lead-action="share" data-share-url="{{ $storeUrl }}"
+                                                    data-share-title="{{ $store->name }}" title="Share"
+                                                    aria-label="Share"><i class="fas fa-share-alt"></i></button>
                                             </div>
-                                        </a>
+                                        </div>
                                     @endforeach
                                 @else
                                     <div class="h-100 flex-column justify-content-center d-flex align-items-center">
@@ -1514,6 +1616,57 @@
             download: false,
             thumbnail: true,
             animateThumb: true,
+        });
+    </script>
+@endpush
+
+@push('script_2')
+    <script>
+        // Store-card Share button (provider list). The click itself is logged by the global
+        // lead tracker via data-lead-action="share"; this only performs the actual share.
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('.provider_share_btn');
+            if (!btn) return;
+            e.preventDefault();
+
+            var url = btn.getAttribute('data-share-url') || window.location.href;
+            var title = btn.getAttribute('data-share-title') || document.title;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: title,
+                    text: title,
+                    url: url
+                }).catch(function() {});
+                return;
+            }
+
+            var done = function() {
+                var ic = btn.querySelector('i');
+                if (!ic) return;
+                var prev = ic.className;
+                ic.className = 'fas fa-check';
+                setTimeout(function() {
+                    ic.className = prev;
+                }, 1500);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(done).catch(function() {});
+            } else {
+                var t = document.createElement('textarea');
+                t.value = url;
+                t.style.position = 'fixed';
+                t.style.opacity = '0';
+                document.body.appendChild(t);
+                t.focus();
+                t.select();
+                try {
+                    document.execCommand('copy');
+                    done();
+                } catch (err) {}
+                document.body.removeChild(t);
+            }
         });
     </script>
 @endpush

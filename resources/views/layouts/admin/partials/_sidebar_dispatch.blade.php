@@ -62,6 +62,7 @@
                     </li>
                     <!-- End Dashboards -->
                     <!-- Business Section-->
+                    @include('layouts.admin.partials._sidebar_documentation')
                     <li class="nav-item">
                         <small class="nav-subtitle"
                             title="{{ translate('messages.dispatch_section') }}">{{ translate('messages.dispatch_management') }}</small>

@@ -15,7 +15,7 @@
         .head .meta{font-size:10px;color:#4B5563;margin-top:2px}
         .title{text-align:center;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0A2463;margin:12px 0 10px}
         .dir{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
-        .info{display:grid;grid-template-columns:1fr 1fr;gap:5px 20px;border:1px solid #E5E7EB;border-radius:8px;padding:10px 14px;font-size:11.5px}
+        .info{display:grid;grid-template-columns:1fr 1fr;gap:5px 20px;border:1px solid #c8d2e0;border-radius:8px;padding:10px 14px;font-size:11.5px}
         .info .k{color:#9CA3AF;display:block;font-size:10px}
         .info .v{font-weight:600}
         .full{grid-column:1 / -1}

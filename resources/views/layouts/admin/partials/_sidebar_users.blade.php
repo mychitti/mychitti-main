@@ -65,6 +65,7 @@
                     <!-- End Dashboards -->
                     <!-- DeliveryMan -->
                     {{-- @if (\App\CentralLogics\Helpers::module_permission_check('deliveryman'))
+                @include('layouts.admin.partials._sidebar_documentation')
                 <li class="nav-item">
                     <small class="nav-subtitle" title="{{ translate('messages.deliveryman_section') }}">{{ translate('messages.deliveryman_management') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>

@@ -112,7 +112,7 @@
 
         .bank-filter-btn {
             padding: 8px 16px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             background: white;
             color: #4a5568;
             border-radius: 8px;
@@ -147,7 +147,7 @@
 
         .bank-transaction-row {
             transition: all 0.3s ease;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid #dfe6ee;
         }
 
         .bank-transaction-row:hover {

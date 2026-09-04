@@ -12,7 +12,7 @@
         .mp-search-wrap { position:relative; }
         .mp-results {
             display:none; position:absolute; left:0; right:0; top:100%; z-index:1056;
-            background:#fff; border:1px solid #e2e8f0; border-radius:8px; margin-top:2px;
+            background:#fff; border:1px solid #c8d2e0; border-radius:8px; margin-top:2px;
             max-height:260px; overflow-y:auto; box-shadow:0 8px 24px rgba(15,23,42,.12);
         }
         .mp-opt { display:flex; align-items:center; gap:10px; padding:8px 11px; cursor:pointer; border-bottom:1px solid #f4f6f9; }

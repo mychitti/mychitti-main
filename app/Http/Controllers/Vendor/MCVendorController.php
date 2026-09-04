@@ -303,6 +303,7 @@ class MCVendorController extends Controller
         $contact->name = $request->name;
         $contact->business_name = $request->business_name;
         $contact->type = 'mc_vendor';
+        $contact->brand = 'mcvendorhub';
         $contact->phone = $request->phone;
         $contact->email = '';
         $contact->subject = $request->subject ?? '';

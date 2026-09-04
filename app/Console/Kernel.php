@@ -45,6 +45,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\BackfillVariationStockCommand::class,
         \App\Console\Commands\BackfillInventoryCogs::class,
         \App\Console\Commands\BackfillItemOpeningPrices::class,
+        \App\Console\Commands\AnalyzeWaChats::class,
     ];
 
     /**
@@ -57,6 +58,14 @@ class Kernel extends ConsoleKernel
     {
         $tz = 'Asia/Kolkata';
  
+        // Structured read of the WhatsApp conversations the Baileys bridge archives. Every
+        // fifteen minutes rather than per-message: meaning usually spans several messages,
+        // and a batch costs one model call instead of sixty.
+        $schedule->command('wa:analyze-chats')->everyFifteenMinutes()
+            ->timezone($tz)
+            ->name('wa-chat-analysis')
+            ->withoutOverlapping();
+
         // URL crons migrated from wget → queued jobs (run `php artisan queue:work` with QUEUE_CONNECTION=redis or database)
         $schedule->job(new CancelStaleOrdersJob)->everyFiveMinutes()
             ->name('cancel-stale-orders')

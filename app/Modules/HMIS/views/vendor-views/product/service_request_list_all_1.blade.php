@@ -116,7 +116,7 @@
             width: 100%;
             padding: 9px 12px 9px 36px;
             border-radius: 8px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             font-size: 13px;
             font-family: inherit;
             color: #0f172a;
@@ -131,7 +131,7 @@
         .filter-bar select {
             padding: 9px 14px;
             border-radius: 8px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             background: #f8fafc;
             font-size: 13px;
             font-family: inherit;
@@ -143,7 +143,7 @@
         .filter-bar .btn-date {
             padding: 9px 14px;
             border-radius: 8px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             background: #f8fafc;
             font-size: 13px;
             font-family: inherit;
@@ -211,7 +211,7 @@
         /* ── Dropdown menu ── */
         .card-menu { position: relative; flex-shrink: 0; }
         .card-menu-btn {
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             background: transparent;
             border-radius: 7px;
             width: 30px; height: 30px;
@@ -225,7 +225,7 @@
         .card-menu .dropdown-menu {
             min-width: 170px;
             border-radius: 10px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             box-shadow: 0 8px 24px rgba(0,0,0,0.12);
             padding: 4px 0;
             top: 36px; right: 0;
@@ -268,7 +268,7 @@
         .card-footer {
             display: flex; align-items: center; justify-content: space-between;
             margin-top: auto; padding-top: 10px;
-            border-top: 1px solid #f1f5f9;
+            border-top: 1px solid #dfe6ee;
         }
 
         /* ── Status Badges ── */
@@ -289,7 +289,7 @@
         .pill-completed .dot { background: #16a34a; }
         .pill-cancelled { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
         .pill-cancelled .dot { background: #ef4444; }
-        .pill-missed { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+        .pill-missed { background: #f9fafb; color: #6b7280; border: 1px solid #c8d2e0; }
         .pill-missed .dot { background: #9ca3af; }
         .pill-in_progress { background: #faf5ff; color: #7c3aed; border: 1px solid #ddd6fe; }
         .pill-in_progress .dot { background: #8b5cf6; }
@@ -346,7 +346,7 @@
         .btn-leads-primary:hover { opacity: 0.88; color: #fff; text-decoration: none; }
         .btn-leads-outline {
             padding: 9px 14px; border-radius: 9px;
-            border: 1px solid #e2e8f0; background: #fff;
+            border: 1px solid #c8d2e0; background: #fff;
             font-size: 13px; font-weight: 600; color: #475569; font-family: inherit;
             cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
         }
@@ -354,7 +354,7 @@
 
         /* ── Modals ── */
         .modal-content { border-radius: 16px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.18); font-family: 'Plus Jakarta Sans', sans-serif; }
-        .modal-header { border-bottom: 1px solid #f1f5f9; padding: 18px 24px 14px; }
+        .modal-header { border-bottom: 1px solid #dfe6ee; padding: 18px 24px 14px; }
         .modal-title { font-size: 17px; font-weight: 800; color: #0f172a; }
         .modal-body { padding: 22px 24px; background: #f8fafc; }
         .modal-footer { border-top: none; padding: 0 24px 20px; background: #f8fafc; }
@@ -379,7 +379,7 @@
         .contact-item small { display: block; font-size: 11px; color: #94a3b8; }
         .contact-item a, .contact-item span { font-size: 13px; font-weight: 600; color: #1e293b; }
         .contact-item .copy-btn {
-            border: 1px solid #e2e8f0; background: #fff;
+            border: 1px solid #c8d2e0; background: #fff;
             padding: 5px 9px; border-radius: 6px; cursor: pointer;
             transition: all 0.2s; font-size: 12px;
         }
@@ -460,7 +460,7 @@
                 <form action="" style="margin:0;">
                     @if(request('search')) <input type="hidden" name="search" value="{{ request('search') }}"> @endif
                     @if(request('date_range')) <input type="hidden" name="date_range" value="{{ request('date_range') }}"> @endif
-                    <select name="type" onchange="this.form.submit()" class="filter-bar" style="padding:9px 14px; border-radius:8px; border:1px solid #e2e8f0; background:#f8fafc; font-size:13px; font-weight:600; color:#475569; outline:none;">
+                    <select name="type" onchange="this.form.submit()" class="filter-bar" style="padding:9px 14px; border-radius:8px; border:1px solid #c8d2e0; background:#f8fafc; font-size:13px; font-weight:600; color:#475569; outline:none;">
                         <option {{ $type == 'All'       ? 'selected' : '' }} value="All">All</option>
                         <option {{ $type == 'New'       ? 'selected' : '' }} value="New">New</option>
                         <option {{ $type == 'Accepted'  ? 'selected' : '' }} value="Accepted">Accepted</option>

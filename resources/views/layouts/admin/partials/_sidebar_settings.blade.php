@@ -104,6 +104,7 @@
                     <small class="nav-subtitle" title="{{ translate('messages.business_settings') }}">{{ translate('messages.system_management') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>
                 </li>
+                @include('layouts.admin.partials._sidebar_documentation')
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party*') || Request::is('business-settings/fcm*') || Request::is('business-settings/login-url-setup*') || Request::is('business-settings/offline-payment*') ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('messages.3rd_party_&_configurations') }}">
                         <span class="nav-icon tio-account-square-outlined"></span>
@@ -122,7 +123,7 @@
                                 <span class="text-truncate">{{ translate('messages.firebase_notification') }}</span>
                             </a>
                         </li>
-                        @php($waActive = Request::is('business-settings/third-party/whatsapp-config*') || Request::is('business-settings/third-party/whatsapp-templates*') || Request::is('business-settings/third-party/whatsapp-bulk*') || Request::is('business-settings/third-party/whatsapp-inbox*') || Request::is('business-settings/third-party/whatsapp-knowledge*') || Request::is('business-settings/third-party/whatsapp-report*') || Request::is('business-settings/third-party/whatsapp-lead-notifications*') || Request::is('business-settings/third-party/whatsapp-vendor-billing*'))
+                        @php($waActive = Request::is('business-settings/third-party/whatsapp-config*') || Request::is('business-settings/third-party/whatsapp-templates*') || Request::is('business-settings/third-party/whatsapp-bulk*') || Request::is('business-settings/third-party/whatsapp-inbox*') || Request::is('business-settings/third-party/whatsapp-knowledge*') || Request::is('business-settings/third-party/whatsapp-report*') || Request::is('business-settings/third-party/whatsapp-lead-notifications*') || Request::is('business-settings/third-party/whatsapp-vendor-billing*') || Request::is('business-settings/third-party/wa-chat*') || Request::is('business-settings/third-party/wa-chats*'))
                         <li class="navbar-vertical-aside-has-menu {{ $waActive ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('WhatsApp') }}">
                                 <span class="tio-chat nav-indicator-icon"></span>
@@ -175,6 +176,24 @@
                                     <a class="nav-link " href="{{ route('admin.business-settings.third-party.whatsapp-vendor-billing') }}" title="{{ translate('WhatsApp Vendor Billing') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">{{ translate('WhatsApp Vendor Billing') }}</span>
+                                    </a>
+                                </li>
+                                <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party/wa-chat-feed*') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('admin.business-settings.third-party.wa-chat-feed') }}" title="{{ translate('WhatsApp Intelligence') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('WhatsApp Intelligence') }}</span>
+                                    </a>
+                                </li>
+                                <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party/wa-chats*') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('admin.business-settings.third-party.wa-chats') }}" title="{{ translate('WhatsApp Chats') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Archived Chats') }}</span>
+                                    </a>
+                                </li>
+                                <li class="navbar-vertical-aside-has-menu {{ Request::is('business-settings/third-party/wa-chat-messages*') ? 'active' : '' }}">
+                                    <a class="nav-link " href="{{ route('admin.business-settings.third-party.wa-chat-messages') }}" title="{{ translate('WhatsApp Archive') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Message Archive') }}</span>
                                     </a>
                                 </li>
                             </ul>

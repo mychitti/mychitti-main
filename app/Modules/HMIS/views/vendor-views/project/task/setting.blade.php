@@ -499,7 +499,7 @@
              justify-content: space-between;
              align-items: center;
              padding: 6px;
-             border: 1px solid #e5e7eb;
+             border: 1px solid #c8d2e0;
              border-radius: 8px;
              margin-bottom: 12px;
              transition: all 0.2s;

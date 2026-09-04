@@ -14,10 +14,10 @@
         .head .name{font-size:22px;font-weight:800;color:#0A2463}
         .head .meta{font-size:11px;color:#4B5563;margin-top:2px}
         .title{text-align:center;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0A2463;margin:14px 0}
-        .info{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;border:1px solid #E5E7EB;border-radius:8px;padding:10px 14px;font-size:12px}
+        .info{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;border:1px solid #c8d2e0;border-radius:8px;padding:10px 14px;font-size:12px}
         .info .k{color:#9CA3AF}
         .sec{margin-top:16px}
-        .sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#0A2463;border-bottom:1px solid #E5E7EB;padding-bottom:4px;margin-bottom:6px}
+        .sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#0A2463;border-bottom:1px solid #c8d2e0;padding-bottom:4px;margin-bottom:6px}
         .sec-body{font-size:12px;line-height:1.7;white-space:pre-wrap}
         .crit{background:#FFEBEE;border:1px solid #C62828;border-radius:8px;padding:10px 12px;margin-top:12px;color:#C62828;font-weight:600;font-size:12px}
         .foot{margin-top:46px;display:flex;justify-content:space-between;font-size:11px;color:#4B5563}

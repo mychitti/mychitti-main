@@ -50,6 +50,52 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('analytics/export', 'AIChatController@exportChatLogs')->name('analytics.export')->middleware('permission:ai_chat,analytics');
         });
 
+        Route::group(['prefix' => 'api-endpoints', 'as' => 'api-endpoints.'], function () {
+            Route::get('/', 'ApiEndpointController@index')->name('index');
+            Route::get('all', 'ApiEndpointController@all')->name('all');
+            Route::post('postman', 'ApiEndpointController@import_postman')->name('postman');
+
+            Route::post('projects/store', 'ApiEndpointController@store_project')->name('projects.store');
+            Route::post('projects/{project}/update', 'ApiEndpointController@update_project')->name('projects.update');
+            Route::delete('projects/{project}/delete', 'ApiEndpointController@delete_project')->name('projects.delete');
+
+            Route::post('endpoints/{endpoint}/update', 'ApiEndpointController@update_endpoint')->name('endpoints.update');
+            Route::delete('endpoints/{endpoint}/delete', 'ApiEndpointController@delete_endpoint')->name('endpoints.delete');
+            Route::post('endpoints/{endpoint}/image-delete', 'ApiEndpointController@delete_image')->name('endpoints.image-delete');
+
+            Route::get('{project}', 'ApiEndpointController@show')->name('show');
+            Route::post('{project}/endpoints/store', 'ApiEndpointController@store_endpoint')->name('endpoints.store');
+            Route::get('{project}/export', 'ApiEndpointController@export')->name('export');
+            Route::post('{project}/import', 'ApiEndpointController@import')->name('import');
+        });
+
+        Route::group(['prefix' => 'documentation', 'as' => 'documentation.'], function () {
+            Route::get('/', 'DocumentationController@index')->name('index');
+            Route::get('create', 'DocumentationController@create')->name('create');
+            Route::post('store', 'DocumentationController@store')->name('store');
+            Route::post('upload-document', 'DocumentationController@upload_document')->name('upload-document');
+            Route::post('upload-image', 'DocumentationController@upload_image')->name('image-upload');
+
+            Route::get('categories', 'DocumentationController@categories')->name('categories');
+            Route::post('categories/store', 'DocumentationController@store_category')->name('categories.store');
+            Route::post('categories/{category}/update', 'DocumentationController@update_category')->name('categories.update');
+            Route::delete('categories/{category}/delete', 'DocumentationController@delete_category')->name('categories.delete');
+
+            Route::get('files/{file}/download', 'DocumentationController@download_file')->name('files.download');
+            Route::get('files/{file}/view', 'DocumentationController@view_file')->name('files.view');
+            Route::delete('files/{file}/delete', 'DocumentationController@delete_file')->name('files.delete');
+
+            Route::get('versions/{version}/download', 'DocumentationController@download_version')->name('versions.download');
+            Route::post('versions/{version}/restore', 'DocumentationController@restore_version')->name('versions.restore');
+
+
+            Route::get('{documentation}', 'DocumentationController@show')->name('show');
+            Route::get('{documentation}/edit', 'DocumentationController@edit')->name('edit');
+            Route::post('{documentation}/update', 'DocumentationController@update')->name('update');
+            Route::delete('{documentation}/delete', 'DocumentationController@destroy')->name('delete');
+            Route::post('{documentation}/upload', 'DocumentationController@upload_file')->name('upload');
+        });
+
         Route::group(['prefix' => 'agent', 'as' => 'agent.', 'middleware' => ['module:ai_agent']], function () {
             // Dashboard / index
             Route::get('/', 'AIAgentSkillController@index')->name('index')->middleware('permission:ai_agent,list');
@@ -1691,6 +1737,16 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
                 Route::post('whatsapp-bulk/header-media', 'WhatsAppBulkController@headerMedia')->name('whatsapp-bulk.header-media');
                 Route::get('whatsapp-bulk/{runId}', 'WhatsAppBulkController@run')->name('whatsapp-bulk.run');
                 Route::get('whatsapp-bulk/{runId}/export', 'WhatsAppBulkController@export')->name('whatsapp-bulk.export');
+                // WhatsApp account archive captured by the Baileys bridge (wa-bridge/), plus the
+                // sale / lead / task / payment rows the model reads out of it.
+                Route::get('wa-chat-feed', 'WaChatFeedController@index')->name('wa-chat-feed');
+                Route::get('wa-chats', 'WaChatFeedController@chats')->name('wa-chats');
+                Route::get('wa-chat-messages', 'WaChatFeedController@messages')->name('wa-chat-messages');
+                Route::post('wa-chat-analyze', 'WaChatFeedController@analyze')->name('wa-chat-analyze');
+                Route::post('wa-chat/{id}/toggle', 'WaChatFeedController@toggleChat')->name('wa-chat-toggle');
+                Route::delete('wa-chat/{id}', 'WaChatFeedController@destroyChat')->name('wa-chat-delete');
+                Route::post('wa-chat-insight/{id}', 'WaChatFeedController@updateInsight')->name('wa-chat-insight-update');
+                Route::delete('wa-chat-insight/{id}', 'WaChatFeedController@destroyInsight')->name('wa-chat-insight-delete');
                 // MyChitti platform WhatsApp: two-way chat inbox + auto-reply knowledge base.
                 Route::get('whatsapp-inbox', 'WhatsAppInboxController@inbox')->name('whatsapp-inbox');
                 Route::get('whatsapp-inbox/threads', 'WhatsAppInboxController@threads')->name('whatsapp-inbox.threads');
@@ -1884,6 +1940,18 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
         });
 
 
+
+        // MC Vendorhub — vendors who opted out of the MyChitti marketplace
+        Route::group(['prefix' => 'mcvendorhub', 'as' => 'mcvendorhub.'], function () {
+            Route::get('/', 'McVendorhubController@dashboard')->name('dashboard');
+            Route::get('vendors', 'McVendorhubController@vendors')->name('vendors');
+            Route::get('vendors/{store_id}/listing-toggle', 'McVendorhubController@vendor_listing_toggle')->name('vendors.listing-toggle');
+            Route::get('subscriptions', 'McVendorhubController@subscriptions')->name('subscriptions');
+            Route::get('enquiries', 'McVendorhubController@enquiries')->name('enquiries');
+            Route::get('enquiries/{id}', 'McVendorhubController@enquiry_view')->name('enquiries.view');
+            Route::post('enquiries/{id}/update', 'McVendorhubController@enquiry_update')->name('enquiries.update');
+            Route::delete('enquiries/{id}/delete', 'McVendorhubController@enquiry_delete')->name('enquiries.delete');
+        });
 
         Route::get('users', 'DashboardController@user_dashboard')->name('users.user-dashboard');
         Route::group(['prefix' => 'users', 'as' => 'users.'], function () {

@@ -45,6 +45,9 @@ return [
     ],
     'openai' => [
         'key' => env('OPENAI_API_KEY'), 
+        // Defaulted here rather than left absent: OpenAIService and WaChatArchive both read
+        // this key, and a null value would be passed straight through as the model name.
+        'model' => env('OPENAI_MODEL', 'gpt-4o'),
     ],
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
@@ -58,6 +61,9 @@ return [
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
         'zone_id'   => env('CLOUDFLARE_ZONE_ID'),
     ],  
+    'wa_bridge' => [
+        'secret' => env('WA_BRIDGE_SECRET'),
+    ],
     'ai_service' => [
         'url' => env('AI_SERVICE_URL'),
         'key' => env('AI_SERVICE_KEY'),

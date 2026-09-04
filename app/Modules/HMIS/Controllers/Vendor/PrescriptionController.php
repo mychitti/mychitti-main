@@ -61,6 +61,10 @@ class PrescriptionController extends Controller
             && !\Illuminate\Support\Facades\Schema::hasColumn('prescriptions', 'language')) {
             DB::statement("ALTER TABLE `prescriptions` ADD COLUMN `language` VARCHAR(10) NULL DEFAULT 'en'");
         }
+
+        // Which consultation the sheet was written at, so the OPD screen finds it back by
+        // the id rather than by inferring it from the appointment and the date.
+        Prescription::ensureVisitLink();
     }
 
     private function currentUserId(): int
@@ -330,6 +334,12 @@ class PrescriptionController extends Controller
                 'created_by_type'    => $this->currentUserType(),
             ]);
 
+            // Set after the insert rather than in the payload: the column is added in
+            // place, so a store that has not run the DDL yet must not be handed the field.
+            if ($request->filled('opd_visit_id') && Prescription::hasVisitLink()) {
+                $rx->forceFill(['opd_visit_id' => (int) $request->opd_visit_id])->saveQuietly();
+            }
+
             foreach (($request->medicines ?? []) as $med) {
                 if (empty(trim($med['medicine_name'] ?? ''))) continue;
                 PrescriptionItem::create([
@@ -361,6 +371,13 @@ class PrescriptionController extends Controller
 
             Toastr::success('Prescription saved successfully');
 
+            // Written from the consultation screen: that is where the doctor was and where
+            // the saved sheet now shows, so back to the visit rather than off to the
+            // appointment page it happened to be booked under.
+            if ($request->filled('opd_visit_id')) {
+                return Redirect::route('vendor.opd.show', $request->opd_visit_id)
+                    ->with('rx_saved', $rx->id);
+            }
             if ($request->appointment_id) {
                 return Redirect::route('vendor.appointment.show', $request->appointment_id)
                     ->with('rx_saved', $rx->id);
@@ -856,6 +873,10 @@ class PrescriptionController extends Controller
                 'is_finalized'   => $request->has('finalize'),
             ]);
 
+            if ($request->filled('opd_visit_id') && Prescription::hasVisitLink() && !$rx->opd_visit_id) {
+                $rx->forceFill(['opd_visit_id' => (int) $request->opd_visit_id])->saveQuietly();
+            }
+
             $rx->items()->delete();
             foreach (($request->medicines ?? []) as $med) {
                 if (empty(trim($med['medicine_name'] ?? ''))) continue;
@@ -890,6 +911,11 @@ class PrescriptionController extends Controller
 
             Toastr::success('Prescription updated');
 
+            $backToVisit = $request->input('opd_visit_id') ?: $rx->opd_visit_id;
+            if ($backToVisit) {
+                return Redirect::route('vendor.opd.show', $backToVisit)
+                    ->with('rx_saved', $rx->id);
+            }
             if ($rx->appointment_id) {
                 return Redirect::route('vendor.appointment.show', $rx->appointment_id)
                     ->with('rx_saved', $rx->id);

@@ -98,6 +98,7 @@ class StoreController extends Controller
          ))";
 
         $stores = Store::select('stores.*')
+            ->visibleOnMychitti()
             ->leftJoin('categories as c1', 'c1.id', '=', 'stores.category_1')
             ->leftJoin('categories as c2', 'c2.id', '=', 'stores.category_2')
             ->select('stores.id', 'stores.name', 'stores.logo', 'stores.cover_photo',  'c1.name as category_1_name',  'c2.name as category_2_name')

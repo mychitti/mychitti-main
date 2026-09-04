@@ -92,13 +92,13 @@
             display: grid;
             grid-template-columns: repeat(6, 1fr);
             background: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #c8d2e0;
             padding: 12px 24px;
             gap: 10px;
         }
         .metric-card {
             padding: 8px 12px;
-            border-right: 1px solid #f1f5f9;
+            border-right: 1px solid #dfe6ee;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -130,7 +130,7 @@
         /* ── Tabs Grid ── */
         .hospital-tabs-row {
             background-color: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #c8d2e0;
             padding: 0 24px;  
             display: flex;
             gap: 6px;
@@ -192,7 +192,7 @@
             .metric-card {
                 padding: 6px 8px;
                 border-right: none;
-                border-bottom: 1px solid #f1f5f9;
+                border-bottom: 1px solid #dfe6ee;
             }
             .metric-card:nth-last-child(-n+2) {
                 border-bottom: none;

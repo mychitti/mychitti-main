@@ -212,6 +212,7 @@ use Illuminate\Support\Facades\Validator;
         $contact->email = $request->email;
         $contact->subject = $request->subject;
         $contact->message = $request->message;
+        $contact->brand = 'mychitti';
         if($contact->save())
         {
             return response()->json(['message' => "Message sent successfully"]);

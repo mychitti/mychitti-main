@@ -55,7 +55,7 @@
          .settings-header {
              margin-bottom: 40px;
              padding-bottom: 24px;
-             border-bottom: 2px solid #e5e7eb;
+             border-bottom: 2px solid #c8d2e0;
          }
 
          .settings-title {
@@ -104,7 +104,7 @@
              line-height: 1.6;
              color: #0f172a;
              background: #f8fafc;
-             border: 2px solid #e2e8f0;
+             border: 2px solid #c8d2e0;
              border-radius: 12px;
              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
              font-family: inherit;
@@ -139,7 +139,7 @@
              background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
              padding: 24px;
              border-radius: 16px;
-             border: 1px solid #e2e8f0;
+             border: 1px solid #c8d2e0;
          }
 
          .settings-phone-header {

@@ -465,7 +465,49 @@ $countryCode = strtolower($country ? $country->value : 'auto');
             body.hmis-skin .navbar-vertical-aside-has-menu .sub-link.js-navbar-vertical-aside-menu-link {
                 background: transparent !important;
             }
-        </style> 
+
+            /* ── Card borders ───────────────────────────────────────────────
+               The stock theme outlines cards in near-white (#e7eaf3 / #e2e8f0),
+               which disappears against the HMIS #F1F5F9 content ground and
+               leaves panels looking edgeless. Darken every card edge across
+               the module. Scoped to body.hmis-skin so no other business type
+               is affected. */
+            body.hmis-skin { --hmis-border:#c8d2e0; }
+
+            body.hmis-skin #content .card,
+            body.hmis-skin #content .card-header,
+            body.hmis-skin #content .card-footer {
+                border-color: var(--hmis-border) !important;
+            }
+
+            body.hmis-skin #content .card {
+                box-shadow: 0 1px 2px rgba(15, 30, 60, .06) !important;
+            }
+
+            /* Section panels inside HMIS pages that draw their own light edge
+               rather than using .card (OPD show, IPD, prescription, etc.). */
+            body.hmis-skin #content [style*="#e2e8f0"],
+            body.hmis-skin #content [style*="#E2E8F0"],
+            body.hmis-skin #content [style*="#e7eaf3"],
+            body.hmis-skin #content [style*="#E7EAF3"] {
+                border-color: var(--hmis-border) !important;
+            }
+
+            body.hmis-skin #content .border,
+            body.hmis-skin #content .border-top,
+            body.hmis-skin #content .border-right,
+            body.hmis-skin #content .border-bottom,
+            body.hmis-skin #content .border-left {
+                border-color: var(--hmis-border) !important;
+            }
+
+            body.hmis-skin #content .table-bordered,
+            body.hmis-skin #content .table-bordered th,
+            body.hmis-skin #content .table-bordered td,
+            body.hmis-skin #content .table-thead-bordered thead th {
+                border-color: var(--hmis-border) !important;
+            }
+        </style>
     @endif
 </head>
  

@@ -15,7 +15,7 @@
 @endphp
 
 @if($handovers->count())
-    <div class="mt-2 pt-2" style="border-top:1px solid #f1f5f9;">
+    <div class="mt-2 pt-2" style="border-top:1px solid #dfe6ee;">
         <div class="text-muted mb-1" style="font-size:11px; text-transform:uppercase; letter-spacing:.04em;">
             Chain of custody ({{ $handovers->count() }})
         </div>

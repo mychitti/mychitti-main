@@ -59,6 +59,10 @@ class CurrentModule
             Config::set('module.current_module_id', null);
             Config::set('module.current_module_type', 'sales_marketing');
         }
+        if (Request::is('admin/mcvendorhub*')) {
+            Config::set('module.current_module_id', null);
+            Config::set('module.current_module_type', 'mcvendorhub');
+        }
 
 
         // add more conditions for more modules here

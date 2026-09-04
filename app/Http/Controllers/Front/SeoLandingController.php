@@ -40,7 +40,8 @@ class SeoLandingController extends Controller
         abort_if(!$seo, 404);
 
         // Real stores in THIS city offering THIS category (or this exact item) — via item_store.
-        $stores = Store::where('stores.zone_id', $zone->id)
+        $stores = Store::visibleOnMychitti()
+            ->where('stores.zone_id', $zone->id)
             ->where('stores.status', 1)
             ->where('stores.active', 1)
             ->whereExists(function ($q) use ($category, $item) {

@@ -114,6 +114,7 @@
                     @endif
 
                 <!-- Marketing section -->
+                @include('layouts.admin.partials._sidebar_documentation')
                 <li class="nav-item">
                     <small class="nav-subtitle" title="{{ translate('messages.employee_handle') }}">{{ translate('Promotions') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>
@@ -162,9 +163,7 @@
                             <a class="nav-link" href="{{ route('admin.banner.vendor-approvals') }}" title="Vendor Banner Approvals">
                                 <span class="tio-circle nav-indicator-icon"></span>
                                 <span class="text-truncate">Vendor Banner Approvals</span>
-                                @php
-                                    $pendingVendorBanners = \App\Models\Banner::where('created_by','store')->where('approval',0)->count();
-                                @endphp
+                                @php($pendingVendorBanners = \App\Models\Banner::where('created_by','store')->where('approval',0)->count())
                                 @if($pendingVendorBanners > 0)
                                     <span class="badge badge-danger ml-1">{{ $pendingVendorBanners }}</span>
                                 @endif

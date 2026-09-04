@@ -99,7 +99,7 @@
 
         .sth-timeline-content {
             background: #fff;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #c8d2e0;
             border-radius: 8px;
             padding: 16px 20px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);

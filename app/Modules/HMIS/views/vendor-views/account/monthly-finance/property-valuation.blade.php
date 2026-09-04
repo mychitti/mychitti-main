@@ -26,7 +26,7 @@
         }
 
         tbody tr {
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #c8d2e0;
             transition: all 0.2s ease;
         }
 

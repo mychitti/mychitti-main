@@ -89,7 +89,7 @@
         .plasma-item {
             background: linear-gradient(135deg, #fbfcff 0%, #f3f3f3 100%);
             border-radius: 15px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;

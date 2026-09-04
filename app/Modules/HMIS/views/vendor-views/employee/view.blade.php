@@ -61,7 +61,7 @@
 
         .customer-info-btn {
             background: white;
-            border: 2px solid #e5e7eb;
+            border: 2px solid #c8d2e0;
             padding: 10px 20px;
             border-radius: 8px;
             font-size: 14px;
@@ -386,7 +386,7 @@
             padding: 7px;
             background: linear-gradient(45deg, #f8f9fa, #ffffff);
             border-radius: 12px;
-            border: 2px solid #e9ecef;
+            border: 2px solid #c8d2e0;
             transition: transform 0.2s;
         }
 
@@ -659,12 +659,12 @@
             color: #7f8c8d;
             font-weight: 600;
             padding: 8px 4px;
-            border-bottom: 2px solid #f8f9fa;
+            border-bottom: 2px solid #dfe6ee;
         }
 
         .onboarding-table td {
             padding: 12px 4px;
-            border-bottom: 1px solid #f8f9fa;
+            border-bottom: 1px solid #dfe6ee;
             vertical-align: middle;
         }
 

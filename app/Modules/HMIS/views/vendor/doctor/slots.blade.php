@@ -244,7 +244,7 @@
 <div class="modal fade" id="slotHelpModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" style="max-width:520px;" role="document">
         <div class="modal-content" style="border-radius:12px;">
-            <div class="modal-header" style="background:#f8f9fa;border-bottom:1px solid #e9ecef;">
+            <div class="modal-header" style="background:#f8f9fa;border-bottom:1px solid #c8d2e0;">
                 <h5 class="modal-title d-flex align-items-center" style="font-size:15px;font-weight:700;">
                     <i class="tio-time mr-2 text-primary" style="font-size:20px;"></i>
                     How Doctor Slots Work
@@ -291,7 +291,7 @@
                 </ul>
 
             </div>
-            <div class="modal-footer" style="border-top:1px solid #e9ecef;">
+            <div class="modal-footer" style="border-top:1px solid #c8d2e0;">
                 <button type="button" class="btn btn-primary btn-sm px-4" data-dismiss="modal">Got it</button>
             </div>
         </div>
@@ -342,7 +342,7 @@
     justify-content: center;
     width: 40px;
     height: 36px;
-    border: 2px solid #e7eaf3;
+    border: 2px solid #c8d2e0;
     border-radius: 6px;
     cursor: pointer;
     font-size: 12px;

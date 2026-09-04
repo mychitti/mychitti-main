@@ -68,6 +68,7 @@
                     </li>
                     <!-- Analyzing Tools -->
 
+                    @include('layouts.admin.partials._sidebar_documentation')
                     <li class="nav-item">
                         <small class="nav-subtitle" title="{{ translate('Analyzing Tools') }}">Analyzing Tools</small>
                     </li>

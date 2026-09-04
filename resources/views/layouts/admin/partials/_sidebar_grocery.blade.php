@@ -281,6 +281,7 @@
 
                 <!-- Marketing section -->
                  @if (\App\CentralLogics\Helpers::module_permission_check('banner') || \App\CentralLogics\Helpers::module_permission_check('coupon'))
+                @include('layouts.admin.partials._sidebar_documentation')
                 <li class="nav-item">
                     <small class="nav-subtitle" title="{{ translate('Promotion Management') }}">{{ translate('Promotion Management') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>

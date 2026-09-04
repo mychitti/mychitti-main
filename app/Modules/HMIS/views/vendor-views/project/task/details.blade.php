@@ -211,7 +211,7 @@
             padding: 12px;
             margin-bottom: 8px;
             background: white;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #c8d2e0;
             border-radius: 8px;
             cursor: move;
             transition: all 0.2s;
@@ -359,7 +359,7 @@
             margin-top: 32px;
             padding: 16px;
             background: white;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #c8d2e0;
             border-radius: 8px;
         }
 

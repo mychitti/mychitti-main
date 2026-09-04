@@ -14,7 +14,7 @@
         /* ── Gatepass meta bar ── */
         .gp-meta-bar {
             background: #fff;
-            border: 1px solid #e7eaf3;
+            border: 1px solid #c8d2e0;
             border-radius: 10px;
             padding: 14px 18px;
             margin-bottom: 14px;
@@ -49,7 +49,7 @@
         /* ── Item cards ── */
         .gp-item {
             background: #fff;
-            border: 1px solid #e7eaf3;
+            border: 1px solid #c8d2e0;
             border-radius: 10px;
             margin-bottom: 12px;
             overflow: hidden;
@@ -60,7 +60,7 @@
             gap: 10px;
             padding: 11px 16px;
             background: #f8fafc;
-            border-bottom: 1px solid #e7eaf3;
+            border-bottom: 1px solid #c8d2e0;
         }
         .gp-num {
             min-width: 26px;
@@ -98,7 +98,7 @@
             display: block;
             border-radius: 8px;
             overflow: hidden;
-            border: 2px solid #e7eaf3;
+            border: 2px solid #c8d2e0;
             transition: border-color .15s, transform .15s, box-shadow .15s;
         }
         .gp-photos a:hover {
@@ -122,7 +122,7 @@
         /* ── Customer card ── */
         .cust-card {
             background: #fff;
-            border: 1px solid #e7eaf3;
+            border: 1px solid #c8d2e0;
             border-radius: 10px;
             padding: 18px 20px;
         }
@@ -321,7 +321,7 @@
                                                         <div class="d-flex flex-wrap mt-2" style="gap:6px;">
                                                             @foreach ($imgs as $img)
                                                                 <img src="{{ asset('storage/app/public/gatepass/' . $img) }}"
-                                                                     style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #e7eaf3;"
+                                                                     style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #c8d2e0;"
                                                                      onerror="this.src='{{ asset('public/assets/admin/img/160x160/img1.jpg') }}'">
                                                             @endforeach
                                                         </div>
@@ -412,7 +412,7 @@
                             <div class="mb-3 d-flex align-items-center" style="gap:12px;">
                                 <img src="{{ asset('storage/app/public/profile/' . $custDet->image) }}"
                                      onerror="this.src='{{ asset('public/assets/admin/img/160x160/img1.jpg') }}'"
-                                     style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #e7eaf3;">
+                                     style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #c8d2e0;">
                                 <span class="cust-name mb-0">{{ $custDet->f_name . ' ' . $custDet->l_name }}</span>
                             </div>
                         @else

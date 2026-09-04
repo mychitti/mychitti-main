@@ -97,6 +97,7 @@
                     </li>
 
                     <!-- Reports section -->
+                    @include('layouts.admin.partials._sidebar_documentation')
                     <li class="nav-item">
                         <small class="nav-subtitle" title="{{ translate('Reports') }}">{{ translate('Reports') }}</small>
                         <small class="tio-more-horizontal nav-subtitle-replacer"></small>

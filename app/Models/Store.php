@@ -130,6 +130,7 @@ class Store extends Model
         'gst_doc',
         'dedicated_leads',
         'dedicated_lead_mode',
+        'show_in_mychitti',
     ];
 
     /**
@@ -168,7 +169,8 @@ class Store extends Model
         'featured' => 'integer',
         'items_count' => 'integer',
         'prescription_order' => 'boolean',
-        'announcement' => 'integer'
+        'announcement' => 'integer',
+        'show_in_mychitti' => 'integer'
     ];
 
     /**
@@ -449,6 +451,29 @@ class Store extends Model
     public function scopeActive($query): mixed
     {
         return $query->where('status', 1);
+    }
+
+    /**
+     * Stores that agreed to be listed on the MyChitti consumer marketplace.
+     * Use on every customer-facing listing, search and recommendation query.
+     *
+     * @param $query
+     * @return mixed
+     */
+    public function scopeVisibleOnMychitti($query): mixed
+    {
+        return $query->where('stores.show_in_mychitti', 1);
+    }
+
+    /**
+     * Stores that opted out of MyChitti — the MC Vendorhub tenants.
+     *
+     * @param $query
+     * @return mixed
+     */
+    public function scopeHiddenFromMychitti($query): mixed
+    {
+        return $query->where('stores.show_in_mychitti', 0);
     }
 
     /**

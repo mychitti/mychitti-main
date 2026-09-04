@@ -152,7 +152,7 @@
     .patient-consult-header {
         background-color: #ffffff;
         padding: 12px 20px;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid #c8d2e0;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -251,7 +251,7 @@
         color: #334155;
     }
     .patient-key-facts .kf + .kf {
-        border-left: 1px solid #e2e8f0;
+        border-left: 1px solid #c8d2e0;
         padding-left: 8px;
     }
     .kf-lbl {
@@ -291,7 +291,7 @@
     }
     .vital-item-card {
         background-color: #ffffff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         border-radius: 6px;
         padding: 6px 12px;
         text-align: center;
@@ -324,7 +324,7 @@
     /* ── Tabbed navigation row ── */
     .consult-tabs-row {
         background-color: #ffffff;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid #c8d2e0;
         padding: 0 20px;
         display: flex;
         gap: 4px;
@@ -406,7 +406,7 @@
     }
     .content-column {
         background: #ffffff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         border-radius: 8px;
         min-height: 520px;
         min-width: 0;
@@ -416,7 +416,7 @@
     .content-column .tab-pane { min-width: 0; }
     .sidebar-card {
         background: #ffffff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         overflow: hidden;
@@ -424,7 +424,7 @@
     }
     .sidebar-card-header {
         background: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid #c8d2e0;
         padding: 8px 12px;
         display: flex;
         justify-content: space-between;
@@ -513,11 +513,22 @@
         color: #64748b;
         margin-bottom: 4px;
     }
-    /* Sub-cards inside Diagnosis & Treatment. Flatter than a card of their own — a tinted header
-       strip and a hairline border — so three of them read as one card divided into sections
-       rather than as four cards stacked on the page. */
+    /* Sub-cards inside Diagnosis & Treatment. Lifted rather than outlined: three bordered boxes
+       inside the section's own bordered card stacked four rectangles before the eye reached any
+       content. A shadow separates them just as clearly and draws no lines, so the only enclosed
+       things left on the panel are the chips and pills — the parts that actually carry state.
+       The section body is tinted so white cards have something to lift off. */
+    .dx-section > .card-body {
+        background: #f4f7fa;
+    }
+    .dx-subcard {
+        background: #fff;
+        border: 0 !important;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 2px 8px rgba(16, 24, 40, .08) !important;
+    }
     .dx-subcard > .card-header {
-        background: #fcfdfe;
+        background: transparent;
         border-bottom: 1px solid #eef1f4;
         min-height: 0;
     }
@@ -651,12 +662,12 @@
     table.tx-table td {
         padding: 7px 8px;
         vertical-align: middle;
-        border-top: 1px solid #f1f5f9;
+        border-top: 1px solid #dfe6ee;
         color: #475569;
     }
     table.tx-table tbody tr:hover { background: #f8fafc; }
     table.tx-table tfoot td {
-        border-top: 1px solid #e2e8f0;
+        border-top: 1px solid #c8d2e0;
         padding: 8px;
         font-weight: 800;
         color: #0f172a;
@@ -719,7 +730,7 @@
         gap: 9px;
         margin: 0 0 10px;
         padding: 9px 10px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         border-radius: 7px;
         background: #fbfcfe;
         font-size: 12px;
@@ -873,7 +884,7 @@
         margin: 0;
         padding: 9px 12px;
         background: #f8fafc;
-        border-bottom: 1px solid #eef2f7;
+        border-bottom: 1px solid #c8d2e0;
         border-radius: 8px 8px 0 0;
     }
     .tx-plan-menu .tx-plan-body { padding: 11px 12px 2px; }
@@ -896,7 +907,7 @@
         font-size: 12px;
         height: 32px;
         padding: 4px 8px;
-        border-color: #e2e8f0;
+        border-color: #c8d2e0;
         border-radius: 6px;
     }
     .tx-plan-menu .form-control:focus {
@@ -923,14 +934,14 @@
         gap: 8px;
         padding: 9px 12px;
         background: #f8fafc;
-        border-top: 1px solid #eef2f7;
+        border-top: 1px solid #c8d2e0;
         border-radius: 0 0 8px 8px;
     }
     .tx-status-menu {
         position: absolute;
         z-index: 1080;
         background: #ffffff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         border-radius: 8px;
         box-shadow: 0 8px 24px rgba(15,23,42,.14);
         padding: 4px;
@@ -979,7 +990,7 @@
     .tx-plan-menu .btn-primary:hover { background: #0b3a82; border-color: #0b3a82; }
     .tx-plan-menu .btn-light {
         background: #f1f5f9;
-        border-color: #e2e8f0;
+        border-color: #c8d2e0;
         color: #334155;
     }
     .tx-plan-menu .btn-light:hover { background: #e2e8f0; }
@@ -1085,7 +1096,7 @@
     #dxEdit .select2-container--default .select2-selection--multiple,
     #txEdit .select2-container--default .select2-selection--multiple,
     #wtEdit .select2-container--default .select2-selection--multiple {
-        border-color: #e7eaf3;
+        border-color: #c8d2e0;
         min-height: 34px;
         height: auto;
     }
@@ -1146,7 +1157,7 @@
         margin: 0 4px 4px 0;
     }
     #ccEdit .select2-container--default .select2-selection--multiple {
-        border-color: #e7eaf3;
+        border-color: #c8d2e0;
         min-height: 34px;
         height: auto;
     }
@@ -1212,7 +1223,7 @@
         align-items: center;
         gap: 4px;
         background: #f1f5f9;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         color: #64748b;
         border-radius: 5px;
         font-size: 10.5px;
@@ -1262,7 +1273,7 @@
     #notesEdit .nt-select2 .select2-selection__choice__remove:hover { opacity: 1; }
 
     #notesEdit .select2-container--default .select2-selection--multiple {
-        border-color: #e7eaf3;
+        border-color: #c8d2e0;
         min-height: 34px;
         height: auto;
     }
@@ -1352,7 +1363,7 @@
     }
     .risk-item-card {
         background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         border-radius: 6px;
         padding: 12px;
     }
@@ -1452,11 +1463,11 @@
        A job is read in a fixed order: what it is, who has it, when it is due, what was specified.
        All four used to share one run of dot-separated values, which meant finding any of them
        involved reading the punctuation. Each is its own band now, in that order. */
-    .lw-card { border:1px solid #e7eaf3; border-radius:10px; }
+    .lw-card { border:1px solid #c8d2e0; border-radius:10px; }
     .lw-title { font-weight:700; font-size:14px; color:#1e293b; }
     .lw-sub { font-size:12px; color:#64748b; }
     .lw-stamp { font-size:11px; color:#059669; white-space:nowrap; }
-    .lw-rule { border-top:1px solid #f1f5f9; margin:12px 0; }
+    .lw-rule { border-top:1px solid #dfe6ee; margin:12px 0; }
 
     /* Two columns that wrap to two rows on a narrow card: identity on the left, the dates and
        the price on the right. Both are metadata about the same job, so they share a line rather
@@ -1532,16 +1543,16 @@
     .rx-actions .rx-lang { order:-1; margin-left:0; margin-right:auto; }
     .rx-sync-hint { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; color:#0ea5e9; }
     .rx-sync-hint.rx-sync-off { color:#94a3b8; }
-    .rx-med-list { border:1px solid #e2e8f0; border-radius:8px; overflow-x:auto; }
+    .rx-med-list { border:1px solid #c8d2e0; border-radius:8px; overflow-x:auto; }
     .rx-med-list thead th { font-size:11px; text-transform:uppercase; letter-spacing:.3px; color:#64748b; border-top:0; }
-    .rx-followup { padding:8px 12px; border-top:1px solid #e2e8f0; font-size:12px; color:#334155; background:#f8fafc; }
-    .rx-advice { padding:8px 12px; border-top:1px solid #e2e8f0; font-size:12px; color:#334155; }
+    .rx-followup { padding:8px 12px; border-top:1px solid #c8d2e0; font-size:12px; color:#334155; background:#f8fafc; }
+    .rx-advice { padding:8px 12px; border-top:1px solid #c8d2e0; font-size:12px; color:#334155; }
     .rx-advice-lbl { font-weight:700; text-transform:uppercase; font-size:10px; letter-spacing:.3px; color:#64748b; margin-right:6px; }
 
     /* ── Prescription form styles ── */
     .med-row {
         background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         border-radius: 6px;
         padding: 8px 10px;
         margin-bottom: 6px;
@@ -1560,7 +1571,7 @@
         list-style: none;
         margin: 0;
         padding: 4px 0;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #c8d2e0;
         border-radius: 0 0 6px 6px;
         background: #fff;
         max-height: 160px;
@@ -1573,7 +1584,7 @@
 
     /* ── Printable Prescription wrapper ── */
     .rx-view-wrap {
-        border: 1px solid #e2e8f0;
+        border: 1px solid #c8d2e0;
         border-radius: 6px;
         padding: 20px;
         background: #ffffff;
@@ -2285,7 +2296,7 @@
                      different moments by different people, but read as one thing.
                      Money is deliberately absent from all three — what a treatment costs and
                      whether it has been paid belongs to Billing, where it is settled. --}}
-                <div class="card shadow-none border mb-3">
+                <div class="card shadow-none border mb-3 dx-section">
                     <div class="card-header py-2 d-flex justify-content-between align-items-center bg-light">
                         <h6 class="mb-0 font-weight-bold" style="font-size:13px">Diagnosis &amp; Treatment</h6>
                         @if ($visit->is_completed)
@@ -2299,7 +2310,7 @@
                              h-100 on both keeps the pair level however many terms each holds. --}}
                         <div class="row mb-2">
                         <div class="col-md-6">
-                        <div class="card shadow-none border mb-0 h-100 dx-subcard">
+                        <div class="card mb-0 h-100 dx-subcard">
                             <div class="card-header py-2 d-flex justify-content-between align-items-center">
                                 <span class="tx-col-lbl mb-0">Diagnosis</span>
                                 @if (!$visit->is_completed && hasPermission('opd_register', 'edit'))
@@ -2351,7 +2362,7 @@
 
                         </div>
                         <div class="col-md-6">
-                        <div class="card shadow-none border mb-0 h-100 dx-subcard">
+                        <div class="card mb-0 h-100 dx-subcard">
                             <div class="card-header py-2 d-flex justify-content-between align-items-center">
                                 <span class="tx-col-lbl mb-0">Advised Treatment</span>
                                 @if (!$visit->is_completed && hasPermission('opd_register', 'edit'))
@@ -2417,7 +2428,7 @@
 
                         {{-- Willing runs the full width: it carries the treatment plan table, which
                              a half-width column could not hold. --}}
-                        <div class="card shadow-none border mb-0 dx-subcard">
+                        <div class="card mb-0 dx-subcard mt-5">
                             <div class="card-header py-2 d-flex justify-content-between align-items-center">
                                 <span class="tx-col-lbl mb-0">Willing Treatment</span>
                                 @if (!$visit->is_completed && hasPermission('opd_register', 'edit'))
@@ -2681,7 +2692,7 @@
                                       onsubmit="return confirm('Send this prescription as a PDF to {{ addslashes($currentPrescription->patient->name ?? 'the patient') }} on WhatsApp?')">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Attach the prescription PDF and send it to the patient on WhatsApp">
-                                        <i class="tio-attachment"></i> Send as PDF
+                                        <i class="tio-whatsapp"></i> Send PDF on WhatsApp
                                     </button>
                                 </form>
                             @endif
@@ -2826,6 +2837,9 @@
                         @csrf
                         <input type="hidden" name="patient_id" value="{{ $visit->patient_id }}">
                         <input type="hidden" name="doctor_profile_id" value="{{ $visit->doctor_profile_id }}">
+                        {{-- The visit itself, so the saved sheet comes back to this screen by id
+                             instead of having to be inferred from the appointment and the date. --}}
+                        <input type="hidden" name="opd_visit_id" value="{{ $visit->id }}">
                         @if($visit->appointment_id)
                             <input type="hidden" name="appointment_id" value="{{ $visit->appointment_id }}">
                         @endif
@@ -3981,7 +3995,7 @@
                                             </div>
                                         </form>
 
-                                        <div class="lw-actions mt-2 pt-2" style="border-top:1px solid #f1f5f9;">
+                                        <div class="lw-actions mt-2 pt-2" style="border-top:1px solid #dfe6ee;">
                                             {{-- Resend without moving the stage: the patient missed it, or a
                                                  relative rang to ask. Separate from the checkbox above so
                                                  telling someone again never quietly re-files the job. --}}
@@ -4047,7 +4061,7 @@
                                         {{-- Correcting what was recorded — a mistyped shade, a lab that
                                              changed. Deliberately no stage box: that moves through
                                              Update stage above, which dates the milestones. --}}
-                                        <div id="lwEdit{{ $work->id }}" class="mt-2 pt-2" style="display:none; border-top:1px solid #f1f5f9;">
+                                        <div id="lwEdit{{ $work->id }}" class="mt-2 pt-2" style="display:none; border-top:1px solid #dfe6ee;">
                                             <form method="POST" action="{{ route('vendor.opd.lab-work.update', $work->id) }}">
                                                 @csrf
                                                 @method('PUT')

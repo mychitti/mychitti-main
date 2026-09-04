@@ -54,7 +54,7 @@
             font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; font-weight: 700;
             border-top-left-radius: 9px; border-top-right-radius: 9px;
         }
-        .lwr-row { border-bottom: 1px solid #f1f5f9; }
+        .lwr-row { border-bottom: 1px solid #dfe6ee; }
         .lwr-row:last-child { border-bottom: 0; border-bottom-left-radius: 9px; border-bottom-right-radius: 9px; }
         .lwr-row:hover { background: #fcfdff; }
         .lwr-row.is-late { box-shadow: inset 3px 0 0 #ef4444; }
@@ -73,7 +73,7 @@
         .lwr-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
         .lwr-tag {
             display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;
-            border: 1px solid #e2e8f0; color: #64748b; text-transform: uppercase; letter-spacing: .03em;
+            border: 1px solid #c8d2e0; color: #64748b; text-transform: uppercase; letter-spacing: .03em;
         }
         .lwr-tag.is-ext { border-color: #fed7aa; color: #c2410c; background: #fff7ed; }
         .lwr-tag.is-int { border-color: #bfdbfe; color: #1d4ed8; background: #eff6ff; }
@@ -94,7 +94,7 @@
             cursor: pointer; transition: all .15s ease;
         }
         .lwr-actions-btn:hover, .lwr-actions-btn:focus { background: #f8fafc; border-color: #94a3b8; color: #0f172a; outline: none; }
-        .lwr-dropdown-menu { font-size: 12px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); padding: 4px 0; min-width: 160px; }
+        .lwr-dropdown-menu { font-size: 12px; border-radius: 8px; border: 1px solid #c8d2e0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); padding: 4px 0; min-width: 160px; }
         .lwr-dropdown-menu .dropdown-item { padding: 6px 12px; color: #334155; font-weight: 500; display: flex; align-items: center; }
         .lwr-dropdown-menu .dropdown-item:hover { background-color: #f1f5f9; color: #0f172a; }
         .lwr-dropdown-menu .dropdown-item .g { font-weight: 700; width: 16px; text-align: center; margin-right: 6px; }

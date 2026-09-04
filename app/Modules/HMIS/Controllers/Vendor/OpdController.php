@@ -98,6 +98,9 @@ class OpdController extends Controller
         \App\Models\OpdTermCatalogue::ensureTable();
         \App\Models\OpdOpType::ensureSchema();
 
+        // The column tying a prescription to the consultation it was written at.
+        Prescription::ensureVisitLink();
+
         $this->ensureTokenIndex();
     }
 
@@ -637,20 +640,16 @@ class OpdController extends Controller
         // Prescription written for this visit, if any (linked via appointment / service request,
         // else the latest one this doctor wrote for this patient on the visit date).
         $currentPrescription = Prescription::where('store_id', $store_id)
-            ->where('patient_id', $visit->patient_id)
-            ->where(function ($q) use ($visit) {
-                if ($visit->appointment_id) {
-                    $q->where('appointment_id', $visit->appointment_id);
-                } elseif ($visit->service_request_id) {
-                    $q->where('service_request_id', $visit->service_request_id);
-                } else {
-                    $q->where('doctor_profile_id', $visit->doctor_profile_id)
-                        ->whereDate('created_at', $visit->visit_date ?? today());
-                }
-            })
+            ->forOpdVisit($visit)
             ->with(['store', 'doctorProfile.employee', 'patient', 'items'])
             ->latest()
             ->first();
+
+        // Found on the older inferred signals: stamp the visit on it now so it stays
+        // attached whatever happens to the appointment or the dates afterwards.
+        if ($currentPrescription && Prescription::hasVisitLink() && !$currentPrescription->opd_visit_id) {
+            $currentPrescription->forceFill(['opd_visit_id' => $visit->id])->saveQuietly();
+        }
 
         // Prior prescriptions for this patient (excludes the current visit's prescription).
         $pastPrescriptions = Prescription::where('store_id', $store_id)
@@ -1717,17 +1716,7 @@ class OpdController extends Controller
         // Same matching the consultation screen uses to find this visit's prescription, so what
         // blocks the delete is exactly what the user can see attached to the visit.
         $prescriptions = Prescription::where('store_id', $storeId)
-            ->where('patient_id', $visit->patient_id)
-            ->where(function ($q) use ($visit) {
-                if ($visit->appointment_id) {
-                    $q->where('appointment_id', $visit->appointment_id);
-                } elseif ($visit->service_request_id) {
-                    $q->where('service_request_id', $visit->service_request_id);
-                } else {
-                    $q->where('doctor_profile_id', $visit->doctor_profile_id)
-                        ->whereDate('created_at', $visit->visit_date ?? today());
-                }
-            })
+            ->forOpdVisit($visit)
             ->count();
         if ($prescriptions) {
             $blocking[] = $prescriptions . ' prescription' . ($prescriptions === 1 ? '' : 's');

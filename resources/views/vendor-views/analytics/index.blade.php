@@ -71,40 +71,94 @@
 
         {{-- Summary Cards --}}
         <div class="row g-2 mb-3">
-            <div class="col ">
+            <div class="col-6 col-md-4 col-xl">
                 <div class="card card-body py-3 text-center" style="background-color:#004dff21;">
                     <h3 class="mb-0">{{ $counts['store_visits'] }}</h3>
                     <small class="text-muted">Store Visits</small>
                 </div>
             </div>
-            <div class="col">
+            <div class="col-6 col-md-4 col-xl">
                 <div class="card card-body py-3 text-center" style="background-color:#ff001f21;">
                     <h3 class="mb-0">{{ $counts['banner_clicks'] }}</h3>
                     <small class="text-muted">Banner Clicks</small>
                 </div>
             </div>
-            <div class="col">
+            <div class="col-6 col-md-4 col-xl">
                 <div class="card card-body py-3 text-center" style="background-color:#ffe80042;">
                     <h3 class="mb-0">{{ $counts['ad_clicks'] }}</h3>
                     <small class="text-muted">Ad Clicks</small>
                 </div>
             </div>
-            <div class="col">
+            <div class="col-6 col-md-4 col-xl">
                 <div class="card card-body py-3 text-center" style="background-color:#ab00ff42;">
                     <h3 class="mb-0">{{ $counts['location_views'] }}</h3>
                     <small class="text-muted">Location Views</small>
                 </div>
             </div>
-            <div class="col">
+            <div class="col-6 col-md-4 col-xl">
                 <div class="card card-body py-3 text-center" style="background-color:#40ff0042;">
                     <h3 class="mb-0">{{ $counts['phone_calls'] }}</h3>
                     <small class="text-muted">Phone (Call/Copy)</small>
                 </div>
             </div>
-            <div class="col">
+            <div class="col-6 col-md-4 col-xl">
+                <div class="card card-body py-3 text-center" style="background-color:#25d3662e;">
+                    <h3 class="mb-0">{{ $counts['whatsapp'] }}</h3>
+                    <small class="text-muted">WhatsApp Chats</small>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl">
                 <div class="card card-body py-3 text-center" style="background-color:#00c8ff21;">
                     <h3 class="mb-0">{{ $counts['shares'] }}</h3>
                     <small class="text-muted">Shares</small>
+                </div>
+            </div>
+        </div>
+
+        {{-- Guest (not logged in) store-card actions. These visitors have no account, so there is
+             no name or phone to attribute them to — they are reported here on their own. --}}
+        <div class="card mb-3">
+            <div class="card-header border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title mb-0">Guest Activity &mdash; Not Logged In</h5>
+                    <small class="text-muted">Share, Call Now, Enquiry Now &amp; WhatsApp taps on your store card from
+                        visitors who were not signed in. No name or phone is captured for these.</small>
+                </div>
+                <a href="{{ route('vendor.performance-analytics.index', ['tab' => 'guest_actions']) }}"
+                    class="btn btn-sm btn-outline-primary">View Details</a>
+            </div>
+            <div class="card-body pt-0">
+                <div class="row g-2">
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card card-body py-3 text-center" style="background-color:#6c5ce71f;">
+                            <h3 class="mb-0">{{ $guestCounts['total'] }}</h3>
+                            <small class="text-muted">Total Guest Actions</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card card-body py-3 text-center" style="background-color:#00c8ff21;">
+                            <h3 class="mb-0">{{ $guestCounts['shares'] }}</h3>
+                            <small class="text-muted">Shares</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card card-body py-3 text-center" style="background-color:#40ff0042;">
+                            <h3 class="mb-0">{{ $guestCounts['phone_calls'] }}</h3>
+                            <small class="text-muted">Call Now</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card card-body py-3 text-center" style="background-color:#ffa50029;">
+                            <h3 class="mb-0">{{ $guestCounts['enquiries'] }}</h3>
+                            <small class="text-muted">Enquiry Now</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl">
+                        <div class="card card-body py-3 text-center" style="background-color:#25d3662e;">
+                            <h3 class="mb-0">{{ $guestCounts['whatsapp'] }}</h3>
+                            <small class="text-muted">WhatsApp Msg</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -142,8 +196,17 @@
                                     href="{{ route('vendor.performance-analytics.index', ['tab' => 'phone_calls']) }}">Phone (Call/Copy)</a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link {{ $tab == 'whatsapp' ? 'active' : '' }}"
+                                    href="{{ route('vendor.performance-analytics.index', ['tab' => 'whatsapp']) }}">WhatsApp</a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link {{ $tab == 'shares' ? 'active' : '' }}"
                                     href="{{ route('vendor.performance-analytics.index', ['tab' => 'shares']) }}">Shares</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ $tab == 'guest_actions' ? 'active' : '' }}"
+                                    href="{{ route('vendor.performance-analytics.index', ['tab' => 'guest_actions']) }}">Guest
+                                    Activity</a>
                             </li>
                         </ul>
                                 @if ($hasAccess || $trialActive)
@@ -154,7 +217,7 @@
                                 <div class="input-group input--group">
                                     <input type="search" name="search" value="{{ $search }}"
                                         class="form-control"
-                                        placeholder="{{ translate('messages.ex_:_search_user_name_or_phone') }}">
+                                        placeholder="{{ $tab == 'guest_actions' ? translate('Ex : search by IP address') : translate('messages.ex_:_search_user_name_or_phone') }}">
                                     <button type="submit" class="btn btn--secondary"><i class="tio-search"></i></button>
                                 </div>
                             </div>
@@ -172,7 +235,7 @@
         @if ($hasAccess || $trialActive)
 
                     <div class="table-responsive">
-                        @if ($tab == 'store_visits' || $tab == 'location_views' || $tab == 'phone_calls')
+                        @if ($tab == 'store_visits' || $tab == 'location_views' || $tab == 'phone_calls' || $tab == 'whatsapp')
                             <table class="table table-borderless table-thead-bordered table-align-middle">
                                 <thead class="thead-light">
                                     <tr>
@@ -323,6 +386,45 @@
                                     @endforelse
                                 </tbody>
                             </table>
+                        @elseif ($tab == 'guest_actions')
+                            <table class="table table-borderless table-thead-bordered table-align-middle">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Action</th>
+                                        <th>Store / Service</th>
+                                        <th>IP</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($data['items'] as $key => $item)
+                                        <tr>
+                                            <td>{{ $key + $data['items']->firstItem() }}</td>
+                                            <td>
+                                                @if ($item->screen_type == 'share')
+                                                    <span class="badge badge-soft-info">Share</span>
+                                                @elseif ($item->screen_type == 'whatsapp')
+                                                    <span class="badge badge-soft-success">WhatsApp Msg</span>
+                                                @elseif ($item->screen_type == 'enquiry')
+                                                    <span class="badge badge-soft-warning">Enquiry Now</span>
+                                                @elseif ($item->screen_type == 'copy')
+                                                    <span class="badge badge-soft-primary">Phone Copied</span>
+                                                @else
+                                                    <span class="badge badge-soft-primary">Call Now</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $item->entity_name }}</td>
+                                            <td>{{ $item->ip ?? '-' }}</td>
+                                            <td>{{ \Carbon\Carbon::parse($item->created_at)->format('d M Y, h:i A') }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4">No guest activity yet</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         @endif
                     </div>
 
@@ -401,6 +503,15 @@
                                 data: data.phone_calls,
                                 borderColor: '#51cf66',
                                 backgroundColor: 'rgba(81,207,102,0.1)',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                fill: true,
+                            },
+                            {
+                                label: 'WhatsApp Chats',
+                                data: data.whatsapp,
+                                borderColor: '#25D366',
+                                backgroundColor: 'rgba(37,211,102,0.1)',
                                 borderWidth: 2,
                                 tension: 0.3,
                                 fill: true,

@@ -105,7 +105,7 @@
              text-align: left;
              font-weight: 600;
              color: #2d3748;
-             border-bottom: 2px solid #e2e8f0;
+             border-bottom: 2px solid #c8d2e0;
              font-size: 13px;
              text-transform: uppercase;
              letter-spacing: 0.5px;
@@ -113,7 +113,7 @@
 
          .tb-table td {
              padding: 12px 15px;
-             border-bottom: 1px solid #e2e8f0;
+             border-bottom: 1px solid #c8d2e0;
              color: #4a5568;
              font-size: 14px;
          }

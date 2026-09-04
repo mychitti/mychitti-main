@@ -11,7 +11,7 @@
     .pc-name { font-size:13px; font-weight:600; color:#0f172a; }
     .pc-meta { font-size:11px; color:#64748b; }
     .pc-bar {
-        position:sticky; bottom:0; z-index:5; background:#fff; border-top:1px solid #e2e8f0;
+        position:sticky; bottom:0; z-index:5; background:#fff; border-top:1px solid #c8d2e0;
         padding:10px 14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
         box-shadow:0 -4px 12px rgba(15,23,42,.06);
     }
@@ -34,7 +34,7 @@
 
     .pc-uom-toggle {
         display:flex; align-items:flex-start; gap:9px; cursor:pointer;
-        background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px;
+        background:#f8fafc; border:1px solid #c8d2e0; border-radius:9px;
         padding:10px 13px; margin-bottom:12px; font-size:12.5px; color:#334155;
     }
     .pc-uom-toggle input { margin-top:3px; }

@@ -64,7 +64,7 @@
 
          .form-control,
          .form-control {
-             border: 1px solid #e9ecef;
+             border: 1px solid #c8d2e0;
              border-radius: 8px;
              padding: 12px 16px;
              transition: all 0.3s ease;

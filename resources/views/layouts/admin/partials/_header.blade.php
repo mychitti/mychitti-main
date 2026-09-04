@@ -273,6 +273,17 @@
                                                   Common <br>Dashboard
                                                 </div>
                                         </a>
+                                        <a href="{{ route('admin.mcvendorhub.dashboard') }}"
+                                                class="__nav-module-item {{ Request::is('admin/mcvendorhub*') ? 'active':'' }}">
+                                                <div class="img w--70px ">
+                                                    <img src="{{ asset('storage/app/public/business/' . $logo ?? '') }}"
+                                                        data-onerror-image="{{asset('public/assets/admin/img/new-img/module/e-shop.svg')}}"
+                                                    alt="new-img" class="mw-100 onerror-image">
+                                                </div>
+                                                <div>
+                                                   MC <br>Vendorhub
+                                                </div>
+                                        </a>
                                         <a href="{{ route('admin.users.contact.contact-list') }}"
                                                 class="__nav-module-item ">
                                                 <div class="img w--70px ">
@@ -280,8 +291,8 @@
                                                         data-onerror-image="{{asset('public/assets/admin/img/new-img/module/e-shop.svg')}}"
                                                     alt="new-img" class="mw-100 onerror-image">
                                                 </div>
-                                                <div> 
-                                                   Sales & <br>Marketing
+                                                <div>
+                                                   MyChitti Sales & <br>Marketing
                                                 </div>
                                         </a>
                                         <a href="{{ route('admin.users.contact.contact-list') }}"

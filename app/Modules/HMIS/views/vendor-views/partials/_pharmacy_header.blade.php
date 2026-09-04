@@ -197,13 +197,13 @@
             display: grid;
             grid-template-columns: repeat(6, 1fr);
             background: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #c8d2e0;
             padding: 12px 24px;
             gap: 10px;
         }
         .metric-card {
             padding: 8px 12px;
-            border-right: 1px solid #f1f5f9;
+            border-right: 1px solid #dfe6ee;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -235,7 +235,7 @@
         /* ── Tabs Row ── */
         .pharmacy-tabs-row {
             background-color: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #c8d2e0;
             padding: 0 24px;
             display: flex;
             flex-wrap: wrap;
@@ -252,7 +252,7 @@
             background-color: #ffffff;
             min-width: 200px;
             box-shadow: 0px 8px 24px rgba(0,0,0,0.12);
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             border-radius: 8px;
             z-index: 1000;
             margin-top: 2px;
@@ -334,14 +334,14 @@
             box-sizing: border-box;
         }
         .pharmacy-page-content .card {
-            border: 1px solid #e2e8f0 !important;
+            border: 1px solid #c8d2e0 !important;
             border-radius: 12px !important;
             box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
             overflow: hidden;
             margin-bottom: 20px;
         }
         .pharmacy-page-content .card-header {
-            border-bottom: 1px solid #e2e8f0 !important;
+            border-bottom: 1px solid #c8d2e0 !important;
             padding: 14px 20px !important;
             background: #ffffff !important;
         }
@@ -387,7 +387,7 @@
             .metric-card {
                 padding: 6px 8px;
                 border-right: none;
-                border-bottom: 1px solid #f1f5f9;
+                border-bottom: 1px solid #dfe6ee;
             }
             .metric-card:nth-last-child(-n+2) { border-bottom: none; }
             .metric-card .value { font-size: 16px; }

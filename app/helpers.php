@@ -6766,9 +6766,10 @@ if (!function_exists('_nearbyStoresOptimized')) {
        ";
 
         return Store::select('stores.*')
+            ->visibleOnMychitti()
             ->selectRaw("$distanceSql AS distance", [$userLat, $userLng, $userLat])
             ->selectRaw("
-            CASE 
+            CASE
                 WHEN stores.id IN (" . implode(',', $subscribedStoreIds ?: [0]) . ")
                 THEN 1 ELSE 0 
             END AS subscribed
@@ -6808,6 +6809,7 @@ if (!function_exists('_nearbyStoresOld')) {
 
         // --- Subscribed stores in random order ---
         $subscribedQuery = Store::select('stores.*')
+            ->visibleOnMychitti()
             ->leftJoin('store_enabled_modules', 'store_enabled_modules.store_id', 'stores.id')
             ->where([
                 'stores.active' => 1,
@@ -6831,6 +6833,7 @@ if (!function_exists('_nearbyStoresOld')) {
 
         // --- Non-subscribed stores by distance ---
         $nonSubscribedQuery = Store::select('stores.*')
+            ->visibleOnMychitti()
             ->leftJoin('store_enabled_modules', 'store_enabled_modules.store_id', 'stores.id')
             ->where([
                 'stores.active' => 1,
@@ -6941,6 +6944,7 @@ if (!function_exists('_nearbyStoresMonthlyBillingWise')) {
         // prx($paidStoreIds);
 
         $query = Store::select('stores.*')
+            ->visibleOnMychitti()
             ->leftJoin('store_enabled_modules', 'store_enabled_modules.store_id', 'stores.id')
             ->where([
                 'stores.active' => 1,
@@ -8751,5 +8755,60 @@ if (!function_exists('hmis_discontinue_days')) {
         $days = (int) $value;
 
         return $cache[$store_id] = $days > 0 ? $days : null;
+    }
+}
+
+if (!function_exists('_documentationReadableSize')) {
+    /**
+     * Byte count as something a person can read. Used by the admin Documentation module.
+     */
+    function _documentationReadableSize($bytes): string
+    {
+        $bytes = (int) $bytes;
+        if ($bytes <= 0) {
+            return '0 KB';
+        }
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = (int) floor(log($bytes, 1024));
+        $i = min($i, count($units) - 1);
+        return round($bytes / pow(1024, $i), $i === 0 ? 0 : 1) . ' ' . $units[$i];
+    }
+}
+
+if (!function_exists('_documentationFileIcon')) {
+    /**
+     * Font Awesome class + colour for a documentation attachment, by extension.
+     */
+    function _documentationFileIcon(?string $extension): array
+    {
+        return match (strtolower((string) $extension)) {
+            'pdf'                 => ['fas fa-file-pdf', '#e74c3c'],
+            'doc', 'docx'         => ['fas fa-file-word', '#2b579a'],
+            'xls', 'xlsx', 'csv'  => ['fas fa-file-excel', '#217346'],
+            'ppt', 'pptx'         => ['fas fa-file-powerpoint', '#d24726'],
+            'zip', 'rar', '7z'    => ['fas fa-file-archive', '#f39c12'],
+            'json'                => ['fas fa-file-code', '#ff6c37'],
+            'png', 'jpg', 'jpeg', 'gif', 'webp' => ['fas fa-file-image', '#8e44ad'],
+            default               => ['fas fa-file-alt', '#7f8c8d'],
+        };
+    }
+}
+
+if (!function_exists('_documentationPreviewKind')) {
+    /**
+     * How a documentation attachment can be shown in the browser. "word" and "sheet" are
+     * rendered client-side; "office" covers the legacy formats nothing can render in-page.
+     */
+    function _documentationPreviewKind(?string $extension): string
+    {
+        return match (strtolower((string) $extension)) {
+            'pdf'                               => 'pdf',
+            'png', 'jpg', 'jpeg', 'gif', 'webp' => 'image',
+            'txt', 'md', 'json', 'csv'          => 'text',
+            'docx'                              => 'word',
+            'xlsx', 'xls'                       => 'sheet',
+            'doc', 'ppt', 'pptx'                => 'office',
+            default                             => 'none',
+        };
     }
 }

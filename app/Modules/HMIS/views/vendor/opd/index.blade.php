@@ -91,7 +91,7 @@
         /* Form inputs & Select dropdowns */
         .hmis-select, .hmis-input {
             background-color: #ffffff !important;
-            border: 1.5px solid #e2e8f0 !important;
+            border: 1.5px solid #c8d2e0 !important;
             border-radius: 8px !important;
             padding: 8px 12px !important;
             font-family: 'Inter', sans-serif;
@@ -109,7 +109,7 @@
         /* Card Styling */
         .hmis-card {
             background: #ffffff !important;
-            border: 1px solid #e2e8f0 !important;
+            border: 1px solid #c8d2e0 !important;
             border-radius: 12px !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02) !important;
             overflow: hidden;
@@ -126,14 +126,14 @@
             font-weight: 600;
             font-size: 13px;
             color: #475569;
-            border-bottom: 2px solid #e2e8f0 !important;
+            border-bottom: 2px solid #c8d2e0 !important;
             padding: 14px 16px !important;
             letter-spacing: 0.2px;
         }
         .table.table-hover tbody td {
             padding: 14px 16px !important;
             vertical-align: middle !important;
-            border-bottom: 1px solid #f1f5f9 !important;
+            border-bottom: 1px solid #dfe6ee !important;
             color: #334155;
             font-size: 13px;
         }
@@ -204,7 +204,7 @@
             align-items: center;
             justify-content: center;
             background-color: #ffffff !important;
-            border: 1.5px solid #e2e8f0 !important;
+            border: 1.5px solid #c8d2e0 !important;
             color: #64748b !important;
             font-size: 13px !important;
             width: 30px;

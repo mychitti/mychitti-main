@@ -176,11 +176,11 @@
 
 <style>
     .slot-grid { display:flex; flex-wrap:wrap; gap:10px; min-height:48px; align-items:flex-start; }
-    .slot-card { border:2px solid #e7eaf3; border-radius:8px; padding:8px 14px; cursor:pointer; text-align:center; min-width:130px; transition:all .15s; background:#fff; user-select:none; }
+    .slot-card { border:2px solid #c8d2e0; border-radius:8px; padding:8px 14px; cursor:pointer; text-align:center; min-width:130px; transition:all .15s; background:#fff; user-select:none; }
     .slot-card:hover:not(.slot-full) { border-color:#377dff; background:#f0f5ff; }
     .slot-card.slot-selected { border-color:#377dff; background:#377dff; color:#fff; }
     .slot-card.slot-selected .slot-count { color:rgba(255,255,255,.85); }
-    .slot-card.slot-full { background:#f8f9fa; border-color:#e7eaf3; color:#adb5bd; cursor:not-allowed; }
+    .slot-card.slot-full { background:#f8f9fa; border-color:#c8d2e0; color:#adb5bd; cursor:not-allowed; }
     .slot-time { font-weight:600; font-size:13px; }
     .slot-count { font-size:11px; color:#8c98a4; margin-top:2px; }
     .slot-loading { color:#8c98a4; font-size:13px; padding:10px 0; }

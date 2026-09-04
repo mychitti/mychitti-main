@@ -153,7 +153,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 0;
-            border-bottom: 1px solid #f8f9fa;
+            border-bottom: 1px solid #dfe6ee;
         }
 
         .detail-row:last-child {

@@ -136,7 +136,7 @@
                                     <div class="form-group col-md-6" id="module_wise">
                                         <label class="input-label" for="exampleFormControlInput1">{{translate('messages.select_module')}}</label>
                                         <select name="module_id" class="form-control js-select2-custom" placeholder="{{translate('messages.select_module')}}">
-                                            <option value="6" {{ $banner->data == 6 && $banner->type == 'module_wise' ? 'selected' : '' }}>MY CITY</option>
+                                            <option value="6" {{ $banner->data == 6 && $banner->type == 'module_wise' ? 'selected' : '' }}>MyChitti</option>
                                             <option value="5" {{ $banner->data == 5 && $banner->type == 'module_wise' ? 'selected' : '' }}>SHOPPING</option>
                                         </select>
                                     </div>

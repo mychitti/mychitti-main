@@ -262,7 +262,7 @@
             gap: 10px;
             cursor: pointer;
             transition: all 0.3s;
-            border: 2px solid #e2e8f0;
+            border: 2px solid #c8d2e0;
         }
 
         .action-item:hover {
@@ -350,7 +350,7 @@
             padding: 12px;
             font-size: 13px;
             text-align: center;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid #dfe6ee;
             color: #475569;
         }
 

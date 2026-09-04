@@ -58,6 +58,13 @@ Route::get('/opcache-reset', function() {
 Route::get('whatsapp/webhook',  [App\Http\Controllers\WhatsAppWebhookController::class, 'verify']);
 Route::post('whatsapp/webhook', [App\Http\Controllers\WhatsAppWebhookController::class, 'receive']);
 
+// Baileys bridge (wa-bridge/) posting the paired account's WhatsApp chats here. Public route,
+// authenticated by the X-Bridge-Secret shared secret rather than a session.
+Route::post('whatsapp/bridge/ingest', [App\Http\Controllers\WaBridgeController::class, 'ingest'])
+    ->middleware('throttle:120,1');
+Route::get('whatsapp/bridge/ping', [App\Http\Controllers\WaBridgeController::class, 'ping'])
+    ->middleware('throttle:30,1');
+
 // A patient opening their own record from the WhatsApp link the hospital sent. Public because
 // the patient has no login; the token is the credential. Declared up here so the catch-all
 // {category_slug}/{slug} product route at the bottom of this file can never swallow it.

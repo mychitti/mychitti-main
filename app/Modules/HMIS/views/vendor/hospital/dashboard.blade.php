@@ -6,7 +6,7 @@
     <style>
         /* ── HMIS theme (scoped to .hdash) ─────────────────────────────── */
         .hdash { font-size: 13px; color: #0D1117; }
-        .hdash .hd-topbar { background:#fff; border:1px solid #E2E8F0; border-radius:12px; padding:12px 18px;
+        .hdash .hd-topbar { background:#fff; border:1px solid #c8d2e0; border-radius:12px; padding:12px 18px;
             display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
         .hdash .hd-topbar h2 { font-size:17px; font-weight:800; color:#0D1117; margin:0; }
         .hdash .hd-topbar p { font-size:11px; color:#718096; margin:2px 0 0; }
@@ -14,14 +14,14 @@
             border-radius:7px; padding:6px 11px; font-size:11px; color:#92400E; font-weight:600; }
         .hdash .sec-title { font-size:11px; font-weight:700; color:#A0AEC0; letter-spacing:.8px; text-transform:uppercase; margin:0 0 10px; }
         .hdash .quick-actions { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:18px; }
-        .hdash .qa { background:#fff; border-radius:10px; border:1px solid #E2E8F0; padding:13px; display:flex; align-items:center;
+        .hdash .qa { background:#fff; border-radius:10px; border:1px solid #c8d2e0; padding:13px; display:flex; align-items:center;
             gap:11px; cursor:pointer; text-decoration:none; transition:.15s; }
         .hdash .qa:hover { border-color:#1565C0; background:#EFF6FF; }
         .hdash .qa-ic { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:17px; }
         .hdash .qa-label { font-size:12.5px; font-weight:700; color:#0D1117; }
         .hdash .qa-sub { font-size:10px; color:#A0AEC0; }
         .hdash .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
-        .hdash .kpi { background:#fff; border-radius:12px; border:1px solid #E2E8F0; padding:15px; position:relative; overflow:hidden;
+        .hdash .kpi { background:#fff; border-radius:12px; border:1px solid #c8d2e0; padding:15px; position:relative; overflow:hidden;
             text-decoration:none; display:block; transition:.15s; }
         .hdash .kpi:hover { box-shadow:0 6px 18px rgba(13,71,161,.08); transform:translateY(-1px); }
         .hdash .kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
@@ -38,7 +38,7 @@
         .hdash .kpi-label { font-size:11.5px; color:#718096; font-weight:600; }
         .hdash .kpi-sub { font-size:10px; color:#A0AEC0; margin-top:4px; }
         .hdash .mid { display:grid; grid-template-columns:1fr 360px; gap:14px; margin-bottom:14px; }
-        .hdash .hcard { background:#fff; border-radius:12px; border:1px solid #E2E8F0; padding:15px 17px; margin-bottom:14px; }
+        .hdash .hcard { background:#fff; border-radius:12px; border:1px solid #c8d2e0; padding:15px 17px; margin-bottom:14px; }
         .hdash .hcard:last-child { margin-bottom:0; }
         .hdash .hcard-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:13px; }
         .hdash .hcard-hd h3 { font-size:13px; font-weight:700; color:#0D1117; margin:0; }
@@ -47,7 +47,7 @@
         .hdash .b { flex:1; min-width:4px; border-radius:3px 3px 0 0; position:relative; background:#DBEAFE; }
         .hdash .b.tall { background:#1565C0; }
         .hdash .b-val { position:absolute; top:-13px; left:50%; transform:translateX(-50%); font-size:9px; font-weight:700; color:#1565C0; }
-        .hdash .ward-row { display:grid; grid-template-columns:1fr 56px 56px 56px; gap:4px; align-items:center; padding:9px 0; border-bottom:1px solid #F1F5F9; font-size:12px; }
+        .hdash .ward-row { display:grid; grid-template-columns:1fr 56px 56px 56px; gap:4px; align-items:center; padding:9px 0; border-bottom:1px solid #dfe6ee; font-size:12px; }
         .hdash .ward-row:last-child { border-bottom:none; }
         .hdash .ward-row.hd { font-size:10px; font-weight:700; color:#A0AEC0; text-transform:uppercase; letter-spacing:.5px; }
         .hdash .w-name { font-weight:600; color:#0D1117; }
@@ -55,19 +55,19 @@
         .hdash .occ-bar { height:100%; border-radius:2px; }
         .hdash .w-num { text-align:center; font-weight:700; }
         .hdash .avail-num{color:#16A34A}.hdash .occ-num{color:#DC2626}.hdash .total-num{color:#718096}
-        .hdash .qi { display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:9px; padding:9px 0; border-bottom:1px solid #F1F5F9; text-decoration:none; }
+        .hdash .qi { display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:9px; padding:9px 0; border-bottom:1px solid #dfe6ee; text-decoration:none; }
         .hdash .qi:last-child { border-bottom:none; }
         .hdash .q-tok { width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; background:#EFF6FF; color:#1565C0; flex-shrink:0; }
         .hdash .q-pname { font-size:12px; font-weight:600; color:#0D1117; }
         .hdash .q-info { font-size:10px; color:#A0AEC0; }
         .hdash .sp { font-size:10px; font-weight:600; padding:3px 9px; border-radius:100px; background:#EFF6FF; color:#1565C0; white-space:nowrap; }
-        .hdash .pt-row { display:flex; align-items:center; gap:9px; padding:9px 0; border-bottom:1px solid #F1F5F9; text-decoration:none; }
+        .hdash .pt-row { display:flex; align-items:center; gap:9px; padding:9px 0; border-bottom:1px solid #dfe6ee; text-decoration:none; }
         .hdash .pt-row:last-child { border-bottom:none; }
         .hdash .pt-av { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:#EFF6FF; color:#1565C0; flex-shrink:0; }
         .hdash .pt-name { font-size:12px; font-weight:600; color:#0D1117; }
         .hdash .pt-id { font-size:10px; color:#A0AEC0; }
         .hdash .pt-time { font-size:10px; color:#718096; margin-left:auto; }
-        .hdash .adm-row { display:grid; grid-template-columns:84px 1fr 86px 64px; gap:5px; align-items:center; padding:9px 0; border-bottom:1px solid #F1F5F9; font-size:12px; }
+        .hdash .adm-row { display:grid; grid-template-columns:84px 1fr 86px 64px; gap:5px; align-items:center; padding:9px 0; border-bottom:1px solid #dfe6ee; font-size:12px; }
         .hdash .adm-row:last-child { border-bottom:none; }
         .hdash .adm-row.hd { font-size:10px; font-weight:700; color:#A0AEC0; text-transform:uppercase; letter-spacing:.5px; }
         .hdash .adm-id { font-size:10px; color:#1565C0; font-weight:700; }

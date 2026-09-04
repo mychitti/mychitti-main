@@ -422,6 +422,25 @@
 
                                     </div>
 
+                                    <div class="section-title mt-3">{{ translate('Marketplace Listing') }}</div>
+
+                                    <div class="upload-card p-3">
+                                        <input type="hidden" name="show_in_mychitti_present" value="1">
+                                        <label class="d-flex justify-content-between align-items-center switch toggle-switch-sm text-dark mb-1"
+                                            for="show_in_mychitti">
+                                            <span>{{ translate('List my store on MyChitti') }}</span>
+                                            <input type="checkbox" class="toggle-switch-input" name="show_in_mychitti"
+                                                id="show_in_mychitti" value="1"
+                                                {{ ($shop->show_in_mychitti ?? 1) ? 'checked' : '' }}>
+                                            <span class="toggle-switch-label">
+                                                <span class="toggle-switch-indicator"></span>
+                                            </span>
+                                        </label>
+                                        <div class="small-label mb-0">
+                                            {{ translate('When on, your store appears on the MyChitti customer website and app. Turn it off to use the vendor panel only — your own store page and custom domain keep working.') }}
+                                        </div>
+                                    </div>
+
                                     <input type="hidden" name="latitude" id="latitude" value="{{ $shop->latitude }}">
                                     <input type="hidden" name="longitude" id="longitude" value="{{ $shop->longitude }}">
 

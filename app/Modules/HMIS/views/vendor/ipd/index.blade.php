@@ -10,7 +10,7 @@
 }
     /* ── Mobile admission card ── */
     .ipd-card {
-        border: 1px solid #e5e7eb;
+        border: 1px solid #c8d2e0;
         border-radius: 10px;
         padding: 14px;
         margin-bottom: 10px;

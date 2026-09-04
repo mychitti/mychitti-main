@@ -46,6 +46,7 @@
                 </form>
                 <ul class="navbar-nav navbar-nav-lg nav-tabs">
                 <!-- Business Section-->
+                @include('layouts.admin.partials._sidebar_documentation')
                 <li class="nav-item">
                     <small class="nav-subtitle" title="{{ translate('messages.business_section') }}">{{ translate('messages.business_management') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>

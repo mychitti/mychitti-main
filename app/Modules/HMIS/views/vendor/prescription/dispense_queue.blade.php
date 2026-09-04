@@ -26,14 +26,14 @@
         /* ── Queue Table Card ── */
         .queue-card {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.02);
             overflow: hidden;
         }
         .queue-card-header {
             padding: 14px 20px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #c8d2e0;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -94,11 +94,11 @@
             letter-spacing: 0.5px;
             padding: 10px 16px;
             text-align: left;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #c8d2e0;
         }
         .queue-table td {
             padding: 14px 16px;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid #dfe6ee;
             vertical-align: middle;
             font-size: 13px;
         }
@@ -169,7 +169,7 @@
         /* ── Sidebar Panels ── */
         .sidebar-panel {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #c8d2e0;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.02);
             overflow: hidden;
@@ -184,7 +184,7 @@
         }
         .sidebar-panel-header.neutral {
             background-color: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #c8d2e0;
         }
         .sidebar-panel-header h4 {
             font-family: 'Outfit', sans-serif;
@@ -267,7 +267,7 @@
             display: flex;
             justify-content: space-between;
             font-size: 12px;
-            border-bottom: 1px dashed #f1f5f9;
+            border-bottom: 1px dashed #dfe6ee;
             padding-bottom: 6px;
         }
         .stats-item:last-child {
@@ -329,7 +329,7 @@
             .queue-table thead { display: none; }
 
             .queue-table tr {
-                border: 1px solid #e2e8f0;
+                border: 1px solid #c8d2e0;
                 border-radius: 10px;
                 margin: 0 0 10px;
                 padding: 10px 12px;
@@ -363,7 +363,7 @@
             .queue-table td.cell-action {
                 margin-top: 8px;
                 padding-top: 10px !important;
-                border-top: 1px solid #f1f5f9 !important;
+                border-top: 1px solid #dfe6ee !important;
             }
             .queue-table td.cell-action .btn-action {
                 display: block;
@@ -473,7 +473,7 @@
         {{-- Left main column --}}
         <div class="main-column">
             {{-- Inline Filter bar --}}
-            <form method="GET" class="card p-3 d-flex flex-wrap gap-2 flex-row align-items-center mb-0 date-range-form" style="border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+            <form method="GET" class="card p-3 d-flex flex-wrap gap-2 flex-row align-items-center mb-0 date-range-form" style="border-radius: 12px; border: 1px solid #c8d2e0; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
                 @include('vendor-views/form_modals/date_range')
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#dateRangeModal" style="border-radius: 8px; font-weight: 500; height: 38px;">
                     <i class="tio-calendar"></i> {{ translate($preset) }}

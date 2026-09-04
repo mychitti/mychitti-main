@@ -37,7 +37,7 @@
             --bg-card: #FFFFFF;
             --text-dark: #0F172A;
             --text-muted: #64748B;
-            --border-color: #E2E8F0;
+            --border-color: #c8d2e0;
             --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
             --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.12);
@@ -860,7 +860,7 @@
                 padding: 4px 10px;
                 white-space: nowrap;
                 border-radius: 20px !important;
-                border: 1px solid #dee2e6 !important;
+                border: 1px solid #c8d2e0 !important;
                 background: #f8f9fa;
                 color: #6c757d;
                 margin-bottom: 0;

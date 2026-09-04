@@ -18,7 +18,7 @@
 
         .staff-dash-header {
             background: #FFFFFF;
-            border-bottom: 1px solid #E5E7EB;
+            border-bottom: 1px solid #c8d2e0;
             padding: 12px 16px;
         }
 
@@ -183,7 +183,7 @@
 
         .staff-dash-task-item,
         .staff-dash-project-item {
-            border: 1px solid #E5E7EB;
+            border: 1px solid #c8d2e0;
             border-radius: 6px;
             padding: 12px;
         }
@@ -408,7 +408,7 @@
                         {{-- Today's duty: punch in / out + extra duty (overtime) --}}
                         @isset($duty)
                             <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-3"
-                                 style="border-top:1px solid #eef2f7; gap:12px;">
+                                 style="border-top:1px solid #c8d2e0; gap:12px;">
                                 <div style="font-weight:600; font-size:12px; color:#475569;">
                                     Today's Duty @if($duty['shift_name'])<span class="badge badge-soft-info ml-1">{{ $duty['shift_name'] }}</span>@endif
                                 </div>

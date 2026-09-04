@@ -16,7 +16,7 @@
     /* ── Settings tabs ── */
     .hs-tabbar {
         display: flex; flex-wrap: wrap; gap: 2px;
-        border-bottom: 1px solid #e2e8f0; margin-bottom: 18px;
+        border-bottom: 1px solid #c8d2e0; margin-bottom: 18px;
     }
     .hs-tab {
         padding: 9px 14px; font-size: 12.5px; font-weight: 600; color: #64748b !important;

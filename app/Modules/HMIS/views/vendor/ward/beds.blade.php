@@ -100,7 +100,7 @@
             $admission = $bed->activeAdmission;
         @endphp
         <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-3">
-            <div class="card h-100 text-center" style="border:1.5px solid #e5e7eb; background:{{ $statusColor }};">
+            <div class="card h-100 text-center" style="border:1.5px solid #c8d2e0; background:{{ $statusColor }};">
                 <div class="card-body p-2">
                     <div class="font-size-18 font-weight-bold">{{ $bed->bed_number }}</div>
                     <small class="text-muted d-block">{{ \App\Models\Bed::TYPES[$bed->bed_type] ?? $bed->bed_type }}</small>

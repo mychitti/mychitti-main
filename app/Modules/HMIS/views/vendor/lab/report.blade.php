@@ -14,7 +14,7 @@
         .head .name{font-size:22px;font-weight:800;color:#0A2463}
         .head .meta{font-size:11px;color:#4B5563;margin-top:2px}
         .title{text-align:center;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0A2463;margin:14px 0}
-        .info{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;border:1px solid #E5E7EB;border-radius:8px;padding:10px 14px;font-size:12px}
+        .info{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;border:1px solid #c8d2e0;border-radius:8px;padding:10px 14px;font-size:12px}
         .info .k{color:#9CA3AF}
         table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}
         th{text-align:left;background:#F3F4F6;padding:7px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid #D1D5DB}

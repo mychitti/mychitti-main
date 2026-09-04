@@ -86,7 +86,7 @@
 
         .je-table-head {
             background-color: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid #c8d2e0;
         }
 
         .je-table-head th {

@@ -198,6 +198,75 @@ class AnalyticsController extends Controller
             });
 
             $data['items'] = $rawItems;
+
+        } elseif ($tab == 'whatsapp') {
+            $query = DB::table('analytics_logs as al')
+                ->leftJoin('users as u', 'al.user_id', '=', 'u.id')
+                ->where('al.screen_type', 'whatsapp')
+                ->where('al.ref_id', $storeId)
+                ->select('al.*', 'u.f_name', 'u.l_name', 'u.phone as user_phone');
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('u.f_name', 'like', "%{$search}%")
+                      ->orWhere('u.l_name', 'like', "%{$search}%")
+                      ->orWhere('u.phone', 'like', "%{$search}%");
+                });
+            }
+            if ($dateFrom) {
+                $query->whereDate('al.created_at', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('al.created_at', '<=', $dateTo);
+            }
+
+            $data['items'] = $query->orderByDesc('al.created_at')->paginate(20)->appends($request->query());
+
+        } elseif ($tab == 'guest_actions') {
+            // Store-card actions (share / call / enquiry / WhatsApp) from visitors who were not
+            // logged in — no user identity to attribute them to, so they get their own tab/card.
+            $guestItemIds = DB::table('items')->where('store_id', $storeId)->pluck('id');
+
+            $query = DB::table('analytics_logs as al')
+                ->whereNull('al.user_id')
+                ->whereIn('al.screen_type', ['call', 'copy', 'share', 'whatsapp', 'enquiry'])
+                ->where(function ($q) use ($storeId, $guestItemIds) {
+                    $q->where(function ($q2) use ($storeId) {
+                        $q2->where('al.screen_type', '!=', 'share')->where('al.ref_id', $storeId);
+                    })->orWhere(function ($q2) use ($storeId) {
+                        $q2->where('al.screen_type', 'share')->where('al.sub_type', 'store')->where('al.ref_id', $storeId);
+                    })->orWhere(function ($q2) use ($guestItemIds) {
+                        $q2->where('al.screen_type', 'share')->where('al.sub_type', 'service')->whereIn('al.ref_id', $guestItemIds);
+                    });
+                })
+                ->select('al.*');
+
+            // Guests have no name or phone, so the search box matches on IP instead.
+            if ($search) {
+                $query->where('al.ip', 'like', "%{$search}%");
+            }
+            if ($dateFrom) {
+                $query->whereDate('al.created_at', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('al.created_at', '<=', $dateTo);
+            }
+
+            $rawItems = $query->orderByDesc('al.created_at')->paginate(20)->appends($request->query());
+
+            $guestItemNames = DB::table('items')->whereIn('id', $guestItemIds)->pluck('name', 'id');
+            $guestStoreName = DB::table('stores')->where('id', $storeId)->value('name');
+
+            $rawItems->getCollection()->transform(function ($row) use ($guestStoreName, $guestItemNames) {
+                if ($row->screen_type === 'share' && $row->sub_type === 'service') {
+                    $row->entity_name = $guestItemNames[$row->ref_id] ?? 'Deleted Service';
+                } else {
+                    $row->entity_name = $guestStoreName ?? 'Store';
+                }
+                return $row;
+            });
+
+            $data['items'] = $rawItems;
         }
 
         // Total counts for summary cards
@@ -212,7 +281,26 @@ class AnalyticsController extends Controller
                 $q->where(function ($q2) use ($storeId) { $q2->where('sub_type', 'store')->where('ref_id', $storeId); })
                   ->orWhere(function ($q2) use ($shareItemIds) { $q2->where('sub_type', 'service')->whereIn('ref_id', $shareItemIds); });
             })->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
+            'whatsapp'      => DB::table('analytics_logs')->where('screen_type', 'whatsapp')->where('ref_id', $storeId)->whereDate('created_at', '>=', $dateFrom)->whereDate('created_at', '<=', $dateTo)->count(),
         ];
+
+        // Store-card actions from visitors who were not logged in. They carry no user identity,
+        // so they are reported separately instead of being folded into the cards above.
+        $guestBase = fn() => DB::table('analytics_logs')
+            ->whereNull('user_id')
+            ->whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo);
+
+        $guestCounts = [
+            'phone_calls' => $guestBase()->whereIn('screen_type', ['call', 'copy'])->where('ref_id', $storeId)->count(),
+            'whatsapp'    => $guestBase()->where('screen_type', 'whatsapp')->where('ref_id', $storeId)->count(),
+            'enquiries'   => $guestBase()->where('screen_type', 'enquiry')->where('ref_id', $storeId)->count(),
+            'shares'      => $guestBase()->where('screen_type', 'share')->where(function ($q) use ($storeId, $shareItemIds) {
+                $q->where(function ($q2) use ($storeId) { $q2->where('sub_type', 'store')->where('ref_id', $storeId); })
+                  ->orWhere(function ($q2) use ($shareItemIds) { $q2->where('sub_type', 'service')->whereIn('ref_id', $shareItemIds); });
+            })->count(),
+        ];
+        $guestCounts['total'] = array_sum($guestCounts);
 
         $trial = VendorSubscription::where('vendor_id', $storeId)
             ->where('plan_expiry', '>', now())
@@ -228,7 +316,7 @@ class AnalyticsController extends Controller
         $trialActive  = (bool) $trial;
 
         return view('vendor-views.analytics.index', compact(
-            'tab', 'data', 'search', 'dateFrom', 'dateTo', 'preset', 'counts',
+            'tab', 'data', 'search', 'dateFrom', 'dateTo', 'preset', 'counts', 'guestCounts',
             'trial', 'trialActive', 'trialExpired', 'hasAccess'
         ));
     }
@@ -277,6 +365,7 @@ class AnalyticsController extends Controller
         $adClicks = array_fill(0, $days, 0);
         $locationViews = array_fill(0, $days, 0);
         $phoneCalls = array_fill(0, $days, 0);
+        $whatsappChats = array_fill(0, $days, 0);
 
         for ($i = 0; $i < $days; $i++) {
             $labels[] = $startDate->copy()->addDays($i)->format('d M');
@@ -353,6 +442,19 @@ class AnalyticsController extends Controller
             if (isset($phoneCalls[$dayIndex])) $phoneCalls[$dayIndex] = $row->count;
         }
 
+        // WhatsApp chats
+        $counts = DB::table('analytics_logs')
+            ->where('screen_type', 'whatsapp')
+            ->where('ref_id', $storeId)
+            ->whereDate('created_at', '>=', $startDate)
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+            ->groupBy('date')
+            ->get();
+        foreach ($counts as $row) {
+            $dayIndex = $startDate->diffInDays($row->date);
+            if (isset($whatsappChats[$dayIndex])) $whatsappChats[$dayIndex] = $row->count;
+        }
+
         return response()->json([
             'labels' => $labels,
             'store_visits' => $storeVisits,
@@ -360,6 +462,7 @@ class AnalyticsController extends Controller
             'ad_clicks' => $adClicks,
             'location_views' => $locationViews,
             'phone_calls' => $phoneCalls,
+            'whatsapp' => $whatsappChats,
         ]);
     }
 }

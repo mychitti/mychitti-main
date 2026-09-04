@@ -147,6 +147,8 @@
 
                  
 
+                @include('layouts.admin.partials._sidebar_documentation')
+
                     <li class="nav-item">
                         <small class="nav-subtitle"
                             title="{{ translate('Promotion Management') }}">{{ translate('Promotion Management') }}</small>

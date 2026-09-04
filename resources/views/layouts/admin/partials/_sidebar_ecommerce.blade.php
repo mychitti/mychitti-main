@@ -313,6 +313,7 @@
 
 
                 <!-- Marketing section -->
+                @include('layouts.admin.partials._sidebar_documentation')
                 <li class="nav-item">
                     <small class="nav-subtitle" title="{{ translate('Promotion Management') }}">{{ translate('Promotion Management') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>
@@ -347,7 +348,7 @@
                                         title="Vendor Banner Approvals">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">Vendor Banner Approvals</span>
-                                        @php $pendingVB = \App\Models\Banner::where('created_by','store')->where('approval',0)->count(); @endphp
+                                        @php($pendingVB = \App\Models\Banner::where('created_by','store')->where('approval',0)->count())
                                         @if($pendingVB > 0)
                                             <span class="badge badge-danger ml-1">{{ $pendingVB }}</span>
                                         @endif

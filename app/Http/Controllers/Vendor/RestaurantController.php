@@ -85,7 +85,13 @@ class RestaurantController extends Controller
             try { \Illuminate\Support\Facades\DB::statement("ALTER TABLE `stores` ADD COLUMN `fssai_show` TINYINT(1) NOT NULL DEFAULT 0"); } catch (\Throwable $e) {}
         }
         $shop->fssai_number = $request->fssai_number;
-        $shop->fssai_show = $request->has('fssai_show') ? 1 : 0; 
+        $shop->fssai_show = $request->has('fssai_show') ? 1 : 0;
+
+        // Only touch the MyChitti listing flag when the form that carries the toggle was
+        // submitted, so a partial post can never silently delist the store.
+        if ($request->has('show_in_mychitti_present')) {
+            $shop->show_in_mychitti = $request->has('show_in_mychitti') ? 1 : 0;
+        }
 
         try {
             $otherShow = array_filter((array) $request->input('other_show', []));

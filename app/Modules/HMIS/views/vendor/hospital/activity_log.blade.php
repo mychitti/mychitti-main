@@ -68,7 +68,7 @@
     </div>
 
     {{-- Filters bar --}}
-    <div class="card mb-3" style="border-radius:0 0 8px 8px; border-top:1px solid #e7eaf3;">
+    <div class="card mb-3" style="border-radius:0 0 8px 8px; border-top:1px solid #c8d2e0;">
         <div class=" py-2 px-3">
             <form class="d-flex flex-wrap gap-2 align-items-end date-range-form" method="GET">
                 @if($category)
@@ -207,7 +207,7 @@
                                 <div class="mt-1 d-flex flex-wrap gap-1">
                                     @foreach($log->properties as $k => $v)
                                     @if($v !== null && $v !== '')
-                                    <span style="font-size:11px; background:#f8fafc; border:1px solid #e7eaf3;
+                                    <span style="font-size:11px; background:#f8fafc; border:1px solid #c8d2e0;
                                                  border-radius:4px; padding:1px 6px; color:#677788;">
                                         <strong>{{ ucwords(str_replace('_', ' ', $k)) }}:</strong>
                                         {{ is_array($v) ? implode(', ', $v) : $v }}
@@ -233,7 +233,7 @@
             {{-- Pagination --}}
             @if($logs->hasPages())
             <div class="d-flex justify-content-between align-items-center px-3 py-2"
-                 style="border-top:1px solid #e7eaf3; background:#fafbfc;">
+                 style="border-top:1px solid #c8d2e0; background:#fafbfc;">
                 <small class="text-muted">
                     Showing {{ $logs->firstItem() }}–{{ $logs->lastItem() }} of {{ number_format($logs->total()) }}
                 </small>

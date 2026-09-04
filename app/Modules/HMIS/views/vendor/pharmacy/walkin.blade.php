@@ -7,15 +7,15 @@
         .wk-grid { display:grid; grid-template-columns: 1.7fr 1fr; gap:20px; align-items:start; }
         @media (max-width: 1100px){ .wk-grid { grid-template-columns:1fr; } }
         .wk-search-wrap { position:relative; }
-        .wk-results { position:absolute; z-index:50; left:0; right:0; top:100%; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.12); max-height:280px; overflow:auto; display:none; }
-        .wk-results .wk-opt { padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #f1f5f9; }
+        .wk-results { position:absolute; z-index:50; left:0; right:0; top:100%; background:#fff; border:1px solid #c8d2e0; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.12); max-height:280px; overflow:auto; display:none; }
+        .wk-results .wk-opt { padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #dfe6ee; }
         .wk-results .wk-opt:hover { background:#f1f5f9; }
         .wk-opt .wk-banned { color:#b91c1c; font-weight:700; font-size:10px; margin-left:6px; }
         .wk-cart td, .wk-cart th { vertical-align:middle; }
         .wk-empty { text-align:center; color:#9aa1ab; padding:26px 16px; }
         .wk-banner { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:10px 14px; margin-bottom:14px; color:#b91c1c; font-size:12.5px; font-weight:600; display:none; }
         .wk-summary-row { display:flex; justify-content:space-between; padding:6px 0; font-size:13px; }
-        .wk-summary-row.total { border-top:1px solid #e2e8f0; margin-top:6px; padding-top:10px; font-weight:800; font-size:16px; }
+        .wk-summary-row.total { border-top:1px solid #c8d2e0; margin-top:6px; padding-top:10px; font-weight:800; font-size:16px; }
 
         /* Phones. This is the pharmacy's landing screen now, and a counter sale gets rung up
            one-handed — so the cart stops being a five-column table (330px of fixed track before
@@ -31,7 +31,7 @@
             .table-responsive { overflow: visible; }
 
             .wk-cart tr.wk-line {
-                border: 1px solid #e2e8f0;
+                border: 1px solid #c8d2e0;
                 border-radius: 10px;
                 padding: 10px 12px;
                 margin-bottom: 10px;
@@ -55,7 +55,7 @@
                 grid-column: 1 / -1;
                 text-align: left !important;
                 font-weight: 700;
-                border-top: 1px solid #f1f5f9 !important;
+                border-top: 1px solid #dfe6ee !important;
                 padding-top: 8px !important;
             }
             .wk-cart td.wk-c-rm { grid-column: 1 / -1; }

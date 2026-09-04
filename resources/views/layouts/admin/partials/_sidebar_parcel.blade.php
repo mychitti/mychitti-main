@@ -241,6 +241,7 @@
                     <!--End Parcel Section -->
 
                     <!-- Marketing section -->
+                @include('layouts.admin.partials._sidebar_documentation')
                 <li class="nav-item">
                     <small class="nav-subtitle" title="{{ translate('Promotion Management') }}">{{ translate('Promotion Management') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>

@@ -41,7 +41,7 @@ class ContactController extends Controller
     public function list(Request $request)
     {
         $key = explode(' ', $request['search']);
-        $contacts = Contact::when(isset($key), function($query) use($key) {
+        $contacts = Contact::brand('mychitti')->when(isset($key), function($query) use($key) {
             $query->where(function ($q) use ($key) {
                 foreach ($key as $value) {
                     $q->orWhere('name', 'like', "%{$value}%")
@@ -53,14 +53,16 @@ class ContactController extends Controller
         ->orderBy('created_at', 'desc')
         ->paginate(config('default_pagination'));
 
-        $requirements = VendorRequirement::with("store")->get();
+        $requirements = VendorRequirement::with("store")->whereHas('store', function ($q) {
+            $q->visibleOnMychitti();
+        })->get();
         return view('admin-views.contacts.list', compact('contacts', 'requirements'));
 
     }
     public function exportList(Request $request)
     {
         $key = explode(' ', $request['search']);
-        $contacts = Contact::orderBy('name')
+        $contacts = Contact::brand('mychitti')->orderBy('name')
         ->when(isset($key), function($query) use($key) {
             $query->where(function ($q) use ($key) {
                 foreach ($key as $value) {

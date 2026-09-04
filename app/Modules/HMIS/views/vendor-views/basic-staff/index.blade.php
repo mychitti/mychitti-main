@@ -17,11 +17,11 @@
         .staff-mgmt-page.content.container-fluid { padding: 0 !important; }
         .staff-metrics-row {
             display: grid; grid-template-columns: repeat(6, 1fr);
-            background: #ffffff; border-bottom: 1px solid #e2e8f0;
+            background: #ffffff; border-bottom: 1px solid #c8d2e0;
             padding: 12px 24px; gap: 10px;
         }
         .staff-metrics-row .metric-card {
-            padding: 8px 12px; border-right: 1px solid #f1f5f9;
+            padding: 8px 12px; border-right: 1px solid #dfe6ee;
             display: flex; flex-direction: column; justify-content: center;
         }
         .staff-metrics-row .metric-card:last-child { border-right: none; }
@@ -35,7 +35,7 @@
         }
         /* Make the shared tabs nav a flat full-width bar flush under the stats row */
         .staff-mgmt-page .bsnav {
-            border: none !important; border-bottom: 1px solid #e2e8f0 !important;
+            border: none !important; border-bottom: 1px solid #c8d2e0 !important;
             border-radius: 0 !important; padding: 0 24px !important; background: #fff;
         }
         .staff-page-body { padding: 20px 24px; }
