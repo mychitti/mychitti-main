@@ -329,7 +329,7 @@ class PrescriptionController extends Controller
                 'notes'              => $clinical['notes'],
                 'follow_up_date'     => $request->follow_up_date ?: null,
                 'language'           => $request->input('language') ?: 'en',
-                'is_finalized'       => $request->has('finalize'),
+                'is_finalized'       => $request->has('finalize') || $request->has('finalize_and_whatsapp'),
                 'created_by'         => $this->currentUserId(),
                 'created_by_type'    => $this->currentUserType(),
             ]);
@@ -358,7 +358,7 @@ class PrescriptionController extends Controller
 
             DB::commit();
 
-            $action = $request->has('finalize') ? 'finalized' : 'created';
+            $action = ($request->has('finalize') || $request->has('finalize_and_whatsapp')) ? 'finalized' : 'created';
             $rx->load('patient');
             $patName = $rx->patient?->name . ' (' . $rx->patient?->patient_uid . ')';
             \App\Models\HospitalActivityLog::record(
@@ -369,7 +369,16 @@ class PrescriptionController extends Controller
 
             $this->autoSendToPatient($rx);
 
-            Toastr::success('Prescription saved successfully');
+            if ($request->has('finalize_and_whatsapp')) {
+                $sendRes = HmisWhatsAppShare::prescriptionPdf($rx);
+                if (!empty($sendRes['success'])) {
+                    Toastr::success('Prescription finalized and sent on WhatsApp successfully');
+                } else {
+                    Toastr::warning('Prescription finalized, but WhatsApp send failed: ' . ($sendRes['message'] ?? 'Unknown error'));
+                }
+            } else {
+                Toastr::success('Prescription saved successfully');
+            }
 
             // Written from the consultation screen: that is where the doctor was and where
             // the saved sheet now shows, so back to the visit rather than off to the
@@ -870,7 +879,7 @@ class PrescriptionController extends Controller
                 'notes'          => $clinical['notes'],
                 'follow_up_date' => $request->follow_up_date ?: null,
                 'language'       => $request->input('language') ?: ($rx->language ?: 'en'),
-                'is_finalized'   => $request->has('finalize'),
+                'is_finalized'   => $request->has('finalize') || $request->has('finalize_and_whatsapp'),
             ]);
 
             if ($request->filled('opd_visit_id') && Prescription::hasVisitLink() && !$rx->opd_visit_id) {
@@ -900,7 +909,7 @@ class PrescriptionController extends Controller
             // re-translated here: show() regenerates it on the next view, off the saved row.
             \App\Services\PrescriptionTranslator::forget($rx->id);
 
-            $action = $request->has('finalize') ? 'finalized' : 'updated';
+            $action = ($request->has('finalize') || $request->has('finalize_and_whatsapp')) ? 'finalized' : 'updated';
             \App\Models\HospitalActivityLog::record(
                 $storeId, 'prescription', $rx->id, $action,
                 "Prescription #{$rx->id} {$action}",
@@ -909,7 +918,16 @@ class PrescriptionController extends Controller
 
             $this->autoSendToPatient($rx);
 
-            Toastr::success('Prescription updated');
+            if ($request->has('finalize_and_whatsapp')) {
+                $sendRes = HmisWhatsAppShare::prescriptionPdf($rx);
+                if (!empty($sendRes['success'])) {
+                    Toastr::success('Prescription updated and sent on WhatsApp successfully');
+                } else {
+                    Toastr::warning('Prescription updated, but WhatsApp send failed: ' . ($sendRes['message'] ?? 'Unknown error'));
+                }
+            } else {
+                Toastr::success('Prescription updated');
+            }
 
             $backToVisit = $request->input('opd_visit_id') ?: $rx->opd_visit_id;
             if ($backToVisit) {

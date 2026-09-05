@@ -1,4 +1,4 @@
-﻿@extends('layouts.vendor.app')
+@extends('layouts.vendor.app')
 @section('title', 'Prescription #' . $rx->id)
 
 @section('content')
@@ -43,8 +43,7 @@
                  hospital genuinely re-sends: unlike the link it never expires, and a patient who
                  lost the file asks for it again. --}}
             @if ($rx->is_finalized && filled($rx->patient?->phone))
-            <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $rx->id) }}" class="mb-0"
-                  onsubmit="return confirm('Send this prescription as a PDF to {{ addslashes($rx->patient->name ?? 'the patient') }} on WhatsApp?')">
+            <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $rx->id) }}" class="mb-0 wa-send-pdf-form">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-outline-success" title="Attach the prescription PDF and send it to the patient on WhatsApp">
                     <i class="tio-whatsapp"></i> Send PDF on WhatsApp
@@ -214,6 +213,7 @@
             @endif
         </p>
     </div>{{-- end rx-print-wrap --}}
+    @include('hmis::vendor.prescription._activate_plan_modal')
 </div>
 @endsection
 

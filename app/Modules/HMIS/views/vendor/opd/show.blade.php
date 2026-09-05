@@ -2685,11 +2685,8 @@
                                  permission middleware passes any vendor owner, while hasPermission()
                                  alone answers false for an owner until some role has been granted
                                  prescription/print — which would hide a button its own route allows. --}}
-                            @if ($currentPrescription->is_finalized
-                                && (auth('vendor')->check() || hasPermission('prescription', 'print'))
-                                && filled($currentPrescription->patient?->phone))
-                                <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $currentPrescription->id) }}" class="mb-0"
-                                      onsubmit="return confirm('Send this prescription as a PDF to {{ addslashes($currentPrescription->patient->name ?? 'the patient') }} on WhatsApp?')">
+                            @if ($currentPrescription && (auth('vendor')->check() || hasPermission('prescription', 'print')))
+                                <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $currentPrescription->id) }}" class="mb-0 wa-send-pdf-form">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Attach the prescription PDF and send it to the patient on WhatsApp">
                                         <i class="tio-whatsapp"></i> Send PDF on WhatsApp
@@ -2916,11 +2913,15 @@
                             <button type="submit" class="btn btn-sm btn-success" name="finalize" value="1">
                                 <i class="tio-checkmark-circle"></i> Finalize &amp; Save
                             </button>
+                            <button type="submit" class="btn btn-sm btn-success ml-1 btn-finalize-whatsapp" name="finalize_and_whatsapp" value="1" style="background-color:#25D366; border-color:#25D366;">
+                                <i class="tio-whatsapp"></i> Finalize &amp; Send on WhatsApp
+                            </button>
 
                             @include('hmis::vendor.prescription._rx_language', ['selected' => $currentPrescription->language ?? null])
                         </div>
                     </form>
                 </div>
+                @include('hmis::vendor.prescription._activate_plan_modal')
                 @endif
             </div>
 

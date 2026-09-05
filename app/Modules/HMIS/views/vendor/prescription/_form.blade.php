@@ -1,4 +1,4 @@
-﻿{{--
+{{--
     Shared prescription form partial.
     Expects:  $rx (Prescription|null), $doctors, $patients,
               $appointment (Appointment|null), $serviceRequest (ServiceRequest|null),
@@ -305,10 +305,16 @@
             onclick="document.querySelector('[name=finalize]').value=1;">
             <i class="tio-checkmark-circle"></i> Finalize &amp; Print
         </button>
+        <button type="submit" class="btn btn-success ml-1 btn-finalize-whatsapp" name="finalize_and_whatsapp" value="1" style="background-color:#25D366; border-color:#25D366;"
+            onclick="let el = document.querySelector('[name=finalize]'); if(el) el.value=1;">
+            <i class="tio-whatsapp"></i> Finalize &amp; Send on WhatsApp
+        </button>
         <a href="{{ route('vendor.prescription.list') }}" class="btn btn-outline-secondary">Cancel</a>
         @include('hmis::vendor.prescription._rx_language', ['selected' => $rx->language ?? null])
     </div>
 </form>
+
+@include('hmis::vendor.prescription._activate_plan_modal')
 
 {{-- Hidden template row --}}
 <template id="medRowTpl">

@@ -31,8 +31,7 @@
                         {{-- "Send" above goes to the referring doctor; this one goes to the patient,
                              which is why it needs a number on file rather than just the permission. --}}
                         @if($canSend && filled($s->patient->phone ?? null))
-                            <form method="post" action="{{ route('vendor.hmis-whatsapp.radiology-report', $s->id) }}" class="mb-0"
-                                  onsubmit="return confirm('Send this report to {{ addslashes($s->patient->name ?? 'the patient') }} on WhatsApp?')">
+                            <form method="post" action="{{ route('vendor.hmis-whatsapp.radiology-report', $s->id) }}" class="mb-0">
                                 @csrf
                                 <button type="submit" class="btn btn-outline btn-xs" title="Send to patient on WhatsApp">WhatsApp</button>
                             </form>

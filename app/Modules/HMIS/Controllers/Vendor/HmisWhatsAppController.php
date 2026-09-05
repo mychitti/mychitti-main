@@ -9,9 +9,11 @@ use App\Models\LabOrder;
 use App\Models\OpdVisit;
 use App\Models\Prescription;
 use App\Models\RadiologyStudy;
+use App\Models\StoreWallet;
 use App\Services\HmisWhatsAppShare;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * "Send on WhatsApp" for the hospital screens.
@@ -160,5 +162,108 @@ class HmisWhatsAppController extends Controller
         }
 
         return $this->done(HmisWhatsAppShare::radiologyReport($study, $this->phone($request)));
+    }
+
+    public function activateMonthlyPlan(Request $request)
+    {
+        $storeId  = (int) Helpers::get_store_id();
+        $vendorId = (int) Helpers::get_vendor_id();
+
+        if (!$storeId || !$vendorId) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized or store not found.'], 401);
+        }
+
+        $wallet     = StoreWallet::where('vendor_id', $vendorId)->first();
+        $balance    = (float) ($wallet?->total_earning ?? 0);
+        $monthlyFee = 200.00;
+
+        if ($balance < $monthlyFee) {
+            return response()->json([
+                'success'        => false,
+                'message'        => 'Insufficient wallet balance. ₹' . number_format($monthlyFee, 2) . ' is required to activate WhatsApp Monthly Plan. Your current wallet balance is ₹' . number_format($balance, 2) . '.',
+                'wallet_balance' => $balance,
+                'recharge_url'   => route('vendor.wallet.index'),
+            ]);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Deduct ₹200 from vendor's store wallet
+            $wallet->decrement('total_earning', $monthlyFee);
+
+            // Record transaction log
+            if (class_exists(\App\Models\AccountTransaction::class)) {
+                \App\Models\AccountTransaction::create([
+                    'from_type'  => 'store',
+                    'from_id'    => $storeId,
+                    'to_type'    => 'admin',
+                    'to_id'      => 1,
+                    'method'     => 'wallet',
+                    'amount'     => $monthlyFee,
+                    'ref'        => 'wa_plan_' . $storeId . '_' . date('YmdHis'),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            // Record billing invoice if table exists
+            if (\Illuminate\Support\Facades\Schema::hasTable('wa_billing_invoices')) {
+                DB::table('wa_billing_invoices')->insert([
+                    'store_id'     => $storeId,
+                    'vendor_id'    => $vendorId,
+                    'type'         => 'monthly',
+                    'description'  => 'WhatsApp Monthly Plan (₹200/month deducted from wallet)',
+                    'amount'       => $monthlyFee,
+                    'tax'          => 0.00,
+                    'total'        => $monthlyFee,
+                    'status'       => 'paid',
+                    'ref'          => 'wa_monthly_plan_' . $storeId . '_' . date('YmdHis'),
+                    'period_start' => now()->toDateString(),
+                    'period_end'   => now()->addMonth()->toDateString(),
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+
+            // Enable WhatsApp flag on store
+            DB::table('stores')->where('id', $storeId)->update([
+                'wa_enabled' => 1,
+                'updated_at' => now(),
+            ]);
+
+            // Record subscription if table exists
+            if (\Illuminate\Support\Facades\Schema::hasTable('wa_subscriptions')) {
+                DB::table('wa_subscriptions')->updateOrInsert(
+                    ['store_id' => $storeId],
+                    [
+                        'plan'               => 'basic',
+                        'status'             => 'active',
+                        'monthly_fee'        => $monthlyFee,
+                        'setup_fee_paid'     => 1,
+                        'started_at'         => now()->toDateString(),
+                        'current_period_end' => now()->addMonth()->toDateString(),
+                        'last_charged_on'    => now()->toDateString(),
+                        'updated_at'         => now(),
+                        'created_at'         => now(),
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            $updatedBalance = (float) ($wallet->fresh()->total_earning ?? 0);
+
+            return response()->json([
+                'success'        => true,
+                'message'        => 'WhatsApp Monthly Plan activated successfully! ₹200 deducted from your wallet.',
+                'wallet_balance' => $updatedBalance,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to activate plan: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }
