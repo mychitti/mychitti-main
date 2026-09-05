@@ -12,6 +12,19 @@
     $showOriginal = $showOriginal ?? false;
     $tx       = fn($key, $fallback) => $T[$key] ?? $fallback;
     $txItem   = fn($item, $field) => $T['items'][(string) $item->id][$field] ?? $item->{$field};
+
+    // Which blocks this particular sheet actually carries. The print options panel lists only
+    // these: a checkbox for a diagnosis the prescription does not have is a control that does
+    // nothing, and Clinical Recording may have withheld the diagnosis and the advice entirely.
+    $rxClinical    = hmis_rx_print_clinical($rx->store_id);
+    $rxHasDx       = $rx->diagnosis && $rxClinical;
+    $rxHasAdvice   = $rx->notes && $rxClinical;
+    $rxHasFollowUp = (bool) $rx->follow_up_date;
+
+    // The hospital's standing choices for this document — the letterhead the panel opens with,
+    // and the signature that goes in the footer. Hospital Settings → OP, Prescriptions & Printing.
+    $rxHdr  = hmis_print_header('prescription', $rx->store_id);
+    $rxSign = hmis_print_sign('prescription', $rx->store_id);
 @endphp
 <div class="content container-fluid">
 
@@ -42,13 +55,25 @@
                  so a button beside it would only send the same thing twice. The PDF is the one a
                  hospital genuinely re-sends: unlike the link it never expires, and a patient who
                  lost the file asks for it again. --}}
-            @if ($rx->is_finalized && filled($rx->patient?->phone))
-            <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $rx->id) }}" class="mb-0 wa-send-pdf-form">
-                @csrf
-                <button type="submit" class="btn btn-sm btn-outline-success" title="Attach the prescription PDF and send it to the patient on WhatsApp">
-                    <i class="tio-whatsapp"></i> Send PDF on WhatsApp
-                </button>
-            </form>
+            @if ($rx->is_finalized)
+            @include('hmis::vendor.shared._wa_send', [
+                'disabled' => filled($rx->patient?->phone) ? null : 'This patient has no phone number on file',
+                'items' => [
+                    [
+                        'label' => 'Prescription (PDF)',
+                        'hint'  => 'The sheet as you have set it up here, attached',
+                        'url'   => route('vendor.hmis-whatsapp.prescription-pdf', $rx->id),
+                        'class' => 'wa-send-pdf-form',
+                        'attrs' => 'data-rx-print-opts',
+                    ],
+                    $rx->follow_up_date ? [
+                        'label' => 'Next visit reminder',
+                        'hint'  => 'The follow-up date the doctor wrote on this prescription',
+                        'url'   => route('vendor.hmis-whatsapp.prescription-followup', $rx->id),
+                        'class' => 'wa-send-pdf-form',
+                    ] : null,
+                ],
+            ])
             @endif
             {{-- Language controls. Shown only where the doctor actually chose a language, and
                  only to whoever may edit the prescription -- a receptionist reprinting a sheet has
@@ -73,9 +98,32 @@
                     @endif
                 @endif
             @endif
-            <button onclick="window.print()" class="btn btn--primary btn-sm">
+            {{-- What goes on the sheet is a per-print decision, not a per-hospital one: the same
+                 prescription is printed on the clinic's own pre-printed stationery at the desk and
+                 on plain paper at the ward, and a patient collecting a repeat often wants the
+                 medicines alone. The sheet below IS the preview -- every control reflows it
+                 straight away, so what is on screen is what leaves the printer. --}}
+            <span class="rx-split">
+            <button onclick="window.print()" class="btn btn--primary btn-sm rx-split-main">
                 <i class="tio-print"></i> Print
             </button>
+            @include('hmis::vendor.prescription._print_options', [
+                'sheetId'   => 'rxPrint',
+                'headerOff' => $rxHdr['off'],
+                'headerMm'  => $rxHdr['mm'],
+                'sections' => array_filter([
+                    'patient'   => 'Patient & date',
+                    'diagnosis' => $rxHasDx ? 'Diagnosis' : null,
+                    'meds'      => 'Medicines',
+                    'advice'    => $rxHasAdvice ? 'Advice / notes' : null,
+                    'followup'  => $rxHasFollowUp ? 'Follow-up date' : null,
+                    'signature' => 'Signature line',
+                    'footer'    => 'Footer note',
+                ]),
+                'compact'  => true,
+                'btnClass' => 'btn--primary',
+            ])
+            </span>
         </div>
         @endif
     </div>
@@ -84,6 +132,7 @@
     <div class="rx-print-wrap" id="rxPrint">
 
         {{-- Header --}}
+        <div data-rx-sec="header">
         <div class="rx-header">
             <div class="rx-clinic">
                 <h2 class="rx-clinic-name">{{ $rx->store?->name }}</h2>
@@ -105,9 +154,10 @@
             </div>
         </div>
         <hr class="rx-divider">
+        </div>{{-- end header --}}
 
         {{-- Patient + Date --}}
-        <div class="rx-patient-row">
+        <div class="rx-patient-row" data-rx-sec="patient">
             <div class="rx-patient-info">
                 <span class="rx-label">{{ $L['patient'] }}:</span>
                 <strong>{{ $rx->patient?->name }}</strong>
@@ -133,14 +183,15 @@
         {{-- Diagnosis. A hospital that hands the sheet to the patient may not want the condition
              named on something that leaves the building — Hospital Settings → Clinical Recording
              decides, and leaves both this and the advice below off when switched off. --}}
-        @if($rx->diagnosis && hmis_rx_print_clinical($rx->store_id))
-        <div class="rx-section mt-3">
+        @if($rxHasDx)
+        <div class="rx-section mt-3" data-rx-sec="diagnosis">
             <p class="rx-section-label">{{ $L['diagnosis'] }}</p>
             <p class="rx-section-body">{{ $tx('diagnosis', $rx->diagnosis) }}</p>
         </div>
         @endif
 
         {{-- Medicines --}}
+        <div data-rx-sec="meds">
         <div class="rx-symbol-row mt-3">
             <span class="rx-symbol">℞</span>
         </div>
@@ -174,24 +225,26 @@
         @else
         <p class="rx-muted mt-2">{{ $L['no_medicines'] }}</p>
         @endif
+        </div>{{-- end medicines --}}
 
         {{-- Notes --}}
-        @if($rx->notes && hmis_rx_print_clinical($rx->store_id))
-        <div class="rx-section mt-4">
+        @if($rxHasAdvice)
+        <div class="rx-section mt-4" data-rx-sec="advice">
             <p class="rx-section-label">{{ $L['advice'] }}</p>
             <p class="rx-section-body">{{ $tx('notes', $rx->notes) }}</p>
         </div>
         @endif
 
         {{-- Follow-up --}}
-        @if($rx->follow_up_date)
-        <div class="rx-followup mt-3">
+        @if($rxHasFollowUp)
+        <div class="rx-followup mt-3" data-rx-sec="followup">
             <strong>{{ $L['follow_up'] }}:</strong> {{ $rx->follow_up_date->format('d M Y') }}
         </div>
         @endif
 
         {{-- Signature --}}
-        <div class="rx-signature-row">
+        <div class="rx-signature-row" data-rx-sec="signature"
+             @if ($rxSign['show'] && $rxSign['pos'] === 'left') style="flex-direction:row-reverse" @endif>
             <div>
                 @if($rx->is_finalized)
                 <span class="badge badge-soft-success">{{ $L['finalized'] }}</span>
@@ -200,13 +253,18 @@
                 @endif
             </div>
             <div class="rx-sig-box">
-                <div class="rx-sig-line"></div>
+                @if ($rxSign['show'])
+                    <img class="rx-sig-img" src="{{ $rxSign['url'] }}" alt="Signature">
+                @else
+                    {{-- A ruled line is somewhere to sign; a signed sheet has nothing to rule off. --}}
+                    <div class="rx-sig-line"></div>
+                @endif
                 <p>Dr. {{ $rx->doctorProfile?->employee?->f_name }}
                    {{ $rx->doctorProfile?->employee?->l_name }}</p>
             </div>
         </div>
 
-        <p class="rx-footer-note">
+        <p class="rx-footer-note" data-rx-sec="footer">
             {{ $L['computer_note'] }}
             @if($rxLangOn)
                 <br><span class="rx-mt-note">{{ $L['machine_note'] }}</span>
@@ -250,6 +308,7 @@
 .rx-signature-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; }
 .rx-sig-box { text-align: center; }
 .rx-sig-line { border-top: 1.5px solid #374151; width: 180px; margin-bottom: 4px; }
+.rx-sig-img { display: block; height: 50px; max-width: 180px; object-fit: contain; margin: 0 auto 4px; }
 .rx-sig-box p { font-size: 12px; margin: 0; }
 .rx-footer-note { font-size: 10px; color: #9ca3af; text-align: center; margin-top: 20px; }
 .rx-mt-note { font-size: 9.5px; color: #b0b7c3; font-style: italic; }
@@ -258,12 +317,5 @@
     color: #0f5132; background: #e7f7ee; border: 1px solid #c9ecd8; border-radius: 4px; padding: 3px 9px;
 }
 
-/* ── Print styles ─────────────────────────────────────── */
-@media print {
-    body * { visibility: hidden; }
-    #rxPrint, #rxPrint * { visibility: visible; }
-    #rxPrint { position: fixed; top: 0; left: 0; width: 100%; padding: 20px 28px; border: none; }
-    .no-print { display: none !important; }
-}
 </style>
 @endpush

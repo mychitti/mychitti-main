@@ -831,6 +831,57 @@
     .nv-tx-pick input { width: 13px; height: 13px; }
     .nv-tx-pick.is-on { border-color: #0D47A1; background: #eef4ff; color: #0D47A1; }
     .nv-tx-pick.is-booked { border-style: dashed; }
+    .nv-block { max-width: 720px; margin-bottom: 22px; }
+    .nv-block-title {
+        display: flex; align-items: center; gap: 7px;
+        font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+        color: #94a3b8; margin: 0 0 8px;
+    }
+    .nv-count {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+        background: #eef4ff; color: #0D47A1; font-size: 10.5px; font-weight: 800; letter-spacing: 0;
+    }
+    .nv-booked {
+        display: flex; align-items: center; gap: 14px;
+        border: 1px solid #e8edf4; border-radius: 10px;
+        padding: 10px 12px; margin-bottom: 8px; background: #fff;
+    }
+    .nv-booked:hover { border-color: #cbd8ea; background: #fbfdff; }
+    /* The date is what anyone is looking for, so it gets its own block and reads first. */
+    .nv-booked-when {
+        flex: 0 0 78px; text-align: center; padding: 4px 0;
+        border-right: 1px solid #eef2f7; line-height: 1.25;
+    }
+    .nv-booked-date { display: block; font-size: 14px; font-weight: 800; color: #0f172a; }
+    .nv-booked-year { display: block; font-size: 10px; font-weight: 600; color: #94a3b8; }
+    .nv-booked-time { display: block; font-size: 11px; font-weight: 700; color: #0D47A1; margin-top: 2px; }
+    .nv-booked-main { flex: 1 1 auto; min-width: 0; }
+    .nv-booked-doc { font-size: 13px; font-weight: 600; color: #1e293b; }
+    .nv-booked-token {
+        margin-left: 6px; padding: 1px 6px; border-radius: 4px;
+        background: #f1f5f9; color: #64748b; font-size: 10.5px; font-weight: 700;
+    }
+    .nv-booked-for { margin-top: 4px; }
+    .nv-booked-reason {
+        margin-top: 3px; font-size: 12px; color: #64748b;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .nv-booked-open {
+        flex: 0 0 auto; align-self: center;
+        border: 1px solid #dbe3ec; border-radius: 7px; padding: 5px 14px;
+        font-size: 12px; font-weight: 600; color: #475569; text-decoration: none;
+    }
+    .nv-booked-open:hover { border-color: #0D47A1; color: #0D47A1; text-decoration: none; }
+    @media (max-width: 640px) {
+        .nv-booked { flex-wrap: wrap; }
+        .nv-booked-when {
+            flex: 0 0 100%; text-align: left; border-right: 0;
+            border-bottom: 1px solid #eef2f7; padding-bottom: 6px;
+        }
+        .nv-booked-when span { display: inline; margin-right: 6px; }
+        .nv-booked-open { width: 100%; text-align: center; }
+    }
     .nv-for-chip {
         display: inline-block;
         margin: 0 3px 2px 0;
@@ -1582,6 +1633,13 @@
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 
+    /* Its own colours rather than the shared send menu's: that partial only renders where a
+       prescription exists, so its stylesheet cannot be relied on further down this page. */
+    .btn.nv-wa-btn { background:#18b345; border:1px solid #18b345; color:#fff; }
+    .btn.nv-wa-btn:hover, .btn.nv-wa-btn:focus { background:#14983b; border-color:#14983b; color:#fff; }
+    .btn.nv-wa-btn i { color:#fff; }
+    .btn.nv-wa-btn:disabled { opacity:.5; cursor:not-allowed; }
+
     /* ── Printable Prescription wrapper ── */
     .rx-view-wrap {
         border: 1px solid #c8d2e0;
@@ -1805,14 +1863,20 @@
                         @endforeach
                     @endif
                 </div>
-                {{-- Everything a doctor asks for without meaning to leave the tab they are on:
-                     the number to ring, what kind of visit this is, and how long they have been
-                     coming. The sidebar card repeats it in full, on the Consultation tab only. --}}
+                {{-- The only place these facts appear now, and it stays put whatever tab is open.
+                     A fact the hospital has not recorded is left out rather than printed as a dash:
+                     an empty value still has to be read before it can be dismissed. --}}
                 <div class="patient-key-facts">
-                    <span class="kf"><span class="kf-lbl">Mobile</span>{{ $visit->patient?->phone ?: '—' }}</span>
+                    @if (filled($visit->patient?->phone))
+                        <span class="kf"><span class="kf-lbl">Mobile</span>{{ $visit->patient->phone }}</span>
+                    @endif
                     <span class="kf"><span class="kf-lbl">Visit</span>{{ \App\Models\OpdVisit::VISIT_TYPES[$visit->visit_type] ?? $visit->visit_type }}</span>
-                    <span class="kf"><span class="kf-lbl">OP</span>{{ $visit->op_type ?: '—' }}</span>
-                    <span class="kf"><span class="kf-lbl">Last visit</span>{{ $pastVisits->first()?->visit_date?->format('d M Y') ?: 'None' }}</span>
+                    @if (filled($visit->op_type))
+                        <span class="kf"><span class="kf-lbl">OP</span>{{ $visit->op_type }}</span>
+                    @endif
+                    @if ($pastVisits->first()?->visit_date)
+                        <span class="kf"><span class="kf-lbl">Last visit</span>{{ $pastVisits->first()->visit_date->format('d M Y') }}</span>
+                    @endif
                     <span class="kf"><span class="kf-lbl">Total</span>{{ $pastVisits->count() + 1 }} visits</span>
 
                     @if (!$visit->is_cancelled && hasPermission('opd_register', 'view'))
@@ -1962,9 +2026,6 @@
         </button>
         @endif
 
-        <button class="consult-tab-btn" onclick="switchTab(this, 'tabMode')">
-            <i class="tio-settings-outlined"></i> Mode
-        </button>
         @if($securityEnabled ?? false)
         <button class="consult-tab-btn" onclick="switchTab(this, 'tabSecurity')">
             <i class="tio-lock-outlined"></i> Security
@@ -2003,7 +2064,6 @@
                         <tr><td class="lbl">Age / Gender</td><td class="val">{{ \Carbon\Carbon::parse($visit->patient?->dob)->age }} Yrs - {{ ucfirst($visit->patient?->gender) }}</td></tr>
                         <tr><td class="lbl">Blood Group</td><td class="val">{{ $visit->patient?->blood_group ?: '—' }}</td></tr>
                         <tr><td class="lbl">Mobile</td><td class="val">{{ $visit->patient?->phone ?: '—' }}</td></tr>
-                        <tr><td class="lbl">Referred By</td><td class="val" style="color:#2563eb">Dr. S. Rao (Ortho)</td></tr>
                         <tr><td class="lbl">Visit Type</td><td class="val" style="color:#16a34a">{{ \App\Models\OpdVisit::VISIT_TYPES[$visit->visit_type] ?? $visit->visit_type }}</td></tr>
                         <tr><td class="lbl">OP Type</td><td class="val">{{ $visit->op_type ?: '—' }}</td></tr>
                         <tr><td class="lbl">Last Visit</td><td class="val">{{ $pastVisits->first()?->visit_date?->format('d M Y') ?: 'None' }}</td></tr>
@@ -2673,10 +2733,31 @@
                         <span class="badge badge-soft-success" style="font-size:12px">
                             <i class="tio-checkmark-circle-outlined"></i> Prescription Saved
                         </span>
-                        <div class="d-flex gap-2">
-                            <button onclick="printPrescription()" class="btn btn-sm btn-primary">
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="rx-split">
+                            <button onclick="printPrescription()" class="btn btn-sm btn-primary rx-split-main">
                                 <i class="tio-print"></i> Print Rx
                             </button>
+                            {{-- Same panel, same remembered choice, as the standalone prescription
+                                 page: a clinic printing on its own pre-printed pads sets it once
+                                 and gets it wherever a prescription is printed from. Preview opens
+                                 the letterhead below at its true A4 size, which is the job the
+                                 separate "Show printable letterhead" button used to do. --}}
+                            @include('hmis::vendor.prescription._print_options', [
+                                'sheetId'   => 'rxPrintSection',
+                                'headerOff' => hmis_print_header('prescription', $visit->store_id ?? null)['off'],
+                                'headerMm'  => hmis_print_header('prescription', $visit->store_id ?? null)['mm'],
+                                'sections' => array_filter([
+                                    'patient'   => 'Patient & date',
+                                    'diagnosis' => ($currentPrescription->diagnosis && hmis_rx_print_clinical()) ? 'Diagnosis' : null,
+                                    'meds'      => 'Medicines',
+                                    'advice'    => ($currentPrescription->notes && hmis_rx_print_clinical()) ? 'Advice / notes' : null,
+                                    'followup'  => $currentPrescription->follow_up_date ? 'Follow-up date' : null,
+                                ]),
+                                'compact'  => true,
+                                'btnClass' => 'btn-primary',
+                            ])
+                            </span>
                             {{-- The prescription as a PDF attachment on WhatsApp, on the
                                  prescription_pdf template. Finalized only: a draft is still being
                                  written, and a patient who receives one starts a course of medicine
@@ -2685,14 +2766,31 @@
                                  permission middleware passes any vendor owner, while hasPermission()
                                  alone answers false for an owner until some role has been granted
                                  prescription/print — which would hide a button its own route allows. --}}
-                            @if ($currentPrescription && (auth('vendor')->check() || hasPermission('prescription', 'print')))
-                                <form method="post" action="{{ route('vendor.hmis-whatsapp.prescription-pdf', $currentPrescription->id) }}" class="mb-0 wa-send-pdf-form">
-                                    @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Attach the prescription PDF and send it to the patient on WhatsApp">
-                                        <i class="tio-whatsapp"></i> Send PDF on WhatsApp
-                                    </button>
-                                </form>
-                            @endif
+                            @include('hmis::vendor.shared._wa_send', [
+                                'disabled' => filled($visit->patient?->phone) ? null : 'This patient has no phone number on file',
+                                'items' => [
+                                    ($currentPrescription && (auth('vendor')->check() || hasPermission('prescription', 'print'))) ? [
+                                        'label' => 'Prescription (PDF)',
+                                        'hint'  => 'The sheet as you have set it up here, attached',
+                                        'url'   => route('vendor.hmis-whatsapp.prescription-pdf', $currentPrescription->id),
+                                        'class' => 'wa-send-pdf-form',
+                                        'attrs' => 'data-rx-print-opts',
+                                    ] : null,
+                                    (auth('vendor')->check() || hasPermission('opd_register', 'view')) ? [
+                                        'label' => 'Consultation summary',
+                                        'hint'  => 'Complaint, diagnosis and what was advised today',
+                                        'url'   => route('vendor.hmis-whatsapp.treatment', $visit->id),
+                                        'class' => 'wa-send-pdf-form',
+                                    ] : null,
+                                    ($currentPrescription && $currentPrescription->follow_up_date
+                                        && (auth('vendor')->check() || hasPermission('prescription', 'print'))) ? [
+                                        'label' => 'Next visit reminder',
+                                        'hint'  => 'The follow-up date on this prescription',
+                                        'url'   => route('vendor.hmis-whatsapp.prescription-followup', $currentPrescription->id),
+                                        'class' => 'wa-send-pdf-form',
+                                    ] : null,
+                                ],
+                            ])
                             {{-- Editing the prescription after the receipt is out would leave the
                                  printed copy and the record disagreeing with nothing to show it. --}}
                             @if (!$visit->is_completed && hasPermission('prescription', 'add'))
@@ -2704,14 +2802,8 @@
                                  dispensed (dispenseProcess requires it) — a draft won't be in the queue. --}}
                             @if ($currentPrescription->is_finalized && hasPermission('pharmacy_dispense_queue', 'dispense'))
                                 <a href="{{ route('vendor.prescription.dispense.show', $currentPrescription->id) }}"
-                                   class="btn btn-sm btn-outline-primary" title="Dispense this prescription">
+                                   class="btn btn-sm btn-outline-secondary" title="Dispense this prescription">
                                     <i class="tio-pill"></i> Dispense
-                                </a>
-                            @endif
-                            @if (hasPermission('pharmacy_dispense_queue', 'list'))
-                                <a href="{{ route('vendor.prescription.dispense.queue') }}"
-                                   class="btn btn-sm btn-outline-secondary" title="Open the full dispense queue">
-                                    <i class="tio-filter-list"></i> Dispense Queue
                                 </a>
                             @endif
                         </div>
@@ -2749,17 +2841,25 @@
                         @if($currentPrescription->follow_up_date)
                             <div class="rx-followup"><i class="tio-calendar-note"></i> Follow-up on <strong>{{ $currentPrescription->follow_up_date->format('d M Y') }}</strong></div>
                         @endif
+                        {{-- Condition and advice both, matching what Clinical Recording promises and
+                             what the standalone prescription page has always shown. The diagnosis
+                             was never wired in here, so a hospital with the setting on still got a
+                             card and a letterhead carrying only the medicines. --}}
+                        @if($currentPrescription->diagnosis && hmis_rx_print_clinical())
+                            <div class="rx-advice"><span class="rx-advice-lbl">Diagnosis</span> {{ $currentPrescription->diagnosis }}</div>
+                        @endif
                         @if($currentPrescription->notes && hmis_rx_print_clinical())
                             <div class="rx-advice"><span class="rx-advice-lbl">Advice</span> {{ $currentPrescription->notes }}</div>
                         @endif
                     </div>
 
-                    <button type="button" class="btn btn-xs btn-soft-secondary mb-3" onclick="toggleRxPreview()">
-                        <i class="tio-visible-outlined"></i> <span id="rxPreviewLabel">Show printable letterhead</span>
-                    </button>
-
+                    @php
+                        // Same document, same settings: what prints from here has to match the
+                        // standalone prescription sheet, not diverge from it.
+                        $rxSign = hmis_print_sign('prescription', $visit->store_id ?? null);
+                    @endphp
                     <div class="rx-view-wrap" id="rxPrintSection" style="display:none;">
-                        <div class="rx-view-header">
+                        <div class="rx-view-header" data-rx-sec="header">
                             <div>
                                 <h4 style="margin:0; font-weight:800; color:#0D47A1;">{{ $currentPrescription->store?->name }}</h4>
                                 <p style="margin:2px 0 0; font-size:11px; color:#64748b;">{{ $currentPrescription->store?->address }}</p>
@@ -2769,11 +2869,21 @@
                                 <p style="margin:2px 0 0; font-size:11px; color:#64748b;">{{ $currentPrescription->doctorProfile?->specialization }}</p>
                             </div>
                         </div>
-                        <div style="font-size:12px; margin-bottom:15px; border-bottom:1px solid #cbd5e1; padding-bottom:8px;" class="row">
+                        <div style="font-size:12px; margin-bottom:15px; border-bottom:1px solid #cbd5e1; padding-bottom:8px;" class="row" data-rx-sec="patient">
                             <div class="col-6"><strong>Patient:</strong> {{ $currentPrescription->patient?->name }}</div>
                             <div class="col-6 text-right"><strong>Date:</strong> {{ $currentPrescription->created_at->format('d M Y') }}</div>
                         </div>
 
+                        {{-- The condition comes before the medicines given for it, as on the
+                             standalone prescription sheet. --}}
+                        @if($currentPrescription->diagnosis && hmis_rx_print_clinical())
+                            <div style="font-size:12px; margin-bottom:10px;" data-rx-sec="diagnosis">
+                                <strong>Diagnosis:</strong>
+                                <p style="margin:4px 0 0; color:#334155;">{{ $currentPrescription->diagnosis }}</p>
+                            </div>
+                        @endif
+
+                        <div data-rx-sec="meds">
                         <div style="font-size:28px; color:#0D47A1; font-weight:700; margin-bottom:10px; font-family:'Times New Roman'">℞</div>
 
                         <table class="table table-bordered table-sm" style="font-size:12px;">
@@ -2802,17 +2912,36 @@
                                 @endforelse
                             </tbody>
                         </table>
+                        </div>{{-- end medicines --}}
 
                         @if($currentPrescription->notes && hmis_rx_print_clinical())
-                            <div class="mt-3" style="font-size:12px;">
+                            <div class="mt-3" style="font-size:12px;" data-rx-sec="advice">
                                 <strong>Advice / Notes:</strong>
                                 <p style="margin:4px 0 0; color:#334155;">{{ $currentPrescription->notes }}</p>
                             </div>
                         @endif
 
                         @if($currentPrescription->follow_up_date)
-                            <div class="mt-3 small" style="font-size:12px;">
+                            <div class="mt-3 small" style="font-size:12px;" data-rx-sec="followup">
                                 <strong>Follow-up on:</strong> {{ $currentPrescription->follow_up_date->format('d M Y') }}
+                            </div>
+                        @endif
+
+                        @if ($rxSign['show'])
+                            {{-- A flex row holding one fixed-width column, rather than text-align
+                                 on a block: the image and the rule are separate elements, and
+                                 aligning them as text sat them side by side with the rule running
+                                 off to the page edge instead of underneath the signature. --}}
+                            <div class="mt-4" data-rx-sec="signature"
+                                 style="display:flex; justify-content:{{ $rxSign['pos'] === 'left' ? 'flex-start' : 'flex-end' }};">
+                                <div style="width:180px; text-align:center;">
+                                    <img src="{{ $rxSign['url'] }}" alt="Signature"
+                                         style="display:block; height:50px; max-width:180px; object-fit:contain; margin:0 auto 2px;">
+                                    <div style="font-size:12px;">
+                                        Dr. {{ $currentPrescription->doctorProfile?->employee?->f_name }}
+                                        {{ $currentPrescription->doctorProfile?->employee?->l_name }}
+                                    </div>
+                                </div>
                             </div>
                         @endif
                     </div>
@@ -3414,35 +3543,6 @@
                 </div>
             </div>
 
-            {{-- TAB: MODE --}}
-            <div class="tab-pane" id="tabMode">
-                <h4 class="mb-3 font-weight-bold" style="color:#0f172a">Mode Preference Settings</h4>
-                <p class="small text-muted mb-4">Customize the doctor's consultation workstation experience.</p>
-                <div class="text-dark mb-4" style="font-size:13px">
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <div>
-                            <strong>Full-screen Triage Mode</strong>
-                            <div class="text-muted small">Auto-minimize standard vendor sidebars during consultations</div>
-                        </div>
-                        <input type="checkbox" checked disabled>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <div>
-                            <strong>Live Vitals Alerts</strong>
-                            <div class="text-muted small">Show immediate alert indicators when critical ranges are exceeded</div>
-                        </div>
-                        <input type="checkbox" checked>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <div>
-                            <strong>Guideline Synthesis Engine</strong>
-                            <div class="text-muted small">Enable automated risk widgets based on ACC/AHA, JNC-8, ADA guidelines</div>
-                        </div>
-                        <input type="checkbox" checked>
-                    </div>
-                </div>
-            </div>
-
             {{-- TAB: NEXT VISIT --}}
             @php
                 // The sittings still to come, offered as tick boxes against each follow-up being
@@ -3468,7 +3568,7 @@
             @endphp
             <div class="tab-pane" id="tabNextVisit">
                 <h4 class="mb-1 font-weight-bold" style="color:#0f172a">Schedule Next Visit</h4>
-                <p class="small text-muted mb-4">
+                <p class="small text-muted mb-4" style="max-width:720px;">
                     Books a follow-up for {{ $visit->patient?->name }} with
                     Dr. {{ trim(($visit->doctorProfile?->employee?->f_name ?? '') . ' ' . ($visit->doctorProfile?->employee?->l_name ?? '')) }}.
                     The patient gets a WhatsApp confirmation now and an automatic reminder before each visit.
@@ -3476,39 +3576,49 @@
                 </p>
 
                 @if($upcomingVisits->count())
-                    <div class="mb-4">
-                        <h6 class="font-weight-bold mb-2" style="font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280;">
+                    {{-- A list rather than a table: seven columns of two words each spread across
+                         the full width, above a 720px form, read as two unrelated screens. Every
+                         block on this tab now shares one column, and each booking leads with the
+                         thing anyone is scanning for — when it is. --}}
+                    <div class="nv-block">
+                        <h6 class="nv-block-title">
                             Already scheduled
+                            <span class="nv-count">{{ $upcomingVisits->count() }}</span>
                         </h6>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0" style="font-size:13px;">
-                                <thead class="thead-light">
-                                    <tr><th>Date</th><th>Time</th><th>Doctor</th><th>Token</th><th>For</th><th>Reason</th><th></th></tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($upcomingVisits as $up)
-                                    <tr>
-                                        <td>{{ \Carbon\Carbon::parse($up->appointment_date)->format('d M Y') }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($up->appointment_time)->format('h:i A') }}</td>
-                                        <td>Dr. {{ $up->doctorProfile?->employee?->f_name }} {{ $up->doctorProfile?->employee?->l_name }}</td>
-                                        <td>{{ $up->token ? '#' . $up->token->token_number : '—' }}</td>
-                                        <td>
-                                            @forelse($nvByAppointment[$up->id] ?? [] as $term)
+                        @foreach($upcomingVisits as $up)
+                            @php
+                                $upFor    = $nvByAppointment[$up->id] ?? [];
+                                $upReason = trim((string) $up->reason);
+                            @endphp
+                            <div class="nv-booked">
+                                <div class="nv-booked-when">
+                                    <span class="nv-booked-date">{{ \Carbon\Carbon::parse($up->appointment_date)->format('d M') }}</span>
+                                    <span class="nv-booked-year">{{ \Carbon\Carbon::parse($up->appointment_date)->format('Y') }}</span>
+                                    <span class="nv-booked-time">{{ \Carbon\Carbon::parse($up->appointment_time)->format('h:i A') }}</span>
+                                </div>
+                                <div class="nv-booked-main">
+                                    <div class="nv-booked-doc">
+                                        Dr. {{ trim(($up->doctorProfile?->employee?->f_name ?? '') . ' ' . ($up->doctorProfile?->employee?->l_name ?? '')) }}
+                                        @if($up->token)
+                                            <span class="nv-booked-token">Token #{{ $up->token->token_number }}</span>
+                                        @endif
+                                    </div>
+                                    {{-- Nothing at all beats a row of em dashes: an empty column
+                                         still asks to be read before it can be dismissed. --}}
+                                    @if(count($upFor))
+                                        <div class="nv-booked-for">
+                                            @foreach($upFor as $term)
                                                 <span class="nv-for-chip">{{ $term }}</span>
-                                            @empty
-                                                <span class="tx-nil">—</span>
-                                            @endforelse
-                                        </td>
-                                        <td>{{ \Illuminate\Support\Str::limit($up->reason ?? '—', 40) }}</td>
-                                        <td>
-                                            <a href="{{ route('vendor.appointment.show', $up->id) }}"
-                                               class="btn btn-xs btn-outline-secondary">Open</a>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    @if($upReason !== '')
+                                        <div class="nv-booked-reason">{{ \Illuminate\Support\Str::limit($upReason, 90) }}</div>
+                                    @endif
+                                </div>
+                                <a href="{{ route('vendor.appointment.show', $up->id) }}" class="nv-booked-open">Open</a>
+                            </div>
+                        @endforeach
                     </div>
                 @endif
 
@@ -3579,6 +3689,18 @@
                         <button type="submit" class="btn btn--primary">
                             <i class="tio-calendar-note"></i> <span id="nvSubmitLabel">Schedule Next Visit</span>
                         </button>
+                        {{-- Books exactly as the button beside it does, and sends the date on
+                             WhatsApp there and then. The automatic reminder still goes out before
+                             the visit; this is for the patient who wants it in writing before they
+                             leave the desk. A named submit, so the choice reaches the controller
+                             from the button that was actually pressed. --}}
+                        <span @if(blank($visit->patient?->phone)) title="This patient has no phone number on file" @endif>
+                            <button type="submit" name="send_whatsapp" value="1" class="btn nv-wa-btn"
+                                    @if(blank($visit->patient?->phone)) disabled @endif
+                                    title="Book the visit and send the patient the date on WhatsApp now">
+                                <i class="tio-whatsapp"></i> Schedule &amp; send on WhatsApp
+                            </button>
+                        </span>
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="nvAdd">
                             <i class="tio-add"></i> Add another visit
                         </button>
@@ -4574,7 +4696,6 @@
                     'lab': 'tabLabWork',
                     'lab_work': 'tabLabWork',
                     'labwork': 'tabLabWork',
-                    'mode': 'tabMode',
                     'security': 'tabSecurity',
                     'sara': 'tabSaraAI',
                     'sara_ai': 'tabSaraAI',
@@ -4653,7 +4774,6 @@
                 'tabReports': 'reports',
                 'tabNextVisit': 'next_visit',
                 'tabLabWork': 'lab_work',
-                'tabMode': 'mode',
                 'tabSecurity': 'security',
                 'tabSaraAI': 'sara_ai',
                 'tabTimeline': 'history'
@@ -6371,7 +6491,7 @@
             document.getElementById('rxWritingFormBlock').style.display = 'block';
             document.querySelector('.badge-soft-success').style.display = 'none';
         } else {
-            document.getElementById('rxPrintSection').style.display = 'block';
+            document.getElementById('rxPrintSection').style.display = 'none';
             document.getElementById('rxWritingFormBlock').style.display = 'none';
             document.querySelector('.badge-soft-success').style.display = '';
         }
@@ -6388,25 +6508,12 @@
         if (chev) chev.className = open ? 'tio-chevron-right' : 'tio-chevron-down';
     }
 
-    function toggleRxPreview() {
-        const sec = document.getElementById('rxPrintSection');
-        const lbl = document.getElementById('rxPreviewLabel');
-        if (!sec) return;
-        const open = sec.style.display !== 'none';
-        sec.style.display = open ? 'none' : '';
-        if (lbl) lbl.textContent = open ? 'Show printable letterhead' : 'Hide printable letterhead';
-    }
-
     function printPrescription() {
-        const printContent = document.getElementById('rxPrintSection').innerHTML;
-        const originalContent = document.body.innerHTML;
-        document.body.innerHTML = `
-            <div style="padding: 40px; font-family: 'Times New Roman', serif;">
-                ${printContent}
-            </div>`;
+        // The shared print-options script lifts the letterhead into a print portal on beforeprint
+        // and puts it back afterwards, so the browser prints the sheet and the page is left
+        // untouched. This used to swap document.body.innerHTML and then reload, which threw away
+        // everything unsaved on the consultation screen every time someone printed.
         window.print();
-        document.body.innerHTML = originalContent;
-        window.location.reload();
     }
 </script>
 @endpush

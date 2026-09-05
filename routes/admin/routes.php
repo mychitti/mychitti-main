@@ -46,6 +46,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::post(Category::UPDATE[URI].'/{id}', [CategoryController::class, 'update'])->name('update');
                 Route::get(Category::PRIORITY[URI].'/{category}', [CategoryController::class, 'updatePriority'])->name('priority');
                 Route::post(Category::ADD[URI].'/{position?}', [CategoryController::class, 'add'])->name('store');
+                // Suggests subcategory names for a category being created. Nothing is written:
+                // the admin keeps what fits and it saves with the category.
+                Route::post('suggest-subcategories', [CategoryController::class, 'suggestSubcategories'])->name('suggest-subcategories');
                 Route::get(Category::STATUS[URI].'/{id}/{status}', [CategoryController::class, 'updateStatus'])->name('status');
                 Route::get(Category::FEATURED[URI].'/{id}/{featured}', [CategoryController::class, 'updateFeatured'])->name('featured');
                 Route::delete(Category::DELETE[URI].'/{id}', [CategoryController::class, 'delete'])->name('delete');

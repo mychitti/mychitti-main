@@ -1,6 +1,9 @@
 {{-- Reusable documents pane (uploaded list + upload card) for one category on the OPD Reports tab.
      Expects: $cat (med|govt), $list_id, $docs (collection), $types (array of keys), $placeholder, $meta --}}
-<div class="card shadow-none border mb-4">
+{{-- overflow:hidden so the header band and the flush list rows are clipped to the card's
+     rounded corners. Without it their square edges overrun the radius and the corners read as
+     cut off. Safe on these two: neither holds a dropdown for it to clip. --}}
+<div class="card shadow-none border mb-4" style="overflow:hidden">
     <div class="card-header py-2 bg-light"><h6 class="mb-0 font-weight-bold" style="font-size:12px">Uploaded Files</h6></div>
     <div class="card-body p-0">
         <ul class="list-group list-group-flush mb-0" id="{{ $list_id }}">
@@ -39,7 +42,7 @@
 </div>
 
 @if(hasPermission('patient_documents', 'add'))
-<div class="card shadow-none border bg-light">
+<div class="card shadow-none border bg-light" style="overflow:hidden">
     <div class="card-header py-2 bg-white"><h6 class="mb-0 font-weight-bold" style="font-size:12px">Upload New Document</h6></div>
     <div class="card-body">
         <div class="row align-items-end gap-2">

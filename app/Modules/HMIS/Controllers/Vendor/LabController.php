@@ -71,10 +71,22 @@ class LabController extends Controller
                 DB::statement("ALTER TABLE `lab_tests` ADD COLUMN `tat_text` VARCHAR(60) NULL");
             if (!Schema::hasColumn('lab_tests', 'is_active'))
                 DB::statement("ALTER TABLE `lab_tests` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1");
+            // The standing note printed under this test's results — what the values mean, what
+            // raises or lowers them, what to correlate against. Written once against the test
+            // rather than retyped on every report, which is how it stays consistent between them.
+            if (!Schema::hasColumn('lab_tests', 'interpretation'))
+                DB::statement("ALTER TABLE `lab_tests` ADD COLUMN `interpretation` TEXT NULL");
             if (!Schema::hasColumn('lab_tests', 'created_at'))
                 DB::statement("ALTER TABLE `lab_tests` ADD COLUMN `created_at` TIMESTAMP NULL");
             if (!Schema::hasColumn('lab_tests', 'updated_at'))
             DB::statement("ALTER TABLE `lab_tests` ADD COLUMN `updated_at` TIMESTAMP NULL");
+        }
+
+        // The copy that actually prints, taken from the catalogue when the order is placed so a
+        // later edit to the catalogue never rewrites a report that has already gone out, and so a
+        // pathologist can tailor the wording to one patient.
+        if (Schema::hasTable('lab_order_items') && !Schema::hasColumn('lab_order_items', 'interpretation')) {
+            DB::statement("ALTER TABLE `lab_order_items` ADD COLUMN `interpretation` TEXT NULL");
         }
 
         if (!Schema::hasTable('lab_test_parameters')) {
@@ -602,7 +614,33 @@ class LabController extends Controller
                 ->first();
         }
 
-        return $this->view('result_entry', compact('order', 'pickable', 'reUnconfirmed'));
+        // Who may be named as having analysed or verified a report. Doctors first: a report is
+        // verified by whoever is qualified to, and picking them out of one flat list of every
+        // employee is the slow way round.
+        $doctorEmpIds = \App\Models\DoctorProfile::where('store_id', $storeId)
+            ->pluck('emp_id')->filter()->unique()->all();
+        $signers = \App\Models\VendorEmployee::where('store_id', $storeId)
+            ->orderBy('f_name')->get(['id', 'f_name', 'l_name'])
+            ->map(fn($e) => [
+                'name'   => trim(($e->f_name ?? '') . ' ' . ($e->l_name ?? '')),
+                'group'  => in_array($e->id, $doctorEmpIds) ? 'Doctors' : 'Other staff',
+            ])
+            ->filter(fn($r) => $r['name'] !== '')
+            ->values();
+
+        $owner = \App\Models\Store::with('vendor')->find($storeId)?->vendor;
+        $ownerName = $owner ? trim(($owner->f_name ?? '') . ' ' . ($owner->l_name ?? '')) : '';
+        if ($ownerName !== '') {
+            $signers->prepend(['name' => $ownerName, 'group' => 'Owner']);
+        }
+
+        // Whoever is at the screen — a technician saving results is naming themselves far more
+        // often than anyone else, so that is what the box should already say.
+        [, , $currentSigner] = $this->actor();
+
+        return $this->view('result_entry', compact(
+            'order', 'pickable', 'reUnconfirmed', 'signers', 'currentSigner'
+        ));
     }
 
     // Create empty result rows (one per test parameter) the first time an order is opened for entry.
@@ -619,7 +657,7 @@ class LabController extends Controller
     public function saveResults(Request $request, $id)
     {
         $this->boot();
-        $order = LabOrder::where('store_id', $this->storeId())->with('results')->findOrFail($id);
+        $order = LabOrder::where('store_id', $this->storeId())->with('results', 'items')->findOrFail($id);
 
         $values = $request->input('result_value', []);
         foreach ($order->results as $res) {
@@ -637,8 +675,23 @@ class LabController extends Controller
             $res->save();
         }
 
+        // Per test, and only where the box was actually shown, so a locked report posting
+        // nothing back cannot blank what is already on it.
+        foreach ((array) $request->input('interpretation', []) as $itemId => $text) {
+            $item = $order->items->firstWhere('id', (int) $itemId);
+            if ($item) {
+                $item->interpretation = trim((string) $text) ?: null;
+                $item->save();
+            }
+        }
+
         $order->technician_notes = $request->technician_notes;
-        $order->analysed_by = $request->analysed_by;
+        // Only when the field actually came back. Analysed By is a select now, and a select that
+        // is disabled -- which is how a locked report renders it -- posts nothing at all; assigning
+        // unconditionally would wipe the name off a finalized report on any later save.
+        if ($request->has('analysed_by')) {
+            $order->analysed_by = $request->analysed_by;
+        }
 
         $hasAny = $order->results()->whereNotNull('result_value')->exists();
         if ($request->boolean('finalize')) {
@@ -835,6 +888,9 @@ class LabController extends Controller
                 'department'   => $t->department,
                 'price'        => $t->price,
                 'status'       => 'pending',
+                // Copied, not looked up at print time: a report already handed to a patient must
+                // keep saying what it said when it was issued, whatever the catalogue says later.
+                'interpretation' => $t->interpretation,
             ]);
         }
 
@@ -928,6 +984,7 @@ class LabController extends Controller
             LabOrderItem::create([
                 'lab_order_id' => $order->id, 'lab_test_id' => $t->id, 'test_name' => $t->name,
                 'department' => $t->department, 'price' => $t->price, 'status' => 'pending',
+                'interpretation' => $t->interpretation,
             ]);
         }
 
@@ -1166,6 +1223,7 @@ class LabController extends Controller
             'sample_type' => $request->sample_type,
             'price'       => $request->price,
             'tat_text'    => $request->tat_text,
+            'interpretation' => $request->interpretation,
             'is_active'   => $request->has('is_active') ? 1 : 0,
         ])->save();
 

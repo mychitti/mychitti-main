@@ -34,6 +34,35 @@
         .select2-selection {
             height: 200px !important;
         }
+
+        .sub-ai-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .sub-ai-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 8px 5px 12px;
+            border: 1px solid #dbe3ec;
+            border-radius: 20px;
+            background: #f8fafc;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #334155;
+        }
+        .sub-ai-chip button {
+            border: 0;
+            background: none;
+            padding: 0 2px;
+            line-height: 1;
+            font-size: 15px;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+        .sub-ai-chip button:hover { color: #dc2626; }
+        .sub-ai-note { font-size: 12px; color: #64748b; }
     </style>
 @endpush
 
@@ -70,6 +99,25 @@
                             </div>
                             <input type="hidden" name="lang[]" value="default">
                             <input name="position" value="0" class="initial-hidden">
+
+                            {{-- Subcategory suggestions. Only offered when creating a top-level
+                                 category: this catalogue has no subcategory of a subcategory, and
+                                 the edit screen is not where a batch of new rows belongs. --}}
+                            @if (!isset($category))
+                            <div id="subAiBlock">
+                                {{-- btn--primary, the class this form already uses on its own submit
+                                     button: btn--primary-outline is not a class this theme defines,
+                                     so the button rendered unstyled and effectively invisible. --}}
+                                <button type="button" class="btn btn--primary btn-sm" id="subAiBtn">
+                                    <i class="tio-magic-wand mr-1"></i> {{ translate('Generate subcategories') }}
+                                </button>
+                                <small class="form-text text-muted mt-1" id="subAiHelp">
+                                    {{ translate('Type the category name first. Remove any that do not fit — the rest are saved with the category.') }}
+                                </small>
+
+                                <div id="subAiList" class="sub-ai-list mt-2" hidden></div>
+                            </div>
+                            @endif
                         </div>
                         <div class="col-md-6">
                             <div class="h-100 d-flex align-items-center flex-column">
@@ -289,6 +337,92 @@
 @endsection
 
 @push('script_2')
+    <script>
+        // Suggestions are held as hidden inputs inside the category form, so whatever survives the
+        // admin's edits posts with it and no separate save step exists to be forgotten.
+        (function () {
+            const btn = document.getElementById('subAiBtn');
+            if (!btn) return;
+
+            const list = document.getElementById('subAiList');
+            const help = document.getElementById('subAiHelp');
+            const nameInput = document.querySelector('input[name="name[]"]');
+
+            function say(message) {
+                help.textContent = message;
+            }
+
+            function add(name) {
+                const chip = document.createElement('span');
+                chip.className = 'sub-ai-chip';
+
+                const label = document.createElement('span');
+                label.textContent = name;
+
+                const field = document.createElement('input');
+                field.type = 'hidden';
+                field.name = 'sub_names[]';
+                field.value = name;
+
+                const drop = document.createElement('button');
+                drop.type = 'button';
+                drop.innerHTML = '&times;';
+                drop.title = '{{ translate('Remove') }}';
+                drop.addEventListener('click', function () {
+                    chip.remove();
+                    if (!list.querySelector('.sub-ai-chip')) {
+                        list.hidden = true;
+                        say('{{ translate('All suggestions removed. The category saves on its own.') }}');
+                    }
+                });
+
+                chip.append(label, field, drop);
+                list.appendChild(chip);
+            }
+
+            btn.addEventListener('click', function () {
+                const name = (nameInput.value || '').trim();
+                if (!name) {
+                    nameInput.focus();
+                    say('{{ translate('Enter the category name first.') }}');
+                    return;
+                }
+
+                btn.disabled = true;
+                say('{{ translate('Asking for suggestions…') }}');
+
+                fetch('{{ route('admin.category.suggest-subcategories') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ name: name }),
+                })
+                    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                    .then(({ ok, body }) => {
+                        if (!ok || !body.success) {
+                            say(body.message || '{{ translate('Could not get suggestions.') }}');
+                            return;
+                        }
+                        if (!body.names.length) {
+                            say('{{ translate('No new subcategories to suggest — the ones it thought of already exist.') }}');
+                            return;
+                        }
+
+                        // Replaces rather than appends: asking twice means the first answer was
+                        // not wanted.
+                        list.innerHTML = '';
+                        body.names.forEach(add);
+                        list.hidden = false;
+                        say('{{ translate('Remove any that do not fit. The rest are saved under this category.') }}');
+                    })
+                    .catch(() => say('{{ translate('Could not reach the server. Try again.') }}'))
+                    .finally(() => { btn.disabled = false; });
+            });
+        })();
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>

@@ -8,7 +8,7 @@ class LabTest extends Model
 {
     protected $fillable = [
         'store_id', 'name', 'code', 'department', 'sample_type',
-        'price', 'tat_text', 'is_active',
+        'price', 'tat_text', 'is_active', 'interpretation',
     ];
 
     protected $casts = [

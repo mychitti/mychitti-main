@@ -7,7 +7,7 @@
     <div class="rad-body">
         @php
             $canSend = hasPermission('radiology_report', 'send');
-            $cols = 'grid-template-columns:100px 1fr 110px 150px 100px 100px 130px';
+            $cols = 'grid-template-columns:100px 1fr 110px 150px 100px 100px 210px';
             $modPill = fn($m) => ['X-Ray'=>'pill-blue','CT Scan'=>'pill-purple','MRI'=>'pill-purple','Ultrasound'=>'pill-teal','ECG'=>'pill-amber'][$m] ?? 'pill-blue';
         @endphp
         <div class="card">
@@ -25,17 +25,23 @@
                     <div data-label="Study" style="font-size:11px">{{ $s->study_name }}</div>
                     <div data-label="Date" style="font-size:11px;color:var(--muted)">{{ $s->reported_at?->format('d M Y') ?? $s->updated_at?->format('d M Y') }}</div>
                     <div data-label="Status">@if($s->status==='sent')<span class="pill pill-green">Sent</span>@else<span class="pill pill-teal">Verified</span>@endif</div>
-                    <div class="cell-action" style="display:flex;gap:4px">
+                    <div class="cell-action" style="display:flex;gap:4px;flex-wrap:wrap">
                         <a href="{{ route('vendor.radiology.studies.print', $s->id) }}" target="_blank" class="btn btn-ghost btn-xs">View</a>
                         @if($canSend)<a href="{{ route('vendor.radiology.studies.send', $s->id) }}" class="btn btn-primary btn-xs">{{ $s->status==='sent'?'Resend':'Send' }}</a>@endif
                         {{-- "Send" above goes to the referring doctor; this one goes to the patient,
                              which is why it needs a number on file rather than just the permission. --}}
-                        @if($canSend && filled($s->patient->phone ?? null))
-                            <form method="post" action="{{ route('vendor.hmis-whatsapp.radiology-report', $s->id) }}" class="mb-0">
-                                @csrf
-                                <button type="submit" class="btn btn-outline btn-xs" title="Send to patient on WhatsApp">WhatsApp</button>
-                            </form>
-                        @endif
+                        @include('hmis::vendor.shared._wa_send', [
+                            'size'  => 'xs',
+                            'label' => '',
+                            'disabled' => filled($s->patient->phone ?? null) ? null : 'This patient has no phone number on file',
+                            'items' => [
+                                $canSend ? [
+                                    'label' => 'Radiology report',
+                                    'hint'  => 'The report, as a link the patient opens',
+                                    'url'   => route('vendor.hmis-whatsapp.radiology-report', $s->id),
+                                ] : null,
+                            ],
+                        ])
                         <a href="{{ route('vendor.radiology.studies.print', $s->id) }}" target="_blank" class="btn btn-outline btn-xs">🖨</a>
                     </div>
                 </div>

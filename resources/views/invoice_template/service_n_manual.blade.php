@@ -184,7 +184,11 @@
                 {{ $bill_from['cin_number'] ? 'CIN No: ' . $bill_from['cin_number'] : '' }}
             </td>
             <td style="width: 30%; text-align: right;">
-                @if (isset($bill_from_type) && $bill_from_type == 'vendor_to_user')
+                {{-- Whose document this is, not who it is addressed to. Testing for
+                     vendor_to_user alone sent every other kind of vendor bill -- a hospital bill
+                     to a patient is vendor_to_patient -- down the admin branch, and printed
+                     MyChitti's logo on a hospital's own bill. --}}
+                @if (isset($bill_from_type) && \Illuminate\Support\Str::startsWith($bill_from_type, 'vendor'))
                     @php  $store_logo = $bill_from['logo']; @endphp
                     <img width="100" class=""
                         data-onerror-image="{{ asset('public/assets/admin/img/160x160/img2.jpg') }}"
@@ -646,12 +650,12 @@
                                 <div>
                                     <div style="height:100px !important;">&nbsp; </div>
                                     <div style="height:100px !important;">&nbsp; </div>
-                                    @if (isset($bill_from_type) && $bill_from_type == 'vendor_to_user' && (isset($invoice->sign) && $invoice->sign))
+                                    @if (isset($bill_from_type) && \Illuminate\Support\Str::startsWith($bill_from_type, 'vendor') && (isset($invoice->sign) && $invoice->sign))
                                         <div><b>For {{ $bill_data['store']->name }}</b></div><br>
 
                                         <img src="{{ asset('storage/store/signature/') . '/' . _signImgById($invoice->sign) }}"
                                             width="110px">
-                                    @elseif($bill_from_type != 'vendor_to_user')
+                                    @elseif(!isset($bill_from_type) || !\Illuminate\Support\Str::startsWith($bill_from_type, 'vendor'))
                                         @if(isset($invoice->sign) && $invoice->sign)
                                             <div><b>For {{ \App\Models\BusinessSetting::where(['key' => 'business_name'])->first()->value ?? '' }}</b></div><br>
                                             <img src="{{ asset('storage/app/public/store/signature/') . '/' . _signImgById($invoice->sign) }}"

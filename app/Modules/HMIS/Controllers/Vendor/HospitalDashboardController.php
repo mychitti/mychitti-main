@@ -161,6 +161,11 @@ class HospitalDashboardController extends Controller
 
     public function settings()
     {
+        // So the Printed Documents card works on a hospital that has never saved its settings:
+        // the reads below fall back safely without the columns, but the signature it uploads from
+        // this page writes to them.
+        self::ensurePrintColumns();
+
         $store_id = Helpers::get_store_id();
         $config   = \App\Models\StoreConfig::where('store_id', $store_id)->first();
         $prefix   = $config?->patient_uid_prefix ?? 'P';
@@ -170,6 +175,21 @@ class HospitalDashboardController extends Controller
         $opd_consultation_validity_days  = (int) ($config?->opd_consultation_validity_days ?? 7);
         $vitals_enabled                  = hmis_vitals_enabled($store_id);
         $rx_print_clinical               = hmis_rx_print_clinical($store_id);
+        // Keyed by document, so the settings pane can loop the catalogue rather than name each one.
+        $print_header_docs               = hmis_print_header_docs();
+        $print_headers                   = collect(array_keys($print_header_docs))
+            ->mapWithKeys(fn($doc) => [$doc => hmis_print_doc_settings($doc, $store_id)])
+            ->all();
+        $signatures                      = hmis_signatures($store_id);
+        $default_signature_id            = hmis_default_signature_id($store_id);
+        // Doctors listed apart from the rest of the staff: a report is signed by whoever reported
+        // it, and picking that person out of one flat list of every employee is the slow way.
+        $signature_doctor_ids            = \App\Models\DoctorProfile::where('store_id', $store_id)
+            ->pluck('emp_id')->filter()->unique()->all();
+        $signature_staff                 = \App\Models\VendorEmployee::where('store_id', $store_id)
+            ->orderBy('f_name')->get(['id', 'f_name', 'l_name'])
+            ->groupBy(fn($e) => in_array($e->id, $signature_doctor_ids) ? 'Doctors' : 'Other staff');
+        $signature_owner                 = \App\Models\Store::with('vendor')->find($store_id)?->vendor;
         $security_tab_enabled            = hmis_security_tab_enabled($store_id);
         $lab_work_enabled                = hmis_lab_work_enabled($store_id);
         $discontinue_days                = hmis_discontinue_days($store_id);
@@ -224,8 +244,112 @@ class HospitalDashboardController extends Controller
             'lab_work_enabled', 'lab_work_profile', 'lab_work_auto', 'discontinue_days',
             'departments', 'states',
             'opTypeDefaults', 'opTypesOwn', 'opTypesHidden',
-            'daily_report', 'daily_report_metrics', 'daily_report_phone'
+            'daily_report', 'daily_report_metrics', 'daily_report_phone',
+            'print_header_docs', 'print_headers',
+            'signatures', 'default_signature_id', 'signature_staff', 'signature_owner'
         ));
+    }
+
+    /**
+     * The columns behind Printed Documents, added in place — no migration files (see CLAUDE.md).
+     *
+     * Called from saving settings AND from the signature actions: a hospital adds a signature
+     * before it ever picks a default, so the signature screen reaches these columns first.
+     */
+    public static function ensurePrintColumns(): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
+        $cfgTable = (new \App\Models\StoreConfig)->getTable();
+        if (!\Illuminate\Support\Facades\Schema::hasTable($cfgTable)) {
+            return;
+        }
+
+        // Every per-document print decision — letterhead, blank space, signature and its side.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_print_headers')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_print_headers` TEXT NULL");
+        }
+        // Which saved signature a document uses when it does not name one of its own.
+        if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_default_signature_id')) {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_default_signature_id` INT NULL");
+        }
+    }
+
+    /**
+     * Add a signature to the hospital's library.
+     *
+     * Written to store_signatures under type 'hmis' rather than to a table of its own: the panel
+     * already stores, uploads and serves signatures there for invoices and quotations, and a
+     * second store would mean a second place to look when one goes missing.
+     */
+    public function saveSignature(Request $request)
+    {
+        if (!auth('vendor')->check() && !hasPermission('hospital_manage', 'settings')) abort(403);
+
+        $request->validate([
+            'image' => 'required|image|mimes:png,jpg,jpeg|max:1024',
+            'staff' => 'nullable|integer',
+        ], [
+            'image.max' => 'A signature image must be under 1 MB.',
+        ]);
+
+        self::ensurePrintColumns();
+        $store_id = Helpers::get_store_id();
+
+        $sign           = new \App\Models\StoreSignature();
+        $sign->store_id = $store_id;
+        $sign->type     = 'hmis';
+        // Optional, unlike the billing signatures: a hospital's authorised signatory on a report
+        // is frequently the institution rather than a named member of staff.
+        // '0' is the owner and is stored as 0; '' is nobody in particular and stays null.
+        $sign->staff_id = $request->input('staff') === null || $request->input('staff') === ''
+            ? null
+            : (int) $request->input('staff');
+        $sign->image    = Helpers::upload('store/signature/', 'png', $request->file('image'));
+        $sign->save();
+
+        // The first one saved becomes the default, so a hospital that only ever needs one never
+        // has to notice that choosing a default was a step.
+        $current = \App\Models\StoreConfig::where('store_id', $store_id)->value('hmis_default_signature_id');
+        if (!$current) {
+            \App\Models\StoreConfig::updateOrInsert(
+                ['store_id' => $store_id],
+                ['hmis_default_signature_id' => $sign->id]
+            );
+        }
+
+        \Brian2694\Toastr\Facades\Toastr::success('Signature saved.');
+        return back();
+    }
+
+    public function deleteSignature($id)
+    {
+        if (!auth('vendor')->check() && !hasPermission('hospital_manage', 'settings')) abort(403);
+
+        self::ensurePrintColumns();
+        $store_id = Helpers::get_store_id();
+        $sign = \App\Models\StoreSignature::where('store_id', $store_id)
+            ->where('type', 'hmis')->find($id);
+
+        if (!$sign) {
+            \Brian2694\Toastr\Facades\Toastr::error('That signature is not on this hospital.');
+            return back();
+        }
+
+        $sign->delete();
+
+        // A document pointing at it falls back to the default on its own (hmis_print_sign), but
+        // the default itself has to be cleared or every document follows a signature that is gone.
+        \App\Models\StoreConfig::where('store_id', $store_id)
+            ->where('hmis_default_signature_id', $id)
+            ->update(['hmis_default_signature_id' => null]);
+
+        \Brian2694\Toastr\Facades\Toastr::success('Signature removed.');
+        return back();
     }
 
     public function saveSettings(Request $request)
@@ -309,7 +433,37 @@ class HospitalDashboardController extends Controller
         if (!\Illuminate\Support\Facades\Schema::hasColumn($cfgTable, 'hmis_discontinue_days')) {
             \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$cfgTable}` ADD COLUMN `hmis_discontinue_days` INT NULL DEFAULT NULL");
         }
+        // Which printed documents drop their letterhead, and the blank run of paper that replaces
+        // it. One JSON column rather than two per document: the list of printable documents grows,
+        // and a schema change per document added is a schema change nobody remembers to make.
+        self::ensurePrintColumns();
         \App\Models\OpdVisit::ensureDiscontinueColumns();
+
+        // Absent checkbox means the letterhead stays on, so this is built from the known list of
+        // documents rather than from whatever the form happened to post.
+        $printHeaders = [];
+        foreach (hmis_print_header_docs() as $printDoc => $printMeta) {
+            $row = (array) $request->input("print_header.{$printDoc}", []);
+
+            // Built from what the document declares, not from what the form posted: an unticked
+            // checkbox posts nothing, and reading the posted keys would make "off" unreachable.
+            $printSecs = [];
+            foreach (array_keys($printMeta['sections'] ?? []) as $printSec) {
+                $printSecs[$printSec] = !empty($row['secs'][$printSec]) ? 1 : 0;
+            }
+            $printHeaders[$printDoc] = [
+                'off'      => !empty($row['off']) ? 1 : 0,
+                'mm'       => max(0, min(120, (int) ($row['mm'] ?? 40))),
+                // The screen sends one value for both: 'off' for no signature, otherwise the id,
+                // with 0 meaning "whichever is the hospital default" so a document keeps following
+                // the default as it changes rather than being pinned at save time. Stored as two
+                // fields still, because that is what every reader of this already expects.
+                'sign'     => ($row['sign_id'] ?? 'off') === 'off' ? 0 : 1,
+                'sign_id'  => ($row['sign_id'] ?? 'off') === 'off' ? 0 : max(0, (int) $row['sign_id']),
+                'sign_pos' => (($row['sign_pos'] ?? 'right') === 'left') ? 'left' : 'right',
+                'secs'     => $printSecs,
+            ];
+        }
 
         \App\Models\StoreConfig::updateOrInsert(
             ['store_id' => $store_id],
@@ -321,6 +475,8 @@ class HospitalDashboardController extends Controller
                 'opd_consultation_validity_days' => (int) $request->opd_consultation_validity_days,
                 'hmis_vitals_enabled'            => $request->boolean('vitals_enabled') ? 1 : 0,
                 'hmis_rx_print_clinical'         => $request->boolean('rx_print_clinical') ? 1 : 0,
+                'hmis_print_headers'             => json_encode($printHeaders),
+                'hmis_default_signature_id'      => (int) $request->input('default_signature_id') ?: null,
                 'hmis_security_tab_enabled'      => $request->boolean('security_tab_enabled') ? 1 : 0,
                 'hmis_lab_work_enabled'          => $request->boolean('lab_work_enabled') ? 1 : 0,
                 // Nought, not null: null means "never said" and would hand the hospital straight

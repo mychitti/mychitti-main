@@ -214,7 +214,12 @@
             padding: 0 !important;
         }
         .btn-hmis-action-more:hover { background-color: #f1f5f9 !important; color: #334155 !important; }
-        .opd-action-menu { font-size: 13px; min-width: 170px; }
+        /* Fixed, not absolute. The menu sits inside .hmis-card (overflow:hidden, for the rounded
+           corners) and .table-responsive (a scroll container), either of which clips an absolutely
+           positioned menu on the last rows of the table. A fixed element is positioned against the
+           viewport and no ancestor's overflow can cut it; the script below puts it under its own
+           button and flips it above when the page runs out of room. */
+        .opd-action-menu { position: fixed; z-index: 1060; font-size: 13px; min-width: 170px; }
         .opd-action-menu .dropdown-item { padding: 7px 14px; }
         .opd-action-menu button.dropdown-item { border: 0; background: none; width: 100%; text-align: left; }
 
@@ -476,10 +481,11 @@
                                             </a>
                                             <div class="dropdown">
                                                 <button type="button" class="btn btn-hmis-action-more" data-toggle="dropdown"
+                                                    data-display="static"
                                                     aria-haspopup="true" aria-expanded="false" title="More Actions">
                                                     <i class="tio-more-vertical"></i>
                                                 </button>
-                                                <div class="dropdown-menu dropdown-menu-right opd-action-menu">
+                                                <div class="dropdown-menu opd-action-menu">
                                                     @if (!$visit->is_cancelled && _canViewOpdReceipt())
                                                         <a href="{{ route('vendor.opd.consultation-receipt', $visit->id) }}"
                                                             class="dropdown-item" target="_blank">
@@ -624,5 +630,48 @@
             document.getElementById('opdCancelReason').value = '';
             $('#opdCancelModal').modal('show');
         }
+
+        // The action menu is position:fixed so no ancestor's overflow can clip it, which leaves
+        // putting it in the right place to us. Bootstrap still owns opening, closing and keyboard
+        // handling -- this only sets the coordinates once it is on screen.
+        (function () {
+            function place(menu) {
+                var btn = menu.parentNode && menu.parentNode.querySelector('[data-toggle="dropdown"]');
+                if (!btn) return;
+
+                var r = btn.getBoundingClientRect();
+                var w = menu.offsetWidth;
+                var h = menu.offsetHeight;
+
+                // Right-aligned to the button, the way dropdown-menu-right used to do it, but
+                // pulled back inside the window rather than overflowing it.
+                var left = Math.min(r.right - w, window.innerWidth - w - 8);
+                var top = r.bottom + 4;
+
+                // Not enough room underneath -- the case that started this -- so it opens upward.
+                if (top + h > window.innerHeight - 8) {
+                    var above = r.top - h - 4;
+                    top = above >= 8 ? above : Math.max(8, window.innerHeight - h - 8);
+                }
+
+                menu.style.left = Math.max(8, left) + 'px';
+                menu.style.right = 'auto';
+                menu.style.top = top + 'px';
+            }
+
+            function placeOpen() {
+                [].forEach.call(document.querySelectorAll('.opd-action-menu.show'), place);
+            }
+
+            $(document).on('shown.bs.dropdown', function (e) {
+                var menu = e.target.querySelector && e.target.querySelector('.opd-action-menu');
+                if (menu) place(menu);
+            });
+
+            // Fixed to the viewport, so it would otherwise sit still while the table scrolls
+            // away underneath it.
+            window.addEventListener('scroll', placeOpen, true);
+            window.addEventListener('resize', placeOpen);
+        })();
     </script>
 @endpush

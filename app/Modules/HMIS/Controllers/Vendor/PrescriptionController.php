@@ -274,12 +274,26 @@ class PrescriptionController extends Controller
             return ['diagnosis' => $diagnosis, 'notes' => $notes];
         }
 
-        $visitId = $request->input('service_request_id') ?: $rx?->service_request_id;
-        $visit   = $visitId
-            ? \App\Models\OpdVisit::where('store_id', $this->storeId())
-                ->where('service_request_id', $visitId)
-                ->first()
-            : null;
+        // The consultation screen posts the visit's own id, which is the only signal a walk-in
+        // has: it carries no appointment and no service request, so the old service-request-only
+        // lookup found nothing and every walk-in prescription was saved with a null diagnosis and
+        // null advice — the sheet then printed neither, whatever Clinical Recording was set to.
+        $visit = null;
+        $storeId = $this->storeId();
+
+        $visitId = (int) ($request->input('opd_visit_id') ?: $rx?->opd_visit_id ?: 0);
+        if ($visitId) {
+            $visit = \App\Models\OpdVisit::where('store_id', $storeId)->find($visitId);
+        }
+
+        if (!$visit) {
+            $srId = $request->input('service_request_id') ?: $rx?->service_request_id;
+            $visit = $srId
+                ? \App\Models\OpdVisit::where('store_id', $storeId)
+                    ->where('service_request_id', $srId)
+                    ->first()
+                : null;
+        }
 
         return [
             // chief_complaint stands in when nothing was diagnosed, matching what the old mirrored

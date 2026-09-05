@@ -121,6 +121,107 @@ class CategoryController extends BaseController
         return view($this->categoryService->getViewByPosition($request['position']), compact('categories', 'language', 'defaultLang', 'mainCategories'));
     }
 
+    /**
+     * Subcategories the admin might want under a category they are about to create.
+     *
+     * Suggestions only — nothing is written here. The admin drops the ones that do not fit and
+     * saves the rest with the category, so a wrong guess costs a click rather than a cleanup.
+     */
+    /**
+     * Create the suggested subcategories the admin did not remove.
+     *
+     * They inherit the parent's image and module: the add form only uploads one picture, and a
+     * subcategory with no image at all renders as a broken tile on the storefront.
+     */
+    private function addSuggestedSubcategories(CategoryAddRequest $request, $category): void
+    {
+        $names = collect((array) $request->input('sub_names', []))
+            ->map(fn($n) => trim((string) $n))
+            ->filter(fn($n) => $n !== '' && mb_strlen($n) <= 100)
+            ->unique(fn($n) => mb_strtolower($n))
+            ->take(20);
+
+        foreach ($names as $name) {
+            try {
+                $this->categoryRepo->add(data: [
+                    'name' => $name,
+                    'image' => $category->image,
+                    'parent_id' => $category->id,
+                    'position' => 1,
+                    'module_id' => $category->module_id,
+                ]);
+            } catch (\Throwable $e) {
+                // One bad name must not lose the category that was just created, nor the rest.
+                \Illuminate\Support\Facades\Log::warning('Subcategory "' . $name . '" not created: ' . $e->getMessage());
+            }
+        }
+    }
+
+    public function suggestSubcategories(Request $request): JsonResponse
+    {
+        $request->validate(['name' => 'required|string|max:100']);
+        $name = trim($request->input('name'));
+
+        // Resolved on demand and guarded, the way AIChatController does it: a missing
+        // openai-php/client package must not take the category screen down with it.
+        if (!class_exists(\OpenAI\Factory::class)) {
+            return response()->json(['success' => false, 'message' => translate('AI is not configured on this server.')], 422);
+        }
+
+        $system = "You name subcategories for an Indian services and products marketplace.\n"
+            . "Given one category name, reply with ONLY a JSON array of 6 to 12 subcategory names.\n"
+            . "Rules: each name is 2 to 4 words, title case, specific enough that a customer would "
+            . "search for it, no duplicates, no numbering, no explanation, no text outside the array.\n"
+            . 'Example for "Repair and Service": '
+            . '["AC Repair","Home Appliance Repair","Refrigerator Repair","Washing Machine Repair",'
+            . '"Water Purifier Service","Television Repair","Microwave Repair","Geyser Repair"]';
+
+        try {
+            $reply = app(\App\Services\OpenAIService::class)->chat(
+                messages: [['role' => 'user', 'content' => $name]],
+                system: $system,
+                maxTokens: 400,
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Subcategory suggestion failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => translate('Could not reach the AI service. Add subcategories by hand.'),
+            ], 502);
+        }
+
+        // Models wrap the array in prose or a code fence often enough that trusting the whole
+        // reply to be JSON would fail intermittently, which is worse than never working.
+        $json = $reply;
+        if (preg_match('/\[.*\]/s', $reply, $m)) {
+            $json = $m[0];
+        }
+        $names = json_decode($json, true);
+
+        if (!is_array($names)) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('The AI reply could not be read. Try again.'),
+            ], 422);
+        }
+
+        $existing = $this->categoryRepo->getListWhere(filters: ['position' => 1], dataLimit: 'all')
+            ->pluck('name')->map(fn($n) => mb_strtolower(trim($n)))->all();
+
+        $names = collect($names)
+            ->filter(fn($n) => is_string($n))
+            ->map(fn($n) => trim(preg_replace('/\s+/', ' ', $n)))
+            ->filter(fn($n) => $n !== '' && mb_strlen($n) <= 100)
+            ->unique(fn($n) => mb_strtolower($n))
+            // Already in the catalogue under some other parent — offering it again invites a
+            // duplicate the admin then has to find and delete.
+            ->reject(fn($n) => in_array(mb_strtolower($n), $existing, true))
+            ->take(12)
+            ->values();
+
+        return response()->json(['success' => true, 'names' => $names]);
+    }
+
     public function add(CategoryAddRequest $request): RedirectResponse
     {
         $parentCategory = $this->categoryRepo->getFirstWhere(params: ['id' => $request['parent_id']]);
@@ -149,6 +250,13 @@ class CategoryController extends BaseController
             //throw $th;
         }
 
+
+        // The subcategories the admin kept from the suggestions. Created after the parent so they
+        // can point at it, and only for a top-level category — a subcategory of a subcategory is
+        // not a shape this catalogue has.
+        if ($request['position'] == 0) {
+            $this->addSuggestedSubcategories($request, $category);
+        }
 
         $this->translationRepo->addByModel(request: $request, model: $category, modelPath: 'App\Models\Category', attribute: 'name');
         Toastr::success($request['position'] == 0 ?    translate('messages.category_added_successfully') : translate('messages.Sub_category_added_successfully'));

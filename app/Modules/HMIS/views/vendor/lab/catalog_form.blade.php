@@ -21,6 +21,14 @@
                         <div class="fg"><label class="fl">Price ({{ \App\CentralLogics\Helpers::currency_symbol() ?? '₹' }}) *</label><input class="fi" type="number" step="0.01" name="price" value="{{ $test->price ?? '' }}" required></div>
                         <div class="fg"><label class="fl">Turnaround Time</label><input class="fi" name="tat_text" value="{{ $test->tat_text ?? '' }}" placeholder="e.g. 1–2 hours"></div>
                     </div>
+                    {{-- Printed under this test's results on every report that carries it. Copied onto the
+                         report when the order is placed, so editing it here changes what future reports say
+                         and leaves ones already issued alone. --}}
+                    <div class="fg" style="margin-bottom:12px">
+                        <label class="fl">Interpretation</label>
+                        <textarea class="fi" name="interpretation" rows="5" style="resize:vertical"
+                                  placeholder="What the result means, what raises or lowers it, and what to correlate it with. Printed under this test on the report.">{{ $test->interpretation ?? '' }}</textarea>
+                    </div>
                     <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted)"><input type="checkbox" name="is_active" value="1" {{ !$test || $test->is_active ? 'checked' : '' }}> Active (available for ordering)</label>
                 </div>
             </div>

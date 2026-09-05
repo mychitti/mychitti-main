@@ -8590,6 +8590,244 @@ if (!function_exists('hmis_rx_print_clinical')) {
     }
 }
 
+if (!function_exists('hmis_print_header_docs')) {
+    /**
+     * The printed documents whose letterhead can be switched off, and what the block holds.
+     *
+     * One catalogue so the settings screen and the documents themselves cannot drift: adding a
+     * printable document here is what puts a row on the settings page.
+     */
+    function hmis_print_header_docs(): array
+    {
+        return [
+            'prescription' => [
+                'label' => 'Prescription',
+                'hint'  => 'Clinic name, address and doctor block above the prescription sheet. '
+                         . 'Print options on the prescription itself can still override this for a single print.',
+            ],
+            'lab_report' => [
+                'label' => 'Lab report',
+                'hint'  => 'Lab name, address, GSTIN and licence lines above a printed report.',
+                // Blocks this document can be asked to leave off. Declared here so the settings
+                // screen grows a checkbox without either side being edited to match the other.
+                'sections' => [
+                    'interpretation' => 'Print the interpretation under each test',
+                ],
+            ],
+            'radiology_report' => [
+                'label' => 'Radiology report',
+                'hint'  => 'The same block above a printed scan report.',
+            ],
+            'consultation_receipt' => [
+                'label' => 'Consultation receipt',
+                'hint'  => 'Hospital name, address, phone and email above the receipt. Applies to the downloaded PDF too.',
+            ],
+            'handover_slip' => [
+                'label' => 'Handover slip',
+                'hint'  => 'Clinic name and address above the handover slip.',
+            ],
+        ];
+    }
+}
+
+if (!function_exists('hmis_print_doc_settings')) {
+    /**
+     * The stored print settings for one document, straight off store_configs.hmis_print_headers.
+     *
+     * One JSON column for every per-document print decision -- letterhead, blank space, whether a
+     * signature is printed and where -- so a new decision is a new key rather than a new column.
+     *
+     * @return array<string, mixed>
+     */
+    function hmis_print_doc_settings(string $doc, $store_id = null): array
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        if (!$store_id) {
+            return [];
+        }
+
+        if (!array_key_exists($store_id, $cache)) {
+            // Read straight through rather than asking the schema first: the column is added the
+            // first time a hospital saves its settings, and until then every store reads as bare.
+            try {
+                $raw = \App\Models\StoreConfig::where('store_id', $store_id)->value('hmis_print_headers');
+            } catch (\Throwable $e) {
+                $raw = null;
+            }
+            $decoded = json_decode((string) $raw, true);
+            $cache[$store_id] = is_array($decoded) ? $decoded : [];
+        }
+
+        return (array) ($cache[$store_id][$doc] ?? []);
+    }
+}
+
+if (!function_exists('hmis_print_header')) {
+    /**
+     * Whether one printed document carries its letterhead, and how much blank paper stands in
+     * for it when it does not.
+     *
+     * A hospital whose lab pads are pre-printed and whose handover slips are plain paper sets
+     * each document separately, which is why this is keyed per document rather than per store.
+     * Defaults to on with 40mm: every existing document keeps printing exactly as it does now
+     * until somebody chooses otherwise under Hospital Settings.
+     *
+     * @return array{off: bool, mm: int}
+     */
+    function hmis_print_header(string $doc, $store_id = null): array
+    {
+        $row = hmis_print_doc_settings($doc, $store_id);
+        $mm  = array_key_exists('mm', $row) ? (int) $row['mm'] : 40;
+
+        return [
+            'off' => !empty($row['off']),
+            'mm'  => max(0, min(120, $mm)),
+        ];
+    }
+}
+
+if (!function_exists('hmis_print_section')) {
+    /**
+     * Whether one optional block of a printed document is printed.
+     *
+     * On unless the hospital says otherwise: a block that exists because somebody wrote it should
+     * not vanish because a setting has never been visited.
+     */
+    function hmis_print_section(string $doc, string $section, $store_id = null): bool
+    {
+        $row = hmis_print_doc_settings($doc, $store_id);
+
+        return !isset($row['secs'][$section]) || (bool) $row['secs'][$section];
+    }
+}
+
+if (!function_exists('hmis_signatures')) {
+    /**
+     * Every signature this store has saved, whatever it was first saved for.
+     *
+     * Deliberately not filtered to type 'hmis': the panel has stored signatures against invoices
+     * and quotations for far longer than this screen has existed, and a clinic that has already
+     * uploaded the doctor's signature should not have to upload it a second time to put it on a
+     * report. New ones added here are still tagged 'hmis', which is what decides whether this
+     * screen offers to delete them.
+     */
+    function hmis_signatures($store_id = null)
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        if (!$store_id) {
+            return collect();
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        try {
+            return $cache[$store_id] = \App\Models\StoreSignature::with('employee')
+                ->where('store_id', $store_id)
+                ->orderBy('id')
+                ->get();
+        } catch (\Throwable $e) {
+            return $cache[$store_id] = collect();
+        }
+    }
+}
+
+if (!function_exists('hmis_signature_label')) {
+    /**
+     * Whose signature this is -- the staff member it was saved against, the owner of the account,
+     * or the hospital itself where it was saved against nobody in particular.
+     */
+    function hmis_signature_label($sign): string
+    {
+        $name = trim(($sign->employee->f_name ?? '') . ' ' . ($sign->employee->l_name ?? ''));
+        if ($name !== '') {
+            return $name;
+        }
+
+        // staff_id 0 is this screen's marker for the account owner -- frequently the doctor
+        // themselves in a single-doctor clinic, who has no staff record to be picked from a list.
+        if ((int) ($sign->staff_id ?? -1) === 0) {
+            $owner = \App\Models\Store::with('vendor')->find($sign->store_id)?->vendor;
+            $name  = $owner ? trim(($owner->f_name ?? '') . ' ' . ($owner->l_name ?? '')) : '';
+            if ($name !== '') {
+                return $name;
+            }
+        }
+
+        return 'Authorised Signatory';
+    }
+}
+
+if (!function_exists('hmis_default_signature_id')) {
+    /** The signature used by any document that does not name one of its own. */
+    function hmis_default_signature_id($store_id = null): int
+    {
+        static $cache = [];
+
+        $store_id = $store_id ?: Helpers::get_store_id();
+        if (!$store_id) {
+            return 0;
+        }
+        if (array_key_exists($store_id, $cache)) {
+            return $cache[$store_id];
+        }
+
+        try {
+            return $cache[$store_id] = (int) (\App\Models\StoreConfig::where('store_id', $store_id)
+                ->value('hmis_default_signature_id') ?? 0);
+        } catch (\Throwable $e) {
+            return $cache[$store_id] = 0;
+        }
+    }
+}
+
+if (!function_exists('hmis_print_sign')) {
+    /**
+     * The signature one printed document should carry, if any, and which side it sits on.
+     *
+     * A document set to sign but pointed at a signature that has since been deleted falls back to
+     * the hospital default rather than printing an empty box -- a report that says it was signed
+     * and shows nothing is worse than one that never claimed to be.
+     *
+     * @return array{show: bool, pos: string, url: ?string, name: string}
+     */
+    function hmis_print_sign(string $doc, $store_id = null): array
+    {
+        $none = ['show' => false, 'pos' => 'right', 'url' => null, 'name' => ''];
+
+        $cfg = hmis_print_doc_settings($doc, $store_id);
+        if (empty($cfg['sign'])) {
+            return $none;
+        }
+
+        $signs = hmis_signatures($store_id);
+        if ($signs->isEmpty()) {
+            return $none;
+        }
+
+        $id   = (int) ($cfg['sign_id'] ?? 0);
+        $sign = $id ? $signs->firstWhere('id', $id) : null;
+        if (!$sign) {
+            $default = hmis_default_signature_id($store_id);
+            $sign    = ($default ? $signs->firstWhere('id', $default) : null) ?: $signs->first();
+        }
+        if (!$sign || !$sign->image) {
+            return $none;
+        }
+
+        return [
+            'show' => true,
+            'pos'  => (($cfg['sign_pos'] ?? 'right') === 'left') ? 'left' : 'right',
+            'url'  => asset('storage/app/public/store/signature') . '/' . $sign->image,
+            'name' => hmis_signature_label($sign),
+        ];
+    }
+}
+
 if (!function_exists('hmis_daily_report_settings')) {
     /**
      * Whether this hospital wants a daily summary on WhatsApp, and what should be in it.

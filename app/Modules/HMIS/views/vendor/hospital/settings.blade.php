@@ -14,6 +14,74 @@
     .opt-empty { color: #94a3b8; font-size: 12px; padding: 10px 2px; }
 
     /* ── Settings tabs ── */
+    /* One grid, so every row's controls sit under the same heading instead of each row
+       arranging itself and the eye having to re-find them five times. */
+    .lh-grid {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) 88px 104px 186px 96px;
+        gap: 14px; align-items: center;
+    }
+    .lh-head {
+        padding-bottom: 7px; border-bottom: 1px solid #e6ebf2;
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+        color: #94a3b8;
+    }
+    .lh-row { padding: 11px 0; border-bottom: 1px solid #f1f5f9; }
+    .lh-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .lh-c { text-align: center; justify-self: center; }
+    .lh-doc { min-width: 0; }
+    .lh-name { font-size: 13px; font-weight: 600; color: #0f172a; }
+    .lh-hint { font-size: 11.5px; color: #94a3b8; line-height: 1.4; margin-top: 1px; }
+    .lh-sec {
+        display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 0;
+        font-size: 12px; font-weight: 400; color: #475569; cursor: pointer;
+    }
+    .lh-mm { display: inline-flex; align-items: center; gap: 5px; }
+    .lh-mm input { width: 62px; text-align: center; }
+    .lh-mm span { font-size: 11px; color: #94a3b8; }
+
+    /* Below the grid's comfortable width it becomes stacked rows, each control carrying the
+       heading it lost. */
+    @media (max-width: 991px) {
+        .lh-head { display: none; }
+        .lh-grid { grid-template-columns: 1fr; gap: 8px; }
+        .lh-row { padding: 14px 0; }
+        .lh-c { text-align: left; justify-self: start; }
+        .lh-grid > [data-lh-label]::before {
+            content: attr(data-lh-label) '  ';
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+            color: #94a3b8; margin-right: 8px;
+        }
+        .lh-grid > [data-lh-label] { display: flex; align-items: center; }
+    }
+
+    .hs-sig-row {
+        display: flex; align-items: center; gap: 14px;
+        padding: 9px 0; border-top: 1px solid #eef2f7;
+    }
+    .hs-sig-img {
+        flex: 0 0 120px; height: 34px; max-width: 120px;
+        object-fit: contain; object-position: left center;
+    }
+    .hs-sig-name { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 600; color: #0f172a; }
+    .hs-sig-src {
+        margin-left: 7px; padding: 1px 7px; border-radius: 4px;
+        background: #f1f5f9; color: #64748b;
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+    }
+    .hs-sig-default {
+        flex: 0 0 auto; display: flex; align-items: center; gap: 6px; margin: 0;
+        font-size: 12px; font-weight: 400; color: #64748b; cursor: pointer;
+    }
+    .hs-sig-del {
+        flex: 0 0 64px; text-align: right;
+        border: 0; background: none; padding: 0; cursor: pointer;
+        font-size: 12px; font-weight: 600; color: #94a3b8;
+    }
+    .hs-sig-del:hover { color: #dc2626; text-decoration: underline; }
+    .hs-sig-del.is-off { color: #cbd5e1; cursor: default; }
+    .hs-sig-del.is-off:hover { color: #cbd5e1; text-decoration: none; }
+
     .hs-tabbar {
         display: flex; flex-wrap: wrap; gap: 2px;
         border-bottom: 1px solid #c8d2e0; margin-bottom: 18px;
@@ -47,7 +115,19 @@
        the same left edge; the two that genuinely need the width say so. */
     .hs-pane { max-width: 900px; }
     .hs-pane[data-hs-pane="opTypes"],
-    .hs-pane[data-hs-pane="departments"] { max-width: none; }
+    .hs-pane[data-hs-pane="departments"],
+    .hs-pane[data-hs-pane="opd"],
+    .hs-pane[data-hs-pane="clinical"] { max-width: none; }
+    /* Number fields stay legible whatever the card does around them. */
+    .hs-num { max-width: 240px; }
+    /* Side by side, the inputs sit on one line even where one label wrapped and the other did
+       not — the label reserves two lines' worth either way, so nothing steps down. */
+    .hs-vf { display: flex; flex-direction: column; }
+    .hs-vf > .input-label { margin-bottom: 5px; }
+    .hs-vf > small { margin-top: 6px; line-height: 1.45; }
+    @media (min-width: 1200px) {
+        .hs-vf > .input-label { min-height: 2.6em; }
+    }
     /* Checkbox settings carry a paragraph explaining what they do, which wants a shorter measure
        than a form row does. */
     .hs-pane .card-body > label small { max-width: 62ch; }
@@ -76,14 +156,11 @@
     @php
         $hsTabs = [
             'ids'          => ['label' => 'Patient IDs',       'icon' => 'tio-label'],
-            'opd'          => ['label' => 'OP & Prescriptions','icon' => 'tio-receipt'],
-            'clinical'     => ['label' => 'Clinical Recording','icon' => 'tio-heart-outlined'],
-            'labwork'      => ['label' => 'Lab Work',          'icon' => 'tio-lab'],
+            'opd'          => ['label' => 'OP, Prescriptions & Printing','icon' => 'tio-receipt'],
+            'clinical'     => ['label' => 'Clinical & Reports','icon' => 'tio-heart-outlined'],
             'discontinue'  => ['label' => 'Abandoned Care',    'icon' => 'tio-time'],
             'opTypes'      => ['label' => 'OP Types',          'icon' => 'tio-card'],
             'departments'  => ['label' => 'Departments',       'icon' => 'tio-city'],
-            'report'       => ['label' => 'Daily Report',      'icon' => 'tio-chart-bar-4'],
-            'audit'        => ['label' => 'Access & Audit',    'icon' => 'tio-lock-outlined'],
         ];
     @endphp
 
@@ -165,10 +242,16 @@
                 {{-- Clinical Recording — what this hospital actually charts. A dental or
                      physiotherapy practice never takes a BP, and an always-on vitals card is a
                      row of dashes on every screen it appears on. --}}
+                {{-- What a prescription carries, whether vitals and lab work are tracked, and
+                     whether chart access is logged: four answers to one question — what this
+                     hospital records — plus the daily summary of it. One tab, not four. --}}
                 <div class="hs-pane" data-hs-pane="clinical">
-                <div class="card mb-3">
+                <div class="row">
+
+                <div class="col-xl-7 col-lg-6 d-flex">
+                <div class="card mb-3 w-100">
                     <div class="card-header py-2">
-                        <h6 class="mb-0"><i class="tio-heart-outlined mr-1"></i> Clinical Recording</h6>
+                        <h6 class="mb-0"><i class="tio-heart-outlined mr-1"></i> What this hospital records</h6>
                     </div>
                     <div class="card-body">
                         <label class="d-flex align-items-start mb-3" style="cursor:pointer;">
@@ -185,7 +268,7 @@
                             </span>
                         </label>
 
-                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
+                        <label class="d-flex align-items-start mb-3" style="cursor:pointer;">
                             <input type="checkbox" name="vitals_enabled" value="1" class="mr-2 mt-1"
                                    {{ old('vitals_enabled', $vitals_enabled) ? 'checked' : '' }}>
                             <span>
@@ -198,20 +281,65 @@
                                 </small>
                             </span>
                         </label>
+
+                        <label class="d-flex align-items-start mb-3" style="cursor:pointer;">
+                            <input type="checkbox" name="lab_work_enabled" value="1" class="mr-2 mt-1"
+                                   {{ old('lab_work_enabled', $lab_work_enabled) ? 'checked' : '' }}>
+                            <span>
+                                <span style="font-weight:600;">Track lab work, in-house or sent out</span>
+                                <small class="text-muted d-block" style="font-size:12px;">
+                                    Adds a Lab Work tab to the consultation screen for crowns, dentures,
+                                    lenses, ear moulds and appliances — measurements, whether your own
+                                    technician is making it or an outside lab, who handed it over and who
+                                    collected it, what stage it has reached, and a WhatsApp update to the
+                                    patient when it is ready.
+                                </small>
+                                <small class="d-block mt-2" style="font-size:11.5px;">
+                                    <span class="text-muted">Measurements and stage names used:</span>
+                                    <span class="text-dark" style="font-weight:600;">{{ $lab_work_profile['label'] }}</span>
+                                    <span class="text-muted">
+                                        ({{ implode(', ', array_map(fn($f) => $f['label'], $lab_work_profile['fields'])) }})
+                                    </span>
+                                </small>
+                                @if($lab_work_auto)
+                                    <small class="d-block text-muted mt-1" style="font-size:11.5px;">
+                                        On by default for your hospital category. Untick to hide it.
+                                    </small>
+                                @else
+                                    <small class="d-block text-muted mt-1" style="font-size:11.5px;">
+                                        Set the hospital category on your store profile to get the
+                                        measurement set for your speciality instead of the general one.
+                                    </small>
+                                @endif
+                            </span>
+                        </label>
+
+                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
+                            <input type="checkbox" name="security_tab_enabled" value="1" class="mr-2 mt-1"
+                                   {{ old('security_tab_enabled', $security_tab_enabled) ? 'checked' : '' }}>
+                            <span>
+                                <span style="font-weight:600;">Show Security &amp; Compliance tab</span>
+                                <small class="text-muted d-block" style="font-size:12px;">
+                                    Adds a Security tab to the consultation screen listing who opened and
+                                    who edited this patient's records — registrations, consultations,
+                                    prescriptions, appointments and admissions.
+                                    Switching this on is what starts recording chart access, so the trail
+                                    begins from today and earlier visits show only what was already logged.
+                                    Off, nothing is recorded and the tab is hidden.
+                                </small>
+                            </span>
+                        </label>
                     </div>
                     <div class="card-footer text-right">
                         <button type="submit" class="btn btn--primary">Save Settings</button>
                     </div>
                 </div>
 
-                </div>{{-- /pane clinical --}}
 
-                {{-- Daily report — a summary of the day on WhatsApp, off unless asked for.
-                     Sent from the platform's number rather than the hospital's: this is MyChitti
-                     reporting to its customer, not the hospital messaging a patient, so it works
-                     whether or not they have connected WhatsApp themselves. --}}
-                <div class="hs-pane" data-hs-pane="report">
-                <div class="card mb-3">
+                </div>
+
+                <div class="col-xl-5 col-lg-6 d-flex">
+                <div class="card mb-3 w-100">
                     <div class="card-header py-2">
                         <h6 class="mb-0"><i class="tio-chart-bar-4 mr-1"></i> Daily Report on WhatsApp</h6>
                     </div>
@@ -281,57 +409,19 @@
                         <button type="submit" class="btn btn--primary">Save Settings</button>
                     </div>
                 </div>
-
-                </div>{{-- /pane report --}}
-
-                <div class="hs-pane" data-hs-pane="labwork">
-                {{-- Lab Work — on by default for the specialities that actually send work out,
-                     available to everyone else on request. The measurement boxes behind the tab
-                     come from the hospital category chosen above, so the card names which set
-                     this hospital will get rather than making them save to find out. --}}
-                <div class="card mb-3">
-                    <div class="card-header py-2">
-                        <h6 class="mb-0"><i class="tio-lab mr-1"></i> Lab Work</h6>
-                    </div>
-                    <div class="card-body">
-                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
-                            <input type="checkbox" name="lab_work_enabled" value="1" class="mr-2 mt-1"
-                                   {{ old('lab_work_enabled', $lab_work_enabled) ? 'checked' : '' }}>
-                            <span>
-                                <span style="font-weight:600;">Track lab work, in-house or sent out</span>
-                                <small class="text-muted d-block" style="font-size:12px;">
-                                    Adds a Lab Work tab to the consultation screen for crowns, dentures,
-                                    lenses, ear moulds and appliances — measurements, whether your own
-                                    technician is making it or an outside lab, who handed it over and who
-                                    collected it, what stage it has reached, and a WhatsApp update to the
-                                    patient when it is ready.
-                                </small>
-                                <small class="d-block mt-2" style="font-size:11.5px;">
-                                    <span class="text-muted">Measurements and stage names used:</span>
-                                    <span class="text-dark" style="font-weight:600;">{{ $lab_work_profile['label'] }}</span>
-                                    <span class="text-muted">
-                                        ({{ implode(', ', array_map(fn($f) => $f['label'], $lab_work_profile['fields'])) }})
-                                    </span>
-                                </small>
-                                @if($lab_work_auto)
-                                    <small class="d-block text-muted mt-1" style="font-size:11.5px;">
-                                        On by default for your hospital category. Untick to hide it.
-                                    </small>
-                                @else
-                                    <small class="d-block text-muted mt-1" style="font-size:11.5px;">
-                                        Set the hospital category on your store profile to get the
-                                        measurement set for your speciality instead of the general one.
-                                    </small>
-                                @endif
-                            </span>
-                        </label>
-                    </div>
-                    <div class="card-footer text-right">
-                        <button type="submit" class="btn btn--primary">Save Settings</button>
-                    </div>
                 </div>
+                </div>{{-- /row --}}
+                </div>{{-- /pane clinical --}}
 
-                </div>{{-- /pane labwork --}}
+                {{-- Printed documents. A clinic that has its letterhead printed on the pad does
+                     not want it printed again on top, and the blank run of paper is what keeps the
+                     text clear of what is already there. Per document rather than per hospital:
+
+                {{-- Daily report — a summary of the day on WhatsApp, off unless asked for.
+                     Sent from the platform's number rather than the hospital's: this is MyChitti
+                     reporting to its customer, not the hospital messaging a patient, so it works
+                     whether or not they have connected WhatsApp themselves. --}}
+
 
                 <div class="hs-pane" data-hs-pane="discontinue">
                 {{-- Discontinuing care nobody came back for. On everywhere at the platform's 30
@@ -394,76 +484,68 @@
                 {{-- Records Access & Audit — off unless a hospital asks for it. Switching it on
                      is what starts writing the trail, not just what reveals the tab, so a clinic
                      that will never read it never accumulates the rows. --}}
-                <div class="hs-pane" data-hs-pane="audit">
-                <div class="card mb-3">
-                    <div class="card-header py-2">
-                        <h6 class="mb-0"><i class="tio-lock-outlined mr-1"></i> Records Access &amp; Audit</h6>
-                    </div>
-                    <div class="card-body">
-                        <label class="d-flex align-items-start mb-0" style="cursor:pointer;">
-                            <input type="checkbox" name="security_tab_enabled" value="1" class="mr-2 mt-1"
-                                   {{ old('security_tab_enabled', $security_tab_enabled) ? 'checked' : '' }}>
-                            <span>
-                                <span style="font-weight:600;">Show Security &amp; Compliance tab</span>
-                                <small class="text-muted d-block" style="font-size:12px;">
-                                    Adds a Security tab to the consultation screen listing who opened and
-                                    who edited this patient's records — registrations, consultations,
-                                    prescriptions, appointments and admissions.
-                                    Switching this on is what starts recording chart access, so the trail
-                                    begins from today and earlier visits show only what was already logged.
-                                    Off, nothing is recorded and the tab is hidden.
-                                </small>
-                            </span>
-                        </label>
-                    </div>
-                    <div class="card-footer text-right">
-                        <button type="submit" class="btn btn--primary">Save Settings</button>
-                    </div>
-                </div>
-
-                </div>{{-- /pane audit --}}
 
                 {{-- OP Consultation Validity --}}
                 <div class="hs-pane" data-hs-pane="opd">
-                <div class="card mb-3">
+                <div class="row">
+
+                <div class="col-xl-5 col-lg-6 d-flex">
+                <div class="card mb-3 w-100">
                     <div class="card-header py-2">
                         <h6 class="mb-0"><i class="tio-receipt mr-1"></i> OP Consultation Validity</h6>
                     </div>
                     <div class="card-body">
                         {{-- Two halves of one rule — how many visits, for how long — so they are
                              read together rather than stacked a screen apart. --}}
+                        {{-- col-xl-6, not col-md-4: this card is itself in a half-width column, and
+                             an inner column sized against the viewport does not know that. At lg the
+                             card halved while the fields did not, so the longer label wrapped, its
+                             input dropped a line, and the two stopped lining up. --}}
                         <div class="form-row">
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-xl-6 col-12 hs-vf">
                             <label class="input-label">Consultations per paid OP <span class="text-danger">*</span></label>
                             <input type="number" name="opd_consultation_count"
-                                   class="form-control @error('opd_consultation_count') is-invalid @enderror"
+                                   class="form-control hs-num @error('opd_consultation_count') is-invalid @enderror"
                                    value="{{ old('opd_consultation_count', $opd_consultation_count) }}" min="1" max="50">
                             <small class="text-muted">How many consultations one paid OP receipt covers (e.g. 2).</small>
                             @error('opd_consultation_count')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
-                        <div class="form-group col-md-4 mb-0">
+                        <div class="form-group col-xl-6 col-12 mb-0 hs-vf">
                             <label class="input-label">Validity (days) <span class="text-danger">*</span></label>
                             <input type="number" name="opd_consultation_validity_days"
-                                   class="form-control @error('opd_consultation_validity_days') is-invalid @enderror"
+                                   class="form-control hs-num @error('opd_consultation_validity_days') is-invalid @enderror"
                                    value="{{ old('opd_consultation_validity_days', $opd_consultation_validity_days) }}" min="1" max="365">
                             <small class="text-muted">Days a paid OP stays valid for follow-up visits (e.g. 7 = 1 week).</small>
                             @error('opd_consultation_validity_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         </div>
 
-                        {{-- Prescription languages — which ones the doctor is offered when writing
-                             an Rx. Everything not ticked stays out of that dropdown, so a clinic
-                             that writes English and Tamil never scrolls past twenty others. --}}
-                        <div class="col-12">
-                            <hr class="mt-1 mb-3">
-                            <label class="input-label mb-1">Prescription Languages</label>
-                            <p class="text-muted mb-2" style="font-size:12px;">
-                                Tick the languages your doctors write prescriptions in. Only these appear
-                                in the language dropdown on the prescription screen.
-                            </p>
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </div>
+
+
+                </div>
+
+                {{-- Prescription languages, on a card of their own: what a paid OP receipt covers
+                     and which scripts a doctor may write in are two unrelated decisions, and one
+                     card holding both is why this tab read as a wall. --}}
+                <div class="col-xl-7 col-lg-6 d-flex">
+                <div class="card mb-3 w-100">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-globe mr-1"></i> Prescription Languages</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3" style="font-size:12px;">
+                            Tick the languages your doctors write prescriptions in. Only these appear in
+                            the language dropdown on the prescription screen, so a clinic that writes
+                            English and Tamil never scrolls past twenty others.
+                        </p>
                             <div class="row no-gutters" style="max-height:220px; overflow-y:auto;">
                                 @foreach (\App\Models\Prescription::LANGUAGES as $code => $label)
-                                    <div class="col-md-4 col-sm-6">
+                                    <div class="col-md-6">
                                         <label class="d-flex align-items-center mb-1"
                                             style="font-size:12.5px; cursor:{{ $code === 'en' ? 'default' : 'pointer' }};">
                                             <input type="checkbox" name="rx_languages[]" value="{{ $code }}"
@@ -479,12 +561,193 @@
                                 @endforeach
                             </div>
                             @error('rx_languages.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
                     </div>
                     <div class="card-footer text-right">
                         <button type="submit" class="btn btn--primary">Save Settings</button>
                     </div>
                 </div>
+
+                </div>
+
+                {{-- The two below keep the full line: a document row runs checkbox, hint, blank
+                     space, position and signature across it, and a signature row wants its preview
+                     and its controls on one line rather than wrapped into a stack. --}}
+                <div class="col-12">
+                {{-- Letterhead on the documents this hospital prints. Sits with the prescription settings
+                     rather than on a tab of its own: it is the same question as the prescription
+                     sheet above — what a printed page carries before the clinical content starts. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-print mr-1"></i> Letterhead on printed documents</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3" style="font-size:12px;">
+                            Switch a document off where you print it on paper that already carries your
+                            letterhead. The blank space holds the print clear of what is pre-printed at
+                            the top of the sheet.
+                        </p>
+
+                        {{-- Column headings rather than a label on every control: "Print signature",
+                             "on the" and "leave … mm blank" were repeating once per document, five
+                             times over, which is most of what made this card hard to read. Said once
+                             at the top, each row is then just its answers. --}}
+                        <div class="lh-grid lh-head">
+                            <span>Document</span>
+                            <span class="lh-c">No header</span>
+                            <span class="lh-c">Blank top</span>
+                            <span>Signature</span>
+                            <span class="lh-c">Side</span>
+                        </div>
+
+                        @foreach ($print_header_docs as $hsDoc => $hsMeta)
+                            @php
+                                $hsVal = $print_headers[$hsDoc] ?? [];
+                                $hsOff = $hsVal['off'] ?? false;
+                                $hsMm  = $hsVal['mm'] ?? 40;
+                                $hsSig = $hsVal['sign'] ?? false;
+                                $hsSid = $hsVal['sign_id'] ?? 0;
+                                $hsPos = ($hsVal['sign_pos'] ?? 'right') === 'left' ? 'left' : 'right';
+                                // One control, not a checkbox plus a select saying the same thing:
+                                // "off" is a value the signature list can hold like any other.
+                                $hsSigVal = old("print_header.{$hsDoc}.sign_id", $hsSig ? $hsSid : 'off');
+                            @endphp
+                            <div class="lh-grid lh-row">
+                                <div class="lh-doc">
+                                    <div class="lh-name">{{ $hsMeta['label'] }}</div>
+                                    <div class="lh-hint">{{ $hsMeta['hint'] }}</div>
+                                    @foreach ($hsMeta['sections'] ?? [] as $hsSecKey => $hsSecLabel)
+                                        @php $hsSecOn = $hsVal['secs'][$hsSecKey] ?? true; @endphp
+                                        <label class="lh-sec">
+                                            <input type="checkbox" name="print_header[{{ $hsDoc }}][secs][{{ $hsSecKey }}]" value="1"
+                                                   {{ old("print_header.{$hsDoc}.secs.{$hsSecKey}", $hsSecOn) ? 'checked' : '' }}>
+                                            {{ $hsSecLabel }}
+                                        </label>
+                                    @endforeach
+                                </div>
+
+                                <div class="lh-c" data-lh-label="No header">
+                                    <input type="checkbox" name="print_header[{{ $hsDoc }}][off]" value="1"
+                                           {{ old("print_header.{$hsDoc}.off", $hsOff) ? 'checked' : '' }}>
+                                </div>
+
+                                <div class="lh-c" data-lh-label="Blank top">
+                                    <span class="lh-mm">
+                                        <input type="number" name="print_header[{{ $hsDoc }}][mm]" class="form-control form-control-sm"
+                                               min="0" max="120" step="5"
+                                               value="{{ old("print_header.{$hsDoc}.mm", $hsMm) }}">
+                                        <span>mm</span>
+                                    </span>
+                                </div>
+
+                                <div data-lh-label="Signature">
+                                    <select name="print_header[{{ $hsDoc }}][sign_id]" class="form-control form-control-sm"
+                                            {{ $signatures->isEmpty() ? 'disabled' : '' }}>
+                                        <option value="off" {{ (string) $hsSigVal === 'off' ? 'selected' : '' }}>Don't print</option>
+                                        <option value="0" {{ (string) $hsSigVal === '0' ? 'selected' : '' }}>Hospital default</option>
+                                        @foreach ($signatures as $hsSign)
+                                            <option value="{{ $hsSign->id }}" {{ (string) $hsSigVal === (string) $hsSign->id ? 'selected' : '' }}>
+                                                {{ hmis_signature_label($hsSign) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="lh-c" data-lh-label="Side">
+                                    <select name="print_header[{{ $hsDoc }}][sign_pos]" class="form-control form-control-sm">
+                                        <option value="right" {{ $hsPos === 'right' ? 'selected' : '' }}>Right</option>
+                                        <option value="left"  {{ $hsPos === 'left'  ? 'selected' : '' }}>Left</option>
+                                    </select>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="card-footer text-right">
+                        <button type="submit" class="btn btn--primary">Save Settings</button>
+                    </div>
+                </div>
+
+                </div>
+
+                <div class="col-12">
+                {{-- The library every signature select above draws from. A card of its own because
+                     it is a store of things, not another per-document switch, and reading it as one
+                     more row of the letterhead card is what made that card hard to scan. --}}
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0"><i class="tio-edit mr-1"></i> Signatures</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3" style="font-size:12px;">
+                            Used on any document on the card above. The default is what a document uses
+                            unless it names one of its own, so a hospital with a single signature never
+                            has to choose one.
+                        </p>
+
+                        @forelse ($signatures as $hsSign)
+                            <div class="hs-sig-row">
+                                <img class="hs-sig-img" alt="Signature"
+                                     src="{{ asset('storage/app/public/store/signature') . '/' . $hsSign->image }}">
+                                <span class="hs-sig-name">
+                                    {{ hmis_signature_label($hsSign) }}
+                                    {{-- Where it came from, said once beside the name rather than as a
+                                         sentence repeated down the whole list. --}}
+                                    @if ($hsSign->type !== 'hmis')
+                                        <span class="hs-sig-src">{{ $hsSign->type ?: 'billing' }}</span>
+                                    @endif
+                                </span>
+                                <label class="hs-sig-default">
+                                    <input type="radio" name="default_signature_id" value="{{ $hsSign->id }}"
+                                           {{ (int) old('default_signature_id', $default_signature_id) === (int) $hsSign->id ? 'checked' : '' }}>
+                                    Default
+                                </label>
+                                {{-- Removable only where it was added here. One saved against invoices
+                                     is still signing invoices, and this is not the screen on which to
+                                     discover that. --}}
+                                @if ($hsSign->type === 'hmis')
+                                    <button type="submit" form="hmisSignDel{{ $hsSign->id }}" class="hs-sig-del"
+                                            onclick="return confirm('Remove this signature? Any document set to use it falls back to the default.')">
+                                        Remove
+                                    </button>
+                                @else
+                                    <span class="hs-sig-del is-off" title="Saved for {{ $hsSign->type ?: 'billing' }} — remove it on that screen">&mdash;</span>
+                                @endif
+                            </div>
+                        @empty
+                            <p class="text-muted mb-2" style="font-size:12px;">No signatures saved yet.</p>
+                        @endforelse
+
+                            <div class="d-flex align-items-end flex-wrap border-top pt-3 mt-2" style="gap:10px;">
+                                <span style="flex:1 1 220px; min-width:0;">
+                                    <label class="input-label mb-1" style="font-size:12px;">Signature image</label>
+                                    <input type="file" name="image" form="hmisSignForm" accept="image/png,image/jpeg"
+                                           class="form-control form-control-sm" required>
+                                    <small class="text-muted" style="font-size:11px;">PNG on a transparent background prints best. Under 1 MB.</small>
+                                </span>
+                                <span style="flex:0 1 220px; min-width:0;">
+                                    <label class="input-label mb-1" style="font-size:12px;">Whose signature</label>
+                                    <select name="staff" form="hmisSignForm" class="form-control form-control-sm">
+                                        <option value="">The hospital (no name)</option>
+                                        @if ($signature_owner)
+                                            <option value="0">
+                                                {{ trim(($signature_owner->f_name ?? '') . ' ' . ($signature_owner->l_name ?? '')) ?: 'Account owner' }}
+                                                (owner)
+                                            </option>
+                                        @endif
+                                        @foreach ($signature_staff as $hsGroup => $hsMembers)
+                                            <optgroup label="{{ $hsGroup }}">
+                                                @foreach ($hsMembers as $hsStaff)
+                                                    <option value="{{ $hsStaff->id }}">{{ trim($hsStaff->f_name . ' ' . $hsStaff->l_name) }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                </span>
+                                <button type="submit" form="hmisSignForm" class="btn btn-sm btn-outline-primary">Add signature</button>
+                            </div>
+                    </div>
+                </div>
+                </div>
+                </div>{{-- /row --}}
                 </div>{{-- /pane opd --}}
 
             </div>
@@ -494,6 +757,16 @@
     {{-- OP Types — how an OPD visit is paid for. Its own card with its own small forms, because
          the settings form above posts as one block and a nested form is not valid HTML. That is
          also why this pane sits outside the form rather than inside it. --}}
+    {{-- Out here on purpose: these post files and deletions of their own, and a form cannot be
+         nested inside another. The controls that drive them sit up in the printing card and reach
+         them by id through the HTML form attribute. --}}
+    <form id="hmisSignForm" action="{{ route('vendor.hospital.signature.save') }}" method="POST"
+          enctype="multipart/form-data" class="d-none">@csrf</form>
+    @foreach ($signatures->where('type', 'hmis') as $hsSign)
+        <form id="hmisSignDel{{ $hsSign->id }}" action="{{ route('vendor.hospital.signature.delete', $hsSign->id) }}"
+              method="POST" class="d-none">@csrf</form>
+    @endforeach
+
     <div class="hs-pane" data-hs-pane="opTypes">
     <div class="card mb-3" id="opTypes">
         <div class="card-header py-2 d-flex justify-content-between align-items-center">

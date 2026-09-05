@@ -25,6 +25,9 @@
         .sig{flex:1;text-align:center}
         .sig img{max-height:64px;max-width:100%;display:block;margin:0 auto 2px}
         .sig .line{border-top:1px solid #9CA3AF;padding-top:4px;font-size:10.5px;color:#4B5563}
+        /* A ruled line is somewhere to sign. Once a signature prints there is nothing left to
+           rule off, so it goes. */
+        .sig.has-img .line{border-top:0;padding-top:0}
         .sig .who{font-weight:700;color:#0D1117;font-size:11.5px}
         .foot{margin-top:22px;font-size:9.5px;color:#9CA3AF;text-align:center;line-height:1.5}
         .mono{font-family:'DM Mono',monospace}
@@ -41,7 +44,11 @@
         $dirFg    = $inbound ? '#065F46' : '#92400E';
     @endphp
 
-    <div class="head">
+    @php $hdr = hmis_print_header('handover_slip', $handover->store_id ?? null); @endphp
+    @if ($hdr['off'] && $hdr['mm'])
+        <div style="height:{{ $hdr['mm'] }}mm" aria-hidden="true"></div>
+    @endif
+    <div class="head" @if ($hdr['off']) style="display:none" @endif>
         <div>
             <div class="name">{{ $store->name ?? 'Clinic' }}</div>
             <div class="meta">
@@ -132,7 +139,8 @@
         </div>
     @endif
 
-    <div class="sigs">
+    @php $sign = hmis_print_sign('handover_slip', $handover->store_id ?? null); @endphp
+    <div class="sigs" @if ($sign['show'] && $sign['pos'] === 'left') style="flex-direction:row-reverse" @endif>
         <div class="sig">
             @if($handover->mediaUrl('signature_path'))
                 <img src="{{ $handover->mediaUrl('signature_path') }}" alt="">
@@ -142,8 +150,12 @@
                 {{ $handover->lab_name ?: 'Lab representative' }}
             </div>
         </div>
-        <div class="sig">
-            <div class="line" style="margin-top:{{ $handover->mediaUrl('signature_path') ? '66px' : '0' }}">
+        <div class="sig {{ $sign['show'] ? 'has-img' : '' }}">
+            @if ($sign['show'])
+                <img src="{{ $sign['url'] }}" alt="Signature"
+                     style="display:block;height:46px;max-width:170px;object-fit:contain;margin:0 0 2px">
+            @endif
+            <div class="line" style="margin-top:{{ $sign['show'] ? '0' : ($handover->mediaUrl('signature_path') ? '66px' : '0') }}">
                 <span class="who">{{ $handover->staff_name }}</span><br>
                 For {{ $store->name ?? 'the clinic' }}
             </div>

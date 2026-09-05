@@ -58,7 +58,37 @@ class HmisWhatsAppController extends Controller
     public function prescriptionPdf(Request $request, $id)
     {
         $rx = Prescription::where('store_id', $this->storeId())->findOrFail($id);
-        return $this->done(HmisWhatsAppShare::prescriptionPdf($rx, $this->phone($request)));
+        return $this->done(HmisWhatsAppShare::prescriptionPdf(
+            $rx,
+            $this->phone($request),
+            $this->printOptions($request)
+        ));
+    }
+
+    /**
+     * The Print options the sender had on screen, so the attachment says exactly what the sheet
+     * beside them said. Read key by key rather than trusted wholesale: this arrives from the
+     * browser and it decides what a patient is and is not told about their own diagnosis.
+     */
+    private function printOptions(Request $request): array
+    {
+        $raw = json_decode((string) $request->input('print_opts'), true);
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $secs = [];
+        foreach (['patient', 'diagnosis', 'meds', 'advice', 'followup'] as $key) {
+            if (isset($raw['secs'][$key])) {
+                $secs[$key] = (bool) $raw['secs'][$key];
+            }
+        }
+
+        return [
+            'header' => (($raw['header'] ?? 'with') === 'without') ? 'without' : 'with',
+            'blank'  => max(0, min(120, (int) ($raw['blank'] ?? 0))),
+            'secs'   => $secs,
+        ];
     }
 
     public function medicines(Request $request, $id)

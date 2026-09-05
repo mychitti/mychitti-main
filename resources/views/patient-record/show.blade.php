@@ -21,6 +21,15 @@
         'radiology'    => 'Radiology Report',
     ];
     $title = $titles[$kind] ?? 'Health Record';
+
+    // Print options, when this render came from "Send PDF on WhatsApp" -- the sender's choices on
+    // the prescription screen, so the attachment says what the sheet beside them said. Absent
+    // everywhere else (the public record link, every other kind), and absent means print it all,
+    // which is what this page has always done.
+    $print      = $print ?? [];
+    $rxSection  = fn ($key) => !isset($print['secs'][$key]) || $print['secs'][$key];
+    $hideHeader = ($print['header'] ?? 'with') === 'without';
+    $headSpace  = $hideHeader ? max(0, min(120, (int) ($print['blank'] ?? 0))) : 0;
 @endphp
 <!doctype html>
 <html lang="en">
@@ -80,6 +89,10 @@
 <body>
 <div class="wrap">
     <div class="card">
+        @if ($headSpace)
+            <div style="height:{{ $headSpace }}mm;"></div>
+        @endif
+        @if (!$hideHeader)
         <div class="clinic">
             <h1>{{ $store->name ?? 'Health Record' }}</h1>
             @if (!empty($store->address))
@@ -89,9 +102,11 @@
                 <p>Ph: {{ $store->phone }}</p>
             @endif
         </div>
+        @endif
 
         <div class="kind">{{ $title }}</div>
 
+        @if ($rxSection('patient'))
         <div class="meta">
             <div>
                 <span>Patient</span>
@@ -117,6 +132,7 @@
                 {{ $on ? \Carbon\Carbon::parse($on)->format('d M Y') : '—' }}
             </div>
         </div>
+        @endif
     </div>
 
     @if ($kind === 'visit_registered' && filled($record->token_number))
@@ -184,13 +200,14 @@
     @endif
 
     @if (in_array($kind, ['prescription', 'medicines']))
-        @if (filled($record->diagnosis))
+        @if (filled($record->diagnosis) && $rxSection('diagnosis'))
             <div class="card">
                 <h2>{{ $P['diagnosis'] }}</h2>
                 <div>{{ $PT['diagnosis'] ?? $record->diagnosis }}</div>
             </div>
         @endif
 
+        @if ($rxSection('meds'))
         <div class="card">
             <h2>{{ $P['your_medicines'] }}</h2>
             <div class="scroll">
@@ -223,6 +240,7 @@
                 </table>
             </div>
         </div>
+        @endif
 
         <div class="card">
             <h2>{{ $P['remember'] }}</h2>
@@ -231,14 +249,14 @@
             <div class="note">{{ str_replace('{hospital}', $store->name ?? 'the hospital', $P['remember_body']) }}</div>
         </div>
 
-        @if (filled($record->notes))
+        @if (filled($record->notes) && $rxSection('advice'))
             <div class="card">
                 <h2>{{ $P['doctor_notes'] }}</h2>
                 <div class="note">{{ $PT['notes'] ?? $record->notes }}</div>
             </div>
         @endif
 
-        @if ($record->follow_up_date)
+        @if ($record->follow_up_date && $rxSection('followup'))
             <div class="card">
                 <h2>{{ $P['next_visit'] }}</h2>
                 <div>{{ \Carbon\Carbon::parse($record->follow_up_date)->format('d M Y') }}</div>

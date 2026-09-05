@@ -26,6 +26,14 @@
         .crit td{background:#FFEBEE}
         .foot{margin-top:46px;display:flex;justify-content:space-between;font-size:11px;color:#4B5563}
         .sign .line{border-top:1px solid #9CA3AF;width:190px;margin-top:34px;padding-top:4px;text-align:center}
+        .interp td{padding:0 !important;border:0 !important}
+        .interp-box{border:1px solid #D1D5DB;border-radius:4px;padding:8px 10px;margin:6px 0 12px}
+        .interp-title{font-size:10.5px;font-weight:700;color:#111827;margin-bottom:3px}
+        .interp-body{font-size:10.5px;line-height:1.5;color:#374151;white-space:pre-line;text-align:justify}
+        .sign-img{display:block;height:52px;max-width:190px;object-fit:contain;margin:0 auto -4px}
+        /* A ruled line is somewhere to sign. Once a signature prints there is nothing left to
+           rule off, so it goes. */
+        .sign.has-img .line{margin-top:2px;border-top:0;padding-top:0}
         @media print{.rp-actions{display:none}body{padding:0}}
     </style>
 </head>
@@ -37,7 +45,11 @@
         $doc = $order->doctorProfile ? 'Dr. ' . trim(($order->doctorProfile->employee->f_name ?? '') . ' ' . ($order->doctorProfile->employee->l_name ?? '')) : ($order->referred_by ?: '—');
     @endphp
 
-    <div class="head">
+    @php $hdr = hmis_print_header('lab_report', $order->store_id ?? null); @endphp
+    @if ($hdr['off'] && $hdr['mm'])
+        <div style="height:{{ $hdr['mm'] }}mm" aria-hidden="true"></div>
+    @endif
+    <div class="head" @if ($hdr['off']) style="display:none" @endif>
         <div>
             <div class="name">{{ $letterhead['name'] }}</div>
             <div class="meta">{{ $letterhead['address'] }}</div>
@@ -84,6 +96,18 @@
                         <td class="{{ $r->result_flag }}">{{ $r->result_flag === 'H' ? 'HIGH' : ($r->result_flag === 'L' ? 'LOW' : ($r->result_flag === 'N' ? 'Normal' : '—')) }}{{ $r->is_critical ? ' (CRITICAL)' : '' }}</td>
                     </tr>
                 @endforeach
+                @if (filled($item->interpretation) && hmis_print_section('lab_report', 'interpretation', $order->store_id ?? null))
+                    {{-- Inside the table so it stays with its own test when the report runs over a
+                         page, rather than collecting at the end away from the values it explains. --}}
+                    <tr class="interp">
+                        <td colspan="5">
+                            <div class="interp-box">
+                                <div class="interp-title">Interpretation</div>
+                                <div class="interp-body">{{ $item->interpretation }}</div>
+                            </div>
+                        </td>
+                    </tr>
+                @endif
             @endforeach
         </tbody>
     </table>
@@ -92,14 +116,23 @@
         <div style="margin-top:12px;font-size:11px;color:#4B5563"><strong>Note:</strong> {{ $order->technician_notes }}</div>
     @endif
 
-    <div class="foot">
+    @php $sign = hmis_print_sign('lab_report', $order->store_id ?? null); @endphp
+    {{-- row-reverse rather than a second block: the footer is two children either side of the
+         page, so reversing them is what moving the signature to the left actually means. --}}
+    <div class="foot" @if ($sign['show'] && $sign['pos'] === 'left') style="flex-direction:row-reverse" @endif>
         <div>
             <div><strong>Legend:</strong> <span class="H">▲ High</span> &nbsp; <span class="L">▼ Low</span> &nbsp; <span class="N">Normal</span></div>
             <div style="margin-top:6px">*Electronically generated report. Relates only to the sample(s) tested.</div>
         </div>
-        <div class="sign">
-            <div class="line">{{ $order->analysed_by ?: 'Analysed By' }}</div>
-            <div class="line">{{ $order->verified_by_name ?: 'Verified Pathologist' }}</div>
+        <div class="sign {{ $sign['show'] ? 'has-img' : '' }}">
+            @if ($sign['show'])
+                <img class="sign-img" src="{{ $sign['url'] }}" alt="Signature">
+            @else
+                {{-- Dropped once a real signature prints: a signed block above an empty ruled line
+                     for the same attribution reads as a report nobody finished signing. --}}
+                <div class="line">{{ $order->analysed_by ?: 'Analysed By' }}</div>
+            @endif
+            <div class="line">{{ $order->verified_by_name ?: ($sign['show'] ? $sign['name'] : 'Verified Pathologist') }}</div>
         </div>
     </div>
 </body>

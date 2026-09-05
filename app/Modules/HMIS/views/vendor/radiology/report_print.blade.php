@@ -22,6 +22,10 @@
         .crit{background:#FFEBEE;border:1px solid #C62828;border-radius:8px;padding:10px 12px;margin-top:12px;color:#C62828;font-weight:600;font-size:12px}
         .foot{margin-top:46px;display:flex;justify-content:space-between;font-size:11px;color:#4B5563}
         .sign .line{border-top:1px solid #9CA3AF;width:190px;margin-top:34px;padding-top:4px;text-align:center}
+        .sign-img{display:block;height:52px;max-width:190px;object-fit:contain;margin:0 auto -4px}
+        /* A ruled line is somewhere to sign. Once a signature prints there is nothing left to
+           rule off, so it goes. */
+        .sign.has-img .line{margin-top:2px;border-top:0;padding-top:0}
         @media print{.rp-actions{display:none}body{padding:0}}
     </style>
 </head>
@@ -31,7 +35,11 @@
         $age = $study->patient?->dob ? \Carbon\Carbon::parse($study->patient->dob)->age . ' Years' : '—';
         $doc = $study->doctorProfile ? 'Dr. ' . trim(($study->doctorProfile->employee->f_name ?? '') . ' ' . ($study->doctorProfile->employee->l_name ?? '')) : ($study->referred_by ?: '—');
     @endphp
-    <div class="head">
+    @php $hdr = hmis_print_header('radiology_report', $study->store_id ?? null); @endphp
+    @if ($hdr['off'] && $hdr['mm'])
+        <div style="height:{{ $hdr['mm'] }}mm" aria-hidden="true"></div>
+    @endif
+    <div class="head" @if ($hdr['off']) style="display:none" @endif>
         <div>
             <div class="name">{{ $letterhead['name'] }}</div>
             <div class="meta">{{ $letterhead['address'] }}</div>
@@ -72,9 +80,15 @@
         <div class="crit">🚨 CRITICAL FINDING — referring doctor notified{{ $study->critical_notified_to ? ' (' . $study->critical_notified_to . ')' : '' }}.</div>
     @endif
 
-    <div class="foot">
+    @php $sign = hmis_print_sign('radiology_report', $study->store_id ?? null); @endphp
+    <div class="foot" @if ($sign['show'] && $sign['pos'] === 'left') style="flex-direction:row-reverse" @endif>
         <div style="font-size:10px">*Electronically generated radiology report.</div>
-        <div class="sign"><div class="line">{{ $study->radiologist ?: 'Reporting Radiologist' }}</div></div>
+        <div class="sign {{ $sign['show'] ? 'has-img' : '' }}">
+            @if ($sign['show'])
+                <img class="sign-img" src="{{ $sign['url'] }}" alt="Signature">
+            @endif
+            <div class="line">{{ $study->radiologist ?: ($sign['show'] ? $sign['name'] : 'Reporting Radiologist') }}</div>
+        </div>
     </div>
 </body>
 </html>

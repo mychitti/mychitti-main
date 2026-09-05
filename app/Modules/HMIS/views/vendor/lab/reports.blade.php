@@ -28,12 +28,25 @@
                         @else<span class="pill pill-green" style="font-size:9px">All Normal</span>@endif
                     </div>
                     <div>@if ($o->status === 'sent')<span class="pill pill-green">Sent</span>@else<span class="pill pill-teal">Verified</span>@endif</div>
-                    <div style="display:flex;gap:4px">
+                    <div style="display:flex;gap:4px;flex-wrap:wrap">
                         <a href="{{ route('vendor.lab.orders.report', $o->id) }}" target="_blank" class="btn btn-ghost btn-xs">View</a>
                         @if (hasPermission('lab_report', 'send'))<a href="{{ route('vendor.lab.orders.send', $o->id) }}" class="btn btn-primary btn-xs">{{ $o->status === 'sent' ? 'Resend' : 'Send' }}</a>@endif
-                        {{-- No WhatsApp button: the patient's copy goes out on its own when the
-                             report is verified and finalized, if the hospital turned "Lab report"
-                             on under Notification Settings (LabController::verify). --}}
+                        {{-- The patient's copy goes out on its own when the report is verified, if
+                             the hospital turned "Lab report" on under Notification Settings
+                             (LabController::verify). This is the by-hand send for when that did not
+                             apply: the number was wrong at the time, or the patient lost the link. --}}
+                        @include('hmis::vendor.shared._wa_send', [
+                            'size'  => 'xs',
+                            'label' => '',
+                            'disabled' => filled($o->patient->phone ?? null) ? null : 'This patient has no phone number on file',
+                            'items' => [
+                                hasPermission('lab_report', 'send') ? [
+                                    'label' => 'Lab report',
+                                    'hint'  => 'The results, as a link the patient opens',
+                                    'url'   => route('vendor.hmis-whatsapp.lab-report', $o->id),
+                                ] : null,
+                            ],
+                        ])
                         <a href="{{ route('vendor.lab.orders.report', $o->id) }}" target="_blank" class="btn btn-outline btn-xs">🖨</a>
                     </div>
                 </div>

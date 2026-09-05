@@ -9,6 +9,9 @@ Route::get('hospital/dashboard',     [HospitalDashboardController::class, 'index
 Route::get('hospital/staff-dashboard',[HospitalDashboardController::class, 'index'])->name('hospital.staff-dashboard')->middleware('permission:hospital_manage,dashboard');
 Route::get('hospital/settings',      [HospitalDashboardController::class, 'settings'])->name('hospital.settings')->middleware('permission:hospital_manage,settings');
 Route::post('hospital/settings',     [HospitalDashboardController::class, 'saveSettings'])->name('hospital.settings.save')->middleware('permission:hospital_manage,settings');
+// The hospital's signature library, on the same permission as the settings screen it lives on.
+Route::post('hospital/settings/signature',            [HospitalDashboardController::class, 'saveSignature'])->name('hospital.signature.save')->middleware('permission:hospital_manage,settings');
+Route::post('hospital/settings/signature/{id}/delete',[HospitalDashboardController::class, 'deleteSignature'])->name('hospital.signature.delete')->middleware('permission:hospital_manage,settings');
 Route::post('hospital/settings/daily-report/test', [HospitalDashboardController::class, 'testDailyReport'])->name('hospital.daily-report.test')->middleware('permission:hospital_manage,settings');
 
 // Per-department letterhead: address, GSTIN and licence book for lab / pharmacy / radiology.

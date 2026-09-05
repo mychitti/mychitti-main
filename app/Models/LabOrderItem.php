@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class LabOrderItem extends Model
 {
     protected $fillable = [
-        'lab_order_id', 'lab_test_id', 'test_name', 'department', 'price', 'status',
+        'lab_order_id', 'lab_test_id', 'test_name', 'department', 'price', 'status', 'interpretation',
     ];
 
     protected $casts = [

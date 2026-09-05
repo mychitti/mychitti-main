@@ -44,8 +44,13 @@
             </div>
         @endif
 
-        <!-- Hospital header -->
-        <div class="hosp">
+        <!-- Hospital header. Hospital Settings decides whether it prints, so the downloaded PDF
+             and the browser print agree without the two being wired separately. -->
+        @php $hdr = hmis_print_header('consultation_receipt', $visit->store_id ?? null); @endphp
+        @if ($hdr['off'] && $hdr['mm'])
+            <div style="height:{{ $hdr['mm'] }}mm" aria-hidden="true"></div>
+        @endif
+        <div class="hosp" @if ($hdr['off']) style="display:none" @endif>
             <div class="hname">{{ $store?->name ?? 'Hospital' }}</div>
             <div class="sub">
                 @if ($store?->address){{ $store->address }}<br>@endif
@@ -129,14 +134,24 @@
             <tr>
                 <td style="padding:0;">
                     <table width="100%" cellpadding="0" cellspacing="0">
+                        @php $sign = hmis_print_sign('consultation_receipt', $visit->store_id ?? null); @endphp
+                        @php $signSide = $sign['show'] && $sign['pos'] === 'left' ? 'left' : 'right'; @endphp
                         <tr>
-                            <td class="cell" style="font-size:12px;">
+                            {{-- The two cells swap alignment rather than swapping content: the
+                                 signing block stays one piece of markup wherever it is asked to sit. --}}
+                            <td class="cell" style="font-size:12px; text-align:{{ $signSide === 'left' ? 'right' : 'left' }};">
                                 Billed User : <strong>{{ $receipt->billed_by }}</strong><br>
                                 Print User : <strong>{{ $receipt->billed_by }}</strong>
                             </td>
-                            <td class="cell" style="text-align:right; font-weight:700;">
-                                For {{ $store?->name }}<br><br>
-                                Cashier
+                            <td class="cell" style="text-align:{{ $signSide }}; font-weight:700;">
+                                For {{ $store?->name }}<br>
+                                @if ($sign['show'])
+                                    <img src="{{ $sign['url'] }}" alt="Signature"
+                                         style="height:46px; max-width:170px; object-fit:contain; margin:2px 0;"><br>
+                                    {{ $sign['name'] }}
+                                @else
+                                    <br>Cashier
+                                @endif
                             </td>
                         </tr>
                     </table>

@@ -651,6 +651,32 @@ class OpdController extends Controller
             $currentPrescription->forceFill(['opd_visit_id' => $visit->id])->saveQuietly();
         }
 
+        // The prescription takes its copy of the diagnosis and the advice from the visit at the
+        // moment it is saved. A doctor who writes the sheet first and records the condition
+        // afterwards — the ordinary way a consultation runs — was left with a prescription that
+        // carried neither, permanently, because the copy never ran again. Fill only what is still
+        // empty, from the visit this prescription belongs to: anything already written on it is
+        // left exactly as it stands, so a sheet is completed, never rewritten.
+        if ($currentPrescription) {
+            $fill = [];
+
+            // chief_complaint stands in for an unrecorded diagnosis, as it does at save.
+            $visitDiagnosis = $visit->diagnosis ?: $visit->chief_complaint;
+            if (blank($currentPrescription->diagnosis) && filled($visitDiagnosis)) {
+                $fill['diagnosis'] = $visitDiagnosis;
+            }
+            if (blank($currentPrescription->notes) && filled($visit->notes)) {
+                $fill['notes'] = $visit->notes;
+            }
+
+            if ($fill) {
+                $currentPrescription->forceFill($fill)->saveQuietly();
+                // The printed sheet is translated off the saved row and cached; it now says
+                // something it did not before.
+                \App\Services\PrescriptionTranslator::forget($currentPrescription->id);
+            }
+        }
+
         // Prior prescriptions for this patient (excludes the current visit's prescription).
         $pastPrescriptions = Prescription::where('store_id', $store_id)
             ->where('patient_id', $visit->patient_id)
@@ -967,6 +993,32 @@ class OpdController extends Controller
                     . ($linked ? ', with ' . $linked . ' treatment' . ($linked === 1 ? '' : 's') . ' booked in' : '')
                     . '. The patient will get a WhatsApp reminder before ' . (count($booked) === 1 ? 'it' : 'each') . '.'
             );
+        }
+
+        // "Schedule & send on WhatsApp". Sent after the booking, never instead of it: a message
+        // that fails is reported on its own and leaves the visit booked, because the appointment
+        // is the record and the message is only a copy of it.
+        if ($booked && $request->boolean('send_whatsapp')) {
+            $sent  = 0;
+            $why   = null;
+
+            foreach ($booked as $appointment) {
+                $result = \App\Services\HmisWhatsAppShare::followUpForAppointment($appointment);
+                if (!empty($result['success'])) {
+                    $sent++;
+                } elseif (!$why) {
+                    $why = $result['message'] ?? null;
+                }
+            }
+
+            if ($sent) {
+                Toastr::success($sent === 1
+                    ? 'The date was sent to the patient on WhatsApp.'
+                    : $sent . ' dates were sent to the patient on WhatsApp.');
+            }
+            if ($sent < count($booked)) {
+                Toastr::warning($why ?: 'Could not send on WhatsApp. The visit is booked either way.');
+            }
         }
 
         foreach ($failed as $message) {

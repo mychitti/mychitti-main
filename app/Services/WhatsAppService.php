@@ -58,7 +58,8 @@ class WhatsAppService
     /**
      * Template for automatic HMIS appointment reminders — the admin preset the vendor submits
      * to their own WABA. Sent by the hourly SendAppointmentReminders job on the schedule the
-     * vendor chose (stores.wa_appt_reminder: day_before | 2h_before | both).
+     * vendor chose (stores.wa_appt_reminder: whole hours before the slot, 0-168; '0' is off and
+     * NULL is "never chose" and takes DEFAULT_APPT_REMINDER_HOURS below).
      */
     const DEFAULT_APPT_REMINDER_TEMPLATE = 'appointment_reminder';
 

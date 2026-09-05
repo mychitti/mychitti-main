@@ -71,13 +71,63 @@
                                         </div>
                                     </div>
                                 @endforeach
+
+                                {{-- Prefilled from the catalogue when the test was ordered. Edited
+                                     here it becomes this patient's report and nothing else's. --}}
+                                <div class="fg" style="padding:10px 16px 4px">
+                                    <label class="fl">Interpretation — printed under {{ $item->test_name }}</label>
+                                    <textarea class="fi" name="interpretation[{{ $item->id }}]" rows="4"
+                                              style="resize:vertical" {{ $locked ? 'readonly' : '' }}
+                                              placeholder="Leave blank to print no interpretation for this test.">{{ filled($item->interpretation) ? $item->interpretation : ($item->test->interpretation ?? '') }}</textarea>
+                                </div>
                             @endforeach
 
                             <div style="padding:14px 16px;border-top:1px solid var(--border)">
                                 <div class="fg" style="margin-bottom:10px"><label class="fl">Lab Technician Notes / Comments</label><textarea class="fi" name="technician_notes" rows="2" style="resize:none" {{ $locked ? 'readonly' : '' }}>{{ $order->technician_notes }}</textarea></div>
                                 <div class="frow3">
-                                    <div class="fg"><label class="fl">Analysed By</label><input class="fi" name="analysed_by" value="{{ $order->analysed_by }}" {{ $locked ? 'readonly' : '' }}></div>
-                                    <div class="fg"><label class="fl">Verified By</label><input class="fi" name="verified_by" value="{{ $order->verified_by_name }}" {{ $locked ? 'readonly' : '' }}></div>
+                                    @php
+                                        // What is already on the report wins; an untouched report
+                                        // opens on whoever is at the screen. Any name saved before
+                                        // these were free-text boxes is kept as an option of its
+                                        // own, so opening an old report cannot quietly rename who
+                                        // analysed it.
+                                        $reAnalysed = $order->analysed_by ?: $currentSigner;
+                                        $reVerified = $order->verified_by_name ?: $currentSigner;
+                                        $reKnown    = $signers->pluck('name')->all();
+                                        $reGroups   = $signers->groupBy('group');
+                                    @endphp
+                                    <div class="fg">
+                                        <label class="fl">Analysed By</label>
+                                        <select class="fs" name="analysed_by" {{ $locked ? 'disabled' : '' }}>
+                                            <option value="">— not recorded —</option>
+                                            @if (filled($reAnalysed) && !in_array($reAnalysed, $reKnown))
+                                                <option value="{{ $reAnalysed }}" selected>{{ $reAnalysed }}</option>
+                                            @endif
+                                            @foreach ($reGroups as $reGroup => $reMembers)
+                                                <optgroup label="{{ $reGroup }}">
+                                                    @foreach ($reMembers as $reSigner)
+                                                        <option value="{{ $reSigner['name'] }}" {{ $reAnalysed === $reSigner['name'] ? 'selected' : '' }}>{{ $reSigner['name'] }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="fg">
+                                        <label class="fl">Verified By</label>
+                                        <select class="fs" name="verified_by" {{ $locked ? 'disabled' : '' }}>
+                                            <option value="">— not recorded —</option>
+                                            @if (filled($reVerified) && !in_array($reVerified, $reKnown))
+                                                <option value="{{ $reVerified }}" selected>{{ $reVerified }}</option>
+                                            @endif
+                                            @foreach ($reGroups as $reGroup => $reMembers)
+                                                <optgroup label="{{ $reGroup }}">
+                                                    @foreach ($reMembers as $reSigner)
+                                                        <option value="{{ $reSigner['name'] }}" {{ $reVerified === $reSigner['name'] ? 'selected' : '' }}>{{ $reSigner['name'] }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <div class="fg"><label class="fl">Report Date</label><input class="fi" value="{{ ($order->reported_at ?? now())->format('d M Y · h:i A') }}" readonly style="background:#F9FAFB"></div>
                                 </div>
                                 @if (!$locked)

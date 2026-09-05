@@ -312,6 +312,19 @@
                         Books a follow-up for this patient with the same doctor. The patient gets a WhatsApp
                         confirmation now and an automatic reminder before the visit.
                     </p>
+                    {{-- For a visit already booked: the same reminder, by hand, when the automatic
+                         one has not gone yet or the patient says it never arrived. --}}
+                    @include('hmis::vendor.shared._wa_send', [
+                        'size'  => 'sm',
+                        'disabled' => filled($appointment->patient?->phone) ? null : 'This patient has no phone number on file',
+                        'items' => [
+                            [
+                                'label' => 'Next visit reminder',
+                                'hint'  => 'When and where their next appointment is',
+                                'url'   => route('vendor.hmis-whatsapp.appointment-followup', $appointment->id),
+                            ],
+                        ],
+                    ])
                     <form action="{{ route('vendor.appointment.next-visit', $appointment->id) }}" method="POST">
                         @csrf
                         <div class="form-group">

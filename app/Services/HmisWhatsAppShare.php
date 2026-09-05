@@ -694,7 +694,7 @@ class HmisWhatsAppShare
      * is not in. Unlike the link version this file is permanent and forwardable once it lands, so
      * it is a deliberate second option rather than the default.
      */
-    public static function prescriptionPdf(Prescription $rx, ?string $phone = null): array
+    public static function prescriptionPdf(Prescription $rx, ?string $phone = null, array $print = []): array
     {
         $rx->loadMissing('patient', 'doctorProfile.employee', 'items');
         $patient = $rx->patient;
@@ -702,7 +702,7 @@ class HmisWhatsAppShare
             return self::fail('This prescription has no patient on it.');
         }
 
-        $pdf = self::buildPdf('prescription', $rx, 'Prescription-' . $rx->id);
+        $pdf = self::buildPdf('prescription', $rx, 'Prescription-' . $rx->id, $print);
         if (!$pdf) {
             return self::fail('Could not build the PDF. Please try again, or send it as a link instead.');
         }
@@ -1022,16 +1022,19 @@ class HmisWhatsAppShare
                 return self::fail('Unknown record type.');
             }
 
-            $wa = WhatsAppService::make($storeId);
-            if ($wa->source() !== 'vendor') {
+            $sender = self::sender($storeId);
+            if (!$sender['wa']) {
                 self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, $to, $recordId,
-                    'Your own WhatsApp number is not connected.', $recipientName);
-                return self::fail('Connect your own WhatsApp number under WhatsApp → Connection before sending to a lab.');
+                    $sender['logged'], $recipientName);
+                return self::fail($sender['reason']);
             }
-            if (!WhatsAppBilling::isActive($storeId)) {
+            $wa = $sender['wa'];
+
+            if (!self::dialable($wa, $to)) {
                 self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, $to, $recordId,
-                    'Your WhatsApp subscription is not active.', $recipientName);
-                return self::fail('Your WhatsApp subscription isn’t active. Activate it under WhatsApp → Plan & Billing.');
+                    'That is not a valid WhatsApp number.', $recipientName);
+                return self::fail('“' . $to . '” is not a number WhatsApp can deliver to. '
+                    . 'Check the number and try again.');
             }
 
             $components = [[
@@ -1223,6 +1226,65 @@ class HmisWhatsAppShare
     /* ------------------------------------------------------------------ plumbing */
 
     /**
+     * Is this a number Meta will actually accept?
+     *
+     * E.164 tops out at 15 digits, and nothing under 10 is dialable once the country code is on
+     * the front. A half-typed number gets past the empty check, costs a dispatch, and comes back
+     * as Meta's “(#131009) Parameter value is not valid” — which names neither the field nor the
+     * patient, and reads at the desk as though the prescription were the thing at fault. Checked
+     * here so the failure says what to go and correct.
+     */
+    protected static function dialable(WhatsAppService $wa, string $phone): bool
+    {
+        $digits = $wa->normalizePhone($phone);
+        $length = strlen($digits);
+
+        return $length >= 10 && $length <= 15;
+    }
+
+    /**
+     * The number this store sends records from, or the reason it cannot send at all.
+     *
+     * A hospital reaches its patients one of two ways: it connects its own WABA under
+     * WhatsApp → Connection, or it takes the monthly plan and sends on MyChitti's number. The
+     * second is the whole of what that plan buys, and a flat source() === 'vendor' test made it
+     * impossible — every plan holder was turned away and told to go and connect the number they
+     * had deliberately paid not to need. What actually has to be true is that some credential set
+     * is usable and the store is paid up; which of the two it is only changes the wording.
+     *
+     * @return array{wa: ?WhatsAppService, logged: ?string, reason: ?string}
+     */
+    protected static function sender(int $storeId): array
+    {
+        $wa = WhatsAppService::make($storeId);
+
+        // Neither the store's own number nor a platform one — nothing to send from at all.
+        if (!$wa->isConfigured()) {
+            return [
+                'wa'     => null,
+                'logged' => 'No WhatsApp number is available to send from.',
+                'reason' => 'No WhatsApp number is available to send from. Connect your own under '
+                          . 'WhatsApp → Connection, or activate the WhatsApp Monthly Plan.',
+            ];
+        }
+
+        if (!WhatsAppBilling::isActive($storeId)) {
+            return [
+                'wa'     => null,
+                'logged' => 'Your WhatsApp subscription is not active.',
+                // A store on its own WABA manages its plan under Plan & Billing; one sending on
+                // MyChitti's number is there because of the monthly plan, so point it at that.
+                'reason' => $wa->source() === 'vendor'
+                    ? 'Your WhatsApp subscription isn’t active. Activate it under WhatsApp → Plan & Billing.'
+                    : 'Your WhatsApp plan isn’t active. Activate the WhatsApp Monthly Plan to send records '
+                      . 'on the MyChitti number, or connect your own under WhatsApp → Connection.',
+            ];
+        }
+
+        return ['wa' => $wa, 'logged' => null, 'reason' => null];
+    }
+
+    /**
      * The one path every send goes through: check the number can send, mint a link when the record
      * has detail worth opening, fill the template, log it.
      *
@@ -1244,16 +1306,19 @@ class HmisWhatsAppShare
                 return self::fail('This patient has no phone number on file.');
             }
 
-            $wa = WhatsAppService::make($storeId);
-            if ($wa->source() !== 'vendor') {
+            $sender = self::sender($storeId);
+            if (!$sender['wa']) {
                 self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, $to, $recordId,
-                    'Your own WhatsApp number is not connected.');
-                return self::fail('Connect your own WhatsApp number under WhatsApp → Connection before sending records.');
+                    $sender['logged']);
+                return self::fail($sender['reason']);
             }
-            if (!WhatsAppBilling::isActive($storeId)) {
+            $wa = $sender['wa'];
+
+            if (!self::dialable($wa, $to)) {
                 self::logAttempt(MessageLog::SKIPPED, $kind, $storeId, $patient, $to, $recordId,
-                    'Your WhatsApp subscription is not active.');
-                return self::fail('Your WhatsApp subscription isn’t active. Activate it under WhatsApp → Plan & Billing.');
+                    'That is not a valid WhatsApp number.');
+                return self::fail('“' . $to . '” is not a number WhatsApp can deliver to. '
+                    . 'Check the number on ' . self::name($patient) . '’s profile and try again.');
             }
 
             $url = null;
@@ -1347,7 +1412,7 @@ class HmisWhatsAppShare
      * Returns null on any failure; the caller reports it rather than sending a message with a
      * broken attachment.
      */
-    protected static function buildPdf(string $kind, $record, string $label): ?array
+    protected static function buildPdf(string $kind, $record, string $label, array $print = []): ?array
     {
         try {
             $store = DB::table('stores')->where('id', $record->store_id)
@@ -1359,6 +1424,7 @@ class HmisWhatsAppShare
                 'store'   => $store,
                 'expires' => null,
                 'pdf'     => true,
+                'print'   => $print,
             ])->render();
 
             $temp = storage_path('app/tmp');
