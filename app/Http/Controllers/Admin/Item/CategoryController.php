@@ -205,8 +205,20 @@ class CategoryController extends BaseController
             ], 422);
         }
 
-        $existing = $this->categoryRepo->getListWhere(filters: ['position' => 1], dataLimit: 'all')
-            ->pluck('name')->map(fn($n) => mb_strtolower(trim($n)))->all();
+        // Queried directly rather than through getListWhere: that repository method always ends
+        // in ->paginate($dataLimit), so asking it for 'all' had Laravel multiplying the string by
+        // the page number. Scoped to the current module, the same way the repository scopes it.
+        try {
+            $existing = ModelsCategory::where('position', 1)
+                ->module(\Illuminate\Support\Facades\Config::get('module.current_module_id'))
+                ->pluck('name')
+                ->map(fn($n) => mb_strtolower(trim((string) $n)))
+                ->all();
+        } catch (\Throwable $e) {
+            // Dropping duplicates is a courtesy, not the feature. If the lookup fails the admin
+            // still gets suggestions and can delete a repeat by hand.
+            $existing = [];
+        }
 
         $names = collect($names)
             ->filter(fn($n) => is_string($n))
