@@ -754,7 +754,7 @@ class LabController extends Controller
     {
         $this->boot();
         $order = LabOrder::where('store_id', $this->storeId())
-            ->with(['patient', 'doctorProfile.employee', 'items.results'])
+            ->with(['patient', 'doctorProfile.employee', 'items.results', 'items.test'])
             ->findOrFail($id);
         $store = Helpers::get_store_data();
         // The lab prints under its own address, GSTIN and licences when it has been given them;

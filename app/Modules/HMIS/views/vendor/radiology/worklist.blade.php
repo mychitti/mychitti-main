@@ -58,7 +58,7 @@
                                     @if($s->status==='pending')@if($canStart)<a href="{{ route('vendor.radiology.studies.start', $s->id) }}" class="btn {{ $urgent?'btn-red':'btn-primary' }} btn-xs">Start</a>@else<span class="pill pill-amber">Pending</span>@endif
                                     @elseif($s->status==='in_progress')@if($canWriteReport)<a href="{{ route('vendor.radiology.report', ['study'=>$s->id]) }}" class="btn btn-green btn-xs">Report</a>@endif
                                     @elseif($s->status==='reported')@if($canWriteReport)<a href="{{ route('vendor.radiology.report', ['study'=>$s->id]) }}" class="btn btn-green btn-xs">Verify</a>@endif
-                                    @elseif($canViewReport)<a href="{{ route('vendor.radiology.studies.print', $s->id) }}" target="_blank" class="btn btn-outline btn-xs">Report</a>@endif
+                                    @elseif($canViewReport)<a href="{{ route('vendor.radiology.studies.print', $s->id) }}" target="_blank" class="btn btn-teal btn-xs">Report</a>@endif
                                 </div>
                             </div>
                         @empty

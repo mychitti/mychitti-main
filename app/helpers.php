@@ -8785,6 +8785,38 @@ if (!function_exists('hmis_default_signature_id')) {
     }
 }
 
+if (!function_exists('hmis_patient_age')) {
+    /**
+     * A patient's age for a printed document.
+     *
+     * patients.age is its own column, recorded wherever the desk is told an age rather than a
+     * birth date — which is most of them. Reading dob alone printed an em dash for every one of
+     * those patients on a report that is supposed to identify them.
+     */
+    function hmis_patient_age($patient, string $suffix = ' Years'): string
+    {
+        if (!$patient) {
+            return '—';
+        }
+
+        if (filled($patient->dob ?? null)) {
+            try {
+                return \Carbon\Carbon::parse($patient->dob)->age . $suffix;
+            } catch (\Throwable $e) {
+                // Falls through to the recorded age below.
+            }
+        }
+
+        $age = trim((string) ($patient->age ?? ''));
+        if ($age === '') {
+            return '—';
+        }
+
+        // Stored as a bare number by some screens and as "50y" by others.
+        return is_numeric($age) ? $age . $suffix : $age;
+    }
+}
+
 if (!function_exists('hmis_print_sign')) {
     /**
      * The signature one printed document should carry, if any, and which side it sits on.

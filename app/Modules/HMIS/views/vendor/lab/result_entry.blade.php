@@ -10,7 +10,7 @@
         @else
             @php
                 $locked = in_array($order->status, ['verified', 'sent']);
-                $age = $order->patient?->dob ? \Carbon\Carbon::parse($order->patient->dob)->age . 'Y' : '—';
+                $age = hmis_patient_age($order->patient, 'Y');
             @endphp
             {{-- Above the form, not beside it. Once these numbers are typed they are
                  indistinguishable from any other result in the patient's chart, so the one useful

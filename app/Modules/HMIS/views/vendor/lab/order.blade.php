@@ -13,9 +13,22 @@
                         <div class="card-hd"><h3><div class="hd-icon" style="background:var(--ltpurple)">➕</div> Order New Lab Test</h3></div>
                         <div style="padding:14px">
                             <div class="frow3">
+                                @php
+                                    // Owner-or-permission, matching what the quick-save route itself
+                                    // enforces: the permission middleware lets any vendor owner
+                                    // through, while hasPermission() answers false for an owner
+                                    // until some role has been granted patient/add — which would
+                                    // hide a button whose own endpoint would have accepted the call.
+                                    $canAddPatient = auth('vendor')->check() || hasPermission('patient', 'add');
+                                @endphp
                                 <div class="fg"><label class="fl">Patient *</label>
-                                    <select class="fs" name="patient_id" required>
+                                    {{-- Adding sits in the list itself rather than beside it: the desk
+                                         goes looking for the patient first either way, and only finds
+                                         out they are not on the register from this dropdown. Searching
+                                         and adding are the same gesture, so they are the same control. --}}
+                                    <select class="fs" name="patient_id" id="labPatientSelect" required>
                                         <option value="">Select patient...</option>
+                                        @if ($canAddPatient)<option value="add_new">＋ Add New Patient</option>@endif
                                         @foreach ($patients as $p)<option value="{{ $p->id }}">{{ $p->name }} {{ $p->patient_uid ? '(' . $p->patient_uid . ')' : '' }}</option>@endforeach
                                     </select>
                                 </div>
@@ -97,12 +110,208 @@
                 </div>
             </div>
         </form>
+
+        @if ($canAddPatient)
+        {{-- Deliberately outside the order <form>: a nested form is invalid markup, and any named
+             input in here would be posted with the lab order. Nothing below carries a name — the
+             fields are read by id and sent on their own request, the same arrangement the OPD
+             registration screen uses for its own quick-add. --}}
+        <div class="qp-veil" id="labQpVeil" onclick="if(event.target===this)labQpClose()">
+            <div class="qp-box" role="dialog" aria-modal="true" aria-labelledby="labQpTitle">
+                <div class="qp-hd">
+                    <h3 id="labQpTitle">Add New Patient</h3>
+                    <button type="button" class="qp-x" onclick="labQpClose()" aria-label="Close">&times;</button>
+                </div>
+                <div class="qp-bd">
+                    <div class="qp-err" id="labQpErr"></div>
+                    <div class="frow2">
+                        <div class="fg"><label class="fl">Name *</label>
+                            <input class="fi" id="labQpName" autocomplete="off" placeholder="Patient name"></div>
+                        <div class="fg"><label class="fl">Mobile *</label>
+                            <input class="fi" id="labQpPhone" autocomplete="off" inputmode="numeric" placeholder="10-digit mobile"></div>
+                    </div>
+                    <div class="frow2">
+                        <div class="fg"><label class="fl">Age *</label>
+                            <input class="fi" id="labQpAge" type="number" min="0" max="150" placeholder="Years"></div>
+                        <div class="fg"><label class="fl">Gender *</label>
+                            <select class="fs" id="labQpGender">
+                                <option value="">Select...</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select></div>
+                    </div>
+                    <div class="fg" style="margin-bottom:0"><label class="fl">Address</label>
+                        <input class="fi" id="labQpAddress" autocomplete="off" placeholder="Address (optional)"></div>
+                </div>
+                <div class="qp-ft">
+                    <button type="button" class="btn btn-outline" onclick="labQpClose()">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="labQpSave" onclick="labQpSave()">Save Patient</button>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 </div></div>
 @endsection
 
+@push('css_or_js')
+<style>
+    /* select2custom.css forces `height:43px` and a pale 1px border onto every single select in
+       the panel with !important, which is why this field stood 10px taller and lighter than the
+       .fs controls either side of it. Overridden here, at higher specificity and with the same
+       weapon, rather than edited there — that file dresses every other screen's dropdowns and is
+       not this one's to change. */
+    .labx .select2-container .select2-selection--single,
+    .labx .select2-container--default .select2-selection--single{
+        height:33px!important;min-height:33px!important;
+        border:1.5px solid var(--border)!important;border-radius:8px!important;background:var(--white)}
+    .labx .select2-container--default .select2-selection--single .select2-selection__rendered{
+        line-height:30px!important;padding-left:10px;padding-right:26px;font-size:12px;color:var(--text)}
+    .labx .select2-container--default .select2-selection--single .select2-selection__arrow{height:31px;right:4px}
+    .labx .select2-container--default.select2-container--open .select2-selection--single{
+        border-color:var(--blue)!important}
+    .labx .select2-container--default .select2-selection--single .select2-selection__placeholder{
+        color:#9CA3AF;font-size:12px}
+    /* The .fg grid cell is what the label sits in; without this the container can size itself
+       from its content and sit a pixel or two off its neighbours. */
+    .labx .fg .select2-container{width:100%!important;display:block}
+    /* Adding is an action, not another patient — it should not read as one more name in the list. */
+    .select2-results__option[id$="-add_new"]{color:#1565C0;font-weight:700;border-bottom:1px solid #c8d2e0}
+    /* Its own overlay rather than the theme's modal: this screen is scoped to .labx and carries
+       none of the admin modal's styling, so a bootstrap modal here would render as an unstyled
+       white slab in the middle of the lab's own design. */
+    .qp-veil{display:none;position:fixed;inset:0;z-index:1080;background:rgba(13,17,23,.45);
+        align-items:flex-start;justify-content:center;padding:60px 16px;overflow-y:auto}
+    .qp-veil.open{display:flex}
+    .qp-box{background:#fff;border-radius:12px;width:100%;max-width:520px;
+        box-shadow:0 18px 48px rgba(13,17,23,.28);font-family:'DM Sans',sans-serif}
+    .qp-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;
+        border-bottom:1px solid #c8d2e0}
+    .qp-hd h3{margin:0;font-size:14px;font-weight:800;color:#0A2463}
+    .qp-x{background:none;border:none;font-size:22px;line-height:1;color:#9CA3AF;cursor:pointer;padding:0 2px}
+    .qp-bd{padding:16px 18px}
+    .qp-ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid #c8d2e0}
+    .qp-err{display:none;background:#FFEBEE;border:1px solid #ffcdd2;color:#B71C1C;
+        border-radius:8px;padding:7px 10px;font-size:11.5px;font-weight:600;margin-bottom:12px}
+    .qp-err.show{display:block}
+</style>
+@endpush
+
 @push('script_2')
 <script>
+// ---- Quick-add patient -------------------------------------------------------
+// Posts to the same vendor.patient.quick-save the OPD registration screen uses, so a patient
+// added from the bench is identical to one added at the front desk — same UID series, same
+// medical-history row — rather than a second, thinner kind of patient record.
+function labQpOpen(){
+  var v=document.getElementById('labQpVeil');
+  if(!v)return;
+  // Cleared on the way in, so a previous abandoned attempt is not sitting there to be saved twice.
+  ['labQpName','labQpPhone','labQpAge','labQpAddress'].forEach(function(id){
+    var el=document.getElementById(id); if(el)el.value='';
+  });
+  var g=document.getElementById('labQpGender'); if(g)g.value='';
+  labQpErr('');
+  v.classList.add('open');
+  document.getElementById('labQpName').focus();
+}
+
+// Searchable, because a hospital's patient list outgrows a plain dropdown almost immediately, and
+// "Add New Patient" is one of its rows — picking it opens the modal and puts the select back to
+// blank, so nothing can be submitted as the literal string 'add_new'. (storeOrder validates
+// patient_id against exists:patients,id in any case.)
+if(window.jQuery && jQuery.fn.select2){
+  jQuery('#labPatientSelect').select2({placeholder:'Select patient...',width:'100%',allowClear:false});
+  jQuery('#labPatientSelect').on('select2:select', function(e){
+    if(e.params.data.id==='add_new'){
+      jQuery(this).val('').trigger('change');
+      labQpOpen();
+    }
+  });
+}
+function labQpClose(){
+  var v=document.getElementById('labQpVeil');
+  if(!v)return;
+  v.classList.remove('open');
+  labQpErr('');
+}
+function labQpErr(msg){
+  var e=document.getElementById('labQpErr');
+  if(!e)return;
+  e.textContent=msg||'';
+  e.classList.toggle('show',!!msg);
+}
+function labQpSave(){
+  var name=(document.getElementById('labQpName').value||'').trim();
+  var phone=(document.getElementById('labQpPhone').value||'').trim();
+  var age=(document.getElementById('labQpAge').value||'').trim();
+  var gender=document.getElementById('labQpGender').value;
+  var address=(document.getElementById('labQpAddress').value||'').trim();
+
+  // Checked here as well as on the server so a typo costs a glance, not a round trip.
+  if(!name){labQpErr('Patient name is required.');document.getElementById('labQpName').focus();return;}
+  if(!/^(?:\+?91|0)?[6-9]\d{9}$/.test(phone.replace(/[\s\-()]/g,''))){
+    labQpErr('Enter a valid 10-digit mobile number.');document.getElementById('labQpPhone').focus();return;}
+  if(age===''||isNaN(age)||Number(age)<0||Number(age)>150){
+    labQpErr('Enter an age between 0 and 150.');document.getElementById('labQpAge').focus();return;}
+  if(!gender){labQpErr('Gender is required.');document.getElementById('labQpGender').focus();return;}
+
+  var btn=document.getElementById('labQpSave');
+  btn.disabled=true;btn.textContent='Saving...';
+  labQpErr('');
+
+  var body=new FormData();
+  body.append('_token','{{ csrf_token() }}');
+  body.append('name',name);
+  body.append('phone',phone);
+  body.append('age',age);
+  body.append('gender',gender);
+  body.append('address',address);
+
+  fetch('{{ route("vendor.patient.quick-save") }}',{
+    method:'POST',
+    body:body,
+    headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},
+    credentials:'same-origin'
+  })
+  .then(function(r){return r.json().then(function(d){return {ok:r.ok,data:d};});})
+  .then(function(res){
+    var d=res.data||{};
+    if(res.ok&&d.success&&d.patient){
+      // Straight into the dropdown and selected, so the half-filled order is still there to finish.
+      var sel=document.getElementById('labPatientSelect');
+      var opt=new Option(d.patient.text,d.patient.id,true,true);
+      sel.appendChild(opt);
+      // select2 renders from its own copy of the options, so it has to be told to repaint;
+      // the native path stays for the case where the library did not load.
+      if(window.jQuery && jQuery.fn.select2 && jQuery(sel).hasClass('select2-hidden-accessible')){
+        jQuery(sel).val(d.patient.id).trigger('change');
+      }else{
+        sel.value=d.patient.id;
+        sel.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+      labQpClose();
+      return;
+    }
+    // Laravel hands validation back as {errors:{field:[msg]}} with a 422.
+    var msg=d.message||'Could not save that patient.';
+    if(d.errors){
+      var first=Object.keys(d.errors)[0];
+      if(first&&d.errors[first]&&d.errors[first][0])msg=d.errors[first][0];
+    }
+    labQpErr(msg);
+  })
+  .catch(function(){labQpErr('Something went wrong. Please try again.');})
+  .finally(function(){btn.disabled=false;btn.textContent='Save Patient';});
+}
+document.addEventListener('keydown',function(e){
+  var v=document.getElementById('labQpVeil');
+  if(!v||!v.classList.contains('open'))return;
+  if(e.key==='Escape')labQpClose();
+  if(e.key==='Enter'&&v.contains(e.target)&&e.target.tagName!=='BUTTON'){e.preventDefault();labQpSave();}
+});
+
 var sym="{{ \App\CentralLogics\Helpers::currency_symbol() ?? '₹' }}";
 // Select every sample the chosen tests need (an order can need blood AND urine).
 // Only ever adds — anything picked by hand stays picked.

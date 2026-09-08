@@ -1,6 +1,6 @@
 @extends('layouts.vendor.app')
 
-@section('title', 'Retail POS')
+@section('title', 'New Sale')
 
 @push('css_or_js')
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -265,7 +265,7 @@
         /* Variations selection modal styles */
         .var-select-btn {
             display: flex;
-            justify-content: space-between; 
+            justify-content: space-between;
             align-items: center;
             width: 100%;
             padding: 12px 16px;
@@ -294,7 +294,7 @@
         .var-select-btn .badge-pill {
             font-size: 13px;
             padding: 6px 10px;
-            background-color: var(--accent); 
+            background-color: var(--accent);
             border-radius: 50rem;
             font-weight: 700;
         }
@@ -333,7 +333,7 @@
     <div class="content container-fluid rpos rpos-tpl-{{ $uiTemplate ?? 'classic' }}">
         <div class="pos-topbar">
             <div>
-                <h1 class="page-header-title">Retail POS</h1>
+                <h1 class="page-header-title">New Sale</h1>
                 <div class="sub">Billing &amp; checkout</div>
                 @if (!empty($shiftStatus))
                     @if ($shiftStatus['on'])
@@ -598,7 +598,7 @@
             </div>{{-- /pos-right --}}
         </div>{{-- /pos-wrap --}}
     </div>
- 
+
     {{-- Reuse the standard Add New Customer modal --}}
     @include('vendor-views/form_modals/customer_add')
 
@@ -752,7 +752,7 @@
                 activeParentItem = item;
                 const modal = $('#variationSelectModal');
                 $('#varModalTitle').text(item.name + ' - Select Option');
-                
+
                 // Add the Main Product (Default) option as the first choice
                 const mainProductPrice = parseFloat(item.price) || 0;
                 const mainProductStock = parseFloat(item.stock) || 0;
@@ -836,7 +836,7 @@
         function selectMainProduct() {
             $('#variationSelectModal').modal('hide');
             if (!activeParentItem) return;
-            
+
             const parentData = {
                 id: activeParentItem.id,
                 name: activeParentItem.name,
@@ -858,7 +858,7 @@
             $('#variationSelectModal').modal('hide');
             const varItem = activeVariations[idx];
             if (!varItem || !activeParentItem) return;
-            
+
             const price = parseFloat(varItem.price) || parseFloat(activeParentItem.price) || 0;
             const mrp = parseFloat(varItem.mrpprice) || parseFloat(activeParentItem.mrp) || 0;
             const perPack = parseFloat(varItem.pack_in_item_unit) || 0;
@@ -1849,7 +1849,7 @@
         // AJAX-submit the standard customer form, then select the new customer into the sale.
         $(document).on('submit', '#customerAddModal .customer_add_form', function (e) {
             e.preventDefault();
-            const form = this; 
+            const form = this;
             const $btn = $(form).find('button[type="submit"], button:not([type])').last();
             const oldTxt = $btn.text();
             $btn.prop('disabled', true).text('Saving…');

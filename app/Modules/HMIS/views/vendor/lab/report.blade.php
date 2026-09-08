@@ -16,10 +16,21 @@
         .title{text-align:center;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0A2463;margin:14px 0}
         .info{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;border:1px solid #c8d2e0;border-radius:8px;padding:10px 14px;font-size:12px}
         .info .k{color:#9CA3AF}
-        table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}
-        th{text-align:left;background:#F3F4F6;padding:7px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid #D1D5DB}
-        td{padding:7px 10px;border-bottom:1px solid #F3F4F6}
+        /* The outer page table is scaffolding for the repeating header, so it must not inherit
+           any of the results table's cell padding, borders or spacing. */
+        table.page{width:100%;border-collapse:collapse}
+        table.page > thead > tr > td,
+        table.page > tbody > tr > td{padding:0;border:0}
+        table.results{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}
+        table.results th{text-align:left;background:#F3F4F6;padding:7px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid #D1D5DB}
+        table.results td{padding:7px 10px;border-bottom:1px solid #F3F4F6}
+        /* A typed range carries its own bands on separate lines \u2014 "Male: 0 - 35 / Female: 0 - 31"
+           \u2014 and collapsing them into one run destroys the distinction being drawn. */
+        table.results td.ref{white-space:pre-line}
+        .end-mark{margin-top:26px;text-align:center;font-size:11px;font-weight:700;letter-spacing:.6px;color:#4B5563}
         .dept td{background:#F9FAFB;font-weight:700;font-size:11px;text-transform:uppercase;color:#4B5563;letter-spacing:.5px}
+        /* thead repeats per printed page; the results head must not also repeat inside it. */
+        @media print{table.page > thead{display:table-header-group}table.results thead{display:table-row-group}}
         .val{font-family:'DM Mono',monospace;font-weight:700}
         .H{color:#C62828;font-weight:700}.L{color:#B45309;font-weight:700}.N{color:#2E7D32}
         .abn td{background:#FEF6F6}
@@ -41,11 +52,32 @@
     <div class="rp-actions"><button onclick="window.print()">🖨 Print / Save PDF</button></div>
 
     @php
-        $age = $order->patient?->dob ? \Carbon\Carbon::parse($order->patient->dob)->age . ' Years' : '—';
+        $age = hmis_patient_age($order->patient);
         $doc = $order->doctorProfile ? 'Dr. ' . trim(($order->doctorProfile->employee->f_name ?? '') . ' ' . ($order->doctorProfile->employee->l_name ?? '')) : ($order->referred_by ?: '—');
+
+        // The sample the order was drawn on, falling back to whatever the tests themselves are
+        // catalogued against — an order raised before a sample type was picked still prints one.
+        $sampleType = $order->sample_type
+            ?: $order->items->pluck('test.sample_type')->filter()->unique()->implode(', ');
+
+        $statusLabels = [
+            'ordered'     => 'Pending',
+            'in_progress' => 'In Progress',
+            'resulted'    => 'Resulted',
+            'verified'    => 'Verified',
+            'sent'        => 'Sent',
+        ];
+        $statusLabel = $statusLabels[$order->status] ?? ucfirst((string) $order->status);
     @endphp
 
     @php $hdr = hmis_print_header('lab_report', $order->store_id ?? null); @endphp
+
+    {{-- Everything below sits in one page-wide table so the browser repeats <thead> — the
+         letterhead, the offset for pre-printed stationery, and the patient block — at the top of
+         every printed page. A lab report runs to several pages and a sheet that gets separated
+         from the first one has to still say whose it is. --}}
+    <table class="page">
+    <thead><tr><td>
     @if ($hdr['off'] && $hdr['mm'])
         <div style="height:{{ $hdr['mm'] }}mm" aria-hidden="true"></div>
     @endif
@@ -72,13 +104,21 @@
     <div class="info">
         <div><span class="k">Patient:</span> <strong>{{ $order->patient->name ?? '—' }}</strong></div>
         <div><span class="k">Sample ID:</span> {{ $order->order_no }}</div>
+        <div><span class="k">Patient UHID:</span> {{ $order->patient->patient_uid ?? '—' }}</div>
+        <div><span class="k">Sample Type:</span> {{ $sampleType ?: '—' }}</div>
         <div><span class="k">Age / Sex:</span> {{ $age }} / {{ ucfirst($order->patient->gender ?? '—') }}</div>
         <div><span class="k">Ref. Doctor:</span> {{ $doc }}</div>
         <div><span class="k">Collected:</span> {{ $order->collected_at?->format('d M Y · h:i A') ?? $order->created_at?->format('d M Y · h:i A') }}</div>
         <div><span class="k">Reported:</span> {{ $order->reported_at?->format('d M Y · h:i A') ?? '—' }}</div>
+        <div><span class="k">Report Status:</span> <strong>{{ $statusLabel }}</strong></div>
+        @if ($order->clinical_notes)
+            <div><span class="k">Clinical Notes:</span> {{ $order->clinical_notes }}</div>
+        @endif
     </div>
+    </td></tr></thead>
 
-    <table>
+    <tbody><tr><td>
+    <table class="results">
         <thead><tr><th style="width:36%">Investigation</th><th>Result</th><th>Unit</th><th>Reference Range</th><th>Flag</th></tr></thead>
         <tbody>
             @foreach ($order->items as $item)
@@ -92,7 +132,7 @@
                         <td>{{ $r->parameter_name }}</td>
                         <td class="val {{ $r->result_flag }}">{{ $r->result_value ?: '—' }} @if ($r->result_flag === 'H') ▲ @elseif ($r->result_flag === 'L') ▼ @endif</td>
                         <td>{{ $r->unit }}</td>
-                        <td>{{ $ref }}</td>
+                        <td class="ref">{{ $ref }}</td>
                         <td class="{{ $r->result_flag }}">{{ $r->result_flag === 'H' ? 'HIGH' : ($r->result_flag === 'L' ? 'LOW' : ($r->result_flag === 'N' ? 'Normal' : '—')) }}{{ $r->is_critical ? ' (CRITICAL)' : '' }}</td>
                     </tr>
                 @endforeach
@@ -135,5 +175,9 @@
             <div class="line">{{ $order->verified_by_name ?: ($sign['show'] ? $sign['name'] : 'Verified Pathologist') }}</div>
         </div>
     </div>
+
+    <div class="end-mark">*** End of Report ***</div>
+    </td></tr></tbody>
+    </table>
 </body>
 </html>
