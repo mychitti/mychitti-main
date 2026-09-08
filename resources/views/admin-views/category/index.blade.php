@@ -63,6 +63,27 @@
         }
         .sub-ai-chip button:hover { color: #dc2626; }
         .sub-ai-note { font-size: 12px; color: #64748b; }
+        /* Hundreds of chips would otherwise push the Image field and the save button off the
+           bottom of the screen. Scrolls in place instead, so the form stays reachable. */
+        .sub-ai-list {
+            max-height: 260px;
+            overflow-y: auto;
+            align-content: flex-start;
+            padding: 2px;
+        }
+        .sub-ai-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .sub-ai-count { font-size: 12px; font-weight: 700; color: #334155; }
+        .sub-ai-link {
+            border: 0; background: none; padding: 0;
+            font-size: 12px; font-weight: 600; color: #dc2626; cursor: pointer;
+        }
+        .sub-ai-link.keep { color: #2563eb; }
     </style>
 @endpush
 
@@ -115,6 +136,11 @@
                                     {{ translate('Type the category name first. Remove any that do not fit — the rest are saved with the category.') }}
                                 </small>
 
+                                <div class="sub-ai-bar" id="subAiBar" hidden>
+                                    <span class="sub-ai-count" id="subAiCount"></span>
+                                    <button type="button" class="sub-ai-link keep" id="subAiMore">{{ translate('Find more') }}</button>
+                                    <button type="button" class="sub-ai-link" id="subAiClear">{{ translate('Remove all') }}</button>
+                                </div>
                                 <div id="subAiList" class="sub-ai-list mt-2" hidden></div>
                             </div>
                             @endif
@@ -347,9 +373,33 @@
             const list = document.getElementById('subAiList');
             const help = document.getElementById('subAiHelp');
             const nameInput = document.querySelector('input[name="name[]"]');
+            const bar = document.getElementById('subAiBar');
+            const count = document.getElementById('subAiCount');
+            const moreBtn = document.getElementById('subAiMore');
+            const clearBtn = document.getElementById('subAiClear');
+
+            // One model call returns as much as it will write in one reply, which is nowhere near a
+            // whole category. So the screen asks repeatedly, each time telling the server what it
+            // already has, and stops when a round adds nothing new — that is the point at which
+            // the model has genuinely run out rather than an arbitrary number we picked.
+            const MAX_ROUNDS = 8;
+            let seen = new Set();      // lower-cased, for de-duping across rounds
+            let running = false;
+            let stop = false;
 
             function say(message) {
                 help.textContent = message;
+            }
+
+            function names() {
+                return Array.from(list.querySelectorAll('input[name="sub_names[]"]')).map(i => i.value);
+            }
+
+            function refresh() {
+                const n = list.querySelectorAll('.sub-ai-chip').length;
+                bar.hidden = n === 0;
+                list.hidden = n === 0;
+                count.textContent = n + ' {{ translate('selected') }}';
             }
 
             function add(name) {
@@ -370,14 +420,92 @@
                 drop.title = '{{ translate('Remove') }}';
                 drop.addEventListener('click', function () {
                     chip.remove();
+                    seen.delete(name.toLowerCase());
+                    refresh();
                     if (!list.querySelector('.sub-ai-chip')) {
-                        list.hidden = true;
                         say('{{ translate('All suggestions removed. The category saves on its own.') }}');
                     }
                 });
 
                 chip.append(label, field, drop);
                 list.appendChild(chip);
+            }
+
+            // One round. Resolves to how many genuinely new names it added.
+            function round(name) {
+                return fetch('{{ route('admin.category.suggest-subcategories') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ name: name, have: names() }),
+                })
+                    .then(r => r.json().then(body => ({ ok: r.ok, body })))
+                    .then(({ ok, body }) => {
+                        if (!ok || !body.success) {
+                            throw new Error(body.message || '{{ translate('Could not get suggestions.') }}');
+                        }
+                        let added = 0;
+                        (body.names || []).forEach(function (n) {
+                            const key = String(n).toLowerCase();
+                            if (seen.has(key)) return;   // the server de-dupes too; this is the last guard
+                            seen.add(key);
+                            add(n);
+                            added++;
+                        });
+                        refresh();
+                        return { added: added, limit: body.limit || 300 };
+                    });
+            }
+
+            // Keeps going until a round adds nothing, the cap is reached, the round budget runs
+            // out, or the admin presses stop.
+            async function hunt(name, fresh) {
+                if (running) { stop = true; return; }
+                running = true;
+                stop = false;
+                btn.disabled = true;
+                moreBtn.disabled = true;
+                const label = btn.innerHTML;
+                btn.innerHTML = '{{ translate('Stop') }}';
+                btn.disabled = false;
+
+                if (fresh) {
+                    // Asking again from scratch means the first answer was not wanted.
+                    list.innerHTML = '';
+                    seen = new Set();
+                    refresh();
+                }
+
+                let total = seen.size;
+                try {
+                    for (let i = 0; i < MAX_ROUNDS; i++) {
+                        if (stop) break;
+                        say('{{ translate('Looking…') }} ' + total + ' {{ translate('found so far') }}');
+                        const res = await round(name);
+                        total = seen.size;
+                        if (!res.added) break;                 // the model has run out
+                        if (total >= res.limit) break;         // as many as this screen will carry
+                    }
+                    if (!total) {
+                        say('{{ translate('No new subcategories to suggest — the ones it thought of already exist.') }}');
+                    } else if (stop) {
+                        say(total + ' {{ translate('found. Remove any that do not fit — the rest are saved under this category.') }}');
+                    } else {
+                        say(total + ' {{ translate('found — that is everything it could think of. Remove any that do not fit; the rest are saved under this category.') }}');
+                    }
+                } catch (e) {
+                    say(e.message || '{{ translate('Could not reach the server. Try again.') }}');
+                } finally {
+                    running = false;
+                    stop = false;
+                    btn.innerHTML = label;
+                    btn.disabled = false;
+                    moreBtn.disabled = false;
+                    refresh();
+                }
             }
 
             btn.addEventListener('click', function () {
@@ -387,39 +515,21 @@
                     say('{{ translate('Enter the category name first.') }}');
                     return;
                 }
+                hunt(name, !running);
+            });
 
-                btn.disabled = true;
-                say('{{ translate('Asking for suggestions…') }}');
+            // Another pass without throwing away what is already on screen.
+            moreBtn.addEventListener('click', function () {
+                const name = (nameInput.value || '').trim();
+                if (!name || running) return;
+                hunt(name, false);
+            });
 
-                fetch('{{ route('admin.category.suggest-subcategories') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({ name: name }),
-                })
-                    .then(r => r.json().then(body => ({ ok: r.ok, body })))
-                    .then(({ ok, body }) => {
-                        if (!ok || !body.success) {
-                            say(body.message || '{{ translate('Could not get suggestions.') }}');
-                            return;
-                        }
-                        if (!body.names.length) {
-                            say('{{ translate('No new subcategories to suggest — the ones it thought of already exist.') }}');
-                            return;
-                        }
-
-                        // Replaces rather than appends: asking twice means the first answer was
-                        // not wanted.
-                        list.innerHTML = '';
-                        body.names.forEach(add);
-                        list.hidden = false;
-                        say('{{ translate('Remove any that do not fit. The rest are saved under this category.') }}');
-                    })
-                    .catch(() => say('{{ translate('Could not reach the server. Try again.') }}'))
-                    .finally(() => { btn.disabled = false; });
+            clearBtn.addEventListener('click', function () {
+                list.innerHTML = '';
+                seen = new Set();
+                refresh();
+                say('{{ translate('All suggestions removed. The category saves on its own.') }}');
             });
         })();
     </script>

@@ -122,12 +122,6 @@ class CategoryController extends BaseController
     }
 
     /**
-     * Subcategories the admin might want under a category they are about to create.
-     *
-     * Suggestions only — nothing is written here. The admin drops the ones that do not fit and
-     * saves the rest with the category, so a wrong guess costs a click rather than a cleanup.
-     */
-    /**
      * Create the suggested subcategories the admin did not remove.
      *
      * They inherit the parent's image and module: the add form only uploads one picture, and a
@@ -139,7 +133,11 @@ class CategoryController extends BaseController
             ->map(fn($n) => trim((string) $n))
             ->filter(fn($n) => $n !== '' && mb_strlen($n) <= 100)
             ->unique(fn($n) => mb_strtolower($n))
-            ->take(20);
+            // Was take(20), from when the screen only ever offered a dozen suggestions. Once it
+            // could collect hundreds that cap silently threw the rest away — the admin kept 52,
+            // pressed save, and got 20 with nothing to say why. Bounded by the same number the
+            // screen itself stops at, so a hand-crafted POST still cannot create thousands.
+            ->take(self::SUGGEST_TOTAL);
 
         foreach ($names as $name) {
             try {
@@ -157,10 +155,28 @@ class CategoryController extends BaseController
         }
     }
 
+    /** Most names one call may return, and the most the screen will collect across all calls. */
+    private const SUGGEST_BATCH = 60;
+    private const SUGGEST_TOTAL = 300;
+
     public function suggestSubcategories(Request $request): JsonResponse
     {
-        $request->validate(['name' => 'required|string|max:100']);
+        $request->validate([
+            'name'   => 'required|string|max:100',
+            // What the screen is already showing. Asking for everything in one call caps out at
+            // whatever the model will write in one reply; asking repeatedly, each time naming what
+            // has already been found, is what actually gets a category past a dozen entries.
+            'have'   => 'nullable|array|max:' . self::SUGGEST_TOTAL,
+            'have.*' => 'string|max:100',
+        ]);
         $name = trim($request->input('name'));
+
+        $have = collect($request->input('have', []))
+            ->filter(fn($n) => is_string($n))
+            ->map(fn($n) => trim(preg_replace('/\s+/', ' ', $n)))
+            ->filter(fn($n) => $n !== '')
+            ->unique(fn($n) => mb_strtolower($n))
+            ->values();
 
         // Resolved on demand and guarded, the way AIChatController does it: a missing
         // openai-php/client package must not take the category screen down with it.
@@ -169,18 +185,38 @@ class CategoryController extends BaseController
         }
 
         $system = "You name subcategories for an Indian services and products marketplace.\n"
-            . "Given one category name, reply with ONLY a JSON array of 6 to 12 subcategory names.\n"
-            . "Rules: each name is 2 to 4 words, title case, specific enough that a customer would "
-            . "search for it, no duplicates, no numbering, no explanation, no text outside the array.\n"
-            . 'Example for "Repair and Service": '
-            . '["AC Repair","Home Appliance Repair","Refrigerator Repair","Washing Machine Repair",'
-            . '"Water Purifier Service","Television Repair","Microwave Repair","Geyser Repair"]';
+            . "Given one category name, reply with ONLY a JSON array of subcategory names.\n"
+            . "Return at least 40 and up to " . self::SUGGEST_BATCH . " genuinely distinct "
+            . "subcategories, unless the category truly has fewer. Cover the whole category: "
+            . "every appliance, trade, brand-neutral "
+            . "service and product type a customer in India would search for under it.\n"
+            . "Rules: each name is 2 to 5 words, title case, specific enough that a customer would "
+            . "search for it, no duplicates, no reworded repeats of the same thing, no numbering, "
+            . "no explanation, no text outside the array.\n"
+            . "If you genuinely cannot think of any more that are not already listed, reply [].\n"
+            // The example used to be for "Repair and Service", which is a real category an
+            // admin types — and when they did, the model handed those eight names straight back
+            // instead of generating anything. It now shows an unrelated category and says
+            // outright that it is only a format sample.
+            . "The example below shows the FORMAT ONLY. Never reuse its names, and never treat "
+            . "it as the answer even if the category you are given resembles it.\n"
+            . 'Format example, for the unrelated category "Wedding Services": '
+            . '["Bridal Makeup","Wedding Photography","Mehendi Artist","Wedding Catering"]';
+
+        // The exclusion list is what makes a second and third call worth making. Trimmed to the
+        // most recent names so a long run does not spend the whole prompt restating itself.
+        $prompt = $name;
+        if ($have->isNotEmpty()) {
+            $prompt .= "\n\nAlready listed — do not repeat or reword any of these:\n"
+                . $have->take(-250)->implode(', ');
+        }
 
         try {
             $reply = app(\App\Services\OpenAIService::class)->chat(
-                messages: [['role' => 'user', 'content' => $name]],
+                messages: [['role' => 'user', 'content' => $prompt]],
                 system: $system,
-                maxTokens: 400,
+                // Sixty names at four or five tokens each, plus the JSON punctuation around them.
+                maxTokens: 2000,
             );
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Subcategory suggestion failed: ' . $e->getMessage());
@@ -228,10 +264,20 @@ class CategoryController extends BaseController
             // Already in the catalogue under some other parent — offering it again invites a
             // duplicate the admin then has to find and delete.
             ->reject(fn($n) => in_array(mb_strtolower($n), $existing, true))
-            ->take(12)
+            // Whatever the screen already has. The model is told not to repeat itself and mostly
+            // obeys, but "AC Repair" coming back as "Ac Repair" is exactly the kind of near-repeat
+            // that has to be caught here rather than shown as a new suggestion.
+            ->reject(fn($n) => $have->contains(fn($h) => mb_strtolower($h) === mb_strtolower($n)))
+            ->take(self::SUGGEST_BATCH)
             ->values();
 
-        return response()->json(['success' => true, 'names' => $names]);
+        return response()->json([
+            'success' => true,
+            'names'   => $names,
+            // The screen stops asking when a round adds nothing, so it never has to guess whether
+            // there is more to come.
+            'limit'   => self::SUGGEST_TOTAL,
+        ]);
     }
 
     public function add(CategoryAddRequest $request): RedirectResponse

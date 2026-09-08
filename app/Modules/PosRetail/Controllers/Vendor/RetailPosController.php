@@ -3688,6 +3688,10 @@ class RetailPosController extends Controller
             'stock_text' => rtrim(rtrim(number_format((float) $it->stock, 3), '0'), '.'),
             'unit'       => _unitLabelFor($it->unit),
             'var_mode'   => $mode,
+            // Whether main stock is a pool of its own on this item. _variationSelectionError()
+            // lets the parent through only for a loose measured product, so the screen needs the
+            // same fact to avoid offering a source the submit will always refuse.
+            'sell_loose' => (int) ($it->sell_loose ?? 0),
             'variations' => $vars,
             'last_sent'  => $lastText,
         ];
@@ -3696,9 +3700,10 @@ class RetailPosController extends Controller
     /**
      * The form's qty[]/source[] inputs as transfer lines.
      *
-     * qty[{itemId}] pairs with source[{itemId}], which is '' for the main stock pool or a
-     * variation type. The legacy "{itemId}-var-{type}" qty key is still honoured so a stale
-     * open tab keeps working.
+     * The pool a line draws on is carried by the field name: qty[{itemId}] is main stock and
+     * qty[{itemId}-var-{type}] is that variation. That is what lets one item send several of its
+     * variations on a single gatepass — source[{itemId}] could only ever hold one answer per
+     * item, and is still read for any older tab that posts it.
      *
      * A branch pool has no variation breakdown, so a variation posted against a branch source
      * would be recorded on the gatepass and printed on the note while the deduction ignored it.

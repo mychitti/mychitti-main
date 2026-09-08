@@ -37,6 +37,31 @@ active
     height: 200px !important;
 }
 
+.cat-sub-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+    align-content: flex-start;
+    padding: 2px;
+}
+.cat-sub-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border: 1px solid #dbe3ec;
+    border-radius: 20px;
+    background: #f8fafc;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334155;
+    text-decoration: none;
+}
+.cat-sub-chip:hover { border-color: #2563eb; color: #2563eb; text-decoration: none; }
+.cat-sub-chip.is-off { opacity: .55; }
+.cat-sub-empty { font-size: 12.5px; color: #64748b; }
+
 </style>
 
 @endpush
@@ -66,7 +91,13 @@ active
                                     <label class="input-label" for="exampleFormControlInput1">{{translate('messages.name')}}</label>
                                     <input type="text" name="name[]" class="form-control" placeholder="{{translate('messages.new_category')}}" value="{{$category['name']}}" maxlength="191">
                                 </div>
-                                <div class="form-group">
+                                {{-- Keywords is hidden rather than deleted. CategoryService::getUpdateData()
+                                     does implode(',', $request->keywords) unconditionally, so a form
+                                     that posts no keywords at all hands implode() a null and the
+                                     update dies with a TypeError on PHP 8. Kept in the DOM, the
+                                     select still posts what the category already had, so saving from
+                                     this screen leaves those keywords exactly as they were. --}}
+                                <div class="form-group d-none">
                                     <label class="input-label" for="exampleFormControlInput1">Keywords</label>
                                     <select class="js-example-tags" name="keywords[]" multiple="multiple " value="{{$category['keywords']}}">
                                         @foreach(explode(',', $category['keywords']) as $key)
@@ -74,6 +105,39 @@ active
                                         @endforeach
                                     </select>
                                 </div>
+
+                                {{-- What already sits under this category. Only a top-level category
+                                     has any: this catalogue has no subcategory of a subcategory, so
+                                     on a subcategory's own edit screen the block would always be
+                                     empty and is left out entirely. --}}
+                                @if ($category->position == 0)
+                                    @php $subCategories = $category->childes()->orderBy('name')->get(); @endphp
+                                    <div class="form-group">
+                                        <label class="input-label">
+                                            {{ translate('messages.sub_categories') }}
+                                            @if ($subCategories->count())
+                                                <span class="text-muted">({{ $subCategories->count() }})</span>
+                                            @endif
+                                        </label>
+                                        @if ($subCategories->count())
+                                            <div class="cat-sub-list">
+                                                @foreach ($subCategories as $sub)
+                                                    {{-- Each one opens its own edit screen, which is the
+                                                         only place a subcategory can be renamed. --}}
+                                                    <a class="cat-sub-chip {{ $sub->status ? '' : 'is-off' }}"
+                                                       href="{{ route('admin.category.edit', [$sub->id]) }}"
+                                                       title="{{ $sub->status ? translate('messages.active') : translate('messages.inactive') }}">
+                                                        {{ $sub->name }}
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="cat-sub-empty">
+                                                {{ translate('No subcategories under this category yet.') }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
                                 <input type="hidden" name="lang[]" value="default">
                     
 

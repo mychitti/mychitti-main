@@ -116,7 +116,7 @@
                             <div class="text-muted" style="font-size:12px;" id="gp-foot-note">
                                 The branch receives the main product, and the quantity always comes out of
                                 main-store stock. On an item with variations, pick which one is going so the
-                                gatepass records it.
+                                gatepass records it — fill a quantity against each one you are sending.
                             </div>
                             <button class="rp-btn p" id="gp-submit" disabled>
                                 {{ $editing ? 'Save Changes & Reprint' : 'Transfer & Generate Gatepass' }}
@@ -227,6 +227,13 @@
                         var $from   = $('#gp-from-branch');
                         var $to     = $('#gp-to-branch');
 
+                        // Each pool is one line, and the two cells are stacked in step so a
+                        // variation's label sits beside its own quantity box.
+                        $('<style>.gp-pool{min-height:56px;display:flex;flex-direction:column;'
+                            + 'justify-content:center;}'
+                            + '.gp-pool + .gp-pool{border-top:1px solid #eef1f5;}</style>')
+                            .appendTo('head');
+
                         function esc(s) {
                             return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
                                 return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -271,32 +278,91 @@
                             }
                         });
 
-                        // The source dropdown carries each pool's ceiling in ITS OWN units, because
-                        // the quantity box counts whatever pool is selected — packs for a measured
-                        // variation, base units for main stock.
-                        function sourceCell(it) {
-                            if (!it.variations || !it.variations.length) {
-                                // A branch holds one flat pool per item, so there is nothing to pick.
-                                return '<span class="text-muted">' + esc(fromId() ? fromName() : 'Main stock') + '</span>';
-                            }
-                            var html = '<select name="source[' + it.id + ']" class="rp-input rp-gp-source" style="width:190px">'
-                                + '<option value="" data-max="' + it.stock + '" data-hint="' + esc(it.unit) + '">Main stock</option>';
-                            it.variations.forEach(function (v) {
-                                html += '<option value="' + esc(v.type) + '" data-max="' + v.max
-                                    + '" data-hint="' + esc(v.hint || '') + '">' + esc(v.type) + '</option>';
+                        // Each pool carries its own ceiling in ITS OWN units, because a quantity box
+                        // counts whatever pool it belongs to — packs for a measured variation, base
+                        // units for main stock.
+                        //
+                        // gatepassParseLines() splits on '-var-', so the pool a line draws on is
+                        // carried by the quantity field's own name. That is what lets one item send
+                        // several of its variations at once: source[itemId] could only ever hold a
+                        // single answer per item.
+                        function qtyName(itemId, varType) {
+                            return 'qty[' + itemId + (varType ? '-var-' + varType : '') + ']';
+                        }
+
+                        function rowsFor(itemId) {
+                            return $lines.find('tr[data-item="' + itemId + '"]');
+                        }
+
+                        // Compared, not interpolated into a selector: a variation type is whatever
+                        // the vendor typed, and a quote in it would break an attribute selector.
+                        function qtyInput($row, varType) {
+                            return $row.find('.rp-gp-qty').filter(function () {
+                                return ($(this).attr('data-var') || '') === (varType || '');
                             });
-                            return html + '</select>';
+                        }
+
+                        // Is main stock a pool in its own right on this item? Only on a loose
+                        // measured product, where the packs are filled from it — the same rule
+                        // _variationSelectionError() applies server-side. On a countable item the
+                        // main figure is the SUM of the variations, not a pool, so offering it here
+                        // would be offering a source the submit is bound to refuse.
+                        function hasMainPool(it) {
+                            if (!it.variations || !it.variations.length) { return true; }
+                            return it.var_mode === 'measured' && Number(it.sell_loose) === 1;
+                        }
+
+                        // Every pool the operator may send from, in the order they are shown.
+                        function poolsOf(it) {
+                            var pools = [];
+                            if (hasMainPool(it)) {
+                                pools.push({
+                                    varType: '',
+                                    label: fromId() ? fromName() : 'Main stock',
+                                    max: it.stock,
+                                    hint: it.unit
+                                });
+                            }
+                            (it.variations || []).forEach(function (v) {
+                                pools.push({ varType: v.type, label: v.type, max: v.max, hint: v.hint || '' });
+                            });
+                            return pools;
                         }
 
                         function addRow(it, presetQty, presetSource) {
-                            if ($lines.find('tr[data-item="' + it.id + '"]').length) {
-                                // Already on the transfer — a second row would post the same input
-                                // name twice and silently drop one of the quantities.
-                                $lines.find('tr[data-item="' + it.id + '"] .rp-gp-qty').focus();
+                            var $row = rowsFor(it.id);
+
+                            // One row per item, every pool stacked inside it. Searching the same
+                            // item again fills the row that is already there rather than adding a
+                            // second one — an operator sending three variations should not have to
+                            // find the item three times.
+                            if ($row.length) {
+                                if (presetQty != null && presetQty !== '') {
+                                    qtyInput($row, presetSource || '').val(presetQty);
+                                } else {
+                                    $row.find('.rp-gp-qty').first().focus();
+                                }
+                                refresh();
                                 return;
                             }
 
                             $('#gp-empty-row').remove();
+
+                            var pools = poolsOf(it);
+                            var srcHtml = '';
+                            var qtyHtml = '';
+
+                            pools.forEach(function (p) {
+                                srcHtml += '<div class="gp-pool">' + esc(p.label) + '</div>';
+                                qtyHtml += '<div class="gp-pool">'
+                                    + '<input type="number" step="0.001" min="0" max="' + p.max + '"'
+                                    + ' name="' + qtyName(it.id, p.varType) + '"'
+                                    + ' data-var="' + esc(p.varType) + '"'
+                                    + ' class="rp-input rp-gp-qty" style="width:130px" placeholder="0">'
+                                    + '<small class="text-muted d-block" style="font-size:11px;">max '
+                                    + esc(String(p.max)) + (p.hint ? ' ' + esc(p.hint) : '')
+                                    + '</small></div>';
+                            });
 
                             $lines.append(
                                 '<tr data-item="' + it.id + '">'
@@ -307,28 +373,18 @@
                                 + '</td>'
                                 + '<td class="text-muted">' + esc(it.sku_id) + '</td>'
                                 + '<td class="text-right text-muted">' + esc(it.stock_text) + ' ' + esc(it.unit) + '</td>'
-                                + '<td>' + sourceCell(it) + '</td>'
-                                + '<td>'
-                                + '<input type="number" step="0.001" min="0" max="' + it.stock + '"'
-                                + ' name="qty[' + it.id + ']" class="rp-input rp-gp-qty" style="width:140px" placeholder="0">'
-                                + '<small class="text-muted d-block rp-gp-hint" style="font-size:11px;">max '
-                                + esc(it.stock_text) + ' ' + esc(it.unit) + '</small>'
-                                + '</td>'
+                                + '<td>' + srcHtml + '</td>'
+                                + '<td>' + qtyHtml + '</td>'
                                 + '<td><button type="button" class="rp-btn o gp-remove" title="Remove">&times;</button></td>'
                                 + '</tr>'
                             );
 
-                            var $row = $lines.find('tr[data-item="' + it.id + '"]');
+                            $row = rowsFor(it.id);
 
-                            // Seeding an edit: pick the source pool first, because that handler
-                            // rewrites the quantity box's ceiling and clears anything above it.
-                            if (presetSource) {
-                                $row.find('.rp-gp-source').val(presetSource).trigger('change');
-                            }
                             if (presetQty != null && presetQty !== '') {
-                                $row.find('.rp-gp-qty').val(presetQty);
+                                qtyInput($row, presetSource || '').val(presetQty);
                             } else {
-                                $row.find('.rp-gp-qty').focus();
+                                $row.find('.rp-gp-qty').first().focus();
                             }
 
                             refresh();
@@ -353,21 +409,6 @@
                         $lines.on('click', '.gp-remove', function () {
                             $(this).closest('tr').remove();
                             refresh();
-                        });
-
-                        // Delegated: rows arrive after this script runs.
-                        $lines.on('change', '.rp-gp-source', function () {
-                            var $row = $(this).closest('tr');
-                            var opt  = this.options[this.selectedIndex];
-                            var max  = parseFloat(opt.getAttribute('data-max'));
-                            var $qty = $row.find('.rp-gp-qty');
-                            var label = (opt.getAttribute('data-hint') || '').trim();
-
-                            if (!isNaN(max)) {
-                                $qty.attr('max', max);
-                                if (parseFloat($qty.val()) > max) { $qty.val(''); }
-                            }
-                            $row.find('.rp-gp-hint').text('max ' + (isNaN(max) ? '' : max) + (label ? ' ' + label : ''));
                         });
 
                         // Changing the source invalidates every line already picked — the ceilings,
@@ -402,7 +443,7 @@
                                       + 'The store total is unchanged and main-store stock is not touched.'
                                     : 'The branch receives the main product, and the quantity always comes out of '
                                       + 'main-store stock. On an item with variations, pick which one is going so '
-                                      + 'the gatepass records it.'));
+                                      + 'the gatepass records it — fill a quantity against each one you are sending.'));
 
                             refresh();
                         }
