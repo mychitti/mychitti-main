@@ -712,6 +712,7 @@ Route::get('update-live-location/user/{id}', [LocationController::class, 'update
 
 
 Route::get('category/{category_slug}/{city}', [FrontController::class, 'category_listing'])->name('category.listing'); // needs to be later
+Route::get('{category_slug}/{slug}/brands', [FrontController::class, 'item_brands'])->name('product.brands'); // needs to be before product.details
 Route::get('{category_slug}/{slug}', [FrontController::class, 'product_details'])->name('product.details');// needs to be later
 
 Route::get('/heartbeat', function () {

@@ -53,12 +53,19 @@ class InventoryItem extends Model
         'stock_type',
         'repeat_days',
         'catalog_item_id',
+        'brand_pool_id',
     ];
 
     /** The shared pool record this item was adopted from, when it was. */
     public function catalogItem()
     {
         return $this->belongsTo(CatalogItem::class, 'catalog_item_id');
+    }
+
+    /** The brand from the brand pool this item is linked to. */
+    public function brandPool()
+    {
+        return $this->belongsTo(BrandPool::class, 'brand_pool_id');
     }
 
     /**

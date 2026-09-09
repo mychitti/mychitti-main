@@ -398,6 +398,9 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::post('get_variation_details', 'InventoryController@get_variation_details')->name('get_variation_details');
             Route::get('entries', 'InventoryController@entries')->name('entries');
             Route::post('save-item', 'InventoryController@save_item')->name('item.save')->middleware('permission:inventory_item,add');
+            Route::get('brands/search', function (\Illuminate\Http\Request $r) {
+                return \App\Http\Controllers\Admin\BrandPoolController::ajaxSearch($r);
+            })->name('brands.search');
             Route::post('update-item', 'InventoryController@update_item')->name('item.update')->middleware('permission:inventory_item,edit');;
             Route::get('edit-item/{id}', 'InventoryController@edit_item')->name('edit-item')->middleware('permission:inventory_item,edit');;
             Route::post('variation-store', 'InventoryController@variation_store')->name('item.variation-store');

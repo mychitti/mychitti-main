@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Front;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\BrandPool;
 use App\Models\Item;
 use App\Models\ServiceZoneSeo;
 use App\Models\Store;
 use App\Models\Zone;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Programmatic SEO landing pages for (service category x city) combos.
@@ -96,9 +98,36 @@ class SeoLandingController extends Controller
         $ratingValue = $rated->count() ? round((float) $rated->avg('average_rating'), 1) : null;
         $reviewCount = (int) $rated->sum('rating_count');
 
+        // Brands linked to this service ($item) or category from the brand pool — rendered as SEO chips.
+        $brands = collect();
+        if (Schema::hasTable('brand_pool')) {
+            try {
+                $brands = BrandPool::active()
+                    ->where(function ($q) use ($category, $item) {
+                        $hasCondition = false;
+                        if ($item && Schema::hasTable('brand_pool_service')) {
+                            $q->whereHas('services', fn($sq) => $sq->where('items.id', $item->id));
+                            $hasCondition = true;
+                        }
+                        if (Schema::hasTable('brand_pool_category')) {
+                            if ($hasCondition) {
+                                $q->orWhereHas('categories', fn($cq) => $cq->where('categories.id', $category->id));
+                            } else {
+                                $q->whereHas('categories', fn($cq) => $cq->where('categories.id', $category->id));
+                            }
+                        }
+                    })
+                    ->orderBy('name')
+                    ->limit(30)
+                    ->get(['id', 'name', 'slug']);
+            } catch (\Throwable $e) {
+                $brands = collect();
+            }
+        }
+
         return view('front-views.seo-landing', compact(
             'seo', 'zone', 'category', 'item', 'stores', 'canonical',
-            'subServices', 'otherCities', 'ratingValue', 'reviewCount'
+            'subServices', 'otherCities', 'ratingValue', 'reviewCount', 'brands'
         ));
     }
 }

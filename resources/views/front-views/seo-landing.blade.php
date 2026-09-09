@@ -153,6 +153,13 @@
         .seo-chip { display: inline-block; padding: 8px 16px; background: #f1f5fb; color: #334155; border-radius: 999px; font-size: 13.5px; font-weight: 600;
             border: 1px solid #e2e8f2; transition: background .15s ease, color .15s ease; }
         .seo-chip:hover { background: var(--lp-accent); color: #fff; }
+        /* Brand chips past the third are in the HTML from the start, only hidden — a crawler
+           reads every one of them, which is the entire point of the block. Revealing them is a
+           class flip, not a fetch. */
+        .seo-chips.is-clamped .seo-chip-more { display: none; }
+        .seo-chip-toggle { display: inline-block; padding: 8px 4px; background: none; border: 0;
+            color: var(--lp-accent); font-size: 13.5px; font-weight: 700; cursor: pointer; }
+        .seo-chip-toggle:hover { text-decoration: underline; }
 
         .seo-faq-item { border-bottom: 1px solid #eef1f6; }
         .seo-faq-item:last-child { border-bottom: 0; }
@@ -314,6 +321,29 @@
                     </div>
                 @endif
 
+                {{-- Brands we service: keyword-rich brand chips for SEO --}}
+                @if (!empty($brands) && $brands->isNotEmpty())
+                    <div class="seo-block">
+                        <h2 class="seo-section-title">{{ $subject }} brands we service in {{ $zone->name }}</h2>
+                        <p class="seo-section-sub">Our verified providers handle all major brands.</p>
+                        {{-- Three on screen, the rest one click away. Every chip is rendered
+                             either way: hiding them in CSS keeps the whole brand × service set
+                             crawlable while the section stays a readable size. --}}
+                        <div class="seo-chips {{ $brands->count() > 3 ? 'is-clamped' : '' }}" id="seoBrandChips">
+                            @foreach ($brands as $i => $brand)
+                                <span class="seo-chip {{ $i >= 3 ? 'seo-chip-more' : '' }}">{{ $brand->name }} {{ $subject }}</span>
+                            @endforeach
+                            @if ($brands->count() > 3)
+                                <button type="button" class="seo-chip-toggle" id="seoBrandToggle"
+                                        data-more="Show all {{ $brands->count() }}" data-less="Show less"
+                                        aria-expanded="false" aria-controls="seoBrandChips">
+                                    Show all {{ $brands->count() }}
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Same service in nearby cities — Category→City internal linking --}}
                 @if (!empty($otherCities) && $otherCities->isNotEmpty())
                     <div class="seo-block">
@@ -384,6 +414,20 @@
                     panel.style.display = open ? 'none' : 'block';
                 });
             });
+
+            // Brand chips: reveal the ones past the third. Plain vanilla, matching the FAQ
+            // toggle above — this page loads no jQuery of its own.
+            var brandToggle = document.getElementById('seoBrandToggle');
+            var brandChips = document.getElementById('seoBrandChips');
+            if (brandToggle && brandChips) {
+                brandToggle.addEventListener('click', function () {
+                    var clamped = brandChips.classList.toggle('is-clamped');
+                    brandToggle.textContent = clamped
+                        ? brandToggle.getAttribute('data-more')
+                        : brandToggle.getAttribute('data-less');
+                    brandToggle.setAttribute('aria-expanded', clamped ? 'false' : 'true');
+                });
+            }
         })();
     </script>
 @endsection

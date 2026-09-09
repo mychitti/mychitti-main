@@ -683,6 +683,18 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('suggestions/{id}/reject', 'CatalogPoolController@reject')->name('suggestions.reject');
         });
 
+        // BRAND POOL — centralised brand directory for SEO + vendor inventory.
+        Route::group(['prefix' => 'brand-pool', 'as' => 'brand-pool.'], function () {
+            Route::get('/', 'BrandPoolController@index')->name('index');
+            Route::post('store', 'BrandPoolController@store')->name('store');
+            Route::post('{id}/update', 'BrandPoolController@update')->name('update');
+            Route::get('{id}/delete', 'BrandPoolController@destroy')->name('delete');
+            Route::get('{id}/toggle-status', 'BrandPoolController@toggleStatus')->name('toggle-status');
+            Route::post('import', 'BrandPoolController@import')->name('import');
+            Route::post('ai-generate', 'BrandPoolController@aiGenerate')->name('ai-generate');
+            Route::post('ai-save', 'BrandPoolController@aiSave')->name('ai-save');
+        });
+
         // PRICING
         Route::group(['prefix' => 'pricing', 'as' => 'pricing.'], function () {
             Route::get('/', 'PricingController@index')->name('index');

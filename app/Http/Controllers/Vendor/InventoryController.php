@@ -1398,6 +1398,21 @@ class InventoryController extends Controller
         $inventory_item->images =  $images;
         $inventory_item->barcode =  $barcode;
         $inventory_item->brand = $request->brand;
+        if (Schema::hasColumn('inventory_items', 'brand_pool_id')) {
+            $oldBrandPoolId = $inventory_item->brand_pool_id;
+            $newBrandPoolId = $request->filled('brand_pool_id') ? (int) $request->brand_pool_id : null;
+            $inventory_item->brand_pool_id = $newBrandPoolId;
+            if ($oldBrandPoolId !== $newBrandPoolId) {
+                try {
+                    if ($oldBrandPoolId) {
+                        \App\Models\BrandPool::where('id', $oldBrandPoolId)->where('usage_count', '>', 0)->decrement('usage_count');
+                    }
+                    if ($newBrandPoolId) {
+                        \App\Models\BrandPool::where('id', $newBrandPoolId)->increment('usage_count');
+                    }
+                } catch (\Throwable $e) {}
+            }
+        }
         $inventory_item->model_number = $request->model_number;
         $inventory_item->sku_id =  $request->sku_id;
         $inventory_item->attributes = $request->has('attribute_id') ? json_encode($request->attribute_id) : $inventory_item->attributes;
@@ -1664,6 +1679,12 @@ class InventoryController extends Controller
 
             $inventory_item->barcode =  $request->has('barcode') ? Helpers::upload('inventory-item/barcode/', 'png', $request->file('barcode')) :  null;
             $inventory_item->brand = $request->brand;
+            if ($request->filled('brand_pool_id') && Schema::hasColumn('inventory_items', 'brand_pool_id')) {
+                $inventory_item->brand_pool_id = $request->brand_pool_id;
+                try {
+                    \App\Models\BrandPool::where('id', $request->brand_pool_id)->increment('usage_count');
+                } catch (\Throwable $e) {}
+            }
             $inventory_item->model_number = $request->model_number;
             $inventory_item->sku_id =  $request->sku_id;
             $inventory_item->attributes = $request->has('attribute_id') ? json_encode($request->attribute_id) : json_encode([]);

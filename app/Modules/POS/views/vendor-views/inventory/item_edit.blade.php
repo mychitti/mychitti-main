@@ -522,8 +522,7 @@
 
                                 <div class="product_elem col-lg-3 col-sm-6 product_inp_group">
                                     <label for="exampleInputEmail1">Brand</label>
-                                    <input type="text" value="{{ $item->brand }}" name="brand"
-                                        placeholder="Brand" class="form-control" />
+                                    @include('vendor-views.inventory.partials._brand_pool_field', ['inputId' => 'brand_select_edit', 'selected' => $item->brand, 'selectedId' => $item->brand_pool_id])
                                 </div>
 
                                 <div class="product_elem col-lg-3 col-sm-6 product_inp_group">

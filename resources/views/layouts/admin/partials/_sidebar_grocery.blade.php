@@ -502,12 +502,12 @@
                 <!-- End Food -->
 
                 <!-- Item Pool -->
-                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/catalog*') ? 'show active' : '' }}">
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/catalog*') || Request::is('admin/brand-pool*') ? 'show active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="Item Pool">
                         <i class="tio-book-opened nav-icon"></i>
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Item Pool</span>
                     </a>
-                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:{{ Request::is('admin/catalog*') ? 'block' : 'none' }}">
+                    <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display:{{ Request::is('admin/catalog*') || Request::is('admin/brand-pool*') ? 'block' : 'none' }}">
                         <li class="nav-item {{ Request::is('admin/catalog') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('admin.catalog.index') }}" title="Shared Catalog">
                                 <span class="tio-circle nav-indicator-icon"></span>
@@ -518,6 +518,12 @@
                             <a class="nav-link" href="{{ route('admin.catalog.suggestions') }}" title="Suggestions">
                                 <span class="tio-circle nav-indicator-icon"></span>
                                 <span class="text-truncate">Suggestions</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {{ Request::is('admin/brand-pool*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('admin.brand-pool.index') }}" title="Brand Pool">
+                                <span class="tio-circle nav-indicator-icon"></span>
+                                <span class="text-truncate">Brand Pool</span>
                             </a>
                         </li>
                     </ul>

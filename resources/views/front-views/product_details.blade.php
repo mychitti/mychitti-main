@@ -1274,6 +1274,35 @@
             @endforeach
         @endif
 
+        {{-- BRAND KEYWORDS ======================== --}}
+        {{-- "LG AC Repair" and the rest of the pool for this service. Three are shown and the
+             remainder are rendered but hidden, not withheld: a crawler reads every one of them,
+             which is the whole reason the block exists, while the page stays readable. --}}
+        @if (!empty($itemBrands) && $itemBrands->isNotEmpty())
+            <h3 style="font-size: 16px;">{{ $item->name }} by brand</h3>
+
+            <div id="brandKeywords" class="{{ $itemBrands->count() > 3 ? 'is-clamped' : '' }}">
+                @foreach ($itemBrands as $i => $brand)
+                    <span class="brand-kw {{ $i >= 3 ? 'brand-kw-more' : '' }}">
+                        <a class="text-dark" style="font-size:10px;" href="">
+                            {{ $brand->name }} {{ $item->name }}
+                        </a>
+                    </span> <span class="brand-kw {{ $i >= 3 ? 'brand-kw-more' : '' }}">|</span>
+                @endforeach
+
+                @if ($itemBrands->count() > 3)
+                    <a href="{{ $canonical }}/brands"
+                       style="padding:0 4px;font-size:10px;font-weight:700;color:#0d6efd;">
+                        Show all {{ $itemBrands->count() }}
+                    </a>
+                @endif
+            </div>
+
+            @push('css_or_js')
+                <style>#brandKeywords.is-clamped .brand-kw-more { display: none; }</style>
+            @endpush
+        @endif
+
     </div>
 
     <div class="top_stores_section">

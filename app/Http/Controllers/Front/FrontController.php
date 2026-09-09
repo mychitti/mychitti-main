@@ -140,10 +140,10 @@ class FrontController extends Controller
         // 4️⃣ Return OCR result
         return response()->json(json_decode($response, true));
     }
-    /**  
+    /**
      * Show the application dashboard.
      *
-     * @return \Illuminate\Contracts\Support\Renderable 
+     * @return \Illuminate\Contracts\Support\Renderable
      */
 
     public function icons_view()
@@ -378,9 +378,9 @@ class FrontController extends Controller
     public function registration_success(Request $request)
     {
         return view('front-views.store_reg_successfull');
-    } 
+    }
     public function store_reviews(Request $request, $slug = null)
-    { 
+    {
         $storeFromDomain = $request->attributes->get('store_domain_store');
         if ($storeFromDomain) {
             $slug = $storeFromDomain->slug;
@@ -435,14 +435,14 @@ class FrontController extends Controller
         })->select('id', 'status', 'module_name', 'thumbnail', 'icon')->active()->get();
 
 
-        // TOP SELLING PRODUCT 
+        // TOP SELLING PRODUCT
         $data['top_sell_products'] = DB::table('items')->join('stores', 'stores.id', 'items.store_id')->join('categories', 'categories.id', 'items.category_id')->whereIn('stores.zone_id',  json_decode($zone_id, true))->where('items.status', 1)->where('stores.status', 1)->where('items.is_approved', 1)->where('items.module_id', 5)
             ->select('items.*', 'stores.delivery_time', 'categories.slug as cat_slug')
             ->orderBy("items.order_count", 'desc')
             ->take(6)->get();
 
 
-        // TOP SELLING  SERVICES 
+        // TOP SELLING  SERVICES
         $categoryIds = Item::withoutGlobalScopes()
             ->join('stores', function ($join) use ($zone_id) {
                 $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
@@ -477,8 +477,8 @@ class FrontController extends Controller
             }
         }
 
-        // TOP SELLING PRODUCT / SERVICES END 
-        //banners 
+        // TOP SELLING PRODUCT / SERVICES END
+        //banners
         $zone_ids = json_decode($zone_id, true);
 
         $data['offer_banners'] = OfferBanner::where('approved', 1)
@@ -602,7 +602,7 @@ class FrontController extends Controller
     }
     public function fetch_subcategory(Request $request)
     {
-        $allcategories = []; 
+        $allcategories = [];
         array_push($allcategories, $request->cat_id);
 
         // Fetch child category IDs
@@ -687,14 +687,14 @@ class FrontController extends Controller
         // Optimized: Pre-filter stores by zone, then join
         $sql = "
         (
-            SELECT 
+            SELECT
                 c.slug as cat_slug,
                 i.slug,
                 i.name,
                 i.id,
                 NULL as keyword_text,
                 'product' as result_type,
-                CASE 
+                CASE
                     WHEN LOWER(i.name) = ? THEN 100
                     WHEN LOWER(i.name) LIKE ? THEN 80
                     ELSE 50
@@ -706,8 +706,8 @@ class FrontController extends Controller
                 AND i.status = 1
                 AND i.module_id = 6
                 AND EXISTS (
-                    SELECT 1 
-                    FROM stores s 
+                    SELECT 1
+                    FROM stores s
                     WHERE s.zone_id IN ({$zoneIdPlaceholders})
                     AND s.show_in_mychitti = 1
                     AND EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)
@@ -718,14 +718,14 @@ class FrontController extends Controller
         )
         UNION ALL
         (
-            SELECT 
+            SELECT
                 c.slug as cat_slug,
                 i.slug,
                 i.name,
                 i.id,
                 sk.keyword as keyword_text,
                 'keyword' as result_type,
-                CASE 
+                CASE
                     WHEN LOWER(sk.keyword) = ? THEN 95
                     WHEN LOWER(sk.keyword) LIKE ? THEN 75
                     ELSE 48
@@ -738,8 +738,8 @@ class FrontController extends Controller
                 AND i.status = 1
                 AND i.module_id = 6
                 AND EXISTS (
-                    SELECT 1 
-                    FROM stores s 
+                    SELECT 1
+                    FROM stores s
                     WHERE s.zone_id IN ({$zoneIdPlaceholders})
                     AND s.show_in_mychitti = 1
                     AND EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)
@@ -750,14 +750,14 @@ class FrontController extends Controller
         )
         UNION ALL
         (
-            SELECT 
+            SELECT
                 NULL as cat_slug,
                 slug,
                 name,
                 id,
                 NULL as keyword_text,
                 'category' as result_type,
-                CASE 
+                CASE
                     WHEN LOWER(name) = ? THEN 90
                     WHEN LOWER(name) LIKE ? THEN 70
                     ELSE 45
@@ -772,14 +772,14 @@ class FrontController extends Controller
         )
         UNION ALL
         (
-            SELECT 
+            SELECT
                 NULL as cat_slug,
                 slug,
                 name,
                 id,
                 NULL as keyword_text,
                 'store' as result_type,
-                CASE 
+                CASE
                     WHEN LOWER(name) = ? THEN 92
                     WHEN LOWER(name) LIKE ? THEN 72
                     ELSE 46
@@ -936,7 +936,7 @@ class FrontController extends Controller
             items.id,
             NULL as keyword_text,
             'product' as result_type,
-            CASE 
+            CASE
                 WHEN LOWER(items.name) = LOWER(?) THEN 100
                 WHEN items.name REGEXP ? THEN 80
                 WHEN LOWER(items.name) LIKE LOWER(?) THEN 50
@@ -969,7 +969,7 @@ class FrontController extends Controller
             items.id,
             service_keywords.keyword as keyword_text,
             'keyword' as result_type,
-            CASE 
+            CASE
                 WHEN LOWER(service_keywords.keyword) = LOWER(?) THEN 95
                 WHEN service_keywords.keyword REGEXP ? THEN 75
                 WHEN LOWER(service_keywords.keyword) LIKE LOWER(?) THEN 48
@@ -996,7 +996,7 @@ class FrontController extends Controller
             id,
             NULL as keyword_text,
             'category' as result_type,
-            CASE 
+            CASE
                 WHEN LOWER(name) = LOWER(?) THEN 90
                 WHEN name REGEXP ? THEN 70
                 WHEN LOWER(name) LIKE LOWER(?) THEN 45
@@ -1022,7 +1022,7 @@ class FrontController extends Controller
             id,
             NULL as keyword_text,
             'store' as result_type,
-            CASE 
+            CASE
                 WHEN LOWER(name) = LOWER(?) THEN 92
                 WHEN name REGEXP ? THEN 72
                 WHEN LOWER(name) LIKE LOWER(?) THEN 46
@@ -1106,10 +1106,10 @@ class FrontController extends Controller
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->selectRaw("( 6371 * acos(
-                    cos(radians(?)) * 
-                    cos(radians(latitude)) * 
-                    cos(radians(longitude) - radians(?)) + 
-                    sin(radians(?)) * 
+                    cos(radians(?)) *
+                    cos(radians(latitude)) *
+                    cos(radians(longitude) - radians(?)) +
+                    sin(radians(?)) *
                     sin(radians(latitude))
                 )
             ) AS distance", [$userLat, $userLng, $userLat])->groupBy('stores.id');;
@@ -1143,23 +1143,23 @@ class FrontController extends Controller
         $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'about_us')->first();
         $title = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'about_title')->first();
         return view('front-views.about', compact('content', 'title'));
-    } 
+    }
     public function faq()
-    { 
+    {
         $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'faq')->first();
         return view('front-views.faq', compact('content'));
     }
 
     // AI Search results page (Phase 3 §3.1) — renders the query; the page fetches /api/v1/ai-search.
     public function aiSearch(Request $request)
-    { 
+    {
         $query = trim((string) $request->get('q', ''));
         // The user's selected city/zone(s) + coordinates — so results stay in-city and rank by distance.
         $zoneIds = array_values(array_filter((array) json_decode($this->zone_id, true)));
         $lat = $this->latitude;
         $lng = $this->longitude;
         return view('front-views.ai-search', compact('query', 'zoneIds', 'lat', 'lng'));
-    } 
+    }
     public function disclaimer()
     {
         $content = DB::table('data_settings')->where('type', 'admin_landing_page')->where('key', 'disclaimer')->first();
@@ -1367,7 +1367,7 @@ class FrontController extends Controller
         $store = Store::where('id', $cart[0]->store_id)->first();
 
 
-        // COUPONS  
+        // COUPONS
         $customer_id = $user_id;
         $zone_id = $this->zone_id;
 
@@ -2322,7 +2322,7 @@ class FrontController extends Controller
                 // info($ex->getMessage());
             }
 
-            // place order sms, email and in app notification to vendor  =================== 
+            // place order sms, email and in app notification to vendor  ===================
             $title = "Received New Order";
             $msg = "Good news! You've got a new order. Let's get it ready!";
             $acceptnce_id = '';
@@ -2331,15 +2331,15 @@ class FrontController extends Controller
             $user_typ = 'vendor';
 
             _inAppNotification($title, $msg, $acceptnce_id, $to, $url, $user_typ);
-            // _sendMailToVendor($title, $msg, $to, $url); 
+            // _sendMailToVendor($title, $msg, $to, $url);
             $smsTemplate = "Hello! Your order NO " . $order->id . " is received. Please review the details on My Chitti Vendor Dashboard and confirm accuracy.";
             _sendSMS($store->phone, $smsTemplate);
             _sendOrderSMSToAdmins($order, $user, $store);
 
-            // SendOrderNotifications::dispatch( 
-            //     $title, 
+            // SendOrderNotifications::dispatch(
+            //     $title,
             //     $msg,
-            //     $acceptnce_id, 
+            //     $acceptnce_id,
             //     $to,
             //     $url,
             //     $user_typ,
@@ -2407,7 +2407,7 @@ class FrontController extends Controller
             $store = Store::withoutGlobalScopes()->with('galleries')->where('slug', $slug)->first();
         }
         if (!$store) {
-            abort(404); 
+            abort(404);
         }
         return view('front-views.store_gallery', compact('store'));
     }
@@ -2579,7 +2579,7 @@ class FrontController extends Controller
             })
             ->latest();
     }
- 
+
     public function allAds()
     {
         $ads = $this->adsBaseQuery()->paginate(18);
@@ -2674,7 +2674,7 @@ class FrontController extends Controller
             // no specialised business type) out of the index so they aren't flagged soft-404.
             view()->share('metaRobots',
                 ($store->items_count == 0 && $store->campaigns_count == 0 && empty($store->business_type)) ? 'noindex, follow' : null);
- 
+
             // LocalBusiness JSON-LD (P0) — emitted in the layout head for every store template.
             view()->share('localBusinessStore', $store);
 
@@ -2825,7 +2825,7 @@ class FrontController extends Controller
         if ($request->has('template') && $request->template) {
             $previewTpl = $request->template;
         }
- 
+
         // School stores get a dedicated, admission-focused webpage.
         if (strtolower($store['business_type'] ?? '') === 'school') {
             $sid = $store['id'];
@@ -3118,7 +3118,7 @@ class FrontController extends Controller
                 'stores.address',
                 'stores.average_rating',
                 'stores.rating_count',
-                // DB::raw('COUNT(store_reviews.id) as review_count')  
+                // DB::raw('COUNT(store_reviews.id) as review_count')
             )
             ->groupBy('stores.id', 'stores.name', 'stores.slug', 'stores.address', 'stores.average_rating', 'stores.rating_count')
             ->where('stores.module_id', 6)
@@ -3157,12 +3157,49 @@ class FrontController extends Controller
             ->orderBy('sort_order')
             ->get();
         // prx(count($data['top_stores']));
-
+ 
         $view = ($module == 5 || $is_inventory_product)
             ? 'front-views.ecommerce_product_detail'
             : 'front-views.product_details';
 
         $viewData = compact('itemFaqs', 'item_area_keywords_arr', 'item_area_keywords', 'is_inventory_product', 'item', 'data', 'stores', 'keywords', 'module');
+
+        // Brands the pool links to this service, rendered as "LG AC Repair" keyword chips. Guarded
+        // on the table so a server that has not had the brand pool installed yet simply shows no
+        // chips rather than 500ing the whole service page.
+        $itemBrands = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('brand_pool')) {
+            try {
+                $itemBrands = \App\Models\BrandPool::active()
+                    ->where(function ($q) use ($item) {
+                        $q->whereHas('services', fn($sq) => $sq->where('items.id', $item->id));
+                        if ($item->category_id) {
+                            $q->orWhereHas('categories', fn($cq) => $cq->where('categories.id', $item->category_id));
+                        }
+                    })
+                    ->orderBy('name')
+                    ->limit(40)
+                    ->get(['id', 'name']);
+            } catch (\Throwable $e) {
+                $itemBrands = collect();
+            }
+        }
+
+        // Three at random up front, the rest alphabetical behind "Show all". Rotating which brands
+        // lead means a different three get read first on each visit instead of the page always
+        // opening on whatever sorts earliest — Amana and American Standard would otherwise be the
+        // only two anyone ever sees. The remainder stays A-Z so the expanded list is still
+        // scannable, and every brand is in the HTML either way.
+        if ($itemBrands->count() > 3) {
+            $featured = $itemBrands->random(3);
+            $rest = $itemBrands
+                ->reject(fn($b) => $featured->contains('id', $b->id))
+                ->sortBy('name')
+                ->values();
+            $itemBrands = $featured->values()->concat($rest);
+        }
+
+        $viewData['itemBrands'] = $itemBrands;
 
         if ($view === 'front-views.product_details') {
             // City-scoped canonical + name apply to the services page only. The ecommerce view's
@@ -3180,6 +3217,55 @@ class FrontController extends Controller
         }
 
         return view($view, $viewData);
+    }
+
+    // Full "Show all" brand list for a service — the item details page only teases 3 brands
+    // plus a handful more behind a JS toggle; this is the dedicated page that link points to.
+    public function item_brands(Request $request, $category_slug, $slug)
+    {
+        $item = DB::table('items')
+            ->join('categories', 'items.category_id', 'categories.id')
+            ->where('items.slug', $slug)
+            ->where('items.is_approved', 1)
+            ->select('items.id', 'items.name', 'items.slug', 'items.category_id')
+            ->first();
+
+        if (!$item) {
+            abort(404);
+        }
+
+        $cityZoneIds      = _zoneIdsByCitySlug($category_slug);
+        $usingSessionZone = empty($cityZoneIds);
+        $zoneIds          = $usingSessionZone ? (json_decode($this->zone_id, true) ?: []) : $cityZoneIds;
+        $cityName         = _zoneCityName($zoneIds);
+        $citySlug         = _zoneCitySlug($cityName);
+        $itemUrl          = url($citySlug . '/' . $item->slug);
+        $canonical        = $itemUrl . '/brands';
+
+        // Same lookup as product_details() but without its 40-row cap — this page exists
+        // specifically to show the rest of the pool that the teaser can't fit.
+        $brands = collect();
+        if (Schema::hasTable('brand_pool')) {
+            try {
+                $brands = \App\Models\BrandPool::active()
+                    ->where(function ($q) use ($item) {
+                        $q->whereHas('services', fn($sq) => $sq->where('items.id', $item->id));
+                        if ($item->category_id) {
+                            $q->orWhereHas('categories', fn($cq) => $cq->where('categories.id', $item->category_id));
+                        }
+                    })
+                    ->orderBy('name')
+                    ->get(['id', 'name']);
+            } catch (\Throwable $e) {
+                $brands = collect();
+            }
+        }
+
+        if ($brands->isEmpty()) {
+            abort(404);
+        }
+
+        return view('front-views.item_brands', compact('item', 'brands', 'cityName', 'itemUrl', 'canonical'));
     }
 
     public function category_listing(Request $request, $slug, $city = null)
@@ -3287,7 +3373,7 @@ class FrontController extends Controller
         // category-level combo already 301-redirects above (when a city is in the URL), so the
         // untapped links are the item-level landings (e.g. "Split AC Repair") — surface the
         // best-supply ones so crawlers/users can reach them from the general listing.
-        $seoLinks = collect(); 
+        $seoLinks = collect();
         if ($module == 6 && !empty($zone_ids)) {
             $seoLinks = DB::table('service_zone_seo')
                 ->join('items', 'items.id', '=', 'service_zone_seo.item_id')

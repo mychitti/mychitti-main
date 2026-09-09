@@ -477,8 +477,7 @@
                                         <div class="col-md-6 product_elem product_inp_group">
                                             <div class="form-group form-group-custom">
                                                 <label class="custom-label">Brand</label>
-                                                <input type="text" value="{{ $item->brand }}" name="brand" placeholder="Brand"
-                                                    class="form-control" />
+                                                @include('vendor-views.inventory.partials._brand_pool_field', ['inputId' => 'brand_select_edit', 'selected' => $item->brand, 'selectedId' => $item->brand_pool_id])
                                             </div>
                                         </div>
                                         <div class="col-md-6 product_elem product_inp_group">

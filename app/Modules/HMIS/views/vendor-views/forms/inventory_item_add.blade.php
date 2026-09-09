@@ -380,7 +380,7 @@
 
                     <div class="product_elem col-lg-3 col-sm-6 p-1 product_inp_group">
                         <label for="exampleInputEmail1">Brand</label>
-                        <input type="text" name="brand" placeholder="Brand" class="form-control" />
+                        @include('vendor-views.inventory.partials._brand_pool_field', ['inputId' => 'brand_select_add'])
                     </div>
 
                     <div class="product_elem col-lg-3 col-sm-6 p-1 product_inp_group">
