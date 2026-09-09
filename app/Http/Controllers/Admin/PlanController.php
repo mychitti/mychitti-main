@@ -43,12 +43,13 @@ class PlanController extends Controller
     }
     public function stores()
     {
-        $stores = Store::where('module_id', 6)->get();
         $plans = Plan::where('status', 1)->get();
-        // Get only stores that have subscriptions 
-        $stores = Store::whereHas('subscriptions', function ($q) {
-            $q->where('plan_expiry', '>=', now());
-        })
+        // Get only stores that have subscriptions
+        // MC Vendorhub (opted-out) stores have their own subscriptions list at admin/mcvendorhub/subscriptions
+        $stores = Store::visibleOnMychitti()
+            ->whereHas('subscriptions', function ($q) {
+                $q->where('plan_expiry', '>=', now());
+            })
             ->with(['subscriptions' => function ($q) {
                 // Load only active subscriptions
                 $q->where('plan_expiry', '>=', now())

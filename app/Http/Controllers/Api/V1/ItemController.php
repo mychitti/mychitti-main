@@ -84,7 +84,7 @@ class ItemController extends Controller
             ->join('stores', function ($join) use ($zone_id) {
                 $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 $join->whereIn('stores.zone_id',  json_decode($zone_id, true));
-                $join->where(['stores.module_id' => 6, 'stores.active' => 1, 'items.status' => 1]);
+                $join->where(['stores.module_id' => 6, 'stores.active' => 1, 'stores.show_in_mychitti' => 1, 'items.status' => 1]);
             })
             ->join('categories', 'categories.id', 'items.category_id')
             ->whereNull('categories.added_by')
@@ -116,6 +116,8 @@ class ItemController extends Controller
             })
 
             ->whereIn('stores.zone_id', json_decode($zone_id, true))
+
+            ->where('stores.show_in_mychitti', 1)
 
             ->when(config('module.current_module_data'), function ($query) {
                 $query->where('items.module_id', config('module.current_module_data')['id']);
@@ -166,6 +168,7 @@ class ItemController extends Controller
             ->join('categories', 'items.category_id', '=', 'categories.id')
             ->select('items.name', 'items.slug', 'categories.slug as cat_slug')
             ->whereIn('stores.zone_id', json_decode($zone_id, true))
+            ->where('stores.show_in_mychitti', 1)
             ->get();
 
         // keywords =======================
@@ -200,7 +203,7 @@ class ItemController extends Controller
                 $query->module(config('module.current_module_data')['id']);
             })->get();
 
-        $matchingStores = Store::where('name', 'like', '%' . $request->keyword . '%')->where('status', 1)->whereIn('zone_id', json_decode($zone_id, true))->when(config('module.current_module_data'), function ($query) {
+        $matchingStores = Store::where('name', 'like', '%' . $request->keyword . '%')->where('status', 1)->visibleOnMychitti()->whereIn('zone_id', json_decode($zone_id, true))->when(config('module.current_module_data'), function ($query) {
             $query->module(config('module.current_module_data')['id']);
         })->get();
 
@@ -305,9 +308,10 @@ class ItemController extends Controller
                 AND i.status = 1
                 AND i.module_id = 6
                 AND EXISTS (
-                    SELECT 1 
-                    FROM stores s 
+                    SELECT 1
+                    FROM stores s
                     WHERE s.zone_id IN ({$zoneIdPlaceholders})
+                    AND s.show_in_mychitti = 1
                     AND EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)
                     LIMIT 1
                 )
@@ -335,9 +339,10 @@ class ItemController extends Controller
                 AND i.status = 1
                 AND i.module_id = 6
                 AND EXISTS (
-                    SELECT 1 
-                    FROM stores s 
+                    SELECT 1
+                    FROM stores s
                     WHERE s.zone_id IN ({$zoneIdPlaceholders})
+                    AND s.show_in_mychitti = 1
                     AND EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = i.id AND ist.store_id = s.id)
                     LIMIT 1
                 )
@@ -381,6 +386,7 @@ class ItemController extends Controller
             WHERE LOWER(name) LIKE ?
                 AND module_id = 6
                 AND status = 1
+                AND show_in_mychitti = 1
                 AND zone_id IN ({$zoneIdPlaceholders})
             LIMIT 3
         )
@@ -746,7 +752,7 @@ class ItemController extends Controller
                 $query->module(config('module.current_module_data')['id']);
             })->get();
 
-        $matchingStores = Store::where('name', 'like', '%' . $request->keyword . '%')->where('status', 1)->whereIn('zone_id', json_decode($zone_id, true))->when(config('module.current_module_data'), function ($query) {
+        $matchingStores = Store::where('name', 'like', '%' . $request->keyword . '%')->where('status', 1)->visibleOnMychitti()->whereIn('zone_id', json_decode($zone_id, true))->when(config('module.current_module_data'), function ($query) {
             $query->module(config('module.current_module_data')['id']);
         })->get();
 
@@ -905,7 +911,7 @@ class ItemController extends Controller
         if (config('module.current_module_data')['id'] == 5) {
 
 
-            $items = Item::active()->type($type)
+            $items = Item::active()->visibleOnMychitti()->type($type)
                 ->with('store', function ($query) {
                     $query->withCount(['campaigns' => function ($query) {
                         $query->Running();
@@ -992,7 +998,7 @@ class ItemController extends Controller
                 ->paginate($limit, ['*'], 'page', $offset);
 
 
-            $item_categories = Item::active()->type($type)
+            $item_categories = Item::active()->visibleOnMychitti()->type($type)
                 ->with('store', function ($query) {
                     $query->withCount(['campaigns' => function ($query) {
                         $query->Running();
@@ -1085,8 +1091,9 @@ class ItemController extends Controller
             // First part - Basic query with essential joins
 
             $items = Item::withoutGlobalScope('store')
+                ->visibleOnMychitti()
                 // ->with(['stores' => function ($query) {
-                //     $query->withCount(['campaigns' => function ($query) {  
+                //     $query->withCount(['campaigns' => function ($query) {
                 //         $query->Running();
                 //     }]);
                 // }])
@@ -1133,7 +1140,7 @@ class ItemController extends Controller
                 })
                 ->paginate($limit, ['*'], 'page', $offset);
 
-            $item_categories = Item::active()->type($type)
+            $item_categories = Item::active()->visibleOnMychitti()->type($type)
                 ->with('store', function ($query) {
                     $query->withCount(['campaigns' => function ($query) {
                         $query->Running();
@@ -1254,7 +1261,7 @@ class ItemController extends Controller
 
         $type = $request->query('type', 'all');
 
-        $items = Item::active()->type($type)
+        $items = Item::active()->visibleOnMychitti()->type($type)
 
             ->when($request->category_id, function ($query) use ($request) {
                 $query->whereHas('category', function ($q) use ($request) {
@@ -1532,7 +1539,7 @@ class ItemController extends Controller
                     $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->whereIn('stores.zone_id',  json_decode($zone_id, true))
-                ->where(['categories.status' => 1, 'items.status' => 1, 'items.category_id' => $item->category_id])
+                ->where(['categories.status' => 1, 'items.status' => 1, 'items.category_id' => $item->category_id, 'stores.show_in_mychitti' => 1])
                 ->whereNot('items.id', $id)
                 ->where('items.module_id', 6)
                 ->select('items.id', 'items.name', 'items.image', 'stores.delivery_time', 'categories.slug as cat_slug')
@@ -1747,7 +1754,7 @@ class ItemController extends Controller
         }
         $key = explode(' ', $request->name);
 
-        $items = Item::active()->whereHas('store', function ($query) use ($zone_id) {
+        $items = Item::active()->visibleOnMychitti()->whereHas('store', function ($query) use ($zone_id) {
             $query->when(config('module.current_module_data'), function ($query) {
                 $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules', function ($query) {
                     $query->where('modules.id', config('module.current_module_data')['id']);
@@ -1806,6 +1813,7 @@ class ItemController extends Controller
                 }
             })
             ->active()
+            ->visibleOnMychitti()
             ->limit(50)
             ->select(['id', 'name', 'logo'])
             ->get();
@@ -1862,7 +1870,7 @@ class ItemController extends Controller
                     $q->where('slug', $request->store_id);
                 });
             })
-            ->active()->type($type)->latest()->paginate($limit, ['*'], 'page', $offset);
+            ->active()->visibleOnMychitti()->type($type)->latest()->paginate($limit, ['*'], 'page', $offset);
         $data = [
             'total_size' => $paginator->total(),
             'limit' => $limit,

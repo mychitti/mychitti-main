@@ -132,7 +132,10 @@ class SyncServiceZoneSeoCombos extends Command
             ->join('items as i', 'i.id', '=', 'ist.item_id')
             ->join('categories as c', 'c.id', '=', 'i.category_id')
             ->join('stores as s', 's.id', '=', 'ist.store_id')
-            ->where('s.status', 1)->where('s.active', 1)->where('i.status', 1)
+            // These pages are the MyChitti consumer marketplace's programmatic SEO — a store that
+            // opted out of MyChitti (MC Vendorhub) must not count as supply here or get its
+            // services surfaced on a page whose whole point is driving MyChitti bookings.
+            ->where('s.status', 1)->where('s.active', 1)->where('s.show_in_mychitti', 1)->where('i.status', 1)
             ->groupBy('c.id', 's.zone_id')
             ->select('c.id as category_id', 's.zone_id', DB::raw('COUNT(DISTINCT s.id) as store_count'))
             ->get();
@@ -151,7 +154,7 @@ class SyncServiceZoneSeoCombos extends Command
         $itemCombos = DB::table('item_store as ist')
             ->join('items as i', 'i.id', '=', 'ist.item_id')
             ->join('stores as s', 's.id', '=', 'ist.store_id')
-            ->where('s.status', 1)->where('s.active', 1)->where('i.status', 1)
+            ->where('s.status', 1)->where('s.active', 1)->where('s.show_in_mychitti', 1)->where('i.status', 1)
             ->groupBy('i.id', 'i.category_id', 's.zone_id')
             ->havingRaw('COUNT(DISTINCT s.id) >= ?', [self::ITEM_MIN_STORES])
             ->select('i.id as item_id', 'i.category_id', 's.zone_id', DB::raw('COUNT(DISTINCT s.id) as store_count'))

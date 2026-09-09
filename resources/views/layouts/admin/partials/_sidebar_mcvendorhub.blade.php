@@ -77,6 +77,24 @@
                         </a>
                     </li>
 
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/mcvendorhub/support*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.mcvendorhub.support') }}" title="{{ translate('Support') }}">
+                            <i class="tio-support nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                {{ translate('Support') }}
+                            </span>
+                        </a>
+                    </li>
+
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/mcvendorhub/seo*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.mcvendorhub.seo') }}" title="{{ translate('Store SEO') }}">
+                            <i class="tio-search nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                {{ translate('Store SEO') }}
+                            </span>
+                        </a>
+                    </li>
+
                     <li class="nav-item">
                         <small class="nav-subtitle" title="{{ translate('Sales & Marketing') }}">{{ translate('Sales & Marketing') }}</small>
                         <small class="tio-more-horizontal nav-subtitle-replacer"></small>
@@ -87,6 +105,15 @@
                             <i class="tio-comment-text-outlined nav-icon"></i>
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                 {{ translate('Enquiries') }}
+                            </span>
+                        </a>
+                    </li>
+
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/mcvendorhub/sales*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.mcvendorhub.sales') }}" title="{{ translate('Sales') }}">
+                            <i class="tio-invoice nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                {{ translate('Sales') }}
                             </span>
                         </a>
                     </li>

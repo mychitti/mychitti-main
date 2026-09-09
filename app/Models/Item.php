@@ -90,6 +90,17 @@ class Item extends Model
         });
     }
 
+    /**
+     * Items belonging to a store that opted out of the MyChitti marketplace
+     * (MC Vendorhub) are excluded — mirrors Store::scopeVisibleOnMychitti().
+     */
+    public function scopeVisibleOnMychitti($query)
+    {
+        return $query->whereHas('store', function ($query) {
+            return $query->where('show_in_mychitti', 1);
+        });
+    }
+
     public function scopePopular($query)
     {
         return $query->orderBy('order_count', 'desc');

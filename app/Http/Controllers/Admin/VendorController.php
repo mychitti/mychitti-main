@@ -2477,7 +2477,8 @@ class VendorController extends Controller
         $zone_id = $request->query('zone_id', 'all');
         $type = $request->query('type', 'all');
         $module_id = $request->query('module_id', 'all');
-        $stores = Store::with(['vendor', 'module']) 
+        $stores = Store::with(['vendor', 'module'])
+            ->visibleOnMychitti() // MC Vendorhub (opted-out) stores have their own list at admin/mcvendorhub/vendors
             ->whereHas('vendor', fn($q) => $q->where('status', 1))
             ->when(is_numeric($zone_id), fn($q) => $q->where('zone_id', $zone_id))
             ->when(is_numeric($module_id), fn($q) => $q->module($module_id))

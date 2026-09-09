@@ -44,7 +44,7 @@ class StoreLogic
         } else {
             $paginator = $paginator->whereIn('zone_id', json_decode($zone_id,true));
         }
-        $paginator = $paginator->Active()
+        $paginator = $paginator->visibleOnMychitti()->Active()
             ->type($type)
             ->when($store_type == 'all', function($q){
                 return $q->orderBy('open', 'desc')
@@ -147,6 +147,7 @@ class StoreLogic
                     $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
             })
+            ->visibleOnMychitti()
             ->Active()
             ->type($type)
             ->latest()
@@ -169,6 +170,7 @@ class StoreLogic
                     $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
             })
+            ->visibleOnMychitti()
             ->Active()
             ->type($type)
             ->latest()
@@ -197,6 +199,7 @@ class StoreLogic
                     $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
             })
+            ->visibleOnMychitti()
             ->Active()
             ->type($type)
             ->withCount('orders')
@@ -233,6 +236,7 @@ class StoreLogic
                     $q->Discounted();
                 });
             })
+            ->visibleOnMychitti()
             ->Active()
             ->type($type)
             ->when($rating_count, function($query) use ($rating_count){
@@ -316,6 +320,7 @@ class StoreLogic
                     $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
             })
+            ->visibleOnMychitti()
             ->Active()
             ->type($type)
             ->whereRaw("LENGTH(rating) > 0")
@@ -416,6 +421,7 @@ class StoreLogic
                     return $q->whereId($category_id)->orWhere('parent_id', $category_id);
                 });
             })
+            ->visibleOnMychitti()
             ->active()
             ->when($rating_count, function($query) use ($rating_count){
                 $query->selectSub(function ($query) use ($rating_count){
@@ -643,6 +649,7 @@ class StoreLogic
                     $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
             })
+            ->visibleOnMychitti()
             ->Active()
             ->type($type)
             ->when($shuffle == 1 , function($q){

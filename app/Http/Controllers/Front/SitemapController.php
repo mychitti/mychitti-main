@@ -10,7 +10,10 @@ class SitemapController extends Controller
 {
     public function generate()
     {
-        $categories = DB::table('categories')->where('status', 1)->get();
+        // category_listing() only serves system categories (added_by IS NULL) — a vendor's own
+        // custom category redirects to home (no referrer for Googlebot = back() lands on '/').
+        // Sitemapping a vendor category is sitemapping a guaranteed redirect-to-homepage.
+        $categories = DB::table('categories')->where('status', 1)->whereNull('added_by')->get();
 
         $host = request()->getHost();
         $baseUrl = $host === 'staging.mychitti.net'
@@ -51,7 +54,7 @@ class SitemapController extends Controller
             $serviceCombos = DB::table('item_store as ist')
                 ->join('items as i', 'i.id', '=', 'ist.item_id')
                 ->join('stores as s', 's.id', '=', 'ist.store_id')
-                ->where('s.status', 1)->where('i.status', 1)
+                ->where('s.status', 1)->where('s.show_in_mychitti', 1)->where('i.status', 1)
                 ->whereIn('i.category_id', $serviceCategories->keys()->all())
                 ->groupBy('i.category_id', 's.zone_id')
                 ->select('i.category_id', 's.zone_id')

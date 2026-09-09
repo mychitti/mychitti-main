@@ -45,7 +45,7 @@ class SearchController extends Controller
 
         // dd($filter&&in_array('high',$filter));
 
-        $items = Item::active()->type($type)
+        $items = Item::active()->visibleOnMychitti()->type($type)
         ->with('store', function($query){
             $query->withCount(['campaigns'=> function($query){
                 $query->Running();
@@ -133,7 +133,7 @@ class SearchController extends Controller
         ->paginate($limit, ['*'], 'page', $offset);
 
 
-        $item_categories = Item::active()->type($type)
+        $item_categories = Item::active()->visibleOnMychitti()->type($type)
         ->with('store', function($query){
             $query->withCount(['campaigns'=> function($query){
                 $query->Running();

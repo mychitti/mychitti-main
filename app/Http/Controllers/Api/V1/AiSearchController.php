@@ -134,6 +134,7 @@ class AiSearchController extends Controller
         $ids = DB::table('stores')
             ->where('stores.status', 1)
             ->where('stores.active', 1)
+            ->where('stores.show_in_mychitti', 1)
             ->when($zoneIds, fn($q) => $q->whereIn('stores.zone_id', $zoneIds))
             ->where(function ($q) use ($like) {
                 $q->where('stores.name', 'like', $like)
@@ -167,6 +168,7 @@ class AiSearchController extends Controller
             ->when($zoneIds, fn($q) => $q->whereIn('stores.zone_id', $zoneIds))
             ->where('stores.status', 1)
             ->where('stores.active', 1)
+            ->where('stores.show_in_mychitti', 1)
             ->select(
                 'stores.id', 'stores.name', 'stores.slug', 'stores.address', 'stores.logo',
                 'stores.average_rating', 'stores.rating_count', 'stores.total_order',

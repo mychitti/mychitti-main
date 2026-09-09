@@ -25,6 +25,9 @@ class CampaignController extends Controller
             whereHas('module.zones',function($query)use($zone_id){
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
+            ->whereHas('stores', function($q){
+                $q->visibleOnMychitti();
+            })
             ->when(config('module.current_module_data'), function($query)use($zone_id){
                 $query->module(config('module.current_module_data')['id']);
                 if(!config('module.current_module_data')['all_zone_service']) {

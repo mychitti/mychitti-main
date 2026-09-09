@@ -26,7 +26,7 @@ class OfferController extends Controller
 
         $offers = StoreOffer::active()
             ->join('stores', 'stores.id', '=', 'store_offers.store_id')
-            ->where('stores.status', 1)->where('stores.active', 1)
+            ->where('stores.status', 1)->where('stores.active', 1)->where('stores.show_in_mychitti', 1)
             ->when($request->filled('zone_id'), fn($q) => $q->where('stores.zone_id', (int) $request->zone_id))
             ->orderByDesc('store_offers.created_at')
             ->limit($limit)

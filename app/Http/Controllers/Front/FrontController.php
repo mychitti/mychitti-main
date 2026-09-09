@@ -436,7 +436,7 @@ class FrontController extends Controller
 
 
         // TOP SELLING PRODUCT
-        $data['top_sell_products'] = DB::table('items')->join('stores', 'stores.id', 'items.store_id')->join('categories', 'categories.id', 'items.category_id')->whereIn('stores.zone_id',  json_decode($zone_id, true))->where('items.status', 1)->where('stores.status', 1)->where('items.is_approved', 1)->where('items.module_id', 5)
+        $data['top_sell_products'] = DB::table('items')->join('stores', 'stores.id', 'items.store_id')->join('categories', 'categories.id', 'items.category_id')->whereIn('stores.zone_id',  json_decode($zone_id, true))->where('items.status', 1)->where('stores.status', 1)->where('stores.show_in_mychitti', 1)->where('items.is_approved', 1)->where('items.module_id', 5)
             ->select('items.*', 'stores.delivery_time', 'categories.slug as cat_slug')
             ->orderBy("items.order_count", 'desc')
             ->take(6)->get();
@@ -447,6 +447,7 @@ class FrontController extends Controller
             ->join('stores', function ($join) use ($zone_id) {
                 $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 $join->whereIn('stores.zone_id', json_decode($zone_id, true));
+                $join->where('stores.show_in_mychitti', 1);
             })
             ->join('categories', 'categories.id', 'items.category_id')
             ->where('items.status', 1)
@@ -463,6 +464,7 @@ class FrontController extends Controller
                 ->join('stores', function ($join) use ($zone_id) {
                     $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                     $join->whereIn('stores.zone_id', json_decode($zone_id, true));
+                    $join->where('stores.show_in_mychitti', 1);
                 })
                 ->where('items.status', 1)
                 ->where('items.module_id', 6)
@@ -1295,7 +1297,7 @@ class FrontController extends Controller
             ->whereDate('expire_date', '>=', date('Y-m-d'))->whereDate('start_date', '<=', date('Y-m-d'))->get();
         foreach ($coupons as $key => $coupon) {
             if ($coupon->coupon_type == 'store_wise') {
-                $temp = Store::active()
+                $temp = Store::active()->visibleOnMychitti()
                     ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
                         if (!config('module.current_module_data')['all_zone_service']) {
                             $query->whereIn('zone_id', json_decode($zone_id, true));
@@ -1312,7 +1314,7 @@ class FrontController extends Controller
                     $data[] = $coupon;
                 }
             } else if (isset($coupon->store_id)) {
-                $temp = Store::active()->when(config('module.current_module_data'), function ($query) use ($zone_id) {
+                $temp = Store::active()->visibleOnMychitti()->when(config('module.current_module_data'), function ($query) use ($zone_id) {
                     if (!config('module.current_module_data')['all_zone_service']) {
                         $query->whereIn('zone_id', json_decode($zone_id, true));
                     }
@@ -1379,7 +1381,7 @@ class FrontController extends Controller
             ->whereDate('expire_date', '>=', date('Y-m-d'))->whereDate('start_date', '<=', date('Y-m-d'))->get();
         foreach ($coupons as $key => $coupon) {
             if ($coupon->coupon_type == 'store_wise') {
-                $temp = Store::active()
+                $temp = Store::active()->visibleOnMychitti()
                     ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
                         if (!config('module.current_module_data')['all_zone_service']) {
                             $query->whereIn('zone_id', json_decode($zone_id, true));
@@ -1396,7 +1398,7 @@ class FrontController extends Controller
                     $coupondata[] = $coupon;
                 }
             } else if (isset($coupon->store_id)) {
-                $temp = Store::active()->when(config('module.current_module_data'), function ($query) use ($zone_id) {
+                $temp = Store::active()->visibleOnMychitti()->when(config('module.current_module_data'), function ($query) use ($zone_id) {
                     if (!config('module.current_module_data')['all_zone_service']) {
                         $query->whereIn('zone_id', json_decode($zone_id, true));
                     }
@@ -2567,6 +2569,12 @@ class FrontController extends Controller
             ->where('approval', 1)
             ->where('status', 1)
             ->whereNotNull('image')
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('stores')
+                    ->whereColumn('stores.id', 'notifications.vendor_id')
+                    ->where('stores.show_in_mychitti', 1);
+            })
             ->where(function ($q) {
                 $q->whereNull('days')
                   ->orWhereNull('approved_at')
@@ -2989,6 +2997,7 @@ class FrontController extends Controller
                 ->whereIn('stores.id', $storeIds)
                 ->whereIn('stores.id', $subscribedStoreIds)
                 ->where('stores.active', 1)
+                ->where('stores.show_in_mychitti', 1)
                 ->where(fn($q) => $q->whereNull('store_configs.lead_available')->orWhere('store_configs.lead_available', 1))
                 ->inRandomOrder()
                 ->select($storeSelect)
@@ -3003,6 +3012,7 @@ class FrontController extends Controller
                 ->whereIn('stores.id', $storeIds)
                 ->whereNotIn('stores.id', $subscribedStoreIds)
                 ->where('stores.active', 1)
+                ->where('stores.show_in_mychitti', 1)
                 ->where(fn($q) => $q->whereNull('store_configs.lead_available')->orWhere('store_configs.lead_available', 1))
                 ->orderByDesc('stores.id')
                 ->select($storeSelect)
@@ -3045,6 +3055,7 @@ class FrontController extends Controller
                     $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
+                ->where('stores.show_in_mychitti', 1)
                 ->where(['categories.featured' => 1, 'categories.status' => 1,  'items.status' => 1])
                 ->select('items.*', 'categories.slug as cat_slug')
                 ->limit(20)
@@ -3059,6 +3070,7 @@ class FrontController extends Controller
                     $join->whereRaw('EXISTS (SELECT 1 FROM item_store ist WHERE ist.item_id = items.id AND ist.store_id = stores.id)');
                 })
                 ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
+                ->where('stores.show_in_mychitti', 1)
                 ->where(['categories.status' => 1, 'items.status' => 1, 'items.category_id' => $item->category_id])
                 ->whereNot('items.slug', $slug)
                 ->where('items.module_id', $module)
@@ -3068,7 +3080,7 @@ class FrontController extends Controller
                 ->groupBy('items.id')
                 ->get();
 
-            $data['reviews'] = DB::table('store_reviews')->join('service_requests', 'service_requests.id', 'store_reviews.order_id')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'stores.logo as store_logo', 'stores.name as store_name', 'store_reviews.rating', 'store_reviews.reply', 'store_reviews.replied_at')->where('store_reviews.status', 1)->take(3)->get();
+            $data['reviews'] = DB::table('store_reviews')->join('service_requests', 'service_requests.id', 'store_reviews.order_id')->join('stores', 'stores.id', 'store_reviews.store_id')->join('users', 'users.id', 'store_reviews.user_id')->select('users.f_name', 'users.l_name', 'users.image as profile_image', 'store_reviews.comment', 'store_reviews.attachment', 'store_reviews.created_at', 'stores.logo as store_logo', 'stores.name as store_name', 'store_reviews.rating', 'store_reviews.reply', 'store_reviews.replied_at')->where('store_reviews.status', 1)->where('stores.show_in_mychitti', 1)->take(3)->get();
         } else {
             $data['featured_products'] = DB::table('items')
                 ->where('items.is_approved', 1)
@@ -3076,6 +3088,7 @@ class FrontController extends Controller
                 ->join('categories', 'items.category_id', 'categories.id')
                 ->join('stores', 'stores.id', 'items.store_id')
                 ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
+                ->where('stores.show_in_mychitti', 1)
                 ->select('items.*', 'categories.slug as cat_slug')
                 ->limit(20)
                 ->groupBy('items.id')
@@ -3087,6 +3100,7 @@ class FrontController extends Controller
                 ->join('categories', 'items.category_id', 'categories.id')
                 ->join('stores', 'stores.id', 'items.store_id')
                 ->whereIn('stores.zone_id',  json_decode($this->zone_id, true))
+                ->where('stores.show_in_mychitti', 1)
                 ->where(['categories.status' => 1, 'items.status' => 1, 'items.category_id' => $item->category_id])
                 ->whereNot('items.slug', $slug)
                 ->where('items.module_id', $module)
@@ -3356,6 +3370,7 @@ class FrontController extends Controller
                 })
                 ->join('categories', 'categories.id', 'items.category_id')
                 ->where('stores.status', 1)
+                ->where('stores.show_in_mychitti', 1)
                 ->whereNull('items.inventory_item_id')
                 ->whereIn('stores.zone_id', $zone_ids)
                 ->where('items.category_id', $catDetails->id)->select('items.*',  'categories.slug as cat_slug')->distinct()->where('items.status', 1)->get();
@@ -3366,6 +3381,7 @@ class FrontController extends Controller
                 ->join('categories', 'categories.id', 'items.category_id')
                 ->whereIn('stores.zone_id', $zone_ids)
                 ->where('stores.status', 1)
+                ->where('stores.show_in_mychitti', 1)
                 ->whereIn('items.category_id', $catArr)->select('items.*', 'categories.slug as cat_slug', 'stores.active as store_open', 'stores.delivery_time')->distinct()->where('items.status', 1)->get();
         }
 

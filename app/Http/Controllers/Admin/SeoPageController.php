@@ -64,9 +64,10 @@ class SeoPageController extends Controller
         $citiesCovered     = DB::table('service_zone_seo')->where('status', 'published')->distinct()->count('zone_id');
 
         // Trust layer — only if the column has been created by vendor:sync-trust-score.
+        // MyChitti-only: MC Vendorhub stores don't factor into this marketplace-facing report.
         $trust = null;
         if (Schema::hasColumn('stores', 'vendor_trust_score')) {
-            $base = fn() => DB::table('stores')->where('status', 1);
+            $base = fn() => DB::table('stores')->where('status', 1)->where('show_in_mychitti', 1);
             $trust = [
                 'avg'   => round((float) $base()->avg('vendor_trust_score'), 1),
                 'high'  => $base()->where('vendor_trust_score', '>=', 71)->count(),

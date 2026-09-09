@@ -30,6 +30,7 @@ class CategoryLogic
             })
             ->whereIn('stores.zone_id', $zoneIds)
             ->where('stores.active', 1)
+            ->where('stores.show_in_mychitti', 1)
             ->whereHas('module', function ($query) {
                 $query->where('modules.id', config('module.current_module_data')['id']);
             })
@@ -65,9 +66,9 @@ class CategoryLogic
                             $qurey->where('slug', $category_id);
                         });
                 })
-                ->active()->type($type)->latest()->paginate($limit, ['*'], 'page', $offset);
-    
-           
+                ->active()->visibleOnMychitti()->type($type)->latest()->paginate($limit, ['*'], 'page', $offset);
+
+
         }
         return [
             'total_size' => $paginator->total(),
@@ -96,7 +97,7 @@ class CategoryLogic
             ->whereHas('category',function($q)use($category_ids){
                 return $q->whereIn('id',$category_ids)->orWhereIn('parent_id', $category_ids);
             })
-            ->active()->type($type)
+            ->active()->visibleOnMychitti()->type($type)
             ->when($rating_count, function($query) use ($rating_count){
                 $query->where('avg_rating', '>=' , $rating_count);
             })
@@ -135,7 +136,7 @@ class CategoryLogic
                 ->whereHas('category',function($q)use($category_ids){
                     return $q->whereIn('id',$category_ids)->orWhereIn('parent_id', $category_ids);
                 })
-                ->active()->type($type)
+                ->active()->visibleOnMychitti()->type($type)
                 ->when($rating_count, function($query) use ($rating_count){
                     $query->where('avg_rating', '>=' , $rating_count);
                 })
@@ -199,7 +200,7 @@ class CategoryLogic
                     $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
             })
-            ->active()->type($type)
+            ->active()->visibleOnMychitti()->type($type)
             ->when($rating_count, function($query) use ($rating_count){
                 $query->selectSub(function ($query) use ($rating_count){
                     $query->selectRaw('AVG(reviews.rating)')
@@ -296,7 +297,7 @@ class CategoryLogic
                     $query->whereIn('zone_id', json_decode($zone_id, true));
                 }
             })
-            ->active()->type($type)
+            ->active()->visibleOnMychitti()->type($type)
             ->latest()->paginate($limit, ['*'], 'page', $offset);
 
 
@@ -352,6 +353,7 @@ class CategoryLogic
         }
 
         return Item::whereIn('category_id', $cate_ids)
+            ->visibleOnMychitti()
             ->whereHas('module.zones', function($query)use($zone_id){
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -368,7 +370,7 @@ class CategoryLogic
 
     public static function featured_category_products($zone_id, int $limit,int $offset, $type)
     {
-        $paginator = Item::active()->type($type)
+        $paginator = Item::active()->visibleOnMychitti()->type($type)
             ->whereHas('module.zones', function($query)use($zone_id){
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -384,7 +386,7 @@ class CategoryLogic
             })
             ->latest()->paginate($limit, ['*'], 'page', $offset);
 
-        $item_categories = Item::active()->type($type)
+        $item_categories = Item::active()->visibleOnMychitti()->type($type)
             ->whereHas('module.zones', function($query)use($zone_id){
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })

@@ -3191,6 +3191,7 @@ class BusinessSettingsController extends Controller
 
         $search = $request->get('search');
         $stores = DB::table('stores')
+            ->where('stores.show_in_mychitti', 1) // MC Vendorhub (opted-out) stores are managed separately
             ->leftJoin('wa_receiving_features as waf', function ($j) {
                 $j->on('waf.store_id', '=', 'stores.id')->where('waf.feature', '=', 'leads');
             })

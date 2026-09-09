@@ -69,7 +69,7 @@ class AiServiceClient
                     $vendor = DB::table('vendors')->where('id', $userId)
                         ->first(['f_name', 'l_name', 'email', 'phone']);
                     $store = DB::table('stores')->where('vendor_id', $userId)
-                        ->first(['name', 'phone', 'email', 'gst', 'address']);
+                        ->first(['name', 'phone', 'email', 'gst', 'address', 'show_in_mychitti']);
 
                     if ($vendor && $store) {
                         $navBreadcrumb = $currentPage ? $this->resolveVendorNavigation($currentPage) : '';
@@ -94,6 +94,14 @@ class AiServiceClient
                             $pageContext = '';
                         }
 
+                        // MC Vendorhub (stores.show_in_mychitti = 0) is SaaS-only: the vendor uses this
+                        // panel but does not appear on the MyChitti consumer marketplace. Sam must not
+                        // talk as if their store is listed there, or invite them to check their
+                        // "MyChitti page" when they opted out of having one.
+                        $listingNote = ((int) ($store->show_in_mychitti ?? 1) === 0)
+                            ? "This vendor's store is MC Vendor Hub-only — it does NOT appear on the MyChitti consumer marketplace (they turned off \"List my store on MyChitti\" in Store Setup, or an admin moved them). Do not refer to their store as being listed, findable, or bookable on MyChitti. If they ask how to get listed, tell them to turn on \"List my store on MyChitti\" in Store Setup."
+                            : "This vendor's store IS listed on the MyChitti consumer marketplace.";
+
                         $contextPrefix = "IMPORTANT CONTEXT — The vendor is ALREADY LOGGED IN and is chatting from inside the MC Vendor Hub dashboard. "
                             . "Never tell them to log in, visit a login page, or navigate to their account — they are already there.\n\n"
                             . "PAGE AWARENESS: You receive the vendor's exact current browser page structure with every message — a precise list of every heading, button, dropdown (with all options), input field, table columns, and clickable row links actually present on the page. "
@@ -111,7 +119,8 @@ class AiServiceClient
                             . "- Store phone: {$store->phone}\n"
                             . "- Store email: " . ($store->email ?: 'N/A') . "\n"
                             . "- GST: " . ($store->gst ?: 'Not registered') . "\n"
-                            . "- Address: " . ($store->address ?: 'N/A') . "\n\n";
+                            . "- Address: " . ($store->address ?: 'N/A') . "\n"
+                            . "- MyChitti listing: {$listingNote}\n\n";
 
                         $promptFile = storage_path("app/prompts/{$userType}.txt");
                         $promptText = is_file($promptFile) ? file_get_contents($promptFile) : (DB::table('system_prompts')->where('id', $agentId)->value('prompt') ?? '');

@@ -38,7 +38,7 @@ class BannerLogic
         $data = [];
         foreach ($banners as $banner) {
             if ($banner->type == 'store_wise') {
-                $store = Store::active()
+                $store = Store::active()->visibleOnMychitti()
                     ->when(config('module.current_module_data'), function ($query) {
                         $query->whereHas('zone.modules', function ($query) {
                             $query->where('modules.id', config('module.current_module_data')['id']);
@@ -56,7 +56,7 @@ class BannerLogic
                 ];
             }
             if ($banner->type == 'item_wise') {
-                $item = Item::active()
+                $item = Item::active()->visibleOnMychitti()
                     ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
                         $query->whereHas('module.zones', function ($query) use ($zone_id) {
                             $query->whereIn('zones.id', json_decode($zone_id, true));
@@ -124,7 +124,7 @@ class BannerLogic
         $data = [];
         foreach ($banners as $banner) {
             if ($banner->type == 'store_wise') {
-                $store = Store::active()
+                $store = Store::active()->visibleOnMychitti()
                     ->find($banner->data);
                 $data[] = [
                     'id' => $banner->id,
@@ -150,7 +150,7 @@ class BannerLogic
                 ];
             }
             if ($banner->type == 'item_wise') {
-                $item = Item::withoutGlobalScopes()->active()
+                $item = Item::withoutGlobalScopes()->active()->visibleOnMychitti()
                     ->find($banner->data);
                 $data[] = [
                     'id' => $banner->id,

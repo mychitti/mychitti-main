@@ -65,6 +65,7 @@ class GenerateServiceZoneSeo implements ShouldQueue
                 ->where('i.category_id', $combo->category_id)
                 ->where('s.zone_id', $combo->zone_id)
                 ->where('i.status', 1)
+                ->where('s.show_in_mychitti', 1)
                 ->distinct()->limit(15)->pluck('i.name')->all();
 
             $context = "City / Zone: {$zone->name}\n"

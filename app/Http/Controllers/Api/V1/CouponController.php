@@ -37,7 +37,7 @@ class CouponController extends Controller
         // prx($coupons);
         foreach ($coupons as $key => $coupon) {
             if ($coupon->coupon_type == 'store_wise') {
-                $temp = Store::active()
+                $temp = Store::active()->visibleOnMychitti()
                     ->when(config('module.current_module_data'), function ($query) use ($zone_id) {
                         if (!config('module.current_module_data')['all_zone_service']) {
                             $query->whereIn('zone_id', json_decode($zone_id, true));
@@ -54,7 +54,7 @@ class CouponController extends Controller
                     $data[] = $coupon;
                 }
             } else if (isset($coupon->store_id)) {
-                $temp = Store::active()->when(config('module.current_module_data'), function ($query) use ($zone_id) {
+                $temp = Store::active()->visibleOnMychitti()->when(config('module.current_module_data'), function ($query) use ($zone_id) {
                     if (!config('module.current_module_data')['all_zone_service']) {
                         $query->whereIn('zone_id', json_decode($zone_id, true));
                     }

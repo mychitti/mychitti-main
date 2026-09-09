@@ -5,7 +5,10 @@
 @section('content')
 <div class="content container-fluid">
     <div class="page-header d-flex justify-content-between align-items-center mb-3">
-        <h1 class="page-header-title mb-0">SEO Overview</h1>
+        <div>
+            <h1 class="page-header-title mb-0">SEO Overview <span class="badge badge-soft-primary ml-1">MyChitti</span></h1>
+            <p class="text-muted small mb-0">Programmatic landing-page coverage for the MyChitti consumer marketplace. MC Vendorhub (SaaS-only) stores have no public landing pages and are not counted here.</p>
+        </div>
         <a href="{{ route('admin.seo-pages.index') }}" class="btn btn-outline-primary btn-sm">
             <i class="tio-list"></i> Manage SEO Pages
         </a>

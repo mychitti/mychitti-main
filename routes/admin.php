@@ -1959,10 +1959,15 @@ Route::group(['prefix' => 'prompt-board', 'as' => 'prompt-board.'], function () 
             Route::get('vendors', 'McVendorhubController@vendors')->name('vendors');
             Route::get('vendors/{store_id}/listing-toggle', 'McVendorhubController@vendor_listing_toggle')->name('vendors.listing-toggle');
             Route::get('subscriptions', 'McVendorhubController@subscriptions')->name('subscriptions');
+            Route::get('sales', 'McVendorhubController@sales')->name('sales');
+            Route::get('support', 'McVendorhubController@support')->name('support');
             Route::get('enquiries', 'McVendorhubController@enquiries')->name('enquiries');
             Route::get('enquiries/{id}', 'McVendorhubController@enquiry_view')->name('enquiries.view');
             Route::post('enquiries/{id}/update', 'McVendorhubController@enquiry_update')->name('enquiries.update');
             Route::delete('enquiries/{id}/delete', 'McVendorhubController@enquiry_delete')->name('enquiries.delete');
+            Route::get('seo', 'McVendorhubController@seo')->name('seo');
+            Route::post('seo/generate-missing', 'McVendorhubController@seo_generate_missing')->name('seo.generate-missing');
+            Route::post('seo/{id}/generate', 'McVendorhubController@seo_generate')->name('seo.generate');
         });
 
         Route::get('users', 'DashboardController@user_dashboard')->name('users.user-dashboard');

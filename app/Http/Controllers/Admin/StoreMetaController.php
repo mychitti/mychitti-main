@@ -90,6 +90,8 @@ class StoreMetaController extends Controller
 
     private function baseQuery()
     {
+        // This screen is unlinked — superseded by admin/mcvendorhub/seo, which covers every
+        // store (MyChitti-visible and MC Vendorhub alike) and is the one place this is managed.
         return Store::withoutGlobalScopes();
     }
 

@@ -50,6 +50,7 @@ class RecommendationController extends Controller
             ->leftJoin('zones', 'zones.id', '=', 'stores.zone_id')
             ->where('stores.status', 1)
             ->where('stores.active', 1)
+            ->where('stores.show_in_mychitti', 1)
             ->when($zoneIds, fn($q) => $q->whereIn('stores.zone_id', $zoneIds))
             ->select(
                 'stores.id', 'stores.name', 'stores.slug', 'stores.address', 'stores.logo',
@@ -160,7 +161,7 @@ class RecommendationController extends Controller
         return DB::table('store_offers')
             ->join('stores', 'stores.id', '=', 'store_offers.store_id')
             ->leftJoin('zones', 'zones.id', '=', 'stores.zone_id')
-            ->where('stores.status', 1)->where('stores.active', 1)
+            ->where('stores.status', 1)->where('stores.active', 1)->where('stores.show_in_mychitti', 1)
             ->when($zoneIds, fn($q) => $q->whereIn('stores.zone_id', $zoneIds))
             ->where('store_offers.status', 1)
             ->where(fn($w) => $w->whereNull('store_offers.start_date')->orWhere('store_offers.start_date', '<=', $today))

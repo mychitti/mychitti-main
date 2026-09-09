@@ -34,7 +34,7 @@ class ProductLogic
             ->where('module_id', 6)
             ->whereIn('zone_id', json_decode($zone_id, true))
             ->whereIn('id', $store_ids)
-            ->active()->type($type)
+            ->visibleOnMychitti()->active()->type($type)
             ->select('id', 'name', 'address', 'logo', 'meta_description', 'rating_count', 'average_rating')
             ->latest()->paginate($limit, ['*'], 'page', $offset);
 
@@ -59,7 +59,7 @@ class ProductLogic
                 }
             })
             ->whereIn('id', $store_ids)
-            ->active()->type($type)
+            ->visibleOnMychitti()->active()->type($type)
             ->latest()->paginate($limit, ['*'], 'page', $offset);
 
         return [
@@ -77,7 +77,7 @@ class ProductLogic
             if ($category_id != 0) {
                 $category_id = explode(',', $category_id);
             }
-            $paginator = Item::active()->type($type)
+            $paginator = Item::active()->visibleOnMychitti()->type($type)
                 ->when($category_id != 0, function ($q) use ($category_id) {
                     $q->whereHas('category', function ($q) use ($category_id) {
                         return $q->whereIn('id', $category_id)->orWhereIn('parent_id', $category_id);
@@ -130,7 +130,7 @@ class ProductLogic
                 ->paginate($limit, ['*'], 'page', $offset);
         }
 
-        $item_categories = Item::active()->type($type)
+        $item_categories = Item::active()->visibleOnMychitti()->type($type)
             ->when($category_id != 0, function ($q) use ($category_id) {
                 $q->whereHas('category', function ($q) use ($category_id) {
                     return $q->whereId($category_id)->orWhere('parent_id', $category_id);
@@ -187,7 +187,7 @@ class ProductLogic
     public static function get_new_products($zone_id, $type, $min = false, $max = false, $product_id = null, $limit = null, $offset = null, $filter = null, $rating_count = null)
     {
         $filter = $filter ? (is_array($filter) ? $filter : str_getcsv(trim($filter, "[]"), ',')) : '';
-        $paginator = Item::active()->type($type)
+        $paginator = Item::active()->visibleOnMychitti()->type($type)
             ->when(isset($product_id), function ($q) use ($product_id) {
                 $q->where('id', '!=', $product_id);
             })
@@ -224,7 +224,7 @@ class ProductLogic
             })
             ->latest()->paginate($limit, ['*'], 'page', $offset);
 
-        $item_categories = Item::active()->type($type)
+        $item_categories = Item::active()->visibleOnMychitti()->type($type)
             ->when(isset($product_id), function ($q) use ($product_id) {
                 $q->where('id', '!=', $product_id);
             })
@@ -287,6 +287,7 @@ class ProductLogic
     {
         $product = Item::find($product_id);
         return Item::active()
+            ->visibleOnMychitti()
             ->whereHas('module.zones', function ($query) use ($zone_id) {
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -306,6 +307,7 @@ class ProductLogic
     {
         $product = Item::find($product_id);
         return Item::active()
+            ->visibleOnMychitti()
             ->whereHas('module.zones', function ($query) use ($zone_id) {
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -335,7 +337,7 @@ class ProductLogic
                             $query->where('modules.id', config('module.current_module_data')['id']);
                         });
                     })->whereIn('zone_id', json_decode($zone_id, true));
-                })->active()->type($type)->Recommended()
+                })->active()->visibleOnMychitti()->type($type)->Recommended()
                 ->when($filter == 'new_arrival', function ($qurey) {
                     $qurey->latest();
                 })
@@ -350,7 +352,7 @@ class ProductLogic
         } else {
             $paginator = Item::when(isset($store_id), function ($q) use ($store_id) {
                 $q->where('store_id', $store_id);
-            })->active()->type($type)->whereHas('store', function ($query) use ($zone_id) {
+            })->active()->visibleOnMychitti()->type($type)->whereHas('store', function ($query) use ($zone_id) {
                 $query->when(config('module.current_module_data'), function ($query) {
                     $query->where('module_id', config('module.current_module_data')['id'])->whereHas('zone.modules', function ($query) {
                         $query->where('modules.id', config('module.current_module_data')['id']);
@@ -392,7 +394,7 @@ class ProductLogic
                         });
                     })->whereIn('zone_id', json_decode($zone_id, true));
                 })
-                ->active()->type($type)->popular()->paginate($limit, ['*'], 'page', $offset);
+                ->active()->visibleOnMychitti()->type($type)->popular()->paginate($limit, ['*'], 'page', $offset);
 
             return [
                 'total_size' => $paginator->total(),
@@ -401,7 +403,7 @@ class ProductLogic
                 'products' => $paginator->items()
             ];
         }
-        $paginator = Item::active()
+        $paginator = Item::active()->visibleOnMychitti()
             ->whereHas('module.zones', function ($query) use ($zone_id) {
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -435,7 +437,7 @@ class ProductLogic
                         });
                     })->whereIn('zone_id', json_decode($zone_id, true));
                 })
-                ->withCount('reviews')->active()->type($type)
+                ->withCount('reviews')->active()->visibleOnMychitti()->type($type)
                 ->orderBy('reviews_count', 'desc')
                 ->paginate($limit, ['*'], 'page', $offset);
 
@@ -446,7 +448,7 @@ class ProductLogic
                 'products' => $paginator->items()
             ];
         }
-        $paginator = Item::active()->type($type)
+        $paginator = Item::active()->visibleOnMychitti()->type($type)
             ->whereHas('module.zones', function ($query) use ($zone_id) {
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -461,7 +463,7 @@ class ProductLogic
             ->orderBy('reviews_count', 'desc')
             ->limit(50)->get();
 
-        $item_categories = Item::active()->type($type)
+        $item_categories = Item::active()->visibleOnMychitti()->type($type)
             ->whereHas('module.zones', function ($query) use ($zone_id) {
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -515,7 +517,7 @@ class ProductLogic
                         });
                     })->whereIn('zone_id', json_decode($zone_id, true));
                 })
-                ->Discounted()->active()->type($type)
+                ->Discounted()->active()->visibleOnMychitti()->type($type)
                 ->when($rating_count, function ($query) use ($rating_count) {
                     $query->where('avg_rating', '>=', $rating_count);
                 })
@@ -552,7 +554,7 @@ class ProductLogic
                         });
                     })->whereIn('zone_id', json_decode($zone_id, true));
                 })
-                ->Discounted()->active()->type($type)
+                ->Discounted()->active()->visibleOnMychitti()->type($type)
                 ->when($rating_count, function ($query) use ($rating_count) {
                     $query->where('avg_rating', '>=', $rating_count);
                 })
@@ -594,7 +596,7 @@ class ProductLogic
                 'categories' => $categories,
             ];
         }
-        $paginator = Item::active()->type($type)
+        $paginator = Item::active()->visibleOnMychitti()->type($type)
             ->whereHas('module.zones', function ($query) use ($zone_id) {
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -629,7 +631,7 @@ class ProductLogic
             ->orderBy('discount', 'desc')
             ->limit(50)->get();
 
-        $item_categories = Item::active()->type($type)
+        $item_categories = Item::active()->visibleOnMychitti()->type($type)
             ->whereHas('module.zones', function ($query) use ($zone_id) {
                 $query->whereIn('zones.id', json_decode($zone_id, true));
             })
@@ -885,7 +887,7 @@ class ProductLogic
         if (isset($category_id) && ($category_id != 0)) {
             $category_id = explode(',', $category_id);
         }
-        $paginator = Item::active()->type($type)
+        $paginator = Item::active()->visibleOnMychitti()->type($type)
             ->whereHas('pharmacy_item_details', function ($query) {
                 $query->where('is_basic', 1);
             })
@@ -921,7 +923,7 @@ class ProductLogic
             ->popular()->paginate($limit, ['*'], 'page', $offset);
 
 
-        $item_categories = Item::active()->type($type)
+        $item_categories = Item::active()->visibleOnMychitti()->type($type)
             ->whereHas('pharmacy_item_details', function ($query) {
                 $query->where('is_basic', 1);
             })

@@ -23,6 +23,10 @@ class SupportTicketController extends Controller
         $admin = auth('admin')->user(); 
 
         $tickets = SupportTicket::with(['assignedTo', 'vendor'])
+            // MC Vendorhub (opted-out) vendors have their own queue at admin/mcvendorhub/support
+            ->whereDoesntHave('vendor.stores', function ($q) {
+                $q->withoutGlobalScopes()->hiddenFromMychitti();
+            })
             ->when($admin->role_id != 1, fn($q) => $q->where(function($q2) use ($admin) {
                 $q2->where('assigned_to', $admin->id)->orWhere('created_by', $admin->id);
             }))
