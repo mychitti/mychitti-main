@@ -1452,6 +1452,9 @@ class InventoryController extends Controller
             $secondary_unit,
             $inventory_item->mrp
         )) {
+            if ($request->form_type == 'ajax') {
+                return response()->json(['status' => false, 'msg' => $priceProblem, 'action' => 'edit_inventory', 'item_id' => null]);
+            }
             Toastr::error($priceProblem);
             return back()->withInput();
         }
@@ -1717,6 +1720,9 @@ class InventoryController extends Controller
                 $secondary_unit,
                 $inventory_item->mrp
             )) {
+                if ($request->form_type == 'ajax') {
+                    return response()->json(['status' => false, 'msg' => $priceProblem, 'action' => 'add_inventory', 'item_id' => null]);
+                }
                 Toastr::error($priceProblem);
                 return back()->withInput();
             }

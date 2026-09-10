@@ -485,6 +485,8 @@
                              add_inv_items()
                          })
                      }
+                 } else if (data.status == false) {
+                     toasterNotification(data.msg)
                  } else if (data.errors) {
                      for (let i = 0; i < data.errors.length; i++) {
                          toasterNotification(data.errors[i])
