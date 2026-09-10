@@ -118,7 +118,10 @@ class SyncSearchConsoleStats extends Command
         $rows = $service->query($start, $end, ['page'], 250);
 
         DB::transaction(function () use ($rows, $start, $end) {
-            DB::table('search_console_top_pages')->truncate();
+            // delete(), not truncate() — TRUNCATE is DDL and causes an implicit commit in MySQL,
+            // which ends this transaction early and makes the wrapper's own commit() below throw
+            // "There is no active transaction".
+            DB::table('search_console_top_pages')->delete();
 
             foreach ($rows as $row) {
                 DB::table('search_console_top_pages')->insert([
@@ -143,7 +146,7 @@ class SyncSearchConsoleStats extends Command
         $rows = $service->query($start, $end, ['query'], 250);
 
         DB::transaction(function () use ($rows, $start, $end) {
-            DB::table('search_console_top_queries')->truncate();
+            DB::table('search_console_top_queries')->delete();
 
             foreach ($rows as $row) {
                 DB::table('search_console_top_queries')->insert([
