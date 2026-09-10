@@ -101,4 +101,13 @@ return [
         'enabled' => env('VENDOR_AI_TOOLS_ENABLED', false),
     ],
 
+    // Google Search Console API — service account credentials, never committed. The key file
+    // lives outside the repo (storage/app/google/, gitignored via /storage/) and must be placed
+    // on each server by hand. The service account is added as a Restricted user on the property
+    // in Search Console itself — see App\Services\SearchConsoleService.
+    'search_console' => [
+        'credentials_path' => env('SEARCH_CONSOLE_CREDENTIALS_PATH', storage_path('app/google/search-console-credentials.json')),
+        'site_url'         => env('SEARCH_CONSOLE_SITE_URL', 'https://mychitti.net/'),
+    ],
+
 ];

@@ -316,6 +316,14 @@ class Kernel extends ConsoleKernel
             ->timezone($tz)
             ->name('seo-sync-combos')
             ->withoutOverlapping();
+
+        // Real Search Console performance data (clicks/impressions/position) — Google's Page
+        // Indexing report has no API, but search performance does. Server error rate here is
+        // silent-fail-safe: no credentials file yet on a given server just means no rows update.
+        $schedule->command('search-console:sync')->dailyAt('06:00')
+            ->timezone($tz)
+            ->name('search-console-sync')
+            ->withoutOverlapping();
   
         // PHASE 3 — AI SEARCH & INTELLIGENCE =================================
         // Recompute MC Trust Layer scores/badges (pure SQL, fast).

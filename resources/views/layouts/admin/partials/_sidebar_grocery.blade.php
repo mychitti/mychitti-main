@@ -707,6 +707,16 @@
                         </a>
                     </li>
 
+                   <li class="navbar-vertical-aside-has-menu {{ Request::is('*search-console*') ? 'show active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                            href="{{ route('admin.search-console.index') }}" title="Search Console">
+                            <i class="tio-google nav-icon"></i>
+                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
+                                Search Console
+                            </span>
+                        </a>
+                    </li>
+
                    <li class="navbar-vertical-aside-has-menu {{ Request::is('*seo-pages/overview*') ? 'show active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link"
                             href="{{ route('admin.seo-pages.overview') }}" title="SEO Overview">
