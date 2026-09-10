@@ -53,7 +53,27 @@ class SearchConsoleController extends Controller
 
         $lastSynced = $topPages->max('synced_at');
 
-        return view('admin-views.search-console.index', compact('daily', 'totals', 'topPages', 'topQueries', 'lastSynced', 'hasData'));
+        // Internal-link health — a real crawl of the SEO page graph, run in the background
+        // (App\Jobs\AuditInternalLinks). Read-only here; never triggered by a page load.
+        $hasLinkAudit = Schema::hasTable('internal_link_audit');
+        $linkAuditRows = $hasLinkAudit ? DB::table('internal_link_audit')->count() : 0;
+        $orphanPages = $hasLinkAudit
+            ? DB::table('internal_link_audit')->where('inbound_links', 0)->where('http_status', 200)->orderBy('url')->limit(100)->get()
+            : collect();
+        $linkAuditStats = [
+            'total'        => $linkAuditRows,
+            'orphans'      => $hasLinkAudit ? DB::table('internal_link_audit')->where('inbound_links', 0)->where('http_status', 200)->count() : 0,
+            'broken'       => $hasLinkAudit ? DB::table('internal_link_audit')->where('http_status', '!=', 200)->count() : 0,
+            'avg_outbound' => $hasLinkAudit && $linkAuditRows
+                ? round((float) DB::table('internal_link_audit')->avg('outbound_links'), 1)
+                : 0,
+        ];
+        $linkAuditCheckedAt = $hasLinkAudit ? DB::table('internal_link_audit')->max('checked_at') : null;
+
+        return view('admin-views.search-console.index', compact(
+            'daily', 'totals', 'topPages', 'topQueries', 'lastSynced', 'hasData',
+            'hasLinkAudit', 'orphanPages', 'linkAuditStats', 'linkAuditCheckedAt'
+        ));
     }
 
     /** Manual "Sync now" — loud about the result, since an admin explicitly asked for it. */

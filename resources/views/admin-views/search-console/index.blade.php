@@ -142,6 +142,89 @@
             </div>
         </div>
     @endif
+
+    {{-- Internal linking — a real crawl of our own SEO page graph, not Google data. --}}
+    <div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4">
+        <div>
+            <h4 class="mb-0">Internal linking</h4>
+            <p class="text-muted small mb-0">
+                Crawls the ~1,900 published category/SEO landing pages and counts links between them — the same way Google discovers pages, not a guess from the link-building code.
+                @if ($linkAuditCheckedAt)
+                    Last audited {{ \Carbon\Carbon::parse($linkAuditCheckedAt)->diffForHumans() }}.
+                @endif
+            </p>
+        </div>
+        <span class="badge badge-soft-secondary" title="Runs automatically every Sunday at 4am — for an on-demand run, use the CLI">
+            <i class="tio-time"></i> Runs Sunday 4am, or: <code>php artisan internal-links:audit</code>
+        </span>
+    </div>
+
+    @if (!$hasLinkAudit || $linkAuditStats['total'] === 0)
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <img class="w--120px mb-3" src="{{ asset('/public/assets/admin/img/empty-box.png') }}" alt="">
+                <h5 class="mb-1">No audit run yet</h5>
+                <p class="text-muted mb-0">Click "Run audit" — it's queued, not instant, since it crawls ~1,900 pages. Check back in a few minutes, or wait for Sunday's scheduled run.</p>
+            </div>
+        </div>
+    @else
+        <div class="row mb-3">
+            <div class="col-md-3 mb-2">
+                <div class="card text-center p-3">
+                    <div class="h3 mb-0">{{ number_format($linkAuditStats['total']) }}</div>
+                    <div class="text-muted small">Pages crawled</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="card text-center p-3">
+                    <div class="h3 mb-0 {{ $linkAuditStats['orphans'] > 0 ? 'text-warning' : 'text-success' }}">{{ number_format($linkAuditStats['orphans']) }}</div>
+                    <div class="text-muted small">Orphan pages (0 inbound links)</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="card text-center p-3">
+                    <div class="h3 mb-0 {{ $linkAuditStats['broken'] > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($linkAuditStats['broken']) }}</div>
+                    <div class="text-muted small">Broken (non-200 on crawl)</div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="card text-center p-3">
+                    <div class="h3 mb-0">{{ $linkAuditStats['avg_outbound'] }}</div>
+                    <div class="text-muted small">Avg. outbound links / page</div>
+                </div>
+            </div>
+        </div>
+
+        @if ($orphanPages->isNotEmpty())
+            <div class="card">
+                <div class="card-header border-0">
+                    <h5 class="mb-0">Orphan pages</h5>
+                    <p class="text-muted small mb-0">Published, load fine (HTTP 200), but no other page in the graph links to them — findable only via the sitemap, not by browsing.</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-borderless table-thead-bordered table-align-middle card-table">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>URL</th>
+                                <th class="text-right">Outbound links</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($orphanPages as $row)
+                                <tr>
+                                    <td><a href="{{ $row->url }}" target="_blank" rel="noopener" class="small">{{ str_replace('https://mychitti.net', '', $row->url) }}</a></td>
+                                    <td class="text-right">{{ $row->outbound_links }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @if ($linkAuditStats['orphans'] > $orphanPages->count())
+                    <div class="card-footer text-muted small">Showing the first {{ $orphanPages->count() }} of {{ $linkAuditStats['orphans'] }} orphan pages.</div>
+                @endif
+            </div>
+        @endif
+    @endif
 </div>
 @endsection
 

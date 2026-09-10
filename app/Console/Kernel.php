@@ -324,6 +324,16 @@ class Kernel extends ConsoleKernel
             ->timezone($tz)
             ->name('search-console-sync')
             ->withoutOverlapping();
+
+        // Internal-link health of the SEO page graph (~1,900 pages) — a real crawl, not a guess
+        // from the link-building code. Weekly: the graph only moves as fast as new supply/combos
+        // do, and a full crawl can run many minutes. ->command(), not ->job(): no worker consumes
+        // the 'seo' queue on any server right now, so this runs directly in the scheduler process
+        // instead, the same way seo:sync-combos does.
+        $schedule->command('internal-links:audit')->weeklyOn(0, '04:00')
+            ->timezone($tz)
+            ->name('audit-internal-links')
+            ->withoutOverlapping(120);
   
         // PHASE 3 — AI SEARCH & INTELLIGENCE =================================
         // Recompute MC Trust Layer scores/badges (pure SQL, fast).
