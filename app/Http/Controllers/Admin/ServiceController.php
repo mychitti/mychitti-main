@@ -505,6 +505,10 @@ class ServiceController extends Controller
             'value' => (int)$request['leads_dispatch_round_timeout'] ?: 5
         ]);
 
+        DB::table('business_settings')->updateOrInsert(['key' => 'call_lead_broadcast_count'], [
+            'value' => (int)$request['call_lead_broadcast_count'] ?: 10
+        ]);
+
         Toastr::success('Configurations updated successfully!');
         return back();
     }

@@ -28,6 +28,7 @@
                     @php($exp_count = \App\CentralLogics\Helpers::get_business_settings('exp_count'))
                     @php($exp_unit = \App\CentralLogics\Helpers::get_business_settings('exp_unit'))
                     @php($leads_dispatch_round_timeout = \App\CentralLogics\Helpers::get_business_settings('leads_dispatch_round_timeout'))
+                    @php($call_lead_broadcast_count = \App\CentralLogics\Helpers::get_business_settings('call_lead_broadcast_count'))
 
                     <form class="row" action="{{ route('admin.service.config.update') }}" method="post">
                         @csrf
@@ -54,6 +55,12 @@
                             <input type="number" min="1" value="{{ $leads_dispatch_round_timeout ?? 5 }}"
                                 name="leads_dispatch_round_timeout" placeholder="Ex: 5" class="form-control">
                             <small class="text-muted">If no vendor accepts within this many minutes, the lead is sent to the next batch (max 3 rounds).</small>
+                        </div>
+                        <div class="col-6 mt-3">
+                            <label>Call Lead Broadcast Count</label>
+                            <input type="number" min="0" value="{{ $call_lead_broadcast_count ?? 10 }}"
+                                name="call_lead_broadcast_count" placeholder="Ex: 10" class="form-control">
+                            <small class="text-muted">When a customer calls a store, this many other stores in the same category/zone also get the call as a free lead in their Lead Inbox.</small>
                         </div>
                         <div class="col-12">
                             <button class="btn btn-primary m-3">Save Changes</button>

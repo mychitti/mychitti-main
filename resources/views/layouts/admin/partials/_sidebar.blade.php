@@ -1144,7 +1144,7 @@
                     <small class="nav-subtitle">{{ translate('Sales & Marketing') }}</small>
                     <small class="tio-more-horizontal nav-subtitle-replacer"></small>
                 </li>
-                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/sales-crm/queries*') ? 'active' : '' }}">
+                <li class="navbar-vertical-aside-has-menu {{ (Request::is('admin/sales-crm/queries*') || Request::is('admin/sales-crm/pipeline*')) ? 'active' : '' }}">
                     <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.sales-crm.query.index') }}" title="{{ translate('Sales Queries') }}">
                         <i class="tio-city nav-icon"></i>
                         <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Sales Queries') }}</span>

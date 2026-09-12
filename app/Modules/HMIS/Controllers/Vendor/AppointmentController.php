@@ -678,7 +678,11 @@ class AppointmentController extends Controller
         if ($sr->user_id && !$isOther) {
             $hmisPatient = \App\Models\Patient::firstOrCreate(
                 ['store_id' => $store_id, 'user_id' => $sr->user_id],
-                ['name' => $patientName, 'phone' => $patientPhone, 'store_id' => $store_id, 'user_id' => $sr->user_id]
+                [
+                    'name'        => $patientName,
+                    'phone'       => $patientPhone,
+                    'patient_uid' => \App\Models\Patient::generateUid($store_id),
+                ]
             );
         } elseif ($patientPhone) {
             // Only reachable when the booking is for someone else — the family case, where one

@@ -26,6 +26,12 @@ class AiSearchController extends Controller
     private const W_DISTANCE   = 0.20;
     private const W_POPULARITY = 0.15;
 
+    // Minimum semantic similarity (ai-server cosine score, 0-1) for a real AI-search match to
+    // qualify — weak matches are dropped rather than shown just because they score well on
+    // trust/distance/popularity. Doesn't apply to the MySQL keyword fallback (substring matches
+    // aren't scored the same way, and filtering them would silently empty out the fallback path).
+    private const MIN_SEMANTIC_MATCH = 0.75;
+
     private string $businessUrl;
 
     public function __construct()
@@ -102,8 +108,9 @@ class AiSearchController extends Controller
             if ($response->ok() && $response->json('success')) {
                 $map = [];
                 foreach ($response->json('results', []) as $row) {
-                    if (isset($row['store_id'])) {
-                        $map[(int) $row['store_id']] = (float) ($row['score'] ?? 0);
+                    $score = (float) ($row['score'] ?? 0);
+                    if (isset($row['store_id']) && $score >= self::MIN_SEMANTIC_MATCH) {
+                        $map[(int) $row['store_id']] = $score;
                     }
                 }
                 if (!empty($map)) {

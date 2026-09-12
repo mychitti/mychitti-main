@@ -334,7 +334,16 @@ class Kernel extends ConsoleKernel
             ->timezone($tz)
             ->name('audit-internal-links')
             ->withoutOverlapping(120);
-  
+
+        // Monthly: ask AI for brand names per category (e.g. "AC Repair" -> Daikin, Voltas, LG...)
+        // and add genuinely new ones to the shared brand pool that powers vendor inventory picks
+        // and the "Brand + Service" SEO chips. Same generator as the admin "Generate with AI"
+        // button, just run unattended across every category instead of one at a time.
+        $schedule->command('brand-pool:ai-sync')->monthlyOn(1, '05:00')
+            ->timezone($tz)
+            ->name('brand-pool-ai-sync')
+            ->withoutOverlapping(120);
+
         // PHASE 3 — AI SEARCH & INTELLIGENCE =================================
         // Recompute MC Trust Layer scores/badges (pure SQL, fast).
         $schedule->command('vendor:sync-trust-score')

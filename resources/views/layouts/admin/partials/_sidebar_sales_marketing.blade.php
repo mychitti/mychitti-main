@@ -46,18 +46,9 @@
 
                     @if (\App\CentralLogics\Helpers::module_permission_check('sales_crm'))
 
-                    <!-- Pipeline -->
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/sales-crm/pipeline*') ? 'active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.sales-crm.pipeline') }}" title="{{ translate('Pipeline') }}">
-                            <i class="tio-format-bullets nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                {{ translate('Pipeline') }}
-                            </span>
-                        </a>
-                    </li>
-
+                    {{-- Pipeline (Kanban board) is now the "Pipeline" tab on this same page. --}}
                     <!-- Sales Queries -->
-                    <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/sales-crm/queries*') ? 'active' : '' }}">
+                    <li class="navbar-vertical-aside-has-menu {{ (Request::is('admin/sales-crm/queries*') || Request::is('admin/sales-crm/pipeline*')) ? 'active' : '' }}">
                         <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.sales-crm.query.index') }}" title="{{ translate('Sales Queries') }}">
                             <i class="tio-chat-outlined nav-icon"></i>
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">

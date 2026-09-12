@@ -387,6 +387,17 @@
                 @endif
                 <!-- End Marketing Dashboard -->
 
+                <!-- Analytics (store visits, banner/ad clicks, phone unmasks, shares) -->
+                @if(hasPermission('analytics', 'view'))
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('analytics*') ? 'active' : '' }}">
+                    <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.analytics.index') }}" title="Analytics">
+                        <i class="tio-chart-bar-1 nav-icon"></i>
+                        <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">Analytics</span>
+                    </a>
+                </li>
+                @endif
+                <!-- End Analytics -->
+
                 <!-- End marketing section -->
 
       

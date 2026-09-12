@@ -3083,6 +3083,52 @@ class Helpers
         return $chunks;
     }
 
+    // Free visibility broadcast for direct "call store" clicks — targets other stores the same
+    // way the paid lead distribution does (same category, same zone, active + lead-available,
+    // visible on MyChitti), but skips the wallet/subscription eligibility checks (it's free) and
+    // never touches the leads_distributions rotation tracker, since this isn't a paid dispatch.
+    public static function get_stores_for_call_lead_broadcast($storeId, $limit = null)
+    {
+        if ($limit === null) {
+            $limit = (int) (self::get_settings('call_lead_broadcast_count') ?? 10);
+        }
+        if ($limit <= 0) return [];
+
+        $store = DB::table('stores')->where('id', $storeId)->where('status', 1)->first();
+        if (!$store) return [];
+
+        $categoryIds = DB::table('item_store')
+            ->join('items', 'items.id', '=', 'item_store.item_id')
+            ->where('item_store.store_id', $storeId)
+            ->distinct()
+            ->pluck('items.category_id')
+            ->filter()
+            ->toArray();
+        if (empty($categoryIds)) return [];
+
+        $otherStoreIds = DB::table('item_store')
+            ->join('items', 'items.id', '=', 'item_store.item_id')
+            ->join('stores', 'stores.id', '=', 'item_store.store_id')
+            ->leftJoin('store_configs', 'stores.id', '=', 'store_configs.store_id')
+            ->whereIn('items.category_id', $categoryIds)
+            ->where('stores.zone_id', $store->zone_id)
+            ->where('stores.status', 1)
+            ->where('stores.show_in_mychitti', 1)
+            ->where('stores.id', '!=', $storeId)
+            ->where(fn($q) => $q->whereNull('store_configs.lead_available')->orWhere('store_configs.lead_available', 1))
+            ->distinct()
+            ->pluck('stores.id')
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($otherStoreIds)) return [];
+
+        shuffle($otherStoreIds);
+        return array_slice($otherStoreIds, 0, $limit);
+    }
+
     // Subquery of item ids carried by a store — for ->whereIn('items.id', Helpers::store_items_sub($id)).
     // Replaces raw FIND_IN_SET(?, items.store_ids) reads with an indexed item_store lookup.
     public static function store_items_sub($storeId)

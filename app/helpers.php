@@ -8491,7 +8491,7 @@ if (!function_exists('store_whatsapp_link')) {
      * Build a wa.me link from a store's WhatsApp/phone number (Phase 3 §3.3).
      * Returns null if there aren't enough digits. Bare 10-digit numbers get the default country code.
      */
-    function store_whatsapp_link($number, string $default_cc = '91'): ?string
+    function store_whatsapp_link($number, string $default_cc = '91', ?string $text = null): ?string
     {
         $digits = preg_replace('/[^0-9]/', '', (string) $number);
         if (strlen($digits) < 10) {
@@ -8500,7 +8500,11 @@ if (!function_exists('store_whatsapp_link')) {
         if (strlen($digits) === 10) {
             $digits = $default_cc . $digits;
         }
-        return 'https://wa.me/' . $digits;
+        $link = 'https://wa.me/' . $digits;
+        if ($text) {
+            $link .= '?text=' . rawurlencode($text);
+        }
+        return $link;
     }
 }
 

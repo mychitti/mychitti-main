@@ -793,7 +793,8 @@
                                     @foreach ($stores as $store)
                                         @php
                                             $storeUrl = route('store.details', [_storeCity($store), $store->slug]);
-                                            $storeWa = store_whatsapp_link($store->webpage_whatsapp ?? ($store->phone ?? null));
+                                            $storeWaText = 'I am visiting from MyChitti. I want to enquire about ' . $item->name;
+                                            $storeWa = store_whatsapp_link($store->webpage_whatsapp ?? ($store->phone ?? null), '91', $storeWaText);
                                         @endphp
                                         <div class="provider_card my-2 p-2 shadow-sm rounded"
                                             data-lead-store="{{ $store->id }}">

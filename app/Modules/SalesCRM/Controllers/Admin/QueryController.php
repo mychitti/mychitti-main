@@ -36,27 +36,52 @@ class QueryController extends Controller
 
     public function index(Request $request)
     {
-        $admin  = auth('admin')->user();
-        $query  = $this->scopeQuery();
+        $admin   = auth('admin')->user();
+        $zoneIds = $admin->crmZoneIds();
 
-        if ($request->status)  $query->where('status', $request->status);
-        if ($request->priority) $query->where('priority', $request->priority);
-        if ($request->zone_id && !$admin->zone_id) $query->where('zone_id', $request->zone_id);
+        // Single Pipeline board — replaces the old separate List page. Carries over every filter
+        // the list had (search, zone) plus the board's own (assignee, priority); status is no
+        // longer a filter since the columns already split by status.
+        $boardQuery = SalesQuery::with(['assignedAdmin', 'zone']);
+        if (!empty($zoneIds)) {
+            $boardQuery->whereIn('zone_id', $zoneIds);
+        }
+        if ($request->assigned_admin_id) {
+            $boardQuery->where('assigned_admin_id', $request->assigned_admin_id);
+        }
+        if ($request->priority) {
+            $boardQuery->where('priority', $request->priority);
+        }
+        if ($request->zone_id && !$admin->zone_id) {
+            $boardQuery->where('zone_id', $request->zone_id);
+        }
         if ($request->search) {
             $s = $request->search;
-            $query->where(function ($q) use ($s) {
+            $boardQuery->where(function ($q) use ($s) {
                 $q->where('contact_name', 'like', "%{$s}%")
                   ->orWhere('phone', 'like', "%{$s}%")
                   ->orWhere('company', 'like', "%{$s}%")
                   ->orWhere('ref_no', 'like', "%{$s}%");
             });
         }
+        $grouped = $boardQuery->orderBy('created_at', 'desc')->get()->groupBy('status');
 
-        $queries  = $query->latest()->paginate(20)->withQueryString();
-        $zones    = $this->crmZones();
-        $statuses = SalesQuery::STATUSES;
+        $columns = [
+            'new'           => ['label' => 'New',           'color' => '#17a2b8'],
+            'in_progress'   => ['label' => 'In Progress',   'color' => '#fd7e14'],
+            'proposal_sent' => ['label' => 'Proposal Sent', 'color' => '#6f42c1'],
+            'converted'     => ['label' => 'Won',           'color' => '#28a745'],
+            'lost'          => ['label' => 'Lost',          'color' => '#dc3545'],
+        ];
+        $boardAdmins = !empty($zoneIds)
+            ? Admin::whereIn('zone_id', $zoneIds)->orderBy('f_name')->get()
+            : Admin::orderBy('f_name')->get();
+        $priorities = SalesQuery::PRIORITIES;
+        $zones      = $this->crmZones();
 
-        return view('sales_crm::admin-views.query.index', compact('queries', 'zones', 'statuses'));
+        return view('sales_crm::admin-views.query.index', compact(
+            'grouped', 'columns', 'boardAdmins', 'priorities', 'zones'
+        ));
     }
 
     public function create()

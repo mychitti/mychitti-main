@@ -2559,6 +2559,30 @@ class FrontController extends Controller
             }
         }
 
+        // 3) Broadcast call leads to other stores in the same category/zone — free visibility,
+        // silent to both the customer and the store that was actually called.
+        if ($action === 'call') {
+            try {
+                $broadcastStoreIds = Helpers::get_stores_for_call_lead_broadcast($storeId);
+                foreach ($broadcastStoreIds as $otherStoreId) {
+                    DB::table('lead_signals')->insert([
+                        'store_id'     => $otherStoreId,
+                        'user_id'      => auth()->check() ? auth()->id() : null,
+                        'type'         => 'call',
+                        'source'       => $request->input('source', 'web'),
+                        'utm_source'   => $request->input('utm_source'),
+                        'utm_medium'   => $request->input('utm_medium'),
+                        'utm_campaign' => $request->input('utm_campaign'),
+                        'meta'         => json_encode(['ip' => $ip, 'ua' => substr((string) $request->userAgent(), 0, 255), 'broadcast_from_store_id' => $storeId]),
+                        'created_at'   => now(),
+                        'updated_at'   => now(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // broadcast failure must not break the click
+            }
+        }
+
         return response()->json(['message' => 'ok']);
     }
 
