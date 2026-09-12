@@ -62,6 +62,14 @@ class SeoLandingController extends Controller
 
         $canonical = url($zone->slug . '/services/' . $category->slug . ($item ? '/' . $item->slug : ''));
 
+        // Thin-content guard: fewer than 3 real providers in this city makes the page too similar
+        // to every other sparse combo to be worth indexing on its own — matches the threshold used
+        // on the item detail page (FrontController). Flips back to indexable once enough vendors
+        // sign up in this city, no re-generation needed.
+        if ($stores->count() < 3) {
+            view()->share('metaRobots', 'noindex, follow');
+        }
+
         // On a category landing, link its published item-level sub-service landings (AC Repair, …)
         // — the proper SEO silo: category page → the specific services it contains.
         $subServices = collect();

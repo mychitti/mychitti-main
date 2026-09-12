@@ -83,6 +83,13 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="col-md-4 form-group">
+                                <label class="input-label">{{ translate('Platform') }}</label>
+                                <select name="platform" class="form-control">
+                                    <option value="mychitti" {{ old('platform', $salesQuery->platform) == 'mychitti' ? 'selected' : '' }}>MyChitti</option>
+                                    <option value="mcvendorhub" {{ old('platform', $salesQuery->platform) == 'mcvendorhub' ? 'selected' : '' }}>MC Vendorhub</option>
+                                </select>
+                            </div>
                             <div class="col-md-6 form-group">
                                 <label class="input-label">{{ translate('Module / Service') }}</label>
                                 <select name="sub_module" id="sub_module" class="form-control">

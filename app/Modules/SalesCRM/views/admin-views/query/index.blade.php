@@ -55,6 +55,13 @@
         <div class="col-auto">
             <input type="text" name="search" class="form-control form-control-sm" placeholder="{{ translate('Search name, phone, ref...') }}" value="{{ request('search') }}">
         </div>
+        <div class="col-auto">
+            <select name="platform" class="form-control form-control-sm">
+                <option value="mychitti" {{ $platform == 'mychitti' && request('platform') !== 'all' ? 'selected' : '' }}>MyChitti</option>
+                <option value="mcvendorhub" {{ request('platform') == 'mcvendorhub' ? 'selected' : '' }}>MC Vendorhub</option>
+                <option value="all" {{ request('platform') == 'all' ? 'selected' : '' }}>All Platforms</option>
+            </select>
+        </div>
         @if($zones->count())
         <div class="col-auto">
             <select name="zone_id" class="form-control form-control-sm">

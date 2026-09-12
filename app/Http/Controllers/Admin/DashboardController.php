@@ -338,10 +338,12 @@ class DashboardController extends Controller
             return redirect()->route('admin.business-settings.business-setup');
         }
         if ($module_type == 'sales_marketing') {
+            // Platform-scoped: MC Vendorhub prospects are sold and onboarded separately (see
+            // SalesQuery::PLATFORMS), so they don't inflate MyChitti's own sales/marketing figures.
             $crmStats = [
-                'queries_new'          => \App\Modules\SalesCRM\Models\SalesQuery::where('status', 'new')->count(),
-                'queries_in_progress'  => \App\Modules\SalesCRM\Models\SalesQuery::where('status', 'in_progress')->count(),
-                'queries_total'        => \App\Modules\SalesCRM\Models\SalesQuery::count(),
+                'queries_new'          => \App\Modules\SalesCRM\Models\SalesQuery::where('platform', 'mychitti')->where('status', 'new')->count(),
+                'queries_in_progress'  => \App\Modules\SalesCRM\Models\SalesQuery::where('platform', 'mychitti')->where('status', 'in_progress')->count(),
+                'queries_total'        => \App\Modules\SalesCRM\Models\SalesQuery::where('platform', 'mychitti')->count(),
                 'followups_today'      => \App\Modules\SalesCRM\Models\SalesFollowUp::whereDate('due_date', today())->where('status', 'pending')->count(),
                 'followups_overdue'    => \App\Modules\SalesCRM\Models\SalesFollowUp::where('due_date', '<', today())->where('status', 'pending')->count(),
                 'tickets_open'         => \App\Modules\SalesCRM\Models\SupportTicket::where('status', 'open')->count(),

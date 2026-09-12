@@ -105,6 +105,9 @@ class WhatsAppSalesLead
             'phone'        => $phone,
             'zone_id'      => $zoneId ?: null,
             'source'       => 'whatsapp',
+            // This only fires on the platform WABA (SendAutoReply::isPlatform()), which is
+            // MyChitti's own number — there is no separate MC Vendorhub WhatsApp number today.
+            'platform'     => 'mychitti',
             'status'       => 'new',
             'priority'     => $priority,
             'description'  => $interest . "\n\nFirst message: \"" . mb_substr($body, 0, 300) . '"',

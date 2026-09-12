@@ -2875,7 +2875,7 @@ class VendorController extends Controller
                 $store->zone_id,
                 $store->created_at,
                 // $store->pos_system ? 'Yes' : 'No',
-                $store->module_id == 6 ? 'My city' : 'Shopping',
+                $store->module_id == 6 ? 'MyChitti' : 'Shopping',
                 $store->featured ? 'Yes' : 'No',
             ];
         }

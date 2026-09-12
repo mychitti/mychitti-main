@@ -42,7 +42,16 @@ class QueryController extends Controller
         // Single Pipeline board — replaces the old separate List page. Carries over every filter
         // the list had (search, zone) plus the board's own (assignee, priority); status is no
         // longer a filter since the columns already split by status.
+        //
+        // MyChitti and MC Vendorhub are sold and onboarded separately, so this board defaults to
+        // MyChitti's own prospects only — 'all' or 'mcvendorhub' can still be selected explicitly
+        // via the platform filter, nothing is hidden permanently.
+        $platform = in_array($request->platform, SalesQuery::PLATFORMS, true) ? $request->platform : 'mychitti';
+
         $boardQuery = SalesQuery::with(['assignedAdmin', 'zone']);
+        if ($request->platform !== 'all') {
+            $boardQuery->where('platform', $platform);
+        }
         if (!empty($zoneIds)) {
             $boardQuery->whereIn('zone_id', $zoneIds);
         }
@@ -80,7 +89,7 @@ class QueryController extends Controller
         $zones      = $this->crmZones();
 
         return view('sales_crm::admin-views.query.index', compact(
-            'grouped', 'columns', 'boardAdmins', 'priorities', 'zones'
+            'grouped', 'columns', 'boardAdmins', 'priorities', 'zones', 'platform'
         ));
     }
 
@@ -103,6 +112,7 @@ class QueryController extends Controller
             'zone_id'      => 'nullable|integer|exists:zones,id',
             'source'       => 'required|in:' . implode(',', SalesQuery::SOURCES),
             'priority'     => 'required|in:' . implode(',', SalesQuery::PRIORITIES),
+            'platform'     => 'nullable|in:' . implode(',', SalesQuery::PLATFORMS),
             'sub_module'   => 'nullable|string|max:255',
             'description'  => 'nullable|string|max:2000',
         ]);
@@ -119,6 +129,7 @@ class QueryController extends Controller
             'assigned_admin_id' => $request->assigned_admin_id,
             'source'            => $request->source,
             'priority'          => $request->priority,
+            'platform'          => $request->platform ?: 'mychitti',
             'status'            => 'new',
             'sub_module'        => $request->sub_module ?: null,
             'description'       => $request->description,
@@ -162,6 +173,7 @@ class QueryController extends Controller
             'assigned_admin_id' => 'nullable|integer|exists:admins,id',
             'source'            => 'required|in:' . implode(',', SalesQuery::SOURCES),
             'priority'          => 'required|in:' . implode(',', SalesQuery::PRIORITIES),
+            'platform'          => 'nullable|in:' . implode(',', SalesQuery::PLATFORMS),
             'status'            => 'required|in:' . implode(',', SalesQuery::STATUSES),
             'sub_module'        => 'nullable|string|max:255',
             'description'       => 'nullable|string|max:2000',
@@ -180,6 +192,7 @@ class QueryController extends Controller
             'assigned_admin_id' => $request->assigned_admin_id,
             'source'            => $request->source,
             'priority'          => $request->priority,
+            'platform'          => $request->platform ?: $salesQuery->platform,
             'status'            => $request->status,
             'sub_module'        => $request->sub_module ?: null,
             'description'       => $request->description,

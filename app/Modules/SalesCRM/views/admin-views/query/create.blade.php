@@ -78,6 +78,13 @@
                                 </select>
                             </div>
                             <div class="col-md-6 form-group">
+                                <label class="input-label">{{ translate('Platform') }} <span class="text-danger">*</span></label>
+                                <select name="platform" class="form-control" required>
+                                    <option value="mychitti" {{ old('platform', 'mychitti') == 'mychitti' ? 'selected' : '' }}>MyChitti</option>
+                                    <option value="mcvendorhub" {{ old('platform') == 'mcvendorhub' ? 'selected' : '' }}>MC Vendorhub</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 form-group">
                                 <label class="input-label">{{ translate('Module / Service') }}</label>
                                 <select name="sub_module" id="sub_module" class="form-control">
                                     <option value=""></option>

@@ -12,7 +12,7 @@ class SalesQuery extends Model
 
     protected $fillable = [
         'ref_no', 'contact_name', 'phone', 'email', 'company',
-        'zone_id', 'assigned_admin_id', 'source', 'status',
+        'zone_id', 'assigned_admin_id', 'source', 'status', 'platform',
         'lost_reason', 'lost_reason_other',
         'priority', 'description', 'notes', 'sub_module',
     ];
@@ -21,6 +21,12 @@ class SalesQuery extends Model
     const STATUSES      = ['new', 'in_progress', 'proposal_sent', 'converted', 'lost', 'on_hold'];
     const PRIORITIES    = ['low', 'medium', 'high'];
     const LOST_REASONS  = ['price', 'competitor', 'no_response', 'not_interested', 'budget', 'other'];
+
+    // Which product this prospect is for. MyChitti and MC Vendorhub are sold and onboarded
+    // separately, so a MyChitti sales rep's pipeline should not fill up with Vendorhub prospects
+    // (and vice versa). Defaults to 'mychitti' since that's the only source that creates these
+    // rows automatically today (WhatsAppSalesLead, the platform WABA).
+    const PLATFORMS = ['mychitti', 'mcvendorhub'];
 
     public function zone()
     {
